@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Peneliti Dashboard|BAPPENDA</title>
+  <title>Validasi Dashboard|BAPPENDA</title>
   <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
     <!---->
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
-    <!---->
-  <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_table/table_design.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
 
 </head>
@@ -31,7 +33,7 @@
           <img src="asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
       </div>            
       <!-- Header Title -->
-      <div class="header-title">Dashboard</div>
+      <div class="header-title">Validasi Dashboard</div>
   </div>
           
   <div class="header-right">
@@ -88,6 +90,18 @@
         <div class="dropdown-content">
             <a href="ParafP/Verifikasi_SSPD/Validasi_berkas.html">Validasi Berkas SSPD Online</a>
             <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fas fa-signature sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="ParafP/Sinkronisasi_BSRE/Sertifikat_digital.html">Sertifikat Digital</a>
+            <a href="ParafP/Sinkronisasi_BSRE/autentikasi_bsre.html">AUTENTIKASI (BSRE)</a>
         </div>
       </div>
       <div class="box">
@@ -168,6 +182,58 @@
     </section>
 </main>
 
+    <!-- Daftar Dokumen PV -->
+    <section style="max-width:1100px; margin:24px auto;">
+      <h3>Daftar Dokumen Peneliti Validasi</h3>
+      <div style="overflow:auto; border:1px solid #e5e5e5; border-radius:8px;">
+        <table id="pv-table" style="width:100%; border-collapse:collapse;">
+          <thead style="background:#f7f7f7;">
+            <tr>
+              <th style="padding:8px; text-align:left;">No Validasi</th>
+              <th style="padding:8px; text-align:left;">No Registrasi</th>
+              <th style="padding:8px; text-align:left;">No Booking</th>
+              <th style="padding:8px; text-align:left;">Nama WP</th>
+              <th style="padding:8px; text-align:left;">Status PV</th>
+              <th style="padding:8px; text-align:left;">Signing</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PV Actions Panel -->
+    <section style="max-width:1000px; margin:24px auto; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
+      <h3>Proses Validasi (PV)</h3>
+      <div style="display:flex; gap:12px; align-items:center; margin:8px 0;">
+        <label style="min-width:120px;">No. Validasi</label>
+        <input id="pv-no-validasi" type="text" placeholder="Masukkan no_validasi" style="flex:1; padding:8px;"/>
+        <button id="pv-status">Status</button>
+        <button id="pv-claim">Claim</button>
+      </div>
+      <details style="margin:8px 0;">
+        <summary>Appearance (koordinat TTE)</summary>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+          <input id="ap-page" type="number" min="1" value="1" placeholder="page" style="width:100px; padding:6px;"/>
+          <input id="ap-x" type="number" value="420" placeholder="x" style="width:120px; padding:6px;"/>
+          <input id="ap-y" type="number" value="680" placeholder="y" style="width:120px; padding:6px;"/>
+          <input id="ap-w" type="number" value="160" placeholder="width" style="width:120px; padding:6px;"/>
+          <input id="ap-h" type="number" value="55" placeholder="height" style="width:120px; padding:6px;"/>
+          <input id="ap-reason" type="text" value="Validasi dokumen" placeholder="reason" style="flex:1; padding:6px;"/>
+          <input id="ap-location" type="text" value="Bappenda" placeholder="location" style="flex:1; padding:6px;"/>
+          <button id="pv-appearance">Simpan Appearance</button>
+        </div>
+      </details>
+      <div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap;">
+        <button id="pv-prepare" disabled>Prepare Document</button>
+        <button id="pv-initiate">Initiate</button>
+        <input id="pv-pass" type="password" placeholder="Passphrase/OTP (opsional)" style="padding:6px; min-width:260px;"/>
+        <button id="pv-authorize">Authorize</button>
+        <button id="pv-verify">Verify</button>
+      </div>
+      <div id="pv-output" style="margin-top:10px; padding:10px; background:#f7f7f7; border-radius:6px; white-space:pre-wrap;"></div>
+    </section>
+
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
         <div class="footer-content">
@@ -196,5 +262,93 @@
 <script src="design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="script-backend/header-backend.js"></script>
+<script>
+  // Load daftar PV
+  (async function loadPvDocs(){
+    try{
+      const res = await fetch('/api/pv/docs', { credentials:'include' });
+      const js = await res.json();
+      const tb = document.querySelector('#pv-table tbody');
+      tb.innerHTML = '';
+      if(!res.ok || js.success===false){
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td colspan="6" style="padding:10px;color:#b00;">Gagal memuat daftar dokumen</td>`;
+        tb.appendChild(tr);
+        return;
+      }
+      (js.data||[]).forEach(item=>{
+        const tr = document.createElement('tr');
+        tr.style.cursor='pointer';
+        tr.innerHTML = `
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.no_validasi||''}</td>
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.no_registrasi||''}</td>
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.nobooking||''}</td>
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.namawajibpajak||''}</td>
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.status_tertampil||''}</td>
+          <td style=\"padding:8px; border-top:1px solid #eee;\">${item.signing_status||''}</td>
+        `;
+        tr.addEventListener('click', ()=>{
+          const input = document.getElementById('pv-no-validasi');
+          if(input){ input.value = item.no_validasi||''; }
+          const out = document.getElementById('pv-output');
+          if(out){ out.textContent = 'Dipilih: '+ (item.no_validasi||'') + '\\n'+ JSON.stringify(item,null,2); }
+        });
+        tb.appendChild(tr);
+      });
+    }catch(e){
+      const tb = document.querySelector('#pv-table tbody');
+      const tr=document.createElement('tr');
+      tr.innerHTML = `<td colspan=\"6\" style=\"padding:10px;color:#b00;\">Error: ${e.message||e}</td>`;
+      tb.appendChild(tr);
+    }
+  })();
+
+  const el = (id)=>document.getElementById(id);
+  const out = el('pv-output');
+  const noVal = ()=> (el('pv-no-validasi').value||'').trim();
+  const idem = ()=> crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2);
+  async function callPV(url, opts={}){
+    const res = await fetch(url, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(opts.headers||{}) }, method: opts.method||'POST', body: opts.body ? JSON.stringify(opts.body): undefined });
+    const js = await res.json().catch(()=>({ success:false, message:'JSON parse error'}));
+    if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
+    return js;
+  }
+  function log(msg, data){ out.textContent = (msg||'') + (data? ('\n'+JSON.stringify(data,null,2)):''); }
+
+  el('pv-status').onclick = async ()=>{
+    try{ const js = await fetch(`/api/validasi/${encodeURIComponent(noVal())}/status`, { credentials:'include' }).then(r=>r.json()); log('STATUS', js);}catch(e){ log('STATUS Gagal: '+e.message); }
+  };
+  el('pv-claim').onclick = async ()=>{
+    try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/claim`); log('CLAIM OK', js);}catch(e){ log('CLAIM Gagal: '+e.message); }
+  };
+  el('pv-appearance').onclick = async ()=>{
+    try{
+      const appearance = { page:Number(el('ap-page').value||1), x:Number(el('ap-x').value||0), y:Number(el('ap-y').value||0), width:Number(el('ap-w').value||0), height:Number(el('ap-h').value||0), reason:el('ap-reason').value||'', location:el('ap-location').value||'' };
+      const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/appearance`, { body:{ appearance } });
+      log('APPEARANCE OK', js);
+    }catch(e){ log('APPEARANCE Gagal: '+e.message); }
+  };
+  el('pv-prepare').onclick = async ()=>{
+    try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/prepare-document`); log('PREPARE OK', js);}catch(e){ log('PREPARE Gagal: '+e.message); }
+  };
+  el('pv-initiate').onclick = async ()=>{
+    try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/initiate`, { headers:{ 'Idempotency-Key': idem() } }); log('INITIATE OK', js);}catch(e){ log('INITIATE Gagal: '+e.message); }
+  };
+  el('pv-authorize').onclick = async ()=>{
+    try{ const pass = el('pv-pass').value||''; const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/authorize`, { headers:{ 'Idempotency-Key': idem() }, body:{ passphrase: pass||undefined } }); log('AUTHORIZE OK', js);}catch(e){ log('AUTHORIZE Gagal: '+e.message); }
+  };
+  el('pv-verify').onclick = async ()=>{
+    try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/verify`); log('VERIFY OK', js);}catch(e){ log('VERIFY Gagal: '+e.message); }
+  };
+  // Gating Prepare berdasarkan auth-status (tanda tangan profil)
+  (async function gatePrepare(){
+    try{
+      const res = await fetch('/api/pv/auth-status', { credentials:'include' });
+      const js = await res.json();
+      const btn = el('pv-prepare');
+      if(js && js.success && js.has_signature){ btn.disabled = false; }
+    }catch(_){}
+  })();
+</script>
 </body>
 </html>

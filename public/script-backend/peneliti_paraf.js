@@ -1,6 +1,7 @@
 let selectedNoBooking = null;
 const API_ENDPOINT = '/api/peneliti/get-berkas-till-verif';
 const REQUEST_TIMEOUT = 10000; // 10 seconds
+let penParafRows = [];
 
 async function loadTableDataPenelitiP() {
     try {
@@ -43,7 +44,10 @@ async function loadTableDataPenelitiP() {
 
         clearTableBody(tbody);
 
-        if (!data || data.length === 0) {
+        // Simpan dataset untuk akses overlay (cek persetujuan dsb.)
+        penParafRows = Array.isArray(data) ? data : [];
+
+        if (!Array.isArray(data) || data.length === 0) {
             showEmptyState(tbody, 'Tidak ada data berkas yang ditemukan');
             return;
         }
@@ -65,7 +69,7 @@ async function loadTableDataPenelitiP() {
             }
         });
         if (metadata) {
-            console.log(`Data loaded successfully. Count: ${metadata.count}, Generated at: ${metadata.generated_at}`);
+            console.log(`Data loaded successfully. Count: ${metadata.count}, Generated at: ${metadata.generatedAt}`);
         }
 
     } catch (error) {
@@ -149,10 +153,12 @@ function addActionButton(row, item) {
             
             if (confirmed) {
                 const result = await sendToParafValidate(item);
-                if (result.success) {
+                if (result && result.success) {
                     updateUIAfterSuccess(sendButton, actionCell, result.no_validasi, item.nobooking);
+                    try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                 } else {
-                    throw new Error(result.message || "Gagal mengirim data");
+                    const msg = (result && result.message) ? result.message : 'Gagal mengirim data';
+                    throw new Error(msg);
                 }
             }
         } catch (error) {
@@ -266,15 +272,131 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Initialization Error:', error);
         showErrorUI('Gagal memuat data awal');
     });
+
+    // ===== Overlay Paraf (serupa dengan peneliti_verifikasi.js) =====
+    const showSignatureBtn = document.getElementById('showSignatureModal');
+    const overlay = document.getElementById('overlay-sign');
+    const overlayConfirmed = document.getElementById('overlay-sign-confirmed');
+    const overlayMsg = overlay?.querySelector('.overlay-content-sign p');
+    const btnCloseOverlay = document.getElementById('close_batal_overlay');
+    const btnAddSignature = document.getElementById('Tambahkan_tandatangan');
+    const btnCancelConfirm = document.getElementById('Tambahkan_tandatangan_batal_overlay');
+    const btnConfirm = document.getElementById('Tambahkan_tandatangan_confirmed');
+
+    // Helper: ambil item terpilih
+    function getSelectedItem() {
+        if (!selectedNoBooking) return null;
+        return penParafRows.find(r => r.nobooking === selectedNoBooking) || null;
+    }
+
+    // Pastikan overlay tidak tampil saat awal
+    if (overlay) overlay.style.display = 'none';
+    if (overlayConfirmed) overlayConfirmed.style.display = 'none';
+
+    if (showSignatureBtn) {
+        showSignatureBtn.addEventListener('click', async () => {
+            try {
+                if (!selectedNoBooking) {
+                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum dipilih');
+                    return;
+                }
+
+                const item = getSelectedItem();
+                if (!item) {
+                    alert('Data baris tidak ditemukan. Muat ulang halaman.');
+                    return;
+                }
+
+                // Hanya boleh paraf jika persetujuan sudah true
+                const approved = (item.persetujuan === true) || (item.persetujuan === 'true');
+                if (!approved) {
+                    alert('Tidak bisa mem-paraf. Dokumen belum disetujui oleh Peneliti.');
+                    return;
+                }
+
+                // Pastikan user punya tanda tangan di profil
+                const sigResp = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
+                const sigJson = await sigResp.json().catch(() => ({}));
+                if (!sigResp.ok || !sigJson.has_signature) {
+                    alert('Anda belum mengunggah tanda tangan di Profil. Silakan unggah terlebih dahulu.');
+                    return;
+                }
+
+                // Semua valid → buka overlay konfirmasi penambahan paraf
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    if (overlayMsg) {
+                        overlayMsg.textContent = `Dokumen Booking dengan No. Booking ${selectedNoBooking} telah siap untuk diparaf.`;
+                    }
+                }
+            } catch (err) {
+                console.error('showSignatureModal (Paraf) error:', err);
+                alert('Terjadi kesalahan saat memeriksa status dokumen.');
+            }
+        });
+    }
+
+    if (btnCloseOverlay && overlay) {
+        btnCloseOverlay.addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+    }
+
+    if (btnAddSignature && overlayConfirmed) {
+        btnAddSignature.addEventListener('click', () => {
+            overlayConfirmed.style.display = 'flex';
+        });
+    }
+
+    if (btnCancelConfirm && overlayConfirmed) {
+        btnCancelConfirm.addEventListener('click', () => {
+            overlayConfirmed.style.display = 'none';
+        });
+    }
+
+    if (btnConfirm) {
+        btnConfirm.addEventListener('click', async () => {
+            try {
+                if (!selectedNoBooking) {
+                    throw new Error('Parameter nobooking diperlukan');
+                }
+                // Menduplikasi path tanda tangan profil -> p_3_clear_to_paraf.tanda_paraf_path
+                const resp = await fetch('/api/peneliti/paraf-transfer-signature', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nobooking: selectedNoBooking })
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok || json.success === false) {
+                    throw new Error(json.message || 'Gagal menambahkan paraf');
+                }
+
+                alert('Paraf berhasil ditambahkan pada dokumen yang memenuhi syarat.');
+                location.reload();
+            } catch (e) {
+                console.error('paraf-transfer-signature error:', e);
+                alert(`Gagal menambahkan paraf: ${e.message}`);
+            } finally {
+                if (overlayConfirmed) overlayConfirmed.style.display = 'none';
+                if (overlay) overlay.style.display = 'none';
+            }
+        });
+    }
 });
 //////
 //////
 function generateDropdownContent(item) {
- const hasSignature = item._metadata?.hasSignature || 
-                       (item.tanda_tangan_url && item.tanda_tangan_url !== 'null' && item.tanda_tangan_url.trim() !== '');
+ const hasSignature = !!(item.tanda_paraf_path || item.tanda_tangan_path || item.tanda_tangan_url);
+ const adaStempel = !!(item.stempel_booking_path) && (String(item.persetujuan||'').toLowerCase()==='true');
+ const pesan1 = adaStempel ? '<p>Booking ini telah diberikan stempel</p>' : '<p>Booking ini belum diberikan stempel</p>';
+ const pemberi = item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+ const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${pemberi})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
     return `
         <p>No. Booking: ${item.nobooking}</p>
-<p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+        <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+        ${pesan1}
+        ${pesan2}
             
             ${hasSignature ? `
                 <div class="signature-section">
@@ -377,109 +499,6 @@ async function validateNoBooking(nobooking) {
     }
 }
 ////////////////////// END VN   ///////////////////////////////////////////////////////////////////
-// Mendapatkan elemen-elemen yang dibutuhkan
-const toggleSignatureButton = document.getElementById('toggleSignatureButton');
-const signatureFormContainer = document.getElementById('signatureFormContainer');
-// Fungsi untuk menangani tombol "Tanda Tangan"
-document.getElementById('toggleSignatureButton').addEventListener('click', function() {
-    const signatureFormContainer = document.getElementById('signatureFormContainer');
-    if (signatureFormContainer.style.display === 'none') {
-        signatureFormContainer.style.display = 'block';  // Menampilkan form tanda tangan
-    } else {
-        signatureFormContainer.style.display = 'none';  // Menyembunyikan form tanda tangan
-    }
-});
-////
-// Menangani form submission
-const signatureForm = document.getElementById('signatureForm');
-
-// Pastikan form di-submit menggunakan event handler
-signatureForm.addEventListener('submit', async (event) => {
-    event.preventDefault(); // Mencegah form agar tidak submit secara default
-    // Ambil file dan nama dari form
-    const signatureInput = document.getElementById('signature');
-    const nameInput = document.getElementById('name_tandatangan');
-    const signatureFile = signatureInput.files[0];  // File tanda tangan
-    const name = nameInput.value;  // Nama pemilik tanda tangan
-    // Validasi input
-    if (!signatureFile || !name) {
-        alert('Tanda tangan dan nama harus diisi!');
-        return;
-    }
-    // Membuat FormData untuk mengirim file dan data lainnya
-    const formData = new FormData();
-    formData.append('signature', signatureFile);  // Menambahkan file
-    formData.append('name', name);  // Menambahkan nama
-    // Mengirimkan data ke endpoint backend menggunakan fetch API
-    try {
-        const response = await fetch('http://localhost:3000/api/save-signature', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (response.ok) {
-            alert('Tanda tangan dan nama berhasil disimpan!');
-            window.location.reload();
-            // Lakukan sesuatu setelah berhasil (misalnya, reset form atau tampilkan pesan sukses)
-        } else {
-            const error = await response.text();
-            alert('Terjadi kesalahan: ' + error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat mengirim data tanda tangan');
-    }
-});
-// Ambil data tanda tangan dari backend dan tampilkan
-const resultBox = document.getElementById('resultBox');
-const signatureDetailBox = document.getElementById('signatureDetailBox');
-const signatureName = document.getElementById('signatureName');
-const signatureImage = document.getElementById('signatureImage');
-const useSignatureBtn = document.getElementById('useSignatureBtn');
-let selectedSignature = null;  // Untuk menyimpan tanda tangan yang dipilih
-///
-function showSignatureDetail(sign, count) {
-    // Menampilkan detail tanda tangan yang diklik
-    signatureName.textContent = `Tanda tangan ${count} - Nama: ${sign.sign_paraf}`;
-    signatureImage.src = sign.signfile_path;  // Set path gambar yang diterima dari backend
-    signatureDetailBox.style.display = 'block'; // Tampilkan detail box
-    selectedSignature = { name: sign.sign_paraf, src: sign.signfile_path };  // Simpan tanda tangan yang dipilih
-}
-useSignatureBtn.addEventListener('click', async () => {
-    const nobooking = sessionStorage.getItem('selectedNoBooking');  // Mengambil nobooking yang telah disimpan sebelumnya
-    if (!selectedSignature) {
-        alert('Pilih tanda tangan terlebih dahulu!');
-        return;
-    }
-const signaturePath = selectedSignature.src.replace(/\\/g, '/'); 
-    console.log('Data yang dikirim ke server:', {
-    nobooking: nobooking,
-    name: selectedSignature.name,
-    signaturePath: signaturePath
-    });
-    // Kirim data ke server untuk diproses dan dimasukkan ke dalam PDF
-    try {
-        const response = await fetch(`http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nobooking: nobooking,
-                name: selectedSignature.name,
-                signaturePath: signaturePath
-            })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            alert('Tanda tangan berhasil dimasukkan ke PDF!');
-        } else {
-            const error = await response.text();
-            alert('Terjadi kesalahan: ' + error);
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat mengirim data tanda tangan');
-    }
-});
 // Fungsi untuk generate PDF
 function generatePDF(nobooking, stempelStatusP) {
     fetch(`http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`)
@@ -660,20 +679,23 @@ async function sendToParafValidate(item) {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
-                userid: item.userid,
                 namawajibpajak: item.namawajibpajak,
                 namapemilikobjekpajak: item.namapemilikobjekpajak,
                 tanggal_terima: item.tanggal_terima,
                 status: 'Dianalisis',
                 trackstatus: 'Terverifikasi',
-                keterangan: item.keterangan,
+                keterangan: item.keterangan
             }),
         });
 
-        const result = await response.json();
-        if (result.success) {
+        const result = await response.json().catch(() => ({ success: false, message: `HTTP ${response.status}` }));
+        if (!response.ok) {
+            return { success: false, message: result.message || `HTTP ${response.status}` };
+        }
+        if (result && result.success) {
             alert('Data berhasil dikirim ke Paraf Validasi!');
         } else {
             alert('Gagal mengirim data ke Paraf Validasi.');
@@ -682,6 +704,7 @@ async function sendToParafValidate(item) {
     } catch (error) {
         console.error('Error sending data to ParafValidate:', error);
         alert('Terjadi kesalahan saat mengirim data.');
+        return { success: false, message: error?.message || 'Unknown error' };
     }
 }
 ////

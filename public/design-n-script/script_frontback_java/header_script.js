@@ -80,3 +80,46 @@ window.addEventListener('click', function (event) {
 });
 
 
+// Hide member section for specific divisions (PPAT, PPATS, Wajib Pajak)
+(function() {
+    const membersCountEl = document.getElementById('divisiMemberCount');
+    const memberOverlayEl = document.getElementById('member-overlay');
+    if (!membersCountEl && !memberOverlayEl) return;
+
+    const getDivision = async () => {
+        const localDiv = localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
+        if (localDiv) return localDiv;
+        try {
+            const resp = await fetch('/api/profile', { credentials: 'include', headers: { 'Accept': 'application/json' } });
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            return data?.divisi || null;
+        } catch (_) {
+            return null;
+        }
+    };
+
+    const applyVisibility = (divisi) => {
+        if (!divisi) return;
+        const d = String(divisi).trim().toLowerCase();
+        const shouldHide = d === 'ppat' || d === 'ppats' || d === 'wajib pajak';
+        if (shouldHide) {
+            if (membersCountEl) membersCountEl.style.display = 'none';
+            if (memberOverlayEl) memberOverlayEl.style.display = 'none';
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.add('member-hidden');
+        } else {
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.remove('member-hidden');
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            getDivision().then(applyVisibility);
+        });
+    } else {
+        getDivision().then(applyVisibility);
+    }
+})();
+

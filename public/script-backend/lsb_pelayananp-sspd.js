@@ -8,37 +8,55 @@ async function loadTableLSB() {
             throw new Error('Invalid user division data');
         }
 
-        if (userDivisi !== 'Peneliti') {
-            alert('Anda tidak memiliki akses ke data Peneliti');
+        if (userDivisi !== 'LSB') {
+            alert('Anda tidak memiliki akses ke data LSB');
             return;
         }
 
-        // Fetch data with timeout
-        let response;
+	// Siapkan variabel data lebih awal untuk menghindari TDZ
+	let data;
+	// Fetch data with timeout + fallback endpoint
+	let response;
+	try {
+		const endpoints = ['/api/LSB_berkas-complete', '/api/LSB_berkas_complete'];
+		for (let i = 0; i < endpoints.length; i++) {
+			try {
+				response = await Promise.race([
+					fetch(endpoints[i], { credentials: 'include' }),
+					new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
+				]);
+				if (response.ok) break;
+				if (response.status === 404 && i < endpoints.length - 1) {
+					continue; // coba alias berikutnya
+				}
+				if (response.status === 404) {
+					// Tidak ada data: treat as empty list
+					data = { success: true, data: [] };
+					break;
+				}
+				if (response.status === 403) {
+					throw new Error('Akses ditolak. Pastikan Anda login sebagai LSB.');
+				}
+				throw new Error(`HTTP error! status: ${response.status}`);
+			} catch (inner) {
+				if (i === endpoints.length - 1) throw inner;
+			}
+		}
+	} catch (fetchError) {
+		console.error('Fetch Error:', fetchError);
+		throw new Error(`Gagal memuat data: ${fetchError.message}`);
+	}
+	// Parse JSON data
         try {
-            response = await Promise.race([
-                fetch('http://localhost:3000/api/LSB_berkas_complete'),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
-            ]);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+		if (!data) {
+                data = await response.json();
             }
-
-        } catch (fetchError) {
-            console.error('Fetch Error:', fetchError);
-            throw new Error(`Gagal memuat data: ${fetchError.message}`);
-        }
-        // Parse JSON data
-        let data;
-        try {
-            data = await response.json();
             
             if (!data || typeof data !== 'object') {
                 throw new Error('Invalid data format received from server');
             }
             
-            if (!data.success) {
+			if (!data.success) {
                 throw new Error(data.message || 'Server returned unsuccessful response');
             }
             
@@ -50,168 +68,202 @@ async function loadTableLSB() {
             throw new Error(`Gagal memproses data: ${parseError.message}`);
         }
 
-        // DOM manipulation
-        const tbody = document.querySelector('.data-masuk');
-        if (!tbody) {
-            throw new Error('Target table body element not found');
-        }
+		// DOM refs
+		const table = document.getElementById('LSBTable');
+		const tbody = document.querySelector('.data-masuk');
+		if (!tbody) throw new Error('Target table body element not found');
+		// Ensure pagination container exists
+		let pager = document.getElementById('paginationLSB');
+		if (!pager) {
+			pager = document.createElement('div');
+			pager.id = 'paginationLSB';
+			pager.style.marginTop = '12px';
+			pager.style.display = 'flex';
+			pager.style.justifyContent = 'space-between';
+			pager.style.alignItems = 'center';
+			table.parentNode.appendChild(pager);
+		}
 
-        // Clear existing content
-        tbody.innerHTML = '';
+		const PAGE_SIZE = 10;
+		let currentPage = 1;
+		const allItems = Array.isArray(data.data) ? data.data : [];
 
-        // Process each item
-        data.data.forEach(item => {
-            try {
-                // Validate required fields
-                const requiredFields = ['nobooking', 'noppbb', 'tahunajb', 'userid', 
-                                      'namawajibpajak', 'namapemilikobjekpajak', 'status', 'trackstatus'];
-                
-                const missingFields = requiredFields.filter(field => !item[field]);
-                if (missingFields.length > 0) {
-                    console.warn(`Item with nobooking ${item.nobooking || 'unknown'} is missing fields:`, missingFields);
-                    return; // Skip this item
-                }
+		function renderRows(items) {
+			tbody.innerHTML = '';
+			if (!items.length) {
+				const emptyRow = tbody.insertRow();
+				const emptyCell = emptyRow.insertCell(0);
+				emptyCell.colSpan = 10;
+				emptyCell.textContent = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+				return;
+			}
+			items.forEach(item => {
+				try {
+					const row = tbody.insertRow();
+					row.setAttribute('data-nobooking', item.nobooking || '');
+					const displayValues = [
+						item.nobooking || '-',
+						item.noppbb || '-',
+						item.tahunajb || '-',
+						item.userid || '-',
+						item.namawajibpajak || '-',
+						item.namapemilikobjekpajak || '-',
+						item.status || '-',
+						item.trackstatus || '-',
+						item.keterangan || '-'
+					];
+					displayValues.forEach((val, idx) => {
+						const cell = row.insertCell(idx);
+						cell.textContent = val;
+					});
 
-                // Create table row
-                const row = tbody.insertRow();      
-                row.setAttribute('data-nobooking', item.nobooking);          
-                // Add basic data cells
-                requiredFields.forEach((field, index) => {
-                    const cell = row.insertCell(index);
-                    cell.textContent = item[field] || '-';
-                });
+					// Action cell (Kirim)
+					const actionCell = row.insertCell(9);
+					const sendBtn = document.createElement('button');
+					sendBtn.textContent = 'Kirim';
+					sendBtn.className = 'btn-kirim-document';
+					const statusOk = String(item.status||'').toLowerCase() === 'terselesaikan';
+					const track = String(item.trackstatus||'');
+					const alreadySent = /^diserahkan$/i.test(track);
+					const canSend = statusOk && !alreadySent;
+					if (!canSend) {
+						sendBtn.disabled = true;
+						sendBtn.title = alreadySent ? 'Sudah Diserahkan' : 'Belum Terselesaikan';
+						sendBtn.textContent = alreadySent ? 'Terkirim' : 'Kirim';
+					}
+					sendBtn.addEventListener('click', async (ev) => {
+						ev.stopPropagation();
+						try {
+							if (!confirm('Serahkan berkas ini ke PPAT/PPATS?')) return;
+							sendBtn.disabled = true;
+							sendBtn.textContent = 'Mengirim...';
+                            const res = await sendToPPAT_complete({ nobooking: item.nobooking, keterangan: item.keterangan||'' });
+							if (res && res.success) {
+								// Update UI
+								row.cells[7].textContent = 'Diserahkan';
+								sendBtn.textContent = 'Terkirim';
+								sendBtn.title = 'Sudah Diserahkan';
+                                try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+							} else {
+								throw new Error(res?.message || 'Gagal menyerahkan');
+							}
+						} catch (e) {
+							alert(e.message);
+							sendBtn.disabled = false;
+							sendBtn.textContent = 'Kirim';
+						}
+					});
+					actionCell.appendChild(sendBtn);
 
-                // Add action button
-                const sendCell = row.insertCell(8);
-                const sendButton = document.createElement('button');
-                sendButton.textContent = 'Kirim';
-                sendButton.classList.add('btn-kirim-document');
-                
-                sendButton.addEventListener('click', async () => {
-                    try {
-                        const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
-                        
-                        if (confirmation) {
-                            if (!item || !item.nobooking || !item.userid || !item.namawajibpajak || !item.namapemilikobjekpajak) {
-                                throw new Error("Data yang diperlukan tidak lengkap.");
-                            }
+					const dropdownRow = document.createElement('tr');
+					const dropdownContent = document.createElement('td');
+					dropdownContent.colSpan = 10;
+					dropdownContent.style.display = 'none';
+					try {
+						dropdownContent.innerHTML = generateDropdownContent(item);
+					} catch (dropdownError) {
+						console.error('Dropdown Creation Error:', dropdownError);
+						dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
+					}
+					dropdownRow.appendChild(dropdownContent);
+					tbody.appendChild(dropdownRow);
 
-                            const result = await sendToPPATK_complete(item);
-                            if (result.success) {
-                                sendButton.disabled = true;
-                                sendButton.textContent = 'Data Terkirim';
-                                alert("Data berhasil dikirim ke PPATK Terkait!");
-                            } else {
-                                throw new Error(result.message || "Gagal mengirim data ke PPATK.");
-                            }
-                        } else {
-                            alert("Data tidak jadi dikirim.");
-                        }
-                    } catch (buttonError) {
-                        console.error('Button Action Error:', buttonError);
-                        alert(`Terjadi kesalahan: ${buttonError.message}`);
-                    }
-                });
-                sendCell.appendChild(sendButton);
+					row.addEventListener('click', function() {
+						try {
+							selectedNoBooking = item.nobooking;
+							if (typeof enableViewDocumentButton === 'function') {
+								enableViewDocumentButton(item.nobooking);
+							}
+							const isVisible = dropdownContent.style.display === 'table-cell';
+							dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
+							if (!isVisible) {
+								let nextRow = row.nextElementSibling;
+								while (nextRow) {
+									nextRow.style.marginTop = '20px';
+									nextRow = nextRow.nextElementSibling;
+								}
+							}
+						} catch (clickError) {
+							console.error('Row Click Handler Error:', clickError);
+						}
+					});
+				} catch (itemError) {
+					console.error('Error processing item:', itemError);
+					const errorRow = tbody.insertRow();
+					const errorCell = errorRow.insertCell(0);
+					errorCell.colSpan = 10;
+					errorCell.textContent = `Gagal memuat data item: ${itemError.message}`;
+					errorCell.style.color = 'red';
+				}
+			});
+		}
 
-                    // Menambahkan event listener untuk setiap baris setelah data dimuat
-                const rows = document.querySelectorAll('#LSBTable tbody tr');
-                rows.forEach(row => {
-                    row.addEventListener('click', function() {
-                        // Handle row click here (open dropdown, validate data, etc.)
-                        console.log('Baris dengan nobooking ' + row.getAttribute('data-nobooking') + ' diklik!');
-                    });
-                });
-                // Create dropdown row - PRESERVED FROM ORIGINAL CODE
-                // data html akan tertampil menggunakan fungsi dropdown di dalam baris tabel
-                const dropdownRow = document.createElement('tr');
-                const dropdownContent = document.createElement('td');
-                dropdownContent.colSpan = 9;
-                dropdownContent.style.display = 'none';
-                
-                try {
-                    dropdownContent.innerHTML = generateDropdownContent(item);
+		function renderPagination(total, pageSize, page) {
+			const totalPages = Math.max(1, Math.ceil(total / pageSize));
+			pager.innerHTML = '';
+			const info = document.createElement('div');
+			const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+			const end = Math.min(total, page * pageSize);
+			info.textContent = `Showing ${start} to ${end} of ${total} entries`;
+			const controls = document.createElement('div');
+			controls.style.display = 'flex';
+			controls.style.gap = '8px';
+			function mkBtn(label, disabled, onClick) {
+				const btn = document.createElement('button');
+				btn.textContent = label;
+				btn.disabled = !!disabled;
+				btn.addEventListener('click', onClick);
+				return btn;
+			}
+			controls.appendChild(mkBtn('<', page <= 1, () => goTo(page - 1)));
+			for (let p = 1; p <= totalPages; p++) {
+				const b = mkBtn(String(p), p === page, () => goTo(p));
+				if (p === page) b.style.fontWeight = '700';
+				controls.appendChild(b);
+			}
+			controls.appendChild(mkBtn('>', page >= totalPages, () => goTo(page + 1)));
+			pager.appendChild(info);
+			pager.appendChild(controls);
+		}
 
-                } catch (dropdownError) {
-                    console.error('Dropdown Creation Error:', dropdownError);
-                    dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
-                }
+		function goTo(page) {
+			const total = allItems.length;
+			const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+			currentPage = Math.min(Math.max(1, page), totalPages);
+			const start = (currentPage - 1) * PAGE_SIZE;
+			const end = start + PAGE_SIZE;
+			renderRows(allItems.slice(start, end));
+			renderPagination(total, PAGE_SIZE, currentPage);
+		}
 
-                dropdownRow.appendChild(dropdownContent);
-                tbody.appendChild(dropdownRow);
+		// initial render
+		goTo(1);
 
-                ////
-                // Row click handler for dropdown toggle
-                row.addEventListener('click', function() {
-                    try {
-                        selectedNoBooking = item.nobooking;
-                        console.log(`Selected No Booking: ${selectedNoBooking}`);
-    
-                        if (typeof enableViewDocumentButton === 'function') {
-                            enableViewDocumentButton(item.nobooking);
-                        }                    
-                        const isVisible = dropdownContent.style.display === 'table-cell';
-                        dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
-                        
-                        
-                        if (!isVisible) {
-                            let nextRow = row.nextElementSibling;
-                            while (nextRow) {
-                                nextRow.style.marginTop = '20px';
-                                nextRow = nextRow.nextElementSibling;
-                            }
-                        }
-                    } catch (clickError) {
-                        console.error('Row Click Handler Error:', clickError);
-                    }
-                });
-
-            } catch (itemError) {
-                console.error('Error processing item:', itemError);
-                // Create error row for failed items
-                const errorRow = tbody.insertRow();
-                const errorCell = errorRow.insertCell(0);
-                errorCell.colSpan = 9;
-                errorCell.textContent = `Gagal memuat data item: ${itemError.message}`;
-                errorCell.style.color = 'red';
-            }
-        });
-
-        // Show empty state if no valid data
-        if (tbody.children.length === 0) {
-            const emptyRow = tbody.insertRow();
-            const emptyCell = emptyRow.insertCell(0);
-            emptyCell.colSpan = 9;
-            emptyCell.textContent = 'Tidak ada data yang valid untuk ditampilkan';
-        }
-
-    } catch (mainError) {
-        console.error('Main Function Error:', mainError);
-        
-        // Show error to user
-        const errorContainer = document.querySelector('.data-masuk') || document.body;
-        errorContainer.innerHTML = `
-            <div class="error-message">
-                <h3>Terjadi Kesalahan</h3>
-                <p>${mainError.message}</p>
-                <button onclick="location.reload()">Coba Lagi</button>
-            </div>
-        `;
-    }
+	} catch (mainError) {
+		console.error('Main Function Error:', mainError);
+		// Render error sebagai baris tabel (bukan <div> di dalam <tbody>)
+		const tbody = document.querySelector('.data-masuk');
+		if (tbody) {
+			tbody.innerHTML = '';
+			const errorRow = tbody.insertRow();
+			const errorCell = errorRow.insertCell(0);
+			errorCell.colSpan = 10;
+			errorCell.textContent = `Gagal memuat data: ${mainError.message}`;
+		} else {
+			alert(`Gagal memuat data: ${mainError.message}`);
+		}
+	}
 }
 function generateDropdownContent(item) {
     return `
         <p>No. registrasi: ${item.nobooking}</p>
         <br />
-        <p>File Upload</p>
-        <div id="file-info-${item.nobooking}">
-            ${generateFileLink(item.akta_tanah_path, 'Akta Tanah')}
-            ${generateFileLink(item.sertifikat_tanah_path, 'Sertifikat Tanah')}
-            ${generateFileLink(item.pelengkap_path, 'File Pelengkap')}
-            ${generateFileLink(item.file_withstempel_path, 'File stempel')}
-        </div>
         <!--File complete di unduh dan di upload-->
-        <p>Upload Files yang di unduh dan letakkan disini</p>
+        <p>Unduh dokumen ini (Dokumen Booking)</p>
+        <div id="file-info-${item.nobooking}">
+            ${generateFileLink(item.file_booking_path, 'Dokumen Booking')}
+        </div>
+        <p>Upload Files yang di unduh serta sudah diberikan stempel, letakkan disini</p>
         ${item.file_withstempel_path ? 
             `<p>File yang sudah di stempel: <a href="/${item.file_withstempel_path}" target="_blank">${item.file_withstempel_path.split('/').pop()}</a></p>` : 
             `<label for="FileStempel-${item.nobooking}">Upload File dengan stempel (PDF):</label>
@@ -262,9 +314,9 @@ document.querySelectorAll('#LSBTable tbody tr').forEach(row => {
 function getUserDivisi() {
     return localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
 }
-localStorage.setItem('divisi', 'Peneliti');
+localStorage.setItem('divisi', 'LSB');
 // Atau
-sessionStorage.setItem('divisi', 'Peneliti');
+sessionStorage.setItem('divisi', 'LSB');
 /// end fungsi utama
 ////////////////////// END FU   ///////////////////////////////////////////////////////////////////
 async function validateNoBooking(nobooking) {
@@ -278,60 +330,7 @@ async function validateNoBooking(nobooking) {
     }
 }
 /////////////////////////////////////////////
-async function uploadFilesStempel(selectedNoBooking) {
-    try {
-        const userid = localStorage.getItem('userid') || sessionStorage.getItem('userid');
-        if (!userid) {
-            alert('User ID tidak ditemukan!');
-            return;
-        }
 
-        const fileInput = document.getElementById(`FileStempel-${selectedNoBooking}`);
-        if (!fileInput?.files[0]) {
-            alert('Harap pilih file untuk diupload!');
-            return;
-        }
-
-        const fileStempel = fileInput.files[0];
-        const validFileTypes = ['application/pdf'];
-        
-        if (!validFileTypes.includes(fileStempel.type)) {
-            const fileStatus = document.getElementById(`fileStatus-${selectedNoBooking}`);
-            if (fileStatus) {
-                fileStatus.textContent = "Hanya file PDF yang diperbolehkan!";
-                fileStatus.style.color = "red";
-            }
-            alert('Hanya file PDF yang diperbolehkan!');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('data', JSON.stringify({ 
-            userid: userid,
-            nobooking: selectedNoBooking 
-        }));
-        formData.append('FileStempel', fileStempel);
-        const response = await fetch('http://localhost:3000/api/LSB_upload-filestempel', {
-            method: 'POST',
-            body: formData
-        });
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            throw new Error(responseData.message || 'Gagal meng-upload file');
-        }
-
-        if (responseData.success) {
-            alert('File berhasil di-upload!');
-            window.location.reload();
-        } else {
-            alert(responseData.message || 'Gagal meng-upload file');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat meng-upload file: ' + error.message);
-    }
-}
 ////////////////////// END VN   ///////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -365,7 +364,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `http://localhost:3000/api/validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -381,9 +380,9 @@ async function viewDocument(nobooking) {
 
 //
 // Fungsi untuk mengirim data ke peneliti
-async function sendToPPATK_complete(item) {
+async function sendToPPAT_complete(item) {
     try {
-        const response = await fetch('http://localhost:3000/api/peneliti_send-to-LSB', {
+        const response = await fetch('http://localhost:3000/api/LSB_send-to-ppat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -402,13 +401,13 @@ async function sendToPPATK_complete(item) {
 
         const result = await response.json();
         if (result.success) {
-            alert('Data berhasil dikirim ke PPATK Terkait!');
+            alert('Data berhasil dikirim ke PPAT Terkait!');
         } else {
-            alert('Gagal mengirim data ke PPATK Terkait.');
+            alert('Gagal mengirim data ke PPAT Terkait.');
         }
         return result;
     } catch (error) {
-        console.error('Error sending data to PPATK:', error);
+        console.error('Error sending data to PPAT:', error);
         alert('Terjadi kesalahan saat mengirim data.');
     }
 }

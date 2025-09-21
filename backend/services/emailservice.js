@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { pool } from '../../db.js';
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -61,13 +62,13 @@ export const sendOTPWithRetry = async (email, otp, retries = 3) => {
           }
       }
 };
+
 // patch 2
 // mengirim notifikasi email ke pengguna yang sudah dibuatkan akun
-
 export const sendEmailNotification = async (email, userID, ppatkNumber) => {
     try {
             const userQuery = await pool.query(
-      'SELECT nama, divisi FROM verified_users WHERE email = $1', 
+      'SELECT nama, divisi FROM a_2_verified_users WHERE email = $1', 
       [email]
     );
     if (!userQuery.rows.length) {

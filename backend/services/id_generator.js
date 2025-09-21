@@ -7,7 +7,7 @@ export const generateUserID = async (client, divisiName) => {
   const totalLength = prefix.length + pattern.digits;
 
   const lastIDResult = await client.query(
-    `SELECT userid FROM verified_users 
+    `SELECT userid FROM a_2_verified_users 
      WHERE userid LIKE $1 
        AND LENGTH(userid) = $2
        AND verifiedstatus = 'complete'
@@ -31,7 +31,7 @@ export const generateUserID = async (client, divisiName) => {
 
 export const generatePPATNumber = async (client) => {
     const lastPpatk = await client.query(
-    `SELECT ppatk_khusus FROM verified_users 
+    `SELECT ppatk_khusus FROM a_2_verified_users 
        WHERE ppatk_khusus IS NOT NULL 
          AND ppatk_khusus != ''
          AND ppatk_khusus ~ '^[0-9]+$'  -- Only numeric values

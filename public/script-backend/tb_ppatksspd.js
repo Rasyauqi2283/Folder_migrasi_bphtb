@@ -19,11 +19,19 @@ async function loadTableDataLTB() {
         if (data.success) {
             const tbody = document.querySelector('.data-masuk');
 
-            // Menghapus baris lama jika ada
-            tbody.innerHTML = '';
+            // Pagination setup
+            const PAGE_SIZE = 12;
+            const rows = Array.isArray(data.data) ? data.data : [];
+            let currentPage = 1;
 
-            // Loop melalui data dan menambahkannya ke dalam tabel
-            data.data.forEach(item => {
+            function renderPage(page) {
+                currentPage = page;
+                tbody.innerHTML = '';
+                const start = (page - 1) * PAGE_SIZE;
+                const end = start + PAGE_SIZE;
+                const pageRows = rows.slice(start, end);
+
+                pageRows.forEach(item => {
                 const row = tbody.insertRow();
 
                 // Menambahkan data ke dalam setiap sel
@@ -33,11 +41,10 @@ async function loadTableDataLTB() {
                 row.insertCell(3).textContent = item.namawajibpajak;
                 row.insertCell(4).textContent = item.namapemilikobjekpajak;
                 row.insertCell(5).textContent = item.tanggal_terima;
-                row.insertCell(6).textContent = item.status;
-                row.insertCell(7).textContent = item.trackstatus;
+                row.insertCell(6).textContent = item.trackstatus;
 
                 // Kolom Keterangan, ditambah dengan tombol "View Document"
-                const sendCell = row.insertCell(8);
+                const sendCell = row.insertCell(7);
                 const sendButton = document.createElement('button');
                 sendButton.textContent = 'Kirim';
                 sendButton.classList.add('btn-kirim-document'); // Berikan kelas CSS untuk styling (optional)
@@ -57,6 +64,7 @@ async function loadTableDataLTB() {
                                 // Ubah status tombol setelah sukses (misalnya menonaktifkan tombol)
                                 sendButton.disabled = true;
                                 sendButton.textContent = 'Data Terkirim';
+                                try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                                 alert("Data berhasil dikirim ke peneliti!");
                             } else {
                                 alert("Gagal mengirim data ke peneliti.");
@@ -77,10 +85,11 @@ async function loadTableDataLTB() {
                 // Membuat dropdown row di bawah baris ini
                 const dropdownRow = document.createElement('tr');
                 const dropdownContent = document.createElement('td');
-                dropdownContent.colSpan = 9;
+                dropdownContent.colSpan = 8;
                 dropdownContent.style.display = 'none'; // Dropdown akan disembunyikan pertama kali
                 dropdownContent.innerHTML = `
                     <p>No. Booking: ${item.nobooking}</p>
+                    <p>Status: ${item.status}</p>
                     <p>File Upload</p>
                         <div id="file-info-${item.nobooking}">
                         <!-- Akta Tanah -->
@@ -116,8 +125,6 @@ async function loadTableDataLTB() {
                             </a></p>`
                         : ''}
                         </div>
-                        <p>Form Permohonan Validasi</p>
-                        <button data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">View</button>
                 `;
                 
                 dropdownRow.appendChild(dropdownContent);
@@ -144,7 +151,61 @@ async function loadTableDataLTB() {
 
                 // Menambahkan baris dropdown ke dalam tabel
                 tbody.appendChild(dropdownRow);
-            });
+                });
+                renderPagination();
+            }
+
+            function renderPagination() {
+                const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+                const container = document.getElementById('ltbPagination');
+                if (!container) return;
+                container.innerHTML = '';
+                const makeBtn = (label, page, disabled, active) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'page-btn' + (active ? ' active' : '');
+                    btn.textContent = label;
+                    btn.disabled = !!disabled;
+                    btn.onclick = () => renderPage(page);
+                    return btn;
+                };
+                container.appendChild(makeBtn('Prev', Math.max(1, currentPage - 1), currentPage === 1, false));
+                for (let p = 1; p <= totalPages; p++) {
+                    // Only show window around current page for large counts
+                    if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2) {
+                        container.appendChild(makeBtn(String(p), p, false, p === currentPage));
+                    } else if (Math.abs(p - currentPage) === 3) {
+                        const span = document.createElement('span');
+                        span.textContent = '...';
+                        span.style.margin = '0 4px';
+                        container.appendChild(span);
+                    }
+                }
+                container.appendChild(makeBtn('Next', Math.min(totalPages, currentPage + 1), currentPage === totalPages, false));
+            }
+
+            // Search/filter
+            const searchInput = document.getElementById('ltbSearch');
+            window.filterTableLTB = function () {
+                const q = (searchInput?.value || '').toLowerCase();
+                const filtered = rows.filter((r) => {
+                    return (
+                        String(r.no_registrasi || '').toLowerCase().includes(q) ||
+                        String(r.nobooking || '').toLowerCase().includes(q) ||
+                        String(r.noppbb || '').toLowerCase().includes(q) ||
+                        String(r.namawajibpajak || '').toLowerCase().includes(q) ||
+                        String(r.namapemilikobjekpajak || '').toLowerCase().includes(q) ||
+                        String(r.trackstatus || '').toLowerCase().includes(q)
+                    );
+                });
+                // Re-render with filtered dataset
+                const backup = rows.slice();
+                rows.length = 0; Array.prototype.push.apply(rows, filtered);
+                renderPage(1);
+                // Restore rows for future filter clears
+                rows.length = 0; Array.prototype.push.apply(rows, backup);
+            }
+
+            renderPage(1);
         } else {
             alert('No data available');
         }

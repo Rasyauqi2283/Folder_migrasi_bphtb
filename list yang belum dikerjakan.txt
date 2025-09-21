@@ -184,3 +184,94 @@ PENAMBAHAN DI PROFILE SIGN KHUSUS PENELITI
 - penyelesaian peneliti validasi
 - buat alur tanda tangan blob menjadi penyimpanan biasa
 beres
+\
+////////\\\\\\\\\\\\/////////////\\\\\\\\\\\\\\\\
+-buat agar memori tidak berat, dengan menghapus jika permanent data yang tidak diperlukan
+-menghapus data gambar sebelumnya (profile picture) dan mengganti data baru [✓]
+-menghapus isi data yang ingin dihapus oleh ppatk, dengan menyisakan isi nobookingnya saja
+-menghapus data upload sebelumnya (ppatk booking), dan mengganti data baru [✓]
+-update data rekap per 6 bulan dan 1 tahun dan menyatukan dalam 1 folder visual rekapan (kotak box)
+di laman admin, peneliti validasi dan ppatk sendiri (sesuai userid).
+-mengatur data kecuali draf, dimana jika data status pada ppatk booking sudah berubah dari draf
+menjadi status lain maka bagian kolom "aksi" akan dibuat otomatis di nonaktifkan, untuk menghilangkan
+fungsional error, throwback data yang terkirim
+-membuat notifikasi real-time
+-membuat data rekap pembayaran notaris setoran terkhusus (setiap rekapan userid akan berbeda tergantung nobooking dibuat)
+-membuat admin bisa menambahkan kolom secara rill atau langsung di laman "FAQ", baik itu panduan
+atau pemberitahuan
+-cek keseluruhan hal yang dikerjakan apakah sudah aman dan nyaman, atau masih ada tracking error
+- penambahan teks lulus "lulus uji (with green)", jika pengujian sudah aman
+- mengubah nama di postgre maupun di backend setiap data menjadi lebih rapih, dengan format useridformat_angka_nama tabel (A_1_unverified_users)
+- membuat admin bisa mengedit data profile user pengguna lain (nama, telepon, username, nip)
+-membuat pemuktahiran data ppat, status ppat
+-pemuktahiran data ppat (rekap userid, data transaksi dan nobooking setiap user yang nanti diakumulasi dalam jangka waktu 1 tahun dan penulisan yang sudah sukses atau beres)
+-status ppat (data pengguna ppat atau ppats, = masih aktif, meninggal, pindah dan lain lain)
+- membuat root yang dibuat sesuai ketentuan arahnya agar laman ketika di clik tidak blank
+- membuat design lebih rapih
+- membuat sistem pada peneliti, apabila sudah diserahkan ke peneliti verifikasi namun ada kekeliruan maka diberikan dua pilihan bagi user
+peneliti verifikasi memberikan reject ke (peneliti atau dibuang/dikaji ulang ke ppat untuk dibuat ulang)
+-mengubah main pada bagian inti web atau isi, ketika sidebar terbuka maupun tertutup pada bagian main, baik itu card, table dan greeting akan mengikuti dan tetap sama dan mengisi kekosongan di dalam vw (view weight)
+///\\\\
+kerjain black white figma + design hasil
+kerjain makalah
+
+
+di "deepseek",
+""
+
+Penanganan kasus berikutnya membuat peneliti_paraf, agar tidak menjadi false. karena jika false akan membuat tanda tangan tidak bisa dimasukkan dan error
+
+di ppat(peneliti_paraf yang sekaligus membuat no_validasi, akan mengaktifkan (pat_7_validasi_surat))
+di bank terkirim nobooking, noreg, atasnama (nama ktp), no_pembayaran 
+di peneliti Validasi (peneliti mengirim, daata masuk, menyambungkan api bsre)
+perbaikan path dan membuat folder
+
+
+PV
+-buat qr code memiliki keamanan
+-buat alur tanda tangan yang terupload + qr code tersambung dengan sertifikat yang akan digunakan.
+-mengaktifkan tanda tangan sertifikat aktif pada nobooking yang terpilih untuk di setujui
+-mengecek pdf(1 per satu)
+-atur design, atur folder dan sebagainya
+
+
+-hari ini hingga selesai 17-09-2025
+clear qr code (pemberesan dokumen pada wilayah bagian divisi "Peneliti Divisi", baik itu penanda tanganan digital qr serta tanda basah di generate) (check)
+membuat modal informasi di sertifikat (check)
+Merombak teknis dari pv menjadi modul lebih mudah tanpa prepare-dokumen dan segala macamnya, hanya perlu setujui dan tolak, jika setujui tanda tangan basah dan barcode otomatis dimasukan (check)
+merapihkan folder setelah itu merapihkan css
+menambahkan data kolom tabel baru di a_2_verified_users bagi user divisi "Peneliti Validasi" untuk pejabat "pejabat_bappenda" (check)
+menambahkan dan merapihkan fungsi edit di admin (check)
+
+18-09-2025
+pemutakhiran dan status di admin
+laman status ppat (melihat notifikasi pengiriman, dari pending di ltb hingga terselesaikan. melihat data pengguna pat (aktif, nonaktif, meninggal dan sebagainya))
+
+(✔)check: artinya beres
+memperbaiki notifikasi
+mengecek alur email
+merapihkan folder folder agar rapih
+merapihkan css agar lebih konsisten
+menambahkan stempel pada bagian peneliti (check)
+mengecek pdf apakah sudah sesuai atau belum (check)
+mengatur bagian dari divisi bank
+cek ulang keselurhan dan menandainya dengan checklist (✔)
+cek bagian admin status ppat
+
+mengatur status serta trackstatus akan di hide dan dapat dilihat hanya dari backend server
+
+Paling penting "# PostgreSQL configuration
+PG_USER=postgres
+PG_HOST=localhost
+PG_DATABASE=bappenda
+PG_PASSWORD=Farras2283_
+PG_PORT=5432
+
+#Email configuration for OTP
+EMAIL_USER=companyarras@gmail.com
+EMAIL_PASS=vdne unro vqzi ukun
+
+#secret key jwtv
+JWT_SECRET=keyF0rBAPPEND4L0qin
+SESSION_SECRET=keySEcretSEssion
+"

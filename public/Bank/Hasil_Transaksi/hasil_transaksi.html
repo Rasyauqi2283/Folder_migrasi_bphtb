@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifikasi Pembayaran Bank</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h2 {
+      margin-bottom: 15px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    thead {
+      background: #2c3e50;
+      color: #fff;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:hover {
+      background: #4c505b;
+    }
+
+    .status {
+      font-weight: bold;
+      padding: 5px 10px;
+      border-radius: 4px;
+      text-align: center;
+      display: inline-block;
+    }
+
+    .pending {
+      background: #f1c40f;
+      color: #fff;
+    }
+
+    .approved {
+      background: #27ae60;
+      color: #fff;
+    }
+
+    .rejected {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    .actions button {
+      padding: 6px 12px;
+      margin-right: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .approve-btn {
+      background: #27ae60;
+      color: #fff;
+    }
+
+    .reject-btn {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    /* Responsive untuk mobile */
+    @media (max-width: 768px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead {
+        display: none;
+      }
+      tr {
+        margin-bottom: 15px;
+        background: #fff;
+        padding: 10px;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      td {
+        border: none;
+        padding: 8px 10px;
+        display: flex;
+        justify-content: space-between;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>Daftar Verifikasi Pembayaran</h2>
+  <div style="margin:10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <label for="filterStatus">Filter Status:</label>
+    <select id="filterStatus">
+      <option value="">Semua</option>
+      <option value="Pending">Pending</option>
+      <option value="Disetujui">Disetujui</option>
+      <option value="Ditolak">Ditolak</option>
+    </select>
+    <input id="searchBox" placeholder="Cari NoBooking / Nama WP / No. Bukti" style="padding:6px 10px; border:1px solid #ddd; border-radius:4px;" />
+    <button id="reloadBtn" class="approve-btn" style="background:#3498db">Muat Ulang</button>
+  </div>
+  <table id="trxTable">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>No. Booking</th>
+        <th>Nama WP</th>
+        <th>No. Bukti</th>
+        <th>Nominal</th>
+        <th>Tanggal Bayar</th>
+        <th>Status</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="trxBody">
+    </tbody>
+  </table>
+  <script>
+    (function(){
+      const tbody = document.getElementById('trxBody');
+      const filter = document.getElementById('filterStatus');
+      const search = document.getElementById('searchBox');
+      const reload = document.getElementById('reloadBtn');
+
+      function fmtCurrency(n){
+        const x = Number(n||0); return 'Rp ' + x.toLocaleString('id-ID');
+      }
+      function badge(status){
+        const s = String(status||'Pending');
+        const cls = s==='Disetujui'?'approved':(s==='Ditolak'?'rejected':'pending');
+        return `<span class="status ${cls}">${s}</span>`;
+      }
+      async function fetchJSON(url, opt){
+        const res = await fetch(url, Object.assign({ credentials:'include' }, opt||{}));
+        const js = await res.json().catch(()=>({success:false}));
+        if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
+        return js;
+      }
+      async function load(){
+        try{
+          const qs = [];
+          const st = (filter.value||'').trim(); if(st) qs.push('status='+encodeURIComponent(st));
+          const q = (search.value||'').trim(); if(q) qs.push('q='+encodeURIComponent(q));
+          const url = '/api/bank/transaksi?page=1&limit=50' + (qs.length?'&'+qs.join('&'):'');
+          const js = await fetchJSON(url);
+          const rows = js.rows||[];
+          tbody.innerHTML = '';
+          if(!rows.length){
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="8" style="text-align:center;color:#888">Tidak ada data</td>`;
+            tbody.appendChild(tr); return;
+          }
+          rows.forEach((r, idx)=>{
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td data-label="No">${idx+1}</td>
+              <td data-label="No. Booking">${r.nobooking||'-'}</td>
+              <td data-label="Nama WP">${r.namawajibpajak||'-'}</td>
+              <td data-label="No. Bukti">${r.nomor_bukti_pembayaran||'-'}</td>
+              <td data-label="Nominal">${fmtCurrency(r.nominal)}</td>
+              <td data-label="Tanggal Bayar">${r.tanggal_pembayaran||'-'}</td>
+              <td data-label="Status">${badge(r.status_verifikasi)}</td>
+              <td data-label="Aksi" class="actions">
+                ${r.status_verifikasi==='Disetujui' || r.status_verifikasi==='Ditolak' ? '—' : `
+                  <button class="approve-btn" data-acc="${r.nobooking}">✓ Approve</button>
+                  <button class="reject-btn" data-rej="${r.nobooking}">✗ Reject</button>
+                `}
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }catch(e){
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#c00">Gagal memuat data: ${e.message}</td></tr>`;
+        }
+      }
+
+      async function approve(nobooking){
+        const ok = confirm(`Yakin menyetujui transaksi untuk booking ${nobooking}?\nTindakan ini akan menandai verifikasi Disetujui dan status di Bank Tercheck.`);
+        if(!ok) return;
+        await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/approve`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({}) });
+        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+        await load();
+      }
+      async function reject(nobooking){
+        const cat = prompt('Alasan penolakan (wajib):');
+        if(!cat || !cat.trim()) return;
+        const ok = confirm(`Yakin menolak booking ${nobooking} dengan alasan:\n"${cat.trim()}"?\nTindakan ini akan menandai verifikasi Ditolak kepada pemilik nobooking ${nobooking}.`);
+        if(!ok) return;
+        await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/reject`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ catatan: cat.trim() }) });
+        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+        await load();
+      }
+
+      document.addEventListener('click', (e)=>{
+        const acc = e.target.closest('button[data-acc]'); if(acc){ approve(acc.getAttribute('data-acc')); }
+        const rej = e.target.closest('button[data-rej]'); if(rej){ reject(rej.getAttribute('data-rej')); }
+      });
+      filter.addEventListener('change', load);
+      search.addEventListener('keyup', (e)=>{ if(e.key==='Enter') load(); });
+      reload.addEventListener('click', load);
+      document.addEventListener('DOMContentLoaded', load);
+    })();
+  </script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+</body>
+</html>

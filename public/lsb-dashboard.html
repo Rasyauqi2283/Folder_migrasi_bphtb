@@ -7,11 +7,11 @@
   <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
     <!---->
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
-    <!---->
-  <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
+  <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
 
 </head>
@@ -186,5 +186,9 @@
 <script src="design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="script-backend/header-backend.js"></script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 </body>
 </html>

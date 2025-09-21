@@ -1,3 +1,4 @@
+<!--clear code (done)-->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -8,15 +9,16 @@
     <!---->
   <link rel="stylesheet" href="/design-n-script/design_css/asset_pelengkap.css">
     <!---->
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
+    <!--Design Variant-->
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <!---->
+
     <link rel="stylesheet" href="../../design-n-script/design_css/form_design.css">
-    <link rel="stylesheet" href="../../design-n-script/design_css/design_table/tabel_ppatksspd.css">
     <link rel="stylesheet" href="../../design-n-script/design_css/design_table/table_design.css">
-    <!---->
-  <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/design_text/design_text.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_text/design_text.css">
     <!---->
     <link id="favicon" rel="icon" href="path/to/favicon.ico">
 
@@ -150,17 +152,15 @@
 
 
   <!-- MAIN -->
-  <main class="main-content">
+  <main id="bookingsspd_badan_design" class="main-content">
         <div class="action-buttons">
-            <button class="btn-action tambah" onclick="toggleForm()">
+            <button type="button" class="btn-action tambah" onclick="toggleForm()">
                 <i class="fas fa-plus-circle"></i> Tambah Data
             </button>
             <button id="showSignatureModal" class="btn-action signature">
                 <i class="fas fa-signature"></i> Tambah Tanda Tangan
             </button>
-            <button class="btn-action upload-docs" onclick="showDocumentUploadModal()">
-                <i class="fas fa-upload"></i> Upload Semua Dokumen
-            </button>
+            
             <button class="btn-action viewpdf" onclick="viewDocument()">
                 <i class="fas fa-file-pdf"></i> Lihat Dokumen
             </button>
@@ -191,21 +191,6 @@
             </label>
             <div id="preview1" class="signature-preview">
               <img id="previewImage1" class="preview-image">
-              <button class="clear-btn"><i class="fas fa-trash"></i></button>
-            </div>
-          </div>
-        </div>
-        
-        <div class="signature-upload">
-          <h4>Penandatangan PPATK</h4>
-          <div class="upload-container">
-            <label for="signature2" class="upload-label">
-              <i class="fas fa-cloud-upload-alt"></i>
-              <span>Pilih File Tanda Tangan</span>
-              <input type="file" id="signature2" accept="image/*" class="file-input">
-            </label>
-            <div id="preview2" class="signature-preview">
-              <img id="previewImage2" class="preview-image">
               <button class="clear-btn"><i class="fas fa-trash"></i></button>
             </div>
           </div>
@@ -563,7 +548,7 @@
                 </div>
                 <!-- Keterangan -->
                 <div class="form-group">
-                    <label for="keterangan">Keterangan</label>
+                    <label for="keterangan">Keterangan (dilampirkan dalam Permohonan Validasi)</label>
                     <textarea id="keterangan" name="keterangan" placeholder="Masukkan keterangan tambahan (misalnya, penggunaan objek pajak)"></textarea>
                 </div>
                 <div class="two-column-form">
@@ -618,7 +603,7 @@
     </form>
 
 
-<div class="table-container">
+<div id="KhususPPATbookingTable" class="table-container">
     <div class="table-header">
         <h3>Daftar Badan Usaha</h3>
         <div class="table-controls">
@@ -691,6 +676,22 @@
         <button id="confirm-logout">Iya</button>
     </div>
 </div>
+<!-- Overlay notifikasi pengiriman ke LTB -->
+<div id="ltb-overlay" class="logout-overlay" style="display: none;">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-check"></i>
+        </div>
+        <p id="ltb-overlay-message">Nobooking anda - telah masuk ke dalam daftar antrian di Loket Terima Berkas.</p>
+        <button id="ltb-overlay-close">Tutup</button>
+    </div>
+</div>
+<!-- Audio notifikasi sukses kirim ke LTB -->
+<audio id="ltb-success-audio" preload="auto">
+    <source src="/sound/notifikasi_kirimbooking.mp3" type="audio/mpeg">
+    <source src="/sound/notifikasi_kirimbooking.ogg" type="audio/ogg">
+    Your browser does not support the audio element.
+  </audio>
 <!--script front-->
 <script src="../../design-n-script/script_frontback_java/fungsi-click_dropdown.js"></script>
 <script src="../../design-n-script/script_frontback_java/bookingsspd_sscriptfungsi.js">
@@ -703,5 +704,130 @@
 <script src="../../script-backend/header-backend.js"></script>
 <script src="../../script-backend/tambah-bookingsspd-badan.js"></script>
 <script src="../../script-backend/badan-table-bookingsspd.js"></script>
+<script>
+// Guard: require signature before allowing to open the add-booking form
+(function(){
+    const tambahBtn = document.querySelector('.btn-action.tambah');
+    if (!tambahBtn) return;
+    // Rename original handler
+    const originalOnClick = window.toggleForm;
+    // Hilangkan inline onclick agar tidak dipanggil ganda
+    try { if (tambahBtn.hasAttribute('onclick')) tambahBtn.removeAttribute('onclick'); } catch(_) {}
+    tambahBtn.addEventListener('click', async function(e){
+        try {
+            e.preventDefault();
+            e.stopPropagation();
+            const resp = await fetch('/api/check-my-signature', { credentials: 'include' });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || data.success === false) {
+                alert('Gagal memeriksa status tanda tangan. Coba lagi.');
+                return;
+            }
+            if (!data.has_signature) {
+                if (confirm('Anda belum mengunggah tanda tangan. Buka halaman Profil untuk mengunggah sekarang?')) {
+                    window.location.href = '/profile.html';
+                }
+                return;
+            }
+            // allowed
+            if (typeof originalOnClick === 'function') {
+                originalOnClick();
+            }
+        } catch (err) {
+            console.error('Signature check failed', err);
+            alert('Tidak bisa memverifikasi tanda tangan saat ini. Coba lagi.');
+        }
+    });
+})();
+</script>
+<script>
+(function(){
+  function getTbody(){ return document.querySelector('tbody.data-tabel-badan'); }
+  function isDropdownRow(tr){
+    if (!tr) return false;
+    if (!tr.cells || tr.cells.length === 0) return false;
+    if (tr.cells.length === 1) {
+      var td = tr.cells[0];
+      return td && td.hasAttribute('colspan');
+    }
+    return false;
+  }
+  function setRowVisible(tr, visible){ tr.style.display = visible ? '' : 'none'; }
+  function ensureNoResultsRow(tbody, show){
+    var nr = tbody.querySelector('tr.no-results-row');
+    if (show) {
+      if (!nr) {
+        nr = document.createElement('tr');
+        nr.className = 'no-results-row';
+        var td = document.createElement('td');
+        td.colSpan = 9;
+        td.className = 'empty-message';
+        td.textContent = 'Tidak ada hasil';
+        nr.appendChild(td);
+        tbody.appendChild(nr);
+      }
+    } else if (nr) {
+      nr.remove();
+    }
+  }
+  function filterBookingTable(query){
+    var tbody = getTbody();
+    if (!tbody) return;
+    var q = String(query || '').trim().toLowerCase();
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+    var visibleCount = 0;
+    for (var i = 0; i < rows.length; i++){
+      var tr = rows[i];
+      if (isDropdownRow(tr)) continue; // handled alongside its main row
+
+      // Skip placeholder loading row
+      if (tr.cells && tr.cells.length === 1 && tr.cells[0].classList && tr.cells[0].classList.contains('empty-message')) {
+        setRowVisible(tr, q.length === 0);
+        continue;
+      }
+
+      var next = rows[i+1] || tr.nextElementSibling;
+      var text = (tr.textContent || '').toLowerCase();
+      var match = q.length === 0 || text.indexOf(q) !== -1;
+      setRowVisible(tr, match);
+      if (isDropdownRow(next)) {
+        // Hide dropdown row when main row hidden; show it (default) when main row shown.
+        setRowVisible(next, match);
+      }
+      if (match) visibleCount++;
+    }
+    ensureNoResultsRow(tbody, visibleCount === 0);
+  }
+  function wireSearchAndRefresh(){
+    var input = document.querySelector('.table-controls .search-box input');
+    var refreshBtn = document.querySelector('.table-controls .refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function(e){ e.preventDefault(); window.location.reload(); });
+    }
+    if (input){
+      var timer = null;
+      input.addEventListener('input', function(){
+        var value = this.value;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function(){ filterBookingTable(value); }, 200);
+      });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireSearchAndRefresh);
+  } else {
+    wireSearchAndRefresh();
+  }
+  // Re-apply filter if table content updates (e.g., after async load)
+  var tbody = document.querySelector('tbody.data-tabel-badan');
+  if (tbody && window.MutationObserver) {
+    var observer = new MutationObserver(function(){
+      var input = document.querySelector('.table-controls .search-box input');
+      if (input && input.value) filterBookingTable(input.value);
+    });
+    observer.observe(tbody, { childList: true });
+  }
+})();
+</script>
 </body>
 </html>

@@ -7,13 +7,15 @@
   <link rel="icon" href="/asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="/design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
     <!---->
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_table/table_design.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_table/peneliti_kasie_design.css">
     <!---->
-  <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_text/design_text.css">
 
 </head>
@@ -48,7 +50,7 @@
                 <p><span class="userid">Load</span></p>
             </div>
             <div class="overlay-buttons">
-                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="profile-btn" id="profileButton" class="profile-button" href="../../profile.html">Profil</button>
                 <button class="AUT logout-button">Keluar</button>
             </div>
         </div>
@@ -91,9 +93,9 @@
             <a href="../Verifikasi_sspd/verifikasi-data.html" id="pemutakhiran_data_ppat">Verifikasi SSPD</a>
             <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html" id="status_ppat_1">Verifikasi SSPD Offline</a>
             <a href="../ParafKasie-sspd/paraf-kasie.html" id="">Kasie Verifikasi SSPD</a>
-            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Kasie_Verifikasi_SSPD/admin_kasie_verifikasisspd_off.html" id="">Kasie Verifikasi SSPD Offline</a>
-            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar.html" id="">Proses SKPD Kurang Bayar</a>
-            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar_off.html" id="">Proses SKPD Kurang Bayar Offline</a>
+            <a href="">Kasie Verifikasi SSPD Offline</a>
+            <a href="">Proses SKPD Kurang Bayar</a>
+            <a href="">Proses SKPD Kurang Bayar Offline</a>
         </div>
       </div>
       <div class="box">
@@ -132,40 +134,29 @@
   <!---->
   <!---->
   <!-- MAIN -->
-  <main class="main-content">
+  <main id="paraf_kasie_design" class="main-content">
     <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
-    <div id="signatureDropdown" class="dropdown-container-ttd">
-    <button id="toggleSignatureButton" class="btn-toggle-signature">Tanda Tangan</button>
-    
-    <!-- Form Tanda Tangan yang disembunyikan -->
-    <div id="signatureFormContainer" class="signature-form-container" style="display: none;">
-        <form id="signatureForm" enctype="multipart/form-data">
-        <label for="signature">Upload Gambar Tanda Tangan:</label>
-        <input type="file" name="signature" id="signature" accept="image/*"  required />
-        <br />
-        <label for="name_tandatangan">Nama Pemilik Tanda Tangan:</label>
-        <input type="text" name="name" id="name_tandatangan" placeholder="isikan nama lengkap beserta gelar" required />
-        <br />
-        <button type="submit">Upload Tanda Tangan</button>
-        <div id="resultBox" class="result-box">
-            <!-- Daftar tanda tangan yang akan dimuat di sini -->
+    <button id="showSignatureModal" class="btn-toggle-signature">Tanda Tangan</button>
+
+        <!-- Overlay TTD SIGN-->
+        <div id="overlay-sign" class="overlay-sign">
+            <div class="overlay-content-sign">
+                <p>Dokumen Booking dengan [No. Booking] ini telah dikirim oleh pemverifikasi untuk dilakukan sign paraf</p>
+            <button id="close_batal_overlay">Batal</button>    
+            <button id="Tambahkan_tandatangan">Tambahkan Tanda Tangan</button>
         </div>
-        <div id="signatureDetailBox" class="signature-detail-box" style="display: none;">
-            <!-- Menampilkan detail tanda tangan yang diklik -->
-            <p id="signatureName"></p>
-            <img id="signatureImage" src="" alt="Tanda Tangan" />
-            <button id="useSignatureBtn">Pakai format ini</button> <!--tambahkan ini-->
+            <!-- Overlay TTD SIGN (confirmed)-->
+            <div id="overlay-sign-confirmed" class="overlay-sign-confirmed">
+                <div class="overlay-content-sign-confirmed">
+                    <p>Apakah anda yakin ingin menambahkan tanda tangan?</p>
+                <button id="Tambahkan_tandatangan_batal_overlay">Batal</button>
+                <button id="Tambahkan_tandatangan_confirmed">Iya</button>
+            </div>
+            </div>
         </div>
-        </form>
-    </div>
-    </div>
 
-<!-- Canvas overlay untuk mengedit posisi tanda tangan -->
-<canvas id="canvasOverlay" style="display: none;"></canvas>
-
-<button id="saveEditBtn" style="display: none;">Simpan Pengeditan</button>
-
-    <table id="penelitikasieTable">
+            <div id="paraf_kasie_design">
+    <table id="peneliti_paraf_kasie_Table">
         <thead>
             <tr>
                 <th>No. Registrasi</th>
@@ -184,6 +175,7 @@
             <!-- Data akan dimasukkan ke sini oleh JavaScript -->
         </tbody>
     </table>
+    </div>
 </main>
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
@@ -211,8 +203,12 @@
 <script src="/design-n-script/script_frontback_java/header_script.js"></script>
 <script src="/design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
-  <script src="/script-backend/header-backend.js"></script>
+  <script src="../../script-backend/header-backend.js"></script>
   <script src="../../script-backend/peneliti_paraf.js"></script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 <!--script pengedit pdf-->
 </body>
 </html>

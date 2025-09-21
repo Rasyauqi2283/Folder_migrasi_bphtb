@@ -10,10 +10,10 @@
   <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
   <link rel="stylesheet" href="design-n-script/design_css/admin_design.css">
     <!---->
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <!---->
-  <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
 
     <script>
@@ -100,9 +100,9 @@
           </a>
       </div>
   </div>
-  <div class="box" onclick="redirectToLink('/Admin/Permohonan Validasi/Permohonan_validasi.html')">
+  <div class="box">
       <div class="menu-item" id="PO_page">
-          <a href="/Admin/Permohonan Validasi/Permohonan_validasi.html" class="icon-text-wrapper">
+          <a href="" class="icon-text-wrapper">
               <i class="fa fa-envelope sidebar-icon"></i>
               <span class="sidebar-text">Permohonan Validasi</span>
           </a>
@@ -116,8 +116,8 @@
           </div>
       </div>
       <div class="dropdown-content">
-          <a href="/Admin/Referensi User/Pemutakhiran Data PPAT/pemutakhiran_data_ppat.html" id="PD_PPAT">Pemutakhiran Data PPAT</a>
-          <a href="/Admin/Referensi User/Status PPAT/status_ppat.html" id="Status_PPAT"> Status PPAT</a>
+          <a href="admin-pemutakhiranppat.html" id="PD_PPAT">Pemutakhiran Data PPAT</a>
+          <a href="admin-status-ppat.html" id="Status_PPAT"> Status PPAT</a>
       </div>
   </div>
   <div class="box">
@@ -440,5 +440,10 @@
 <script src="design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="script-backend/header-backend.js"></script>
+  <!--notifikasi-->
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 </body>
 </html>

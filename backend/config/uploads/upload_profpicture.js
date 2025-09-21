@@ -19,23 +19,30 @@ const storage = multer.diskStorage({
     const userid = req.session?.user?.userid;
     if (!userid) return cb(new Error('User ID tidak valid'));
 
-    const ext = path.extname(file.originalname).toLowerCase();
-    const newFilename = `${userid}_fotoProfile${ext}`; // Format: 12345_fotoProfile.jpg
+    // Gunakan ekstensi konsisten .jpeg karena output diproses ke JPEG
+    const ext = '.jpeg';
+    const prefix = `${userid}_foto_profile_`;
+    const timestamp = Date.now();
+    const newFilename = `${prefix}${timestamp}${ext}`; // contoh: PAT01_foto_profile_1736439200000.jpeg
 
-    // Hapus file lama jika ada
+    // Hapus semua file lama milik user ini (berdasarkan prefix)
     try {
-      const oldFiles = await fs.readdir(PROFILE_PHOTO_PATH);
-      for (const file of oldFiles) {
-        if (file.startsWith(`${userid}_fotoProfile`)) {
-          await fs.unlink(path.join(PROFILE_PHOTO_PATH, file));
-          console.log(`Deleted old profile photo for user ${userid}: ${file}`);
+      const files = await fs.readdir(PROFILE_PHOTO_PATH);
+      for (const name of files) {
+        if (name.startsWith(prefix)) {
+          try {
+            await fs.unlink(path.join(PROFILE_PHOTO_PATH, name));
+            console.log(`Deleted old profile photo for user ${userid}: ${name}`);
+          } catch (e) {
+            console.warn(`Gagal menghapus file lama ${name}:`, e.message);
+          }
         }
       }
     } catch (err) {
-      console.warn('Gagal hapus file lama:', err.message);
+      console.warn('Gagal membaca folder foto profil:', err.message);
     }
 
-    cb(null, newFilename); // Gunakan nama file baru
+    cb(null, newFilename);
   }
 });
 
@@ -53,22 +60,27 @@ const fileFilter = (_req, file, cb) => {
 // Image processor middleware
 const processImage = async (req, _res, next) => {
   if (!req.file) return next();
-  
+
+  const tempPath = `${req.file.path}.tmp`;
   try {
-    const processedImage = await sharp(req.file.path)
+    // Tulis ke file sementara untuk menghindari konflik lock file di Windows
+    await sharp(req.file.path)
       .resize(500, 500, {
         fit: 'cover',
         withoutEnlargement: true
       })
-      .jpeg({ 
+      .jpeg({
         quality: 80,
-        mozjpeg: true 
+        mozjpeg: true
       })
-      .toBuffer();
+      .toFile(tempPath);
 
-    await fs.writeFile(req.file.path, processedImage);
+    // Gantikan file asli secara atomik
+    await fs.rename(tempPath, req.file.path);
     next();
   } catch (err) {
+    // Bersihkan file sementara jika ada
+    try { await fs.unlink(tempPath); } catch (_) {}
     next(err);
   }
 };

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin| Pemutakhiran Data Pengguna PPAT</title>
+  <link rel="stylesheet" href="">
+  <link rel="stylesheet" href="design-n-script/design_css/design_table/design_untukppat-pemutakhiran.css">
+</head>
+<body>
+<main id="pemutakhiranppat_design" class="main-content">
+  <div class="page-container">
+
+    <!-- BAGIAN PROFIL -->
+    <div class="profile-section">
+      <button class="back-btn">←</button>
+  
+      <div class="profile-header">
+        <div class="profile-image">
+          <span><img id="fotoProfil" src="/default-profile.png" alt="Foto Profil" /></span> <!-- gambar profile diambil dari tabel a_2_verified_users dari kolom tabel gambar_profile -->
+        </div>
+  
+        <div class="profile-info">
+          <div class="info-row">
+            <label>Nama Panjang</label>
+            <span id="namaPanjang">-</span> <!-- a_2_verified_users.nama -->
+          </div>
+          <div class="info-row">
+            <label>Nama + Title</label>
+            <span id="namaTitle">-</span> <!-- a_2_verified_users.special_field -->
+          </div>
+          <div class="info-row">
+            <label>Ppatk_khusus</label>
+            <span id="ppatkKhusus">-</span> <!-- a_2_verified_users.ppatk_khusus -->
+          </div>
+          <div class="info-row">
+            <label>UserId</label>
+            <span id="userIdField">-</span> <!-- a_2_verified_users.userid -->
+          </div>
+          <div class="info-row">
+            <label>Pejabat</label>
+            <span id="pejabatUmum">-</span> <!-- a_2_verified_users.pejabat_umum -->
+          </div>
+        </div>
+  
+        <div class="profile-extra">
+          <div class="extra-box">
+            booking yang dikerjakan: <span id="field-booking-count">0</span>
+          </div>
+          <div class="extra-box">
+            Nilai Pajak Total<br>
+            <small id="field-total-nilai">-</small>
+          </div>
+        </div>
+  
+        <div class="search-box">
+          <input type="text" placeholder="Cari...">
+        </div>
+      </div>
+    </div>
+  
+    <!-- BAGIAN TABEL -->
+    <div class="table-section">
+      <table class="rekap-table">
+        <thead>
+          <tr>
+            <th>NoBooking</th>
+            <th>Tanggal</th>
+            <th>UserId</th>
+            <th>NOPPBB</th>
+            <th>Jenis Pajak</th>
+            <th>Nilai Pajak</th>
+            <th>Nama WP</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="bookingBody">
+          <tr><td colspan="9" class="empty-message">Memuat data...</td></tr>
+        </tbody>        
+      </table>
+  
+      <div class="pagination">
+        <a href="#"> &lt; </a>
+        <a href="#" class="active">1</a>
+        <a href="#">2</a>
+        <a href="#">3</a>
+        <span>…</span>
+        <a href="#">n</a>
+        <a href="#"> &gt; </a>
+      </div>
+    </div>
+  
+  </div>
+  
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+  const params = new URLSearchParams(window.location.search);
+  const useridParam = (params.get('userid') || '').trim();
+
+  function createCell(text) {
+    const td = document.createElement('td');
+    td.textContent = text;
+    return td;
+  }
+
+  function renderUserInfo(user) {
+    document.getElementById('namaPanjang').textContent = user.nama || '-';
+    document.getElementById('namaTitle').textContent = user.special_field || '-';
+    document.getElementById('ppatkKhusus').textContent = user.ppatk_khusus || '-';
+    document.getElementById('userIdField').textContent = user.userid || '-';
+    document.getElementById('pejabatUmum').textContent = user.pejabat_umum || '-';
+
+    const img = document.getElementById('fotoProfil');
+    if (img) img.src = user.fotoprofil || '/default-profile.png';
+  }
+
+  function renderSummary(summary) {
+    document.getElementById('field-booking-count').textContent = summary.total_booking || 0;
+    document.getElementById('field-total-nilai').textContent =
+      'Rp ' + Number(summary.total_nilai || 0).toLocaleString('id-ID');
+  }
+
+  async function loadUserBookings(userid) {
+    const body = document.getElementById('bookingBody');
+    body.innerHTML = '<tr><td colspan="9" class="empty-message">Memuat data...</td></tr>';
+
+    try {
+      const res = await fetch(`/api/admin/ppat/user/${encodeURIComponent(userid)}/diserahkan`, { credentials: 'include' });
+      const js = await res.json();
+      console.log("Hasil fetch:", js);
+
+      if (!res.ok || !js.success) {
+        body.innerHTML = '<tr><td colspan="9">User tidak ditemukan atau data kosong</td></tr>';
+        return;
+      }
+
+      if (js.user) {
+        renderUserInfo(js.user);
+      }
+
+      if (js.summary) {
+        renderSummary(js.summary);
+      }
+
+      const rows = Array.isArray(js.rows) ? js.rows : [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="9">Tidak ada data booking</td></tr>';
+        return;
+      }
+
+      body.innerHTML = '';
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.appendChild(createCell(r.nobooking || '-'));
+        tr.appendChild(createCell(r.tanggal ? r.tanggal.split('T')[0] : '-'));
+        tr.appendChild(createCell(userid || '-'));
+        tr.appendChild(createCell(r.noppbb || '-'));
+        tr.appendChild(createCell(r.jenis_wajib_pajak || '-'));
+        tr.appendChild(createCell('Rp ' + Number(r.bphtb_yangtelah_dibayar || 0).toLocaleString('id-ID')));
+        tr.appendChild(createCell(r.namawajibpajak || '-'));
+
+        const aksiTd = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.textContent = 'Detail';
+        btn.classList.add('action-btn');
+        btn.dataset.id = r.nobooking;
+        aksiTd.appendChild(btn);
+        tr.appendChild(aksiTd);
+
+        body.appendChild(tr);
+      });
+
+      document.querySelectorAll('.action-btn').forEach(button => {
+        button.addEventListener('click', function() {
+          const bookingId = this.dataset.id;
+          alert(`Detail booking NoBooking: ${bookingId}`);
+        });
+      });
+
+    } catch (err) {
+      console.error('Gagal fetch:', err);
+      body.innerHTML = `<tr><td colspan="9">Gagal memuat data: ${err.message}</td></tr>`;
+    }
+  }
+
+  if (useridParam) {
+    await loadUserBookings(useridParam);
+  } else {
+    document.getElementById('bookingBody').innerHTML =
+      '<tr><td colspan="9">UserId tidak diberikan di URL</td></tr>';
+  }
+});
+</script>
+<script type="module">
+  import { initNotifications } from '/script-backend/notification-setup.js';
+  initNotifications();
+</script>
+</body>
+</html>

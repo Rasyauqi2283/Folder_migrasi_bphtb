@@ -7,54 +7,114 @@
   <link rel="icon" href="/asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="/design-n-script/design_css/asset_pelengkap.css">
-    <!---->
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="/design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_table/table_design.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_table/peneliti_kasie_design.css">
     <!---->
-  <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_text/design_text.css">
 
     /* Tambahkan di head atau file CSS terpisah */
 <style>
-  /* Style dasar dropdown */
-  .dropdown-content {
-    display: none;
-    padding: 15px;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-top: none;
-    border-radius: 0 0 5px 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  .pv-badge { display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid transparent; }
+  .pv-badge.ok { background:#ECFDF5; color:#065F46; border-color:#A7F3D0; }
+  .pv-badge.warn { background:#FEF2F2; color:#991B1B; border-color:#FECACA; }
+  #pv-actions { border-color:#e5e5e5; }
+  #pv-actions h3 { margin:0 0 8px 0; }
+  #pv-actions .btn[disabled], #pv-actions button[disabled] { opacity:0.6; cursor:not-allowed; }
+  /* Gothic table theme (scoped to this page) */
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  /* Increase specificity to override base excel-table rules */
+  .main-content table.excel-table.gothic-table,
+  table.gothic-table {
+    background: #0b0f1a; /* near-black */
+    color: #e5e7eb; /* slate-200 */
+    border-color: #1f2937; /* slate-800 */
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 14px;
+    overflow: hidden; /* ensure rounded corners are visible */
   }
+  .main-content table.excel-table.gothic-table thead th,
+  table.gothic-table thead th {
+    background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+    color: #f3f4f6; /* slate-100 */
+    border-bottom: 1px solid #374151; /* slate-700 */
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 12px 14px;
+  }
+  .main-content table.excel-table.gothic-table th, .main-content table.excel-table.gothic-table td,
+  table.gothic-table th, table.gothic-table td { border: 1px solid #1f2937; }
+  .main-content table.excel-table.gothic-table td,
+  table.gothic-table td { padding: 10px 12px; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(odd),
+  table.gothic-table tbody tr:nth-child(odd) { background: #0b0f1a; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(even),
+  table.gothic-table tbody tr:nth-child(even) { background: #0e1422; }
+  .main-content table.excel-table.gothic-table tbody tr:hover,
+  table.gothic-table tbody tr:hover { background: #111827; transition: background .2s ease; }
 
-  /* Style baris tabel */
-  tr[data-nobooking] {
-    cursor: pointer;
-    transition: background-color 0.2s;
+  /* Rounded corners on header/footer cells for better rendering across browsers */
+  .main-content table.excel-table.gothic-table thead tr:first-child th:first-child,
+  table.gothic-table thead tr:first-child th:first-child { border-top-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table thead tr:first-child th:last-child,
+  table.gothic-table thead tr:first-child th:last-child { border-top-right-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:first-child,
+  table.gothic-table tbody tr:last-child td:first-child { border-bottom-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:last-child,
+  table.gothic-table tbody tr:last-child td:last-child { border-bottom-right-radius: 14px; }
+  /* Buttons inside table */
+  .gothic-table .btn-kirim-document {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid #334155; background:#0ea5e9; color:#fff; cursor:pointer;
   }
+  .gothic-table .btn-kirim-document:hover { filter: brightness(1.05); }
+  /* Use generic status-badge from table_utama with darker edges */
+  .status-badge { border: 1px solid rgba(0,0,0,.15); }
 
-  tr[data-nobooking]:hover {
-    background-color: #f1f1f1;
+  /* Gothic dropdown styles */
+  tr.dropdown-row > td {
+    background: linear-gradient(180deg, #0e1422 0%, #0b0f1a 100%);
+    border-top: 1px solid #1f2937;
+    border-bottom: 1px solid #1f2937;
+    padding: 16px 18px;
   }
+  .dropdown-content-wrapper {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 16px;
+    color: #d1d5db; /* slate-300 */
+  }
+  .document-info-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .document-info-section p { margin: 6px 0; color: #cbd5e1; }
+  .document-info-section strong { color: #e5e7eb; }
 
-  /* Style tombol */
-  .btn-kirim-document {
-    padding: 5px 10px;
-    background: #0d6efd;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+  .document-links-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
   }
+  .document-links-title { color: #e5e7eb; margin: 0 0 8px 0; font-weight: 600; }
+  .document-links-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .document-link-item { background:#111827; border:1px solid #1f2937; border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px; }
+  .document-label { min-width: 120px; color:#9ca3af; }
+  .btn-view { padding:6px 10px; border-radius:6px; border:1px solid #334155; background:#1d4ed8; color:#fff; cursor:pointer; }
+  .btn-view:hover { filter:brightness(1.1); }
 
-  /* Style file links */
-  .file-links a {
-    margin-right: 10px;
-    color: #0d6efd;
-    text-decoration: none;
-  }
+  /* Scrollbar subtle for dark theme */
+  .table-scroll::-webkit-scrollbar { height: 10px; }
+  .table-scroll::-webkit-scrollbar-thumb { background:#1f2937; border-radius: 10px; }
 </style>
 </head>
 <body>
@@ -133,6 +193,17 @@
         </div>
       </div>
       <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="ParafP/Sinkronisasi_BSRE/autentikasi_bsre.html">AUTENTIKASI TANDA PARAF(BSRE)</a>
+        </div>
+      </div>
+      <div class="box">
         <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
             <div class="icon-text-wrapper dropdown-toggle">
                 <i class="fa fa-television sidebar-icon"></i>
@@ -169,25 +240,95 @@
   <!---->
   <!-- MAIN -->
   <main class="main-content">
+    <button class="btn pilih_sertifikat" onclick="drop_downsertifikat()">Sertifikat Digital</button><!--button ini akan menurunkan dropdown-->
+
+    <div> <!--Overlay Sertifikat Digital-->
+        <div class="modal-sertifikat" id="sertif-overlay" style="display:none;">
+            <div class="Check_sertifikat">
+                <h4>Check Sertifikat <button id="sertif-overlay-close" style="margin-left:8px; padding:4px 8px;">Tutup</button></h4>
+                <div class="sertif_aktif">
+                    <!--sertifikat aktif akan muncul disini -->
+                    <button id="pilih_sertifikat">Pilih Sertifikat</button> <!--ketika button pilih sertifikat diklik akan muncul overlay pilih sertifikat-->
+                    <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; padding:12px; border:1px solid #e5e5e5; border-radius:8px; margin-top:8px;">
+                        <!--isi paraprase dari sertifikat aktif yang dipilih, dan akan bisa digunakan selama user tidak melakukan logout, dan jika user melakukan logout, maka sertifikat yang dipilih harus diisi kembali paraprase(password) sebagai bentuk keamanan-->
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <select id="sertif-select" style="min-width:280px; padding:6px;"></select>
+                            <input id="sertif-pass" type="password" placeholder="Passphrase sertifikat" style="padding:6px; min-width:240px;"/>
+                            <button id="sertif-verify">Gunakan Sertifikat</button>
+                            <span id="sertif-badge" style="margin-left:8px; font-weight:600; color:#059669;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- PV Actions Panel (Peneliti Validasi) -->
+        <section id="pv-actions" style="max-width:1000px; margin:24px 0; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
+          <h3>Proses Validasi (PV) <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span></h3>
+          <div style="display:flex; gap:12px; align-items:center; margin:8px 0;">
+            <label style="min-width:120px;">No. Validasi</label>
+            <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih" style="flex:1; padding:8px;"/>
+            <button id="pv-status">Status</button>
+            <button id="pv-claim">Claim</button>
+          </div>
+          <details style="margin:8px 0;">
+            <summary>Appearance (koordinat TTE)</summary>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+              <input id="ap-page" type="number" min="1" value="1" placeholder="page" style="width:100px; padding:6px;"/>
+              <input id="ap-x" type="number" value="420" placeholder="x" style="width:120px; padding:6px;"/>
+              <input id="ap-y" type="number" value="680" placeholder="y" style="width:120px; padding:6px;"/>
+              <input id="ap-w" type="number" value="160" placeholder="width" style="width:120px; padding:6px;"/>
+              <input id="ap-h" type="number" value="55" placeholder="height" style="width:120px; padding:6px;"/>
+              <input id="ap-reason" type="text" value="Validasi dokumen" placeholder="reason" style="flex:1; padding:6px;"/>
+              <input id="ap-location" type="text" value="Bappenda" placeholder="location" style="flex:1; padding:6px;"/>
+              <button id="pv-appearance">Simpan Appearance</button>
+            </div>
+          </details>
+          <div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap;">
+            <button id="pv-verify">Verify</button>
+            <button id="pv-approve" style="background:#059669; color:#fff;" disabled>Setujui</button>
+            <button id="pv-reject" style="background:#DC2626; color:#fff;" disabled>Tolak</button>
+          </div>
+          <div id="pv-usermsg" style="margin-top:6px; color:#065F46; font-weight:600;"></div>
+          <details id="pv-debug" style="margin-top:6px;">
+            <summary>Detail teknis</summary>
+            <pre id="pv-output" style="margin-top:6px; padding:10px; background:#f7f7f7; border-radius:6px; white-space:pre-wrap;"></pre>
+          </details>
+        </section>
+        
+        <!-- Preview Panel (Tab Baru) -->
+        <section id="pv-preview" style="max-width:1000px; margin:16px 0; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 style="margin:0;">Review Dokumen</h3>
+            <button id="pv-preview-btn">Buka Preview di Tab Baru</button>
     <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
-    <table id="penelitikasieTable">
+            <span id="pv-preview-msg" style="margin-left:8px; color:#6b7280;"></span>
+          </div>
+        </section>
+
+    <div class="table-scroll">
+    <table id="penelitikasieTable" class="excel-table gothic-table">
         <thead>
             <tr>
                 <th>No. Validasi</th>
                 <th>No. Registrasi</th>
                 <th>No. Booking</th>
                 <th>Tahun AJB</th>
-                <th>Nama Wajib Pajak</th>
-                <th>Nama Pemilik Objek Pajak</th>
-                <th>Status</th>
-                <th>Track Status</th>
-                <th>Keterangan</th>
+                <th>Status</th> <!--status ini berbeda dengan status sebelumnya yang tersimpan di database(jika didatabase seperti ini (diterima, ditolak, diajukan, dikerjakan, diselesaikan), untuk status ini merupakan status penanda(menunggu (paraf), Ditolak, Telah Ditandangani). catatan hanya di halaman ini saja status yang boleh tertampil dan terbaca hanya (menunggu), sisa dari 2 status (Ditolak, Telah Ditandangani) akan dimuat dalam laman di menu lain)-->
+                <th>Pembuat Booking</th> <!--nama pembuat adalah nama pembuat dokumen (nobooking) dan gelar adalah gelar pembuat dokumen (misal: Rasya. ST. MH/ Notaris, atau Luciana. ST. MH/ PPAT) sebagai bentuk kejelasan-->
+                <th>Aksi</th> <!--aksi yang sekarang hanya ada button 'kirim', dan sekarang ada penambahan 2 aksi baru yaitu 'setujui' dan 'tolak'-->
             </tr>
         </thead>
         <tbody class="data-masuk" style="cursor: pointer;">
             <!-- Data akan dimasukkan ke sini oleh JavaScript -->
         </tbody>
     </table>
+    </div>
+
+    <div id="paginationPV" style="margin:12px 0; display:flex; align-items:center; justify-content:space-between;"></div>
+
+
 </main>
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
@@ -215,8 +356,398 @@
 <script src="/design-n-script/script_frontback_java/header_script.js"></script>
 <script src="/design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
-  <script src="/script-backend/header-backend.js"></script>
+  <script src="../../script-backend/header-backend.js"></script>
   <script src="../../script-backend/paraf_validasi.js"></script>
+<!-- PV Actions logic -->
+<script>
+(function(){
+  const el = (id)=>document.getElementById(id);
+  const out = document.getElementById('pv-output');
+  const usermsg = document.getElementById('pv-usermsg');
+  const noVal = ()=> (el('pv-no-validasi')?.value||'').trim();
+  const idem = ()=> (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  const authBadge = document.getElementById('pv-auth-badge');
+  let lastVerifiedNoVal = null; // per-doc verification success flag
+  // PDF.js tidak diperlukan untuk membuka viewer bawaan browser
+  async function callPV(url, opts={}){
+    console.debug('[PV][FE] call', url, opts);
+    const res = await fetch(url, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(opts.headers||{}) }, method: opts.method||'POST', body: opts.body ? JSON.stringify(opts.body): undefined });
+    const js = await res.json().catch(()=>({ success:false, message:'JSON parse error'}));
+    console.debug('[PV][FE] resp', url, { ok: res.ok, status: res.status, js });
+    if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
+    return js;
+  }
+  function log(msg, data){
+    if(usermsg){ usermsg.textContent = (msg||''); }
+    if(out){ out.textContent = (msg||'') + (data? ('\n'+JSON.stringify(data,null,2)):''); }
+  }
+  // Sertifikat dropdown behavior
+  async function loadCertList(){
+    try{
+      const res = await fetch('/api/pv/cert/list', { credentials:'include' });
+      const js = await res.json();
+      const sel = el('sertif-select');
+      if(!sel) return;
+      sel.innerHTML = '';
+      if(res.ok && js.success){
+        (js.data||[]).forEach(c=>{
+          if(c.status === 'active' || c.status === 'expired'){
+            const opt = document.createElement('option');
+            opt.value = c.serial_number;
+            opt.textContent = `${c.serial_number} | ${c.subject_cn||''}`.trim();
+            sel.appendChild(opt);
+          }
+        });
+      }
+    }catch(_){}
+  }
+  async function refreshVerified(){
+    try{
+      const res = await fetch('/api/pv/cert/verified', { credentials:'include' });
+      const js = await res.json();
+      const badge = el('sertif-badge');
+      if(!badge) return;
+      if(js.success && js.verified){ badge.textContent = `Aktif: ${js.serial_number}`; }
+      else { badge.textContent = ''; }
+      // update global auth badge + gating
+      await gateActions();
+    }catch(_){ }
+  }
+  const pilihBtn = el('pilih_sertifikat');
+  const dd = el('sertif-dropdown');
+  const overlay = el('sertif-overlay');
+  const overlayClose = el('sertif-overlay-close');
+  const triggerOverlayBtn = document.querySelector('.btn.pilih_sertifikat');
+  if (triggerOverlayBtn && overlay) {
+    triggerOverlayBtn.addEventListener('click', async ()=>{
+      overlay.style.display = overlay.style.display==='none' ? 'block' : 'none';
+      if (overlay.style.display==='block') { await loadCertList(); await refreshVerified(); }
+    });
+  }
+  if (overlayClose && overlay) {
+    overlayClose.addEventListener('click', ()=>{ overlay.style.display = 'none'; });
+  }
+  if(pilihBtn && dd){
+    pilihBtn.addEventListener('click', async ()=>{
+      dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+      if(dd.style.display==='block'){ await loadCertList(); await refreshVerified(); }
+    });
+  }
+  const verifyBtn = el('sertif-verify');
+  if(verifyBtn){
+    verifyBtn.addEventListener('click', async ()=>{
+      try{
+        const sel = el('sertif-select');
+        const serial = sel ? sel.value : '';
+        const pass = (el('sertif-pass')?.value)||'';
+        const res = await fetch('/api/pv/cert/verify-local', { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ serial_number: serial, passphrase: pass }) });
+        const js = await res.json();
+        if(!res.ok || !js.success) throw new Error(js.message||'Verifikasi gagal');
+        const badge = el('sertif-badge');
+        if(badge) badge.textContent = `Aktif: ${serial}`;
+        if(el('sertif-pass')) el('sertif-pass').value='';
+        alert('Sertifikat siap digunakan');
+        await gateActions();
+      }catch(e){ alert(e.message); }
+    });
+  }
+  // Table row click -> fill no_validasi
+  const tb = document.querySelector('#penelitikasieTable tbody.data-masuk');
+  if(tb){
+    tb.addEventListener('click', (ev)=>{
+      let tr = ev.target;
+      while(tr && tr.tagName !== 'TR') tr = tr.parentElement;
+      if(!tr) return;
+      const cell = tr.cells && tr.cells[0];
+      if(cell){
+        const nv = (cell.textContent||'').trim();
+        const input = el('pv-no-validasi');
+        if(input) input.value = nv;
+        if(out) out.textContent = 'Dipilih: ' + nv;
+        // Reset action buttons until verify is run for new selection
+        const approveBtn = el('pv-approve');
+        const rejectBtn = el('pv-reject');
+        if(approveBtn) approveBtn.disabled = true;
+        if(rejectBtn) rejectBtn.disabled = true;
+        lastVerifiedNoVal = null;
+        // Auto-claim saat memilih baris untuk mengunci dokumen ini
+        (async ()=>{ try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(_){ /* abaikan jika sudah di-claim */ } })();
+      }
+    });
+  }
+  // Delegasikan render tabel ke paraf_validasi.js
+  async function loadPvDocs(){
+    try{
+      console.debug('[PV][FE] loadPvDocs:start');
+      await loadTableDataParafValidasi();
+      console.debug('[PV][FE] loadPvDocs:rendered');
+      // Tambah badge status setelah render
+      const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+      if (!tbody) return;
+      [...tbody.querySelectorAll('tr:not(.dropdown-row)')].forEach(tr=>{
+        const statusCell = tr.querySelector('[data-field="status_display"]');
+        if (statusCell) statusCell.innerHTML = renderStatusBadge(statusCell.textContent.trim());
+      });
+    }catch(e){ log('Gagal memuat daftar: '+e.message); }
+  }
+  function renderStatusBadge(s){
+    const t = String(s||'Menunggu');
+    if (t === 'Sudah Divalidasi') return '<span class="status-badge success">Sudah Divalidasi</span>';
+    if (t === 'Ditolak') return '<span class="status-badge error">Ditolak</span>';
+    return '<span class="status-badge warning">Menunggu</span>';
+  }
+  // Load on start. Nonaktifkan auto-render bawaan paraf_validasi.js
+  window.PV_DISABLE_AUTO_RENDER = true;
+  loadPvDocs();
+
+  // Pagination (10 per page)
+  const PAGE_SIZE_PV = 10;
+  let currentPagePV = 1;
+  function getRowPairs() {
+    const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+    const pairs = [];
+    if (!tbody) return pairs;
+    const rows = Array.from(tbody.children);
+    for (let i = 0; i < rows.length; i++) {
+      const main = rows[i];
+      if (main && !main.classList.contains('dropdown-row')) {
+        const next = rows[i + 1];
+        const dropdown = next && next.classList && next.classList.contains('dropdown-row') ? next : null;
+        if (dropdown) i++;
+        pairs.push({ main, dropdown });
+      }
+    }
+    return pairs;
+  }
+  function renderPVRowsForPage(page) {
+    const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+    if (!tbody) return;
+    const pairs = getRowPairs();
+    const total = pairs.length;
+    // Kosongkan dan tampilkan pesan jika tidak ada data
+    if (total === 0) {
+      tbody.innerHTML = '';
+      const r = tbody.insertRow();
+      const c = r.insertCell(0);
+      c.colSpan = 7;
+      c.textContent = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+      const pag = document.getElementById('paginationPV');
+      if (pag) {
+        pag.innerHTML = '<div>Showing 0 to 0 of 0 entries</div>' +
+                        '<div><button disabled><</button> <button disabled>></button></div>';
+      }
+      return;
+    }
+    const start = (page - 1) * PAGE_SIZE_PV;
+    const end = Math.min(total, start + PAGE_SIZE_PV);
+    // Sembunyikan semua baris
+    pairs.forEach(({ main, dropdown }) => {
+      if (main) main.style.display = 'none';
+      if (dropdown) dropdown.style.display = 'none';
+    });
+    // Tampilkan yang masuk halaman
+    for (let i = start; i < end; i++) {
+      const { main, dropdown } = pairs[i];
+      if (main) main.style.display = '';
+      if (dropdown) dropdown.style.display = 'none';
+    }
+    // Render pagination info/controls
+    const pag = document.getElementById('paginationPV');
+    if (pag) {
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_PV));
+      const info = document.createElement('div');
+      info.textContent = `Showing ${start + 1} to ${end} of ${total} entries`;
+      const controls = document.createElement('div');
+      function mkBtn(label, disabled, onClick) {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.disabled = !!disabled;
+        b.style.marginLeft = '6px';
+        b.addEventListener('click', onClick);
+        return b;
+      }
+      controls.appendChild(mkBtn('<', page <= 1, () => goToPV(page - 1)));
+      for (let p = 1; p <= totalPages; p++) {
+        const b = mkBtn(String(p), p === page, () => goToPV(p));
+        if (p === page) b.style.fontWeight = '700';
+        controls.appendChild(b);
+      }
+      controls.appendChild(mkBtn('>', page >= totalPages, () => goToPV(page + 1)));
+      pag.innerHTML = '';
+      pag.appendChild(info);
+      pag.appendChild(controls);
+    }
+  }
+  function goToPV(p) {
+    const total = getRowPairs().length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_PV));
+    currentPagePV = Math.min(Math.max(1, p), totalPages);
+    renderPVRowsForPage(currentPagePV);
+  }
+  function setupPVPagination() {
+    currentPagePV = 1;
+    renderPVRowsForPage(currentPagePV);
+  }
+  const btnStatus = el('pv-status');
+  if(btnStatus){ btnStatus.onclick = async ()=>{ try{ const res = await fetch(`/api/validasi/${encodeURIComponent(noVal())}/status`, { credentials:'include' }); const js = await res.json(); log('Status diperbarui', js);}catch(e){ log('Gagal mengambil status: '+e.message); } }; }
+  const btnClaim = el('pv-claim');
+  if(btnClaim){ btnClaim.onclick = async ()=>{ try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/claim`); log('Dokumen berhasil di-claim', js);}catch(e){ log('Gagal claim: '+e.message);} }; }
+  const btnAp = el('pv-appearance');
+  if(btnAp){ btnAp.onclick = async ()=>{ try{ const appearance = { page:Number(el('ap-page').value||1), x:Number(el('ap-x').value||0), y:Number(el('ap-y').value||0), width:Number(el('ap-w').value||0), height:Number(el('ap-h').value||0), reason:el('ap-reason').value||'', location:el('ap-location').value||'' }; const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/appearance`, { body:{ appearance } }); log('Koordinat TTE tersimpan', js);}catch(e){ log('Gagal simpan appearance: '+e.message);} }; }
+  // Simplified flow: Claim -> Prepare -> Verify (auto), then enable Approve/Reject
+  const btnVer = el('pv-verify');
+  if(btnVer){ btnVer.onclick = async ()=>{ 
+    try{ 
+      const nv = noVal();
+      if(!nv){ log('Pilih no_validasi dulu'); return; }
+      console.debug('[PV][FE] Verify clicked', { nv });
+      // Claim (idempotent)
+      try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(err){ console.warn('[PV][FE] claim warn', err?.message); }
+      // Prepare document (server enforces signature + verified cert)
+      const prep = await callPV(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`);
+      console.debug('[PV][FE] prepare ok', prep);
+      // Verify
+      const js = await callPV(`/api/validasi/${encodeURIComponent(nv)}/verify`);
+      log('Verifikasi berhasil', js);
+      // Enable approve/reject after success
+      const approveBtn = el('pv-approve');
+      const rejectBtn = el('pv-reject');
+      if(approveBtn) approveBtn.disabled = false;
+      if(rejectBtn) rejectBtn.disabled = false;
+      lastVerifiedNoVal = nv;
+      await loadPvDocs();
+    }catch(e){ log('Gagal verifikasi: '+e.message); }
+  }; }
+  const btnApprove = el('pv-approve');
+if(btnApprove){ 
+    btnApprove.onclick = async ()=>{ 
+        try{ 
+            const nv = noVal();
+            console.log('[FE-DEBUG] Attempting approval for:', nv);
+            
+            if(!nv) {
+                alert('Pilih dokumen terlebih dahulu!');
+                return;
+            }
+            
+            if(!confirm('Setujui dokumen ini?')) return; 
+            
+            const response = await fetch(`/api/validasi/${encodeURIComponent(nv)}/decision`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ decision: 'approve' }),
+                credentials: 'include'
+            });
+            
+            console.log('[FE-DEBUG] Response status:', response.status);
+            const js = await response.json();
+            console.log('[FE-DEBUG] Response body:', js);
+            
+            if(js.success) {
+                log('Dokumen disetujui', js);
+            } else {
+                log('Gagal: ' + (js.message || 'Unknown error'), js);
+                alert('Gagal: ' + (js.message || 'Unknown error'));
+            }
+            
+            await loadPvDocs();
+        }catch(e){ 
+            console.error('[FE-ERROR] Approval failed:', e);
+            log('APPROVE Gagal: '+e.message);
+            alert('APPROVE Gagal: '+e.message);
+        } 
+    }; }
+  const btnReject = el('pv-reject');
+  if(btnReject){ btnReject.onclick = async ()=>{ 
+    try{ 
+      const reason = prompt('Alasan penolakan? (wajib)');
+      if(!reason) return; 
+      const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/decision`, { body:{ decision:'reject', reason } });
+      log(js.message || 'Dokumen ditolak', js);
+      console.debug('[PV][FE] decision reject ok', js);
+      await loadPvDocs();
+    }catch(e){ log('REJECT Gagal: '+e.message);} 
+  }; }
+  async function gateActions(){
+    try{
+      const [authRes, certRes] = await Promise.all([
+        fetch('/api/pv/auth-status', { credentials:'include' }),
+        fetch('/api/pv/cert/verified', { credentials:'include' })
+      ]);
+      const authJs = await authRes.json().catch(()=>({}));
+      const certJs = await certRes.json().catch(()=>({}));
+      const hasSig = !!(authJs && authJs.success && authJs.has_signature);
+      const certOk = !!(certJs && certJs.success && certJs.verified);
+      // Set badge
+      if(authBadge){
+        authBadge.classList.remove('ok','warn');
+        if(hasSig && certOk){ authBadge.textContent = 'Auth siap'; authBadge.classList.add('ok'); }
+        else { authBadge.textContent = 'Auth belum siap'; authBadge.classList.add('warn'); }
+      }
+      // Gate buttons
+      // Verify gated by auth; Approve/Reject gated by auth and per-doc verify success
+      const verifyBtn = el('pv-verify');
+      if(verifyBtn) verifyBtn.disabled = !(hasSig && certOk);
+      const approveBtn = el('pv-approve');
+      const rejectBtn = el('pv-reject');
+      const canAct = (hasSig && certOk && noVal() && noVal() === lastVerifiedNoVal);
+      if(approveBtn) approveBtn.disabled = !canAct;
+      if(rejectBtn) rejectBtn.disabled = !canAct;
+    }catch(_){
+      if(authBadge){ authBadge.textContent = 'Auth belum siap'; authBadge.classList.remove('ok'); authBadge.classList.add('warn'); }
+      const verifyBtn = el('pv-verify');
+      if(verifyBtn) verifyBtn.disabled = true;
+      const approveBtn = el('pv-approve');
+      const rejectBtn = el('pv-reject');
+      if(approveBtn) approveBtn.disabled = true;
+      if(rejectBtn) rejectBtn.disabled = true;
+    }
+  }
+  // Initial gate
+  gateActions();
+
+  // Preview: rebuild dokumen dengan generator terbaru lalu buka viewer; fallback ke versi lama bila gagal
+  const btnPreview = el('pv-preview-btn');
+  if (btnPreview) {
+    btnPreview.addEventListener('click', async ()=>{
+      const msg = el('pv-preview-msg');
+      if (msg) msg.textContent = 'Membuka preview...';
+      try {
+        const nv = noVal();
+        if (!nv) throw new Error('Pilih no_validasi terlebih dahulu.');
+        // Selalu coba build ulang menggunakan generator terbaru
+        let data = {};
+        let pdfUrl = '';
+        try {
+          const prepRes = await fetch(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`, { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' } });
+          const prepJs = await prepRes.json();
+          if (prepRes.ok && prepJs.success) {
+            pdfUrl = prepJs.source_pdf_path || '';
+          }
+        } catch(_) { /* abaikan, lanjut fallback */ }
+        // Ambil status terkini untuk judul/appearance dan fallback pdfUrl
+        const stRes = await fetch(`/api/validasi/${encodeURIComponent(nv)}/status`, { credentials:'include' });
+        const stJs = await stRes.json();
+        if (!stRes.ok || !stJs.success) throw new Error(stJs.message||'Gagal mengambil status');
+        data = stJs.data || {};
+        if (!pdfUrl) pdfUrl = data.source_pdf_path || '';
+        if (!pdfUrl) throw new Error('Dokumen belum disiapkan.');
+        const ap = data.appearance_json || { page:1 };
+        const page = ap.page || 1;
+        const zoom = 125;
+        const title = data.nobooking ? `${data.nobooking}-Tervalidasi` : 'Preview Dokumen';
+        const viewerUrl = `/viewer/native-pdf.html?src=${encodeURIComponent(pdfUrl)}&title=${encodeURIComponent(title)}&page=${encodeURIComponent(page)}&zoom=${encodeURIComponent(zoom)}`;
+        window.open(viewerUrl, '_blank');
+        if (msg) msg.textContent = '';
+      } catch (e){ if (msg) msg.textContent = e.message; }
+    });
+  }
+})();
+</script>
 <!--script pengedit pdf-->
+<script type="module">
+  import { initNotifications } from '/script-backend/notification-setup.js';
+  initNotifications();
+</script>
 </body>
 </html>

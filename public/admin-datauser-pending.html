@@ -1,4 +1,4 @@
-
+<!--clear code (✔)-->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -6,16 +6,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Data User Belum Lengkap</title>
   <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
-  <link rel="stylesheet" href="design-n-script/design_css/design_table/table_design_userpending.css">
+  
     <!---->
   <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
   <link rel="stylesheet" href="design-n-script/design_css/admin_design.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <!---->
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
-    <!---->
-  <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
+    <style>
+      .pagination-controls {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        align-items: center;
+        margin: 14px 0 6px;
+      }
+      .pagination-controls .page-btn {
+        min-width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #0f172a;
+        cursor: pointer;
+      }
+      .pagination-controls .page-btn.active {
+        background: #0ea5e9;
+        color: #ffffff;
+        border-color: #0ea5e9;
+      }
+      .pagination-controls .page-btn:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+      }
+    </style>
 </head>
 <body>
   <!-- Header Section -->
@@ -119,8 +147,8 @@
           </div>
       </div>
       <div class="dropdown-content">
-          <a href="/Admin/Referensi User/Pemutakhiran Data PPAT/pemutakhiran_data_ppat.html" id="PD_PPAT">Pemutakhiran Data PPAT</a>
-          <a href="/Admin/Referensi User/Status PPAT/status_ppat.html" id="Status_PPAT"> Status PPAT</a>
+          <a href="admin-pemutakhiranppat.html">Pemutakhiran Data PPAT</a>
+          <a href="admin-status-ppat.html"> Status PPAT</a>
       </div>
   </div>
   <div class="box">
@@ -186,7 +214,7 @@
           </div>
       </div>
       <div class="dropdown-content">
-          <a href="../admins_PPAT/adminv_validasibphtb/adminv_permohonan_Validasi_SSPD/admin_permohonan_validasisspd.html" id="">Permohonan Validasi SSPD</a>
+          <a href="../admins_PPAT/adminv_validasibphtb/adminv_permohonan_Validasi_SSPD/admin-pemutakhir.html" id="">Permohonan Validasi SSPD</a>
           <a href="../admins_PPAT/adminv_validasibphtb/adminv_Status_Validasi/admin_status_validasi.html" id="">Status Validasi</a>
       </div>
   </div>
@@ -312,16 +340,17 @@
   <!---->
   <!---->
   <!-- MAIN -->
-<main class="main-content">
+  <main id="datauser-pending" class="main-content">
     <!-- Loading Indicator -->
-<div id="loadingIndicator" style="display:none;">
-  <div class="spinner"></div> Processing...
-</div>
-
-  <div class="card form-card">
-    <div id="userForm" class="userForm">
-      <div class="form-group">
-        <label for="userIDDropdown">User ID Prefix:</label>
+    <div id="loadingIndicator" style="display:none;">
+      <div class="spinner"></div> Processing...
+    </div>
+  
+    <!-- User Form Card -->
+    <div class="card form-card">
+      <div id="userForm" class="userForm">
+        <div class="form-group">
+          <label for="userIDDropdown">User ID Prefix:</label>
           <select name="userIDDropdown" id="userIDDropdown" class="form-control">
             <option value="-">Pilih Prefix</option>
             <option value="A">A (Administrator)</option>
@@ -335,53 +364,63 @@
             <option value="BANK">BANK</option>
             <option value="WP">WP (Wajib Pajak)</option>
           </select>
-      </div>
-      <!---->
-      <div class="form-group">
-        <label for="userIDInput">Generated User ID:</label>
-        <input type="text" id="userIDInput" class="form-control" disabled />
-      </div>
-      <div class="form-group">
-        <label for="divisiInput">Divisi:</label>
-        <input type="text" id="divisiInput" class="form-control" disabled />
-      </div>
-      <div id="ppatSpecialContainer" class="form-group" style="display:none;">
-        <label for="urutKhusus">Nomor Khusus PPAT:</label>
-        <input type="text" id="urutKhusus" class="form-control" placeholder="Nomor-KhususPPAT" disabled />
-      </div>
-      <div class="form-actions">
-        <button id="saveButton" class="btn btn-primary">Simpan</button>
-        <button id="cancelButton" class="btn btn-secondary">Batal</button>
+        </div>
+  
+        <div class="form-group">
+          <label for="userIDInput">Generated User ID:</label>
+          <input type="text" id="userIDInput" class="form-control" disabled />
+        </div>
+  
+        <div class="form-group">
+          <label for="divisiInput">Divisi:</label>
+          <input type="text" id="divisiInput" class="form-control" disabled />
+        </div>
+  
+        <div id="ppatSpecialContainer" class="form-group" style="display:none;">
+          <label for="urutKhusus">Nomor Khusus PPAT:</label>
+          <input type="text" id="urutKhusus" class="form-control" placeholder="Nomor-KhususPPAT" disabled />
+        </div>
+  
+        <div class="form-actions">
+          <button id="saveButton" class="btn btn-primary">Simpan</button>
+          <button id="cancelButton" class="btn btn-secondary">Batal</button>
+        </div>
       </div>
     </div>
-  </div>
-
-  <div class="card table-card">
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Nama</th>
-            <th>Email</th>
-            <th>NIK</th>
-            <th>Telepon</th>
-            <th>User ID</th>
-            <th>Divisi</th>
-            <th>Nomor PPAT</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="pendingUsersTableBody"></tbody>
-        <tbody id="completeUsersTableBody"></tbody>
-      </table>
+  
+    <!-- User Pending Table -->
+    <div class="card table-card">
+      <div class="table-responsive">
+        <table id="datauser-pending-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Email</th>
+              <th>NIK</th>
+              <th>Telepon</th>
+              <th>User ID</th>
+              <th>Divisi</th>
+              <th>Nomor PPAT</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="pendingUsersTableBody"></tbody>
+        </table>
+      </div>
+  
+      <!-- Table info chip -->
+      <div class="table-info-wrapper">
+        <div class="table-info" id="tableInfo">Menampilkan 0 pengguna</div>
+      </div>
+  
+      <!-- Pagination -->
+      <div id="paginationControlsPending" class="pagination-controls"></div>
     </div>
-  </div>
-
-  <!-- Error Display -->
-<div id="error-message" class="error-toast" style="display:none;"></div>
-
-
-</main>
+  
+    <!-- Error Display -->
+    <div id="error-message" class="error-toast" style="display:none;"></div>
+  </main>
+  
 
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
@@ -417,5 +456,9 @@
 <script src="design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="script-backend/header-backend.js"></script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 </body>
 </html>

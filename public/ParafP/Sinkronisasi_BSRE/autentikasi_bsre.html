@@ -1,0 +1,251 @@
+<!---->
+<!--Tempat ini merupakan halaman untuk autentikasi tanda paraf BSRE-->
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autentikasi BSRE</title>
+    <style>
+        body{font-family: Arial, Helvetica, sans-serif; margin:20px;}
+        .card{border:1px solid #e5e5e5; border-radius:8px; padding:16px; max-width:900px}
+        .row{display:flex; gap:12px; align-items:center; margin:8px 0}
+        label{min-width:140px}
+        input[type="text"], input[type="password"]{flex:1; padding:8px}
+        button{padding:8px 12px; cursor:pointer}
+        .muted{color:#666; font-size:12px}
+        .result{margin-top:10px; padding:10px; background:#f7f7f7; border-radius:6px}
+        .tabs{display:flex; gap:8px; margin:16px 0}
+        .tab{padding:8px 12px; border:1px solid #ddd; border-radius:6px; cursor:pointer; user-select:none}
+        .tab.active{background:#eef5ff; border-color:#a3c4ff}
+        .hidden{display:none}
+        canvas{border:1px dashed #bbb; border-radius:6px}
+    </style>
+    <script>
+    async function getToken(){
+        try{
+            const btn = document.getElementById('btnToken');
+            btn.disabled = true; btn.textContent = 'Meminta token...';
+            const resp = await fetch('/api/bsre/auth', {method:'POST', credentials:'include'});
+            const json = await resp.json().catch(()=>({success:false,message:'JSON parse error'}));
+            if(!resp.ok || json.success===false){ throw new Error(json.message||('HTTP '+resp.status)); }
+            document.getElementById('token').value = json.token || '';
+            document.getElementById('tokenOut').textContent = json.token || '';
+            document.getElementById('health').textContent = 'OK';
+        }catch(e){
+            document.getElementById('health').textContent = 'Gagal: '+(e.message||e);
+            alert('Gagal mendapatkan token: '+(e.message||e));
+        }finally{
+            const btn = document.getElementById('btnToken');
+            btn.disabled = false; btn.textContent = 'Dapatkan Token';
+        }
+    }
+
+    // ===== Current Signature Preview (PV) =====
+    async function loadCurrentSignature(){
+        try{
+            const resp = await fetch('/api/auth/profile', { credentials:'include' });
+            const json = await resp.json().catch(()=>null);
+            const path = json && (json.tanda_tangan_path || (json.data && json.data.user && json.data.user.tanda_tangan_path));
+            const el = document.getElementById('sigUsedPreview');
+            if (el) el.src = path ? (path + '?t=' + Date.now()) : '';
+        }catch(_){ /* ignore */ }
+    }
+    async function checkHealth(){
+        try{
+            const resp = await fetch('/api/bsre/health', {credentials:'include'});
+            const json = await resp.json().catch(()=>({success:false}));
+            document.getElementById('health').textContent = json.success? 'OK' : 'Gagal';
+        }catch{ document.getElementById('health').textContent = 'Gagal'; }
+    }
+    // ===== Signature Upload & Canvas =====
+    async function uploadSignatureFile(){
+        try{
+            let file = document.getElementById('signatureFile').files[0];
+            if(!file){ alert('Pilih file terlebih dahulu'); return; }
+
+            // 👉 konversi ke PNG hitam putih
+            file = await convertToBlackWhitePNG(file);
+
+            const fd = new FormData();
+            fd.append('signature', file);
+
+            const resp = await fetch('/api/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
+            const json = await resp.json().catch(()=>({success:false}));
+            if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
+            const path = (json.data && json.data.path) ? json.data.path : (json.path || '');
+            if(!path) throw new Error('Path tanda tangan tidak ditemukan');
+            document.getElementById('sigPreview').src = path + '?t=' + Date.now();
+            await loadCurrentSignature();
+        }catch(e){ alert('Gagal upload: '+(e.message||e)); }
+    }
+
+    async function convertToBlackWhitePNG(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+
+                // Gambar image ke canvas
+                ctx.drawImage(img, 0, 0);
+
+                // Ambil pixel data
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i], g = data[i+1], b = data[i+2];
+                    // Konversi grayscale
+                    const gray = 0.3*r + 0.59*g + 0.11*b;
+                    // Threshold → biner (hitam / putih)
+                    const bw = gray > 200 ? 255 : 0; 
+                    data[i] = data[i+1] = data[i+2] = bw; // set R,G,B sama
+                }
+                ctx.putImageData(imageData, 0, 0);
+
+                // Simpan ke PNG
+                canvas.toBlob(blob => {
+                    resolve(new File([blob], 'signature.png', { type: 'image/png' }));
+                }, 'image/png');
+            };
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    function initCanvas(){
+        const c = document.getElementById('drawCanvas');
+        const ctx = c.getContext('2d');
+        ctx.lineWidth = 2; ctx.lineCap='round';
+        let drawing=false, last=null;
+        const pos = e => {
+            const r = c.getBoundingClientRect();
+            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        };
+        c.addEventListener('mousedown', e=>{ drawing=true; last=pos(e); });
+        c.addEventListener('mousemove', e=>{
+            if(!drawing) return; const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p;
+        });
+        ['mouseup','mouseleave'].forEach(ev=> c.addEventListener(ev, ()=> drawing=false));
+        document.getElementById('clearCanvas').onclick = ()=>{ ctx.clearRect(0,0,c.width,c.height); };
+    }
+    async function saveCanvasSignature(){
+        try{
+            const c = document.getElementById('drawCanvas');
+            const blob = await new Promise(r=> c.toBlob(r, 'image/png'));
+
+            // 👉 konversi blob canvas ke File hitam putih
+            const file = await convertToBlackWhitePNG(new File([blob], 'canvas.png', { type: 'image/png' }));
+
+            const fd = new FormData();
+            fd.append('signature', file);
+
+            const resp = await fetch('/api/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
+            const json = await resp.json().catch(()=>({success:false}));
+            if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
+            const path = (json.data && json.data.path) ? json.data.path : (json.path || '');
+            if(!path) throw new Error('Path tanda tangan tidak ditemukan');
+            document.getElementById('sigPreview').src = path + '?t=' + Date.now();
+            await loadCurrentSignature();
+        }catch(e){ alert('Gagal simpan dari canvas: '+(e.message||e)); }
+    }
+
+    async function generateQR(){
+        try{
+            const text = document.getElementById('qrText').value || 'Preview QR';
+            const noVal = document.getElementById('qrNoVal').value || 'preview';
+            const resp = await fetch('/api/pv/generate-qr', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ text, no_validasi: noVal }) });
+            const json = await resp.json().catch(()=>({success:false}));
+            if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
+            const img = document.getElementById('qrPreview');
+            img.src = json.path + '?t=' + Date.now();
+        }catch(e){ alert('Gagal generate QR: '+(e.message||e)); }
+    }
+    function switchTab(id){
+        document.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p=> p.classList.add('hidden'));
+        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
+        document.getElementById(id).classList.remove('hidden');
+    }
+    </script>
+</head>
+<body>
+    <div class="card">
+        <div class="tabs">
+            <div class="tab active" data-tab="tab-token" onclick="switchTab('tab-token')">Token Autentikasi</div>
+            <div class="tab" data-tab="tab-sign" onclick="switchTab('tab-sign')">Tanda Tangan & QR</div>
+        </div>
+
+        <div id="tab-token" class="tab-pane">
+            <h3>Autentikasi BSRE</h3>
+            <p class="muted">Endpoint backend: <code>POST /api/bsre/auth</code> — Token disimpan di server (ENV), UI hanya meminta token.</p>
+            <div class="row">
+                <label>API Key</label>
+                <input type="text" placeholder="Dikelola di server (ENV)" disabled>
+            </div>
+            <div class="row">
+                <label>Secret Key</label>
+                <input type="password" placeholder="Dikelola di server (ENV)" disabled>
+            </div>
+            <div class="row">
+                <button id="btnToken" onclick="getToken()">Dapatkan Token</button>
+                <button onclick="checkHealth()">Cek Koneksi</button>
+                <span>Status: <strong id="health">-</strong></span>
+            </div>
+            <div class="row">
+                <label>Token BSRE</label>
+                <input type="text" id="token" readonly placeholder="Token akan muncul di sini">
+            </div>
+            <div class="result">
+                <div><strong>Token:</strong> <span id="tokenOut"></span></div>
+            </div>
+        </div>
+
+        <div id="tab-sign" class="tab-pane hidden">
+            <h3>Upload/Gambar Tanda Tangan & QR (pengujian)</h3>
+            <div class="row">
+                <label>Upload File</label>
+                <input type="file" id="signatureFile" accept="image/*" style="flex:1;"/>
+                <button onclick="uploadSignatureFile()">Upload</button>
+            </div>
+            <div class="row">
+                <label>Gambar Manual</label>
+                <div>
+                    <canvas id="drawCanvas" width="420" height="160"></canvas><br>
+                    <button onclick="saveCanvasSignature()">Simpan dari Canvas</button>
+                    <button id="clearCanvas">Bersihkan</button>
+                </div>
+            </div>
+            <div class="row">
+                <label>Preview</label>
+                <img id="sigPreview" alt="Preview Tanda Tangan" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
+            </div>
+            <div class="preview-tandaterupload">
+                <label>Tanda Tangan yang dipakai</label>
+                <img id="sigUsedPreview" alt="Preview Tanda Tangan yang dipakai" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
+            </div>
+            <hr>
+            <div class="row">
+                <label>QR Text</label>
+                <input type="text" id="qrText" placeholder="Isi bebas (mis. checksum, timestamp)"/>
+            </div>
+            <div class="row">
+                <label>No. Validasi</label>
+                <input type="text" id="qrNoVal" placeholder="opsional (untuk nama file)"/>
+                <button onclick="generateQR()">Generate QR</button>
+            </div>
+            <div class="row">
+                <label>QR Preview</label>
+                <img id="qrPreview" alt="QR" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
+            </div>
+        </div>
+    </div>
+    <script>initCanvas(); loadCurrentSignature();</script>
+    <script type="module">
+        import { initNotifications } from '/script-backend/notification-setup.js';
+        initNotifications();
+      </script>
+</body>
+</html>

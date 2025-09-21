@@ -194,6 +194,7 @@
     
     <h1>Lengkapi Profil Anda</h1>
     <form id="profileForm">
+        <div id="contoh-pemilihan"> <h3>Contoh: Farras ST. MT/ Notaris</h3> </div> <!--ini merupakan contoh dan akan diletakan dibagian paling atas dari form, akan terhide untuk semuanya kecuali untuk divisi 'PPAT' dan 'PPATS'-->
         <!-- Field NIP (untuk semua kecuali Wajib Pajak) -->
         <div class="form-group" id="nipField">
             <label for="nip">Nomor Identifikasi Pegawai</label>
@@ -208,8 +209,18 @@
 
         <!-- Khusus PPAT/PPATS -->
         <div class="form-group" id="specialField">
-            <label for="special_field">Nama PPAT</label>
+            <label for="special_field">Nama Pejabat: (contoh: Farras ST. MT)</label>
             <input type="text" id="special_field" name="special_field" placeholder="Nama lengkap + gelar">
+        </div>
+
+        <div class="form-group" id="pejabat_umum">
+            <label for="pejabat_umum_input">Gelar Pejabat</label>
+            <select id="pejabat_umum_input" name="pejabat_umum">
+                <option value="">-- Pilih Gelar --</option>
+                <option value="Notaris">Notaris</option>
+                <option value="PPAT">PPAT</option>
+                <option value="PPATS">PPATS</option>
+            </select>
         </div>
 
         <!-- Khusus Peneliti Validasi -->
@@ -229,13 +240,21 @@
             const nipField = document.getElementById('nipField');
             const specialField = document.getElementById('specialField');
             const special_parafv = document.getElementById('special_ParafValidasi');
+            const pejabat_umum = document.getElementById('pejabat_umum');
+            const contoh_pemilihan = document.getElementById('contoh-pemilihan');
 
             // Sembunyikan field yang tidak diperlukan
             if (divisi === 'Wajib Pajak' || divisi === 'PPAT' || divisi === 'PPATS') {
                 nipField.style.display = 'none';
             }
             if (divisi !== 'PPAT' && divisi !== 'PPATS') {
+                pejabat_umum.style.display = 'none';
+            }
+            if (divisi !== 'PPAT' && divisi !== 'PPATS') {
                 specialField.style.display = 'none';
+            }
+            if (divisi !== 'PPAT' && divisi !== 'PPATS') {
+                contoh_pemilihan.style.display = 'none';
             }
             if (divisi !== 'Peneliti Validasi') {
                 special_parafv.style.display = 'none';
@@ -250,7 +269,8 @@
                     nip: document.getElementById('nip').value,
                     username: document.getElementById('username').value,
                     special_field: document.getElementById('special_field').value,
-                    special_parafv: document.getElementById('special_parafv').value
+                    special_parafv: document.getElementById('special_parafv').value,
+                    pejabat_umum: document.getElementById('pejabat_umum_input').value
                 };
 
                 try {
@@ -270,6 +290,7 @@
                         localStorage.setItem('username', formData.username);
                         localStorage.setItem('special_field', formData.special_field);
                         localStorage.setItem('special_parafv', formData.special_parafv);
+                        localStorage.setItem('pejabat_umum', formData.pejabat_umum);
 
                         // Tampilkan pesan sukses
                         messageDiv.style.display = 'block';

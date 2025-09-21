@@ -50,15 +50,51 @@
 
     <!-- Panel kanan dengan gambar latar dan informasi tambahan -->
     <div class="right-panel">
-      <h2>SELAMAT DATANG DI E-BPHTB</h2>
-      <p class="description">
-        E-BPHTB adalah sistem elektronik yang digunakan untuk mengelola dan memproses Bea Perolehan Hak atas Tanah dan Bangunan (BPHTB). Sistem ini memungkinkan masyarakat untuk melakukan berbagai transaksi terkait BPHTB secara online, sehingga memudahkan proses pembayaran dan pelaporan.
-      </p>
-    </div>
 
+    </div>
+    <div class="right-panel-d">
+        <p class="description">
+            E-BPHTB adalah sistem elektronik yang digunakan untuk mengelola dan memproses Bea Perolehan Hak atas Tanah dan Bangunan (BPHTB). Sistem ini memungkinkan masyarakat untuk melakukan berbagai transaksi terkait BPHTB secara online, sehingga memudahkan proses pembayaran dan pelaporan.
+        </p>
+    </div>
     <div class="message" id="message"></div>
   </div>
 
+<script>
+
+  const panel = document.querySelector("body");
+
+  function createMovingText() {
+    if (!panel) return;
+
+    const text = document.createElement("h2");
+    text.classList.add("moving-text");
+    text.textContent = "SELAMAT DATANG DI E-BPHTB";
+
+    // batas area hanya sampai 60% tinggi panel
+    const maxHeight = panel.clientHeight * 0.6;
+    const available = Math.max(0, maxHeight - 40); // aman bila panel pendek
+    const randomTop = Math.random() * available;
+    text.style.top = randomTop + "px";
+
+    // ukuran sedikit acak
+    const randomSize = 28 + Math.random() * 8;
+    text.style.fontSize = randomSize + "px";
+
+    // durasi lambat (15–20 detik)
+    const duration = 18 + Math.random() * 5;
+    text.style.animationDuration = duration + "s";
+
+    panel.appendChild(text);
+
+    // hapus setelah animasi selesai (tambahkan buffer 200ms)
+    setTimeout(() => text.remove(), duration * 1000 + 200);
+  }
+
+  // setiap 2.5 detik buat teks baru
+  setInterval(createMovingText, 3500);
+
+</script>
 <script>
         const loginForm = document.getElementById("loginForm");
         const messageDiv = document.getElementById("message");
@@ -72,7 +108,7 @@
             messageDiv.style.display = "none";
             messageDiv.className = "";
             try {
-                const res = await fetch("http://localhost:3000/api/auth/login", {
+                const res = await fetch("https://filepentinguntukta-production.up.railway.app/api/auth/login", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

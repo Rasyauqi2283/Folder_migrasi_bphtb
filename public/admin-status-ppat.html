@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard Notifikasi & Status PPAT</title>
+<style>
+  :root{
+    --bg: #e8f3fb;            /* cloud blue */
+    --panel: #ffffff;
+    --accent: #4a90e2;        /* primary blue */
+    --muted: #8b98a8;
+    --card-shadow: 0 8px 22px rgba(20,30,50,0.08);
+    --radius: 14px;
+    --danger: #d9534f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(180deg, #eef6ff 0%, #e6f1fb 100%);
+    color:#1f3246;
+    padding:28px;
+  }
+
+  /* Layout: left content + right sidebar */
+  .main-layout{
+    max-width:1200px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:20px;
+    align-items:start;
+  }
+
+  /* Card base */
+  .card{
+    background:var(--panel);
+    border-radius:var(--radius);
+    box-shadow:var(--card-shadow);
+    padding:18px;
+  }
+
+  /* ========== NOTIFICATIONS PANEL ========== */
+  .notifications-panel .panel-header{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .title {font-size:20px; font-weight:700; color:var(--accent);}
+
+  /* segmented buttons */
+  .segmented {
+    display:flex;
+    gap:8px;
+    background:transparent;
+  }
+  .segmented button{
+    border:1px solid rgba(74,144,226,0.18);
+    background:#fff;
+    color:var(--accent);
+    padding:8px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    font-weight:600;
+    box-shadow: none;
+    transition:all .18s;
+  }
+  .segmented button[aria-pressed="true"]{
+    background: linear-gradient(180deg,var(--accent), #357ab7);
+    color:#fff;
+    box-shadow: 0 6px 16px rgba(74,144,226,0.18);
+  }
+
+  .panel-controls{
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .search {
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#f6fbff;
+    border:1px solid rgba(74,144,226,0.1);
+    padding:8px 10px;
+    border-radius:999px;
+    min-width:260px;
+  }
+  .search input{
+    border:none; background:transparent; outline:none; width:100%;
+    font-size:14px;
+  }
+
+  /* table */
+  .table-wrap{
+    margin-top:12px;
+    overflow:auto;
+    border-radius:12px;
+    border:1px solid rgba(20,30,50,0.06);
+  }
+  table.data-table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    min-width:880px; /* allow horizontal scroll on small widths */
+  }
+  table.data-table thead th{
+    background: linear-gradient(180deg, rgba(74,144,226,0.95), #357ab7);
+    color:#fff;
+    font-weight:700;
+    padding:12px 14px;
+    text-align:left;
+    position:sticky;
+    top:0;
+    z-index:2;
+  }
+  table.data-table tbody td{
+    padding:12px 14px;
+    border-bottom:1px solid rgba(20,30,50,0.04);
+    background: #fff;
+  }
+  table.data-table tbody tr:hover td{
+    background: #f4f9ff;
+  }
+  /* pill statuses */
+  .pill {
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-weight:600;
+    font-size:13px;
+  }
+  .pill.read { background:#e6f7ff; color:var(--accent); border:1px solid rgba(74,144,226,0.12); }
+  .pill.unread { background:#fff1d6; color:#b86b00; border:1px solid rgba(184,107,0,0.08); }
+
+  /* small action btn */
+  .btn-sm {
+    padding:6px 10px; border-radius:10px; font-weight:700; border:none; cursor:pointer;
+    background:var(--accent); color:#fff;
+  }
+
+  /* ========== STATUS SIDEBAR ========== */
+  .status-panel .header{
+    display:flex; gap:10px; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .status-panel h3{ margin:0; color:var(--accent); }
+  .status-filter{ display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+  .status-filter select,
+  .status-filter input {
+    padding:8px 10px; border-radius:10px; border:1px solid rgba(20,30,50,0.06);
+    background:#fff; outline:none;
+  }
+  .status-table{ width:100%; border-collapse:collapse; font-size:14px; }
+  .status-table th{ text-align:left; font-weight:700; color:#516076; padding:8px 6px; }
+  .status-table td{ padding:10px 6px; border-bottom:1px solid rgba(20,30,50,0.04); }
+  .status-badge{
+    display:inline-block; padding:6px 10px; border-radius:999px; font-weight:700;
+    font-size:13px;
+  }
+  .status-badge.active{ background:#e6fbf0; color:#17965b; border:1px solid rgba(23,150,91,0.08); }
+  .status-badge.nonaktif{ background:#fff0f0; color:#d04a4a; }
+  .status-badge.pindah{ background:#fff6e6; color:#b86b00; }
+  .status-badge.meninggal{ background:#f4f5f7; color:#686b70; border:1px solid rgba(0,0,0,0.03); }
+
+  /* responsive */
+  @media (max-width:1100px){
+    .main-layout{ grid-template-columns: 1fr; }
+    .notifications-panel{ order:1 }
+    .status-panel{ order:2 }
+    .search{ min-width:160px; }
+  }
+
+</style>
+</head>
+<body>
+
+<main class="main-layout">
+  <!-- Notifications panel -->
+  <section class="card notifications-panel" aria-labelledby="notifTitle">
+    <div class="panel-header">
+      <div class="title" id="notifTitle">Gudang Notifikasi</div>
+
+      <div class="panel-controls">
+        <div class="segmented" role="tablist" aria-label="Kategori Notifikasi">
+          <button class="seg-btn" data-cat="ppat_ltb" aria-pressed="true">PPAT → LTB</button>
+          <button class="seg-btn" data-cat="ltb_lsb" aria-pressed="false">LTB → LSB</button>
+          <button class="seg-btn" data-cat="lsb_ppat" aria-pressed="false">LSB → PPAT</button>
+        </div>
+
+        <div class="search" role="search" aria-label="Cari notifikasi">
+          <svg width="16" height="16" fill="#4a90e2" viewBox="0 0 24 24"><path d="M21 21l-4.35-4.35"></path></svg>
+          <input id="notifSearch" placeholder="Cari NoBooking / UserID / WP..." />
+          <button id="clearSearch" title="Clear" style="background:none;border:none;color:var(--muted);cursor:pointer">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap" aria-live="polite">
+      <table class="data-table" id="notifTable" role="table" aria-label="Tabel Notifikasi">
+        <thead>
+          <tr>
+            <th>NoBooking</th>
+            <th>UserID</th>
+            <th>Special Field</th>
+            <th>PPATK Khusus</th>
+            <th>NOPPBB</th>
+            <th>Jenis WP</th>
+            <th>Updated</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="notifBody">
+          <!-- diisi oleh JS -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Status PPAT sidebar -->
+  <aside class="card status-panel" aria-labelledby="statusTitle">
+    <div class="header">
+      <h3 id="statusTitle">Status PPAT</h3>
+      <div style="font-size:13px;color:var(--muted)">Divisi: PPAT</div>
+    </div>
+
+    <div class="status-filter">
+      <select id="statusSelect" aria-label="Filter status">
+        <option value="">Semua status</option>
+        <option value="Aktif">Aktif</option>
+        <option value="Nonaktif">Nonaktif</option>
+        <option value="Pindah Kerja">Pindah Kerja</option>
+        <option value="Meninggal">Meninggal</option>
+      </select>
+      <input id="statusSearch" placeholder="Cari nama / userid" />
+    </div>
+
+    <div style="max-height:520px; overflow:auto;">
+      <table class="status-table" role="table" aria-label="Tabel Status PPAT">
+        <thead>
+          <tr><th>Nama</th><th>Status</th></tr>
+        </thead>
+        <tbody id="statusBody">
+          <!-- diisi JS -->
+        </tbody>
+      </table>
+    </div>
+  </aside>
+  <section>
+    <h3>Status User PPAT/PPATS</h3>
+    <div style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label>Filter status:</label>
+      <select id="userStatusFilter">
+        <option value="">Semua</option>
+        <option value="aktif">Aktif</option>
+        <option value="nonaktif">Nonaktif</option>
+        <option value="meninggal">Meninggal</option>
+        <option value="suspend">Suspend</option>
+      </select>
+      <button id="reloadUsers">Muat Ulang</button>
+    </div>
+    <div class="table-responsive">
+      <table class="excel-table gothic-table" id="userTable">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Userid</th>
+            <th>Divisi</th>
+            <th>Status</th>
+            <th>PPATK Khusus</th>
+            <th>Spesial</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ---------- sample data (ganti dengan fetch berdasar backend) ---------- */
+const notificationsData = {
+  ppat_ltb: [
+    { nobooking:'NB-001', userid:'USR21', special_field:'Field A', ppatk_khusus:'Ya', noppbb:'NP-1001', jenis_wajib_pajak:'PBB', updated:'2025-09-10' },
+    { nobooking:'NB-002', userid:'USR22', special_field:'Field C', ppatk_khusus:'Tidak', noppbb:'NP-1002', jenis_wajib_pajak:'Pajak Bumi', updated:'2025-09-12' },
+  ],
+  ltb_lsb: [
+    { nobooking:'NB-101', userid:'USR45', special_field:'Field L', ppatk_khusus:'Ya', noppbb:'NP-3008', jenis_wajib_pajak:'PBB', updated:'2025-09-14' },
+  ],
+  lsb_ppat: [
+    { nobooking:'NB-201', userid:'USR77', special_field:'Field Z', ppatk_khusus:'Tidak', noppbb:'NP-5577', jenis_wajib_pajak:'Pajak Bumi', updated:'2025-09-16' },
+  ]
+};
+
+const ppatUsers = [
+  { nama:'Teguh Susilo', special_field:'SpA', userid:'USR-12', divisi:'PPAT', status:'Aktif', ppatk_khusus:'Ya' },
+  { nama:'Nina Hart', special_field:'LB', userid:'USR-21', divisi:'PPAT', status:'Nonaktif', ppatk_khusus:'Tidak' },
+  { nama:'Budi Sant', special_field:'LA', userid:'USR-45', divisi:'PPAT', status:'Pindah Kerja', ppatk_khusus:'Ya' },
+  { nama:'Mawar', special_field:'SS', userid:'USR-70', divisi:'PPAT', status:'Meninggal', ppatk_khusus:'Tidak' }
+];
+
+/* ---------- state ---------- */
+let currentCategory = 'ppat_ltb'; // default
+const segButtons = document.querySelectorAll('.segmented .seg-btn');
+const notifBody = document.getElementById('notifBody');
+const notifSearch = document.getElementById('notifSearch');
+const clearSearch = document.getElementById('clearSearch');
+
+function renderNotifications(){
+  const rows = [];
+  const q = (notifSearch.value || '').trim().toLowerCase();
+  const list = notificationsData[currentCategory] || [];
+  for(const it of list){
+    // simple search across a few fields
+    if(q){
+      const hay = (it.nobooking+' '+it.userid+' '+it.special_field+' '+it.noppbb).toLowerCase();
+      if(!hay.includes(q)) continue;
+    }
+    rows.push(`
+      <tr>
+        <td>${it.nobooking}</td>
+        <td>${it.userid}</td>
+        <td>${it.special_field}</td>
+        <td>${it.ppatk_khusus}</td>
+        <td>${it.noppbb}</td>
+        <td>${it.jenis_wajib_pajak}</td>
+        <td>${it.updated}</td>
+        <td><button class="btn-sm" data-nobook="${it.nobooking}">Lihat</button></td>
+      </tr>
+    `);
+  }
+  notifBody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--muted)">Tidak ada notifikasi pada kategori ini.</td></tr>`;
+}
+
+/* segmented control interactions */
+segButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    segButtons.forEach(b=> b.setAttribute('aria-pressed','false'));
+    btn.setAttribute('aria-pressed','true');
+    currentCategory = btn.dataset.cat;
+    renderNotifications();
+  });
+});
+
+/* search */
+notifSearch.addEventListener('input', ()=> renderNotifications());
+clearSearch.addEventListener('click', ()=>{ notifSearch.value=''; renderNotifications(); });
+
+/* Lihat button (delegation) */
+document.getElementById('notifTable').addEventListener('click', (e)=>{
+  const b = e.target.closest('button[data-nobook]');
+  if(!b) return;
+  const nb = b.dataset.nobook;
+  alert('Open detail/preview untuk ' + nb + '  (integrasikan modal / viewPDF backend)');
+});
+
+/* ---------- STATUS PANEL ---------- */
+const statusBody = document.getElementById('statusBody');
+const statusSelect = document.getElementById('statusSelect');
+const statusSearch = document.getElementById('statusSearch');
+
+function renderStatus(){
+  const q = (statusSearch.value || '').trim().toLowerCase();
+  const filter = statusSelect.value;
+  const rows=[];
+  const list = ppatUsers.filter(u => (u.divisi||'').toLowerCase() === 'ppat');
+  for(const u of list){
+    if(filter && u.status !== filter) continue;
+    if(q){
+      if(!(`${u.nama} ${u.userid} ${u.special_field}`.toLowerCase().includes(q))) continue;
+    }
+    const badgeClass = u.status === 'Aktif' ? 'active' : (u.status === 'Nonaktif' ? 'nonaktif' : (u.status === 'Pindah Kerja' ? 'pindah' : 'meninggal'));
+    rows.push(`
+      <tr>
+        <td>
+          <div style="font-weight:700">${u.nama}</div>
+          <div style="font-size:13px;color:var(--muted)">${u.userid} • ${u.special_field}</div>
+        </td>
+        <td style="text-align:right">
+          <span class="status-badge ${badgeClass}">${u.status}</span>
+        </td>
+      </tr>
+    `);
+  }
+  statusBody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="2" style="padding:18px;text-align:center;color:var(--muted)">Tidak ada user.</td></tr>`;
+}
+
+statusSelect.addEventListener('change', renderStatus);
+statusSearch.addEventListener('input', renderStatus);
+
+/* init */
+renderNotifications();
+renderStatus();
+</script>
+
+<script>
+  (function(){
+    const qs = (s, r=document)=>r.querySelector(s);
+    const qsa = (s, r=document)=>Array.from(r.querySelectorAll(s));
+
+    async function fetchJSON(url){
+      const res = await fetch(url, { credentials:'include' });
+      const js = await res.json().catch(()=>({ success:false }));
+      if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
+      return js;
+    }
+
+    async function loadNotifications(){
+      try{
+        const js = await fetchJSON('/api/admin/status-ppat/notifications?page=1&limit=50');
+        const tbody = qs('#notifTable tbody');
+        tbody.innerHTML='';
+        const rows = js.rows||[];
+        if(!rows.length){
+          const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=8; td.textContent='Tidak ada Data masuk, 0 to 0 Data Pages'; return;
+        }
+        rows.forEach(r=>{
+          const tr = tbody.insertRow();
+          const vals = [
+            r.nobooking||'-',
+            r.userid||'-',
+            r.special_field||'-',
+            r.ppatk_khusus||'-',
+            r.noppbb||'-',
+            r.jenis_wajib_pajak||'-',
+            (r.updated_at||'-'),
+            'Detail'
+          ];
+          vals.forEach((v,idx)=>{ const td = tr.insertCell(); td.textContent = v; if(idx===7){ td.innerHTML = '<button class="btn-sm" data-nobook="'+(r.nobooking||'')+'">Lihat</button>'; }});
+        });
+      }catch(e){
+        const tbody = qs('#notifTable tbody');
+        tbody.innerHTML='';
+        const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=8; td.textContent='Gagal memuat data: '+e.message;
+      }
+    }
+
+    async function loadUsers(){
+      try{
+        const status = (qs('#userStatusFilter').value||'').trim();
+        const url = status ? `/api/admin/status-ppat/users?page=1&limit=50&status=${encodeURIComponent(status)}` : '/api/admin/status-ppat/users?page=1&limit=50';
+        const js = await fetchJSON(url);
+        const tbody = qs('#userTable tbody');
+        tbody.innerHTML='';
+        const rows = js.rows||[];
+        if(!rows.length){
+          const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=6; td.textContent='Tidak ada Data masuk, 0 to 0 Data Pages'; return;
+        }
+        rows.forEach(r=>{
+          const tr = tbody.insertRow();
+          const vals = [r.nama||'-', r.userid||'-', r.divisi||'-', r.status||'-', r.ppatk_khusus||'-', r.special_field||'-'];
+          vals.forEach(v=>{ const td = tr.insertCell(); td.textContent = v; });
+        });
+      }catch(e){
+        const tbody = qs('#userTable tbody');
+        tbody.innerHTML='';
+        const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=6; td.textContent='Gagal memuat data: '+e.message;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadNotifications();
+      loadUsers();
+      const reload = qs('#reloadUsers'); if (reload) reload.addEventListener('click', loadUsers);
+      const sel = qs('#userStatusFilter'); if (sel) sel.addEventListener('change', loadUsers);
+    });
+  })();
+  </script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+</body>
+</html>

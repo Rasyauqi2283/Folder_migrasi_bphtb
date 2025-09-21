@@ -2,8 +2,9 @@
 const API_ENDPOINT = 'http://localhost:3000/api/paraf/get-berkas-till-clear';
 const REQUEST_TIMEOUT = 10000;
 const REQUIRED_FIELDS = [
+    // Kolom yang ditampilkan pada tabel PV (ringkas)
     'no_validasi', 'no_registrasi', 'nobooking', 'tahunajb',
-    'namawajibpajak', 'namapemilikobjekpajak', 'status', 'trackstatus'
+    'status_display', 'pembuat_gelar'
 ];
 
 // State
@@ -13,9 +14,16 @@ let selectedNoBooking = null;
 async function loadTableDataParafValidasi() {
     try {
         await validateUserAccess();
+        console.debug('[PV][FE] fetchData:start');
         const { data } = await fetchData();
-        renderTable(data);
+        console.debug('[PV][FE] fetchData:done', { count: Array.isArray(data) ? data.length : null });
+        const mapped = Array.isArray(data) ? data.map((r,i)=>{ try{ const m=transformOldEndpointRow(r); return m; }catch(e){ console.warn('[PV][FE] transform error at', i, e?.message); throw e;} }) : [];
+        console.debug('[PV][FE] map:done', { count: mapped.length });
+        renderTable(mapped);
+        try { if (typeof setupPVPagination === 'function') setupPVPagination(); } catch(_) {}
+        console.debug('[PV][FE] renderTable:done');
     } catch (error) {
+        console.error('[PV][FE] loadTableDataParafValidasi:error', error);
         handleMainError(error);
     }
 }
@@ -50,10 +58,12 @@ async function fetchData() {
 
         if (!response.ok) {
             const errorData = await parseErrorResponse(response);
+            console.warn('[PV][FE] API_ENDPOINT not ok', { status: response.status, errorData });
             throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
         }
 
         const responseData = await response.json();
+        console.debug('[PV][FE] API_ENDPOINT json', { success: responseData?.success, hasData: Array.isArray(responseData?.data) });
         
         if (!responseData?.success) {
             throw new Error(responseData.message || 'Server returned unsuccessful response');
@@ -66,6 +76,7 @@ async function fetchData() {
         return responseData;
     } catch (error) {
         clearTimeout(timeout);
+        console.error('[PV][FE] fetchData:error', error);
         throw new Error(`Gagal memuat data: ${error.message}`);
     }
 }
@@ -87,12 +98,12 @@ function renderTable(data) {
         return;
     }
 
-    data.forEach(item => {
+    data.forEach((item, idx) => {
         try {
             validateItemFields(item, REQUIRED_FIELDS);
             renderTableRow(tbody, item);
         } catch (itemError) {
-            console.error('Error processing item:', itemError);
+            console.error('[PV][FE] renderTable item error', { idx, err: itemError?.message, item });
             appendErrorRow(tbody, `Gagal memuat data item: ${itemError.message}`);
         }
     });
@@ -103,8 +114,9 @@ function renderTable(data) {
 function renderTableRow(tbody, item) {
     const row = tbody.insertRow();
     row.setAttribute('data-nobooking', item.nobooking);
+    row.setAttribute('data-novalidasi', item.no_validasi || '');
 
-    // Add data cells
+    // Add data cells (ringkas)
     REQUIRED_FIELDS.forEach(field => {
         const cell = row.insertCell();
         cell.textContent = item[field] || '-';
@@ -124,7 +136,14 @@ function renderActionButton(container, item) {
     const button = document.createElement('button');
     button.className = 'btn-kirim-document';
     button.textContent = 'Kirim';
-    
+    // disable jika status belum Sudah Divalidasi
+    const canSend = String(item.status_display || '').trim().toLowerCase() === 'sudah divalidasi';
+    if (!canSend) {
+        button.disabled = true;
+        button.title = 'Dokumen belum berstatus "Sudah Divalidasi"';
+        try { button.style.opacity = '0.6'; button.style.cursor = 'not-allowed'; } catch(_) {}
+    }
+
     button.addEventListener('click', () => handleSendAction(button, container, item));
     
     container.appendChild(button);
@@ -132,6 +151,12 @@ function renderActionButton(container, item) {
 
 async function handleSendAction(button, container, item) {
     try {
+        // guard ulang
+        const canSend = String(item.status_display || '').trim().toLowerCase() === 'sudah divalidasi';
+        if (!canSend) {
+            throw new Error('Dokumen belum berstatus "Sudah Divalidasi"');
+        }
+
         const confirmed = await showConfirmationDialog(
             'Konfirmasi Pengiriman',
             'Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?'
@@ -139,13 +164,14 @@ async function handleSendAction(button, container, item) {
 
         if (!confirmed) return;
 
-        validateItemFields(item, ['nobooking', 'userid', 'namawajibpajak', 'namapemilikobjekpajak']);
+        validateItemFields(item, ['no_validasi', 'nobooking']);
         
-        const result = await sendToParafValidate(item);
+        const result = await sendToLSB(item);
         
         if (result.success) {
             updateUIAfterSuccess(button, container, result.no_validasi, item.nobooking);
             showSuccessNotification(result.no_validasi);
+            try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
         } else {
             throw new Error(result.message || "Gagal mengirim data ke LSB.");
         }
@@ -153,6 +179,39 @@ async function handleSendAction(button, container, item) {
         console.error('Button Action Error:', error);
         showUserNotification('Gagal Mengirim', error.message, 'error');
     }
+}
+
+async function sendToLSB(item) {
+    const body = {
+        no_validasi: item.no_validasi,
+        nobooking: item.nobooking
+    };
+    const resp = await fetch('/api/pv/send-to-lsb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+    });
+    const data = await resp.json().catch(() => ({ success:false, message:'Gagal parse respons' }));
+    if (!resp.ok) return { success:false, message: data.message || 'Gagal mengirim' };
+    return data;
+}
+
+function updateUIAfterSuccess(button, container, bookingId) {
+    try {
+        button.disabled = true;
+        button.textContent = 'Terkirim';
+        button.title = 'Sudah dikirim ke LSB';
+        const info = document.createElement('div');
+        info.className = 'validation-info';
+        info.textContent = `Nomor Booking: ${bookingId}`;
+        container.appendChild(info);
+        try { localStorage.setItem(`validation_${bookingId}`, bookingId); } catch(_) {}
+    } catch(_) {}
+}
+
+function showSuccessNotification(nobooking) {
+    showUserNotification('Berhasil', `Data terkirim ke LSB. No Booking: ${nobooking}`, 'success');
 }
 
 function createDropdownRow(item) {
@@ -178,6 +237,7 @@ function setupTableEventListeners() {
         if (!row) return;
 
         const nobooking = row.getAttribute('data-nobooking');
+        const novalidasi = row.getAttribute('data-novalidasi');
         if (!nobooking) return;
 
         selectedNoBooking = nobooking;
@@ -185,6 +245,10 @@ function setupTableEventListeners() {
 
         toggleDropdown(row);
         handleRowSelection(nobooking);
+        try {
+            const el = document.getElementById('pv-no-validasi');
+            if (el && novalidasi) el.value = novalidasi;
+        } catch(_) {}
     });
 }
 
@@ -250,12 +314,60 @@ function validateItemFields(item, requiredFields) {
     }
 }
 
+function transformOldEndpointRow(r){
+    const safe = (v)=> (v===null||v===undefined)?'':v;
+    const no_validasi = safe(r.no_validasi || r.noValidasi || r.novalidasi);
+    const no_registrasi = safe(r.no_registrasi || r.noRegistrasi || r.noregistrasi);
+    const nobooking = safe(r.nobooking || r.no_booking || r.bookingid || r.booking_id);
+    const tahunajb = safe(r.tahunajb || r.tahun_ajb || r.tahun || '');
+    const namawajibpajak = safe(r.namawajibpajak || r.nama_wajib_pajak || r.wp_nama || '');
+    const namapemilikobjekpajak = safe(r.namapemilikobjekpajak || r.nama_pemilik_objek_pajak || r.nama_pemilik || '');
+    // Status tampilan mengikuti pv_1_paraf_validate.status_tertampil (Menunggu, Sudah Divalidasi, Ditolak)
+    const rawDisplay = String(r.status_tertampil || '').trim();
+    let status_display = 'Menunggu';
+    if (/^sudah\s*divalidasi$/i.test(rawDisplay)) status_display = 'Sudah Divalidasi';
+    else if (/^ditolak$/i.test(rawDisplay)) status_display = 'Ditolak';
+    else if (/^menunggu$/i.test(rawDisplay)) status_display = 'Menunggu';
+    // Fallback lama (untuk kompatibilitas data historis)
+    else if (/^(approved|accept)$/i.test(rawDisplay)) status_display = 'Sudah Divalidasi';
+    else if (/^(cancelled|rejected)$/i.test(rawDisplay)) status_display = 'Ditolak';
+    const divisi = String(r.creator_divisi || r.divisi || r.pembuat_divisi || '').toLowerCase();
+    const userid = String(r.userid || r.creator_userid || '').toUpperCase();
+    const isPPAT = divisi==='ppat' || divisi==='ppats' || 
+                  userid.startsWith('PAT') || userid.startsWith('PATS');
+    const sf = safe(r.special_field || r.namapembuat || r.pembuat_nama || '');
+    const pu = safe(r.pejabat_umum || r.gelar_pembuat || '');
+    const baseNama = safe(r.namapembuat || r.pembuat_nama || r.creator_nama || r.nama || r.nama_pembuat || r.userid || '');
+    const pembuat_gelar = isPPAT ? `${sf}/${pu}` : (baseNama || '-');
+    const keterangan = safe(r.keterangan || (status_display==='Sudah Divalidasi' ? 'Sudah diparaf' : (status_display==='Ditolak' ? 'Data tidak lengkap' : '')));
+    const item = { 
+        no_validasi, no_registrasi, nobooking, tahunajb, namawajibpajak, namapemilikobjekpajak, status_display, pembuat_gelar, keterangan 
+    };
+    
+    // bawa informasi penting lain untuk dropdown/aksi
+    item.userid = r.userid || r.creator_userid || '';
+    item.peneliti_tanda_tangan_path = r.peneliti_tanda_tangan_path || r.tanda_tangan_path || '';
+    // dokumen terkait (fallback beberapa nama field)
+    item.akta_tanah_path = safe(r.akta_tanah_path || r.akta_tanah || r.path_akta_tanah || r.akta_path || '');
+    item.sertifikat_tanah_path = safe(r.sertifikat_tanah_path || r.sertifikat_tanah || r.path_sertifikat_tanah || r.sertifikat_path || '');
+    item.pelengkap_path = safe(r.pelengkap_path || r.file_pelengkap_path || r.path_pelengkap || '');
+    item.open_dokumen = safe(r.open_dokumen || r.dokumen_validasi_path || r.validasi_pdf || r.source_pdf_path || '');
+    
+    return item;
+}
+
 function getUserDivisi() {
     return localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Jika halaman ini menggunakan renderer khusus (mis. PV dashboard),
+    // biarkan script ini hanya menyediakan helper dan event listener tambahan.
+    if (window && window.PV_DISABLE_AUTO_RENDER) {
+        try { setupDropdownEventListeners(); } catch(_) {}
+        return;
+    }
     loadTableDataParafValidasi().catch(error => {
         console.error('Initialization Error:', error);
         handleMainError(error);
@@ -266,53 +378,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // DROPDOWN CONTENT GENERATOR
 // =====================
 function generateDropdownContent(item) {
-    const hasSignature = item.peneliti_tanda_tangan_path && 
-                        item.peneliti_tanda_tangan_path !== 'null' &&
-                        item.peneliti_tanda_tangan_path.trim() !== '';
 
     return `
         <div class="dropdown-content-wrapper">
             <!-- Document Info Section -->
             <div class="document-info-section">
                 <p><strong>No. Booking:</strong> ${item.nobooking || 'N/A'}</p>
-            </div>
-
-            <!-- Approval Section -->
-            <div class="approval-section">
-                ${hasSignature ? `
-                    <div class="signature-approval">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input approval-radio" 
-                                   type="radio" 
-                                   name="approval-${item.nobooking}" 
-                                   id="approve-${item.nobooking}"
-                                   value="approve" required>
-                            <label class="form-check-label" for="approve-${item.nobooking}">
-                                Setujui dan Tandatangani Dokumen
-                            </label>
-                        </div>
-                        
-                        <div class="signature-preview">
-                            <p class="signature-label">Tanda Tangan Peneliti:</p>
-                            <img src="${item.peneliti_tanda_tangan_path}" 
-                                 alt="Tanda Tangan Peneliti"
-                                 class="signature-image img-thumbnail"
-                                 onerror="this.onerror=null;this.src='/assets/img/signature-error.png'">
-                        </div>
-                    </div>
-                ` : `
-                    <div class="alert alert-warning no-signature-alert">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Dokumen belum memiliki tanda tangan yang valid
-                    </div>
-                `}
-                <br />
-                    <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
-                        <span class="btn-text">Simpan</span>
-                        <span class="spinner" hidden>
-                            <i class="fa fa-spinner fa-spin"></i>
-                        </span>
-                    </button>
+                <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                <p><strong>Nama Pemilik Objek Pajak:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
+                ${item.keterangan ? `<p><strong>Keterangan:</strong> ${item.keterangan}</p>` : ''}
             </div>
 
                 <div class="action-buttons">
@@ -323,36 +397,6 @@ function generateDropdownContent(item) {
                         </button>
                     </div>
                 </div>
-            <!-- PDF Preview Section -->
-            <div class="pdf-preview-section">
-                <h6 class="section-title">Pratinjau Dokumen Validasi</h6>
-                <div class="pdf-preview-container" id="pdf-preview-${item.nobooking}">
-                    <div class="pdf-placeholder">
-                        <i class="fas fa-file-pdf pdf-icon"></i>
-                        <p>Dokumen siap untuk divalidasi</p>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn btn-view-pdf" 
-                                onclick="viewPDFValidasi('${item.nobooking}')">
-                            <i class="fas fa-external-link-alt me-2"></i>Dokumen Validasi
-                        </button>
-                    </div>
-                </div>
-                <div class="pdf-meta-info">
-                    <small class="text-muted">Dokumen akan ditandatangani secara digital setelah disetujui</small>
-                </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button type="button" 
-                        class="btn btn-primary btn-simpan" 
-                        data-nobooking="${item.nobooking}"
-                        ${!hasSignature ? 'disabled' : ''}>
-                    <span class="btn-text">Proses Validasi</span>
-                    <span class="spinner-border spinner-border-sm" hidden></span>
-                </button>
-            </div>
 
             <!-- Document Links Section -->
             <div class="document-links-section">
@@ -366,28 +410,46 @@ function generateDropdownContent(item) {
 }
 
 function generateDocumentLinks(item) {
-    const documents = [
-        { path: item.akta_tanah_path, label: 'Akta Tanah' },
-        { path: item.sertifikat_tanah_path, label: 'Sertifikat Tanah' },
-        { path: item.pelengkap_path, label: 'Dokumen Pelengkap' },
-        { path: item.open_dokumen, label: 'Dokumen Validasi' }
-    ];
-
-    return documents.map(doc => {
-        if (!doc.path) return '';
-        return `
+    const toHref = (p)=>{ if(!p) return ''; return p.startsWith('/')? p : ('/'+p); };
+    const docs = [];
+    if (item.akta_tanah_path) {
+        const p = item.akta_tanah_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
             <div class="document-link-item">
-                <span class="document-label">${doc.label}:</span>
-                <a href="${encodeURI(doc.path)}" 
-                   target="_blank" 
-                   class="document-link">
-                    <button class="btn btn-sm btn-outline-secondary btn-view">
-                        <i class="fas fa-eye me-1"></i> Lihat Dokumen
-                    </button>
-                </a>
-            </div>
-        `;
-    }).join('');
+                <span class="document-label">Akta Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Akta Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    if (item.sertifikat_tanah_path) {
+        const p = item.sertifikat_tanah_path; const href = toHref(p); const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Sertifikat Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Sertifikat Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    if (item.pelengkap_path) {
+        const p = item.pelengkap_path; const href = toHref(p); const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Dokumen Pelengkap:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Pelengkap" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    if (item.open_dokumen) {
+        const href = toHref(item.open_dokumen);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Dokumen Validasi:</span>
+                <a href="${href}" target="_blank"><button class="btn-view">Buka</button></a>
+            </div>`);
+    }
+    return docs.join('');
 }
 
 async function viewPDFValidasi(nobooking) {
@@ -396,7 +458,7 @@ async function viewPDFValidasi(nobooking) {
         const pdfWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
         
         // Tampilkan loading state
-        pdfWindow.document.write(`
+        pdfWindow.document(`
             <!DOCTYPE html>
             <html>
             <head>
@@ -662,31 +724,18 @@ async function viewDocument(nobooking) {
         alert('No Booking tidak valid!');
         return;
     }
-    // Ambil userid dan nama dari session atau localStorage
-    const userid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
-    const nama = sessionStorage.getItem('nama') || localStorage.getItem('nama');
-    if (!userid || !nama) {
-        alert('User ID atau Nama tidak ditemukan.');
-        return;
-    }
-    const special_parafv = sessionStorage.getItem('special_parafv') || localStorage.getItem('special_parafv');
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`);
-        const data = await response.json();  // Mengonversi respons ke JSON
-
-        if (response.ok && data && data.userid) {
-            const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
-            // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${
-                encodeURIComponent(nobooking)}?userid=${
-                encodeURIComponent(creatorUserid)}&nama=${
-                encodeURIComponent(data.nama)}&special_parafv=${
-                encodeURIComponent(special_parafv || '')}`;
-
-            // Jika response sukses, buka PDF
-            window.open(pdfUrl, '_blank');
-        } else {
-            alert('Gagal memuat dokumen PDF.');
+        // Gunakan generator baru (generatepdfverif_paraf.js)
+        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nobooking)}`;
+        const w = window.open(pdfUrl, '_blank');
+        if (!w || w.closed || typeof w.closed === 'undefined') {
+            // Popup terblokir, fallback ke anchor
+            const a = document.createElement('a');
+            a.href = pdfUrl;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
     } catch (error) {
         console.error('Error fetching the PDF:', error);
@@ -870,3 +919,20 @@ async function submitApprovalToServer(nobooking, approvalStatus) {
 document.addEventListener('DOMContentLoaded', () => {
     setupDropdownEventListeners();
 });
+
+// =====================
+// FALLBACK HELPERS (UI)
+// =====================
+// Definisikan fallback jika halaman ini tidak memuat helper global lain
+if (typeof window.showUserNotification !== 'function') {
+    window.showUserNotification = function(title, message, type) {
+        try { console.log('[NOTIFY]', type || 'info', title, message); } catch(_) {}
+        alert(`${title}: ${message}`);
+    };
+}
+
+if (typeof window.showConfirmationDialog !== 'function') {
+    window.showConfirmationDialog = async function(title, message) {
+        return Promise.resolve(confirm(`${title}\n${message}`));
+    };
+}

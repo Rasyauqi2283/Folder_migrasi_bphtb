@@ -43,7 +43,7 @@ export const UserDB = {
       `SELECT 
         userid, password, nama, email, divisi, 
         fotoprofil, statuspengguna, verifiedstatus
-       FROM verified_users 
+       FROM a_2_verified_users 
        WHERE (email = $1 OR userid = $1)`,
       [identifier]
     );
@@ -52,7 +52,7 @@ export const UserDB = {
   // 2. Profile Management
   updateStatus: async (userId, status) => {
     return await query(
-      `UPDATE verified_users 
+      `UPDATE a_2_verified_users 
        SET statuspengguna = $2, last_active = NOW() 
        WHERE userid = $1`,
       [userId, status]
@@ -63,7 +63,7 @@ export const UserDB = {
   getAllByDivisi: async (divisi) => {
     return await query(
       `SELECT userid, nama, email, statuspengguna 
-       FROM verified_users 
+       FROM a_2_verified_users 
        WHERE divisi = $1`,
       [divisi]
     );

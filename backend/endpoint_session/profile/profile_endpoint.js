@@ -26,6 +26,7 @@ router.get('/profile', async (req, res) => {
       nip: req.session.user.nip,
       special_field: req.session.user.special_field,
       special_parafv: req.session.user.special_parafv,
+      pejabat_umum: req.session.user.pejabat_umum,
       statuspengguna: req.session.user.statuspengguna,
       tanda_tangan_path: req.session.user.tanda_tangan_path,
       tanda_tangan_mime: req.session.user.tanda_tangan_mime
@@ -33,7 +34,7 @@ router.get('/profile', async (req, res) => {
     // Jika data penting tidak ada, ambil dari DB
     if (!user.nama || !user.email) {
       const dbUser = await pool.query(
-        'SELECT * FROM verified_users WHERE userid = $1',
+        'SELECT * FROM a_2_verified_users WHERE userid = $1',
         [user.userid]
       );
       if (dbUser.rows[0]) {
@@ -53,6 +54,7 @@ router.get('/profile', async (req, res) => {
             nip: user.nip,
             special_field: user.special_field,
             special_parafv: user.special_parafv,
+            pejabat_umum: user.pejabat_umum,
             statuspengguna: user.statuspengguna,
             tanda_tangan_path: user.tanda_tangan_path,
             tanda_tangan_mime: user.tanda_tangan_mime
@@ -71,16 +73,13 @@ router.post('/update-profile-paraf',
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const userDivisi = req.session.user.divisi;
+        const userDivisi = req.session?.user?.divisi;
         // Validasi session dan divisi
-        if (!req.session.user || 
-            (userDivisi !== 'Peneliti' && 
-             userDivisi !== 'Peneliti Validasi' && 
-             userDivisi !== 'PPAT' && 
-             userDivisi !== 'PPATS')) {
+        const allowedDivisi = ['Peneliti', 'Peneliti Validasi', 'PPAT', 'PPATS'];
+        if (!req.session.user || !allowedDivisi.includes(userDivisi)) {
           return res.status(403).json({ 
             success: false, 
-            message: 'Hanya divisi tertentu yang boleh upload tanda tangan' 
+            message: 'Hanya divisi Tertentu yang boleh upload tanda tangan' 
           });
         }
 
@@ -90,19 +89,11 @@ router.post('/update-profile-paraf',
             message: 'File tanda tangan wajib diupload' 
           });
         }
-        // Hapus file lama jika ada
-        if (req.session.user.tanda_tangan_path) {
-          try {
-            const fullPath = path.join(process.cwd(), 'public', req.session.user.tanda_tangan_path);
-            await fs.unlink(fullPath).catch(() => {});
-          } catch (error) {
-            console.error('Error deleting old signature:', error);
-          }
-        }
+        // Tidak perlu hapus manual: nama file sama (overwrite). Pastikan folder ada.
 
         // Update database
         const updateQuery = `
-          UPDATE verified_users 
+          UPDATE a_2_verified_users 
           SET 
             tanda_tangan_path = $1, tanda_tangan_mime = $2
           WHERE userid = $3
@@ -138,13 +129,60 @@ router.post('/update-profile-paraf',
     }
   }
 );
+
+// Hapus tanda tangan yang sudah tersimpan
+router.delete('/update-profile-paraf', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (!req.session.user) {
+      await client.query('ROLLBACK');
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const userId = req.session.user.userid;
+    const result = await client.query(
+      'SELECT tanda_tangan_path FROM a_2_verified_users WHERE userid = $1',
+      [userId]
+    );
+    const currentPath = result.rows[0]?.tanda_tangan_path;
+
+    // Hapus file di disk jika ada
+    if (currentPath) {
+      try {
+        const fullPath = path.join(process.cwd(), 'public', currentPath);
+        await fs.unlink(fullPath).catch(() => {});
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    await client.query(
+      'UPDATE a_2_verified_users SET tanda_tangan_path = NULL, tanda_tangan_mime = NULL WHERE userid = $1',
+      [userId]
+    );
+
+    // Update session
+    req.session.user.tanda_tangan_path = null;
+    req.session.user.tanda_tangan_mime = null;
+
+    await client.query('COMMIT');
+    return res.json({ success: true, message: 'Tanda tangan direset' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    return res.status(500).json({ success: false, message: 'Gagal mereset tanda tangan' });
+  } finally {
+    client.release();
+  }
+});
+
 // Patch 3
 // Endpoint untuk mendapatkan file tanda tangan
 router.get('/tanda-tangan/:userid', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT tanda_tangan_path, tanda_tangan_mime 
-       FROM verified_users WHERE userid = $1`,
+       FROM a_2_verified_users WHERE userid = $1`,
       [req.params.userid]
     );
 
@@ -176,6 +214,56 @@ router.get('/tanda-tangan/:userid', async (req, res) => {
 });
 //
 
+// Tambahan: cek tanda tangan peneliti (digunakan di frontend)
+router.get('/peneliti/check-signature', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+  }
+  try {
+    const result = await pool.query(
+      `SELECT tanda_tangan_path IS NOT NULL AS has_signature 
+       FROM a_2_verified_users 
+       WHERE userid = $1`,
+      [req.session.user.userid]
+    );
+    res.status(200).json({
+      success: true,
+      has_signature: result.rows[0]?.has_signature || false
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Gagal memeriksa tanda tangan.' });
+  }
+});
+
+// Tambahan: get tanda tangan user (khusus peneliti untuk verifikasi)
+router.get('/get-tanda-tangan', async (req, res) => {
+  if (!req.session.user) {
+    return res.status(401).json({ success: false, message: 'Anda harus login terlebih dahulu' });
+  }
+  const { userid, divisi } = req.session.user;
+  if (divisi !== 'Peneliti') {
+    return res.status(403).json({ success: false, message: 'Hanya divisi Peneliti yang dapat mengakses tanda tangan' });
+  }
+  try {
+    const query = `
+      SELECT tanda_tangan_path, tanda_tangan_mime
+      FROM a_2_verified_users 
+      WHERE userid = $1 AND divisi = 'Peneliti'
+    `;
+    const result = await pool.query(query, [userid]);
+    const row = result.rows[0];
+    const hasSignature = !!(row && row.tanda_tangan_path);
+    return res.json({
+      success: true,
+      has_signature: hasSignature,
+      tanda_tangan_path: row?.tanda_tangan_path || null,
+      tanda_tangan_mime: row?.tanda_tangan_mime || null
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Gagal memeriksa tanda tangan' });
+  }
+});
+
 // Patch 4
 // Endpoint untuk upload foto profil
 router.post('/profile/upload', 
@@ -188,22 +276,22 @@ router.post('/profile/upload',
 
       // 1. Dapatkan path foto lama dari database
       const oldPhoto = await client.query(
-        'SELECT fotoprofil FROM verified_users WHERE userid = $1',
+        'SELECT fotoprofil FROM a_2_verified_users WHERE userid = $1',
         [req.session.user.userid]
       );
       const oldPhotoPath = oldPhoto.rows[0]?.fotoprofil;
 
-      // 2. Update database dengan path baru
+      // 2. Update database dengan path baru (nama file unik dengan timestamp)
       const newFotoPath = '/penting_F_simpan/profile-photo/' + req.file.filename;
       await client.query(
-        'UPDATE verified_users SET fotoprofil = $1 WHERE userid = $2',
+        'UPDATE a_2_verified_users SET fotoprofil = $1 WHERE userid = $2',
         [newFotoPath, req.session.user.userid]
       );
 
-      // 3. Hapus file lama JIKA BUKAN DEFAULT
+      // 3. Hapus file lama JIKA BUKAN DEFAULT (aman: abaikan jika sudah dihapus di storage)
       if (oldPhotoPath && !oldPhotoPath.includes('default-foto-profile')) {
         const fullOldPath = path.join(process.cwd(), 'public', oldPhotoPath);
-        await fs.unlink(fullOldPath).catch(console.warn); // Tidak block proses jika gagal
+        await fs.unlink(fullOldPath).catch(() => {});
       }
 
       await client.query('COMMIT'); // Commit transaksi
@@ -213,7 +301,9 @@ router.post('/profile/upload',
 
       res.json({ 
         success: true,
-        foto_path: newFotoPath 
+        message: 'Foto profil berhasil diperbarui.',
+        foto_path: newFotoPath,
+        updated_at: new Date().toISOString()
       });
     } catch (error) {
       await client.query('ROLLBACK'); // Rollback jika error
@@ -270,7 +360,7 @@ router.post('/update-password', updatePasswordLimiter, async (req, res) => {
 
       // 1. Verifikasi password lama
       const dbUser = await client.query(
-        'SELECT password FROM verified_users WHERE userid = $1',
+        'SELECT password FROM a_2_verified_users WHERE userid = $1',
         [req.session.user.userid]
       );
       const match = await bcrypt.compare(oldPassword, dbUser.rows[0].password);
@@ -286,7 +376,7 @@ router.post('/update-password', updatePasswordLimiter, async (req, res) => {
 
       // 3. Update database
       await client.query(
-        'UPDATE verified_users SET password = $1 WHERE userid = $2',
+        'UPDATE a_2_verified_users SET password = $1 WHERE userid = $2',
         [hashedNewPassword, req.session.user.userid]
       );
 

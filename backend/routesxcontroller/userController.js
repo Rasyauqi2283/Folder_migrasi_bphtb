@@ -78,7 +78,7 @@ export const assignUserIdHandler = async (req, res) => {
 
             // Check pending user
             const userResult = await client.query(
-                `SELECT * FROM verified_users 
+                `SELECT * FROM a_2_verified_users 
                  WHERE email = $1 AND verifiedstatus = 'verified_pending'
                  FOR UPDATE`,
                 [email]
@@ -101,7 +101,7 @@ export const assignUserIdHandler = async (req, res) => {
 
             // Update user
             const updateResult = await client.query(
-                `UPDATE verified_users 
+                `UPDATE a_2_verified_users 
                  SET userid = $1, 
                      divisi = $2, 
                      verifiedstatus = 'complete', 
@@ -152,4 +152,49 @@ export const assignUserIdHandler = async (req, res) => {
             error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
+};
+
+export const getCompleteUsersHandler = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        userid,
+        divisi,
+        nama,
+        email,
+        nik,
+        telepon,
+        username,
+        nip,
+        status_ppat,
+        verifiedstatus
+      FROM a_2_verified_users
+      WHERE verifiedstatus = 'complete'
+    `);
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('getCompleteUsersHandler error:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+};
+
+export const getPendingUsersHandler = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        nama,
+        email,
+        nik,
+        telepon,
+        userid,
+        divisi,
+        ppatk_khusus
+      FROM a_2_verified_users
+      WHERE verifiedstatus IN ('verified_pending','pending')
+    `);
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('getPendingUsersHandler error:', err);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
 };

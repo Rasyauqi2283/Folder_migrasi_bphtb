@@ -7,9 +7,12 @@
     <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
     <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
     <link rel="stylesheet" href="design-n-script/design_css/profile_design/profile_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="design-n-script/design_css/profile_design/photo_upload_enhanced.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
+    <!---->
 </head>
 <body>
     <!-- Header Section -->
@@ -28,7 +31,7 @@
             <div class="header-title">Profile</div>
         </div>
             
-        <div class="header-right">
+        <div class="header-right" style="margin-right: -20px; margin-top: -6px;">
             <!--profile section-->
             <div class="profile-pic-container">
                 <img src="" alt="Profile" class="fotoprofil profile-pic">
@@ -74,63 +77,78 @@
     <!-- Main Content -->
     <main class="main-content">
         <div id="profile-container">
-            <button class="arrow-button left" onclick="goBack()">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            
-            <h2>Profile</h2>
-            <div class="divisi-label">Divisi: <span class="divisi">load</span></div>
-
+            <div id="kepala-profile">
+                <button class="arrow-button left" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2>Profile</h2>
+                <div class="divisi-label">Divisi: <span class="divisi">load</span></div>
+            </div>
             <div class="profile-content-wrapper">
                 <!-- Profile Picture Section -->
-                <div class="profile-picture-wrapper">
-                    <img src="/default-foto-profile.png" alt="Profile Picture" class="fotoprofil" id="profileImg" width="150" height="150">
-                    <button class="profile-btn gfot" id="ubah-foto-btn">Ubah Foto</button>
+                <div class="bungkus-baru">
+                    <div class="profile-picture-wrapper">
+                        <img src="/default-foto-profile.png" alt="Profile Picture" class="fotoprofil" id="profileImg" width="150" height="150">
+                        <button class="profile-btn gfot" id="ubah-foto-btn">Ubah Foto</button>
+                    </div>
+                    <!-- Paraf Khusus Button -->
+                    <button id="paraf-peneliti" >Paraf Khusus</button>
+                    <!-- PV redirect to BSRE auth/signature page -->
+                    <a id="pv-signature-link" href="/ParafP/Sinkronisasi_BSRE/autentikasi_bsre.html" class="profile-btn" style="display:none;">Kelola TTE & QR (PV)</a>
                 </div>
-
                 <!-- Profile Details Section -->
                 <div class="profile-details">
-                    <div class="profile-field">
-                        <label for="userid">User ID</label>
-                        <input type="text" class="userid" id="userid" readonly value="">
-                    </div>
-                    <div class="profile-field">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" readonly>
-                    </div>
-                    <div class="profile-field" id="nip-field">
-                        <label for="nip">NIP</label>
-                        <input type="text" id="nip" readonly>
-                    </div>
-                    <div class="profile-field" id="special_field" style="display: none;">
-                        <label for="special_field_input">Nama PPAT</label>
-                        <input type="text" id="special_field_input" readonly>
-                    </div>
-                    <div class="profile-field" id="special_ParafValidasi" style="display: none;">
-                        <label for="special_parafv">Nama Paraf Validasi</label>
-                        <input type="text" id="special_parafv" readonly>
-                    </div>
-                    <div class="profile-field">
-                        <label for="nama">Nama</label>
-                        <input type="text" class="nama" id="nama" readonly value="">
-                    </div>
-                    <div class="profile-field">
-                        <label for="email">Email</label>
-                        <input type="text" id="email" readonly>
-                    </div>
-                    <div class="profile-field">
-                        <label for="telepon">Telepon</label>
-                        <input type="text" id="telepon" readonly>
-                    </div>
-                    <div class="profile-field">
-                        <label for="password">Katasandi</label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="password" readonly>
-                            <span class="toggle-password" id="toggle-password">👁️</span>
+                    <!-- Column 1 -->
+                    <div class="profile-column">
+                        <div class="profile-field">
+                            <label for="userid">User ID</label>
+                            <input type="text" class="userid" id="userid" readonly value="">
                         </div>
-                        <span class="change-password-link" id="change-password-link">Ubah katasandi?</span>
+                        <div class="profile-field">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" readonly>
+                        </div>
+                        <div class="profile-field" id="nip-field">
+                            <label for="nip">NIP</label>
+                            <input type="text" id="nip" readonly>
+                        </div>
+                        <div class="profile-field" id="special_field" style="display: none;">
+                            <label for="special_field_input">Nama PPAT</label>
+                            <input type="text" id="special_field_input" readonly>
+                        </div>
+                        <div class="profile-field" id="special_ParafValidasi" style="display: none;">
+                            <label for="special_parafv">Nama Paraf Validasi</label>
+                            <input type="text" id="special_parafv" readonly>
+                        </div>
+                        <div class="profile-field" id="pejabat_umum_field" style="display: none;">
+                            <label for="pejabat_umum_input">Gelar Pejabat</label>
+                            <input type="text" id="pejabat_umum_input" readonly>
+                        </div>
                     </div>
-                    <button id="paraf-peneliti" style="display:none;">Paraf Khusus</button>
+                    
+                    <!-- Column 2 -->
+                    <div class="profile-column">
+                        <div class="profile-field">
+                            <label for="nama">Nama</label>
+                            <input type="text" class="nama" id="nama" readonly value="">
+                        </div>
+                        <div class="profile-field">
+                            <label for="email">Email</label>
+                            <input type="text" id="email" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label for="telepon">Telepon</label>
+                            <input type="text" id="telepon" readonly>
+                        </div>
+                        <div class="profile-field">
+                            <label for="password">Katasandi</label>
+                            <div class="password-input-wrapper">
+                                <input type="password" id="password" readonly>
+                                <span class="toggle-password" id="toggle-password">👁️</span>
+                            </div>
+                            <span class="change-password-link" id="change-password-link">Ubah katasandi?</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -188,7 +206,7 @@
                                 <span>Pilih Foto</span>
                                 <input type="file" name="fotoProfil" id="new-profile-photo" accept=".jpg, .jpeg, .png" required>
                             </label>
-                            <p class="file-requirements">Format: JPG, PNG (Maks. 5MB)</p>
+                            <p class="file-requirements">Format: JPG, PNG (Maks. 2MB)</p>
                         </div>
                     </form>
                     
@@ -220,32 +238,41 @@
             </div>
         </div>
 
-        <!-- Signature Modal -->
-        <div id="parafModal" class="modal">
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h3>Upload Tanda Tangan Digital</h3>
-                <form id="parafForm">
-                    <div class="form-group">
-                        <label for="parafImage">
-                            Pilih gambar tanda tangan (PNG/JPG, max 3MB):
-                        </label>
-                        <input type="file" id="parafImage" accept="image/png, image/jpeg" required>
-                        <div class="preview-container">
-                            <img id="parafPreview" style="max-width: 200px; display: none;">
-                            <canvas id="grayscalePreview" style="max-width: 200px; display: none;"></canvas>
-                        </div>
-                        <p>Hasil akhir akan otomatis diubah ke hitam-putih</p>
+        <!-- Signature Overlay (reuse password-overlay styling) -->
+        <div class="password-overlay" id="signature-overlay" style="display: none;">
+            <h3>Upload Tanda Tangan Digital</h3>
+            <div class="password-content">
+                <form id="parafForm" enctype="multipart/form-data">
+                    <div class="password-field">
+                        <label for="parafImage">Pilih gambar tanda tangan (PNG/JPG/WebP, max 3MB)</label>
+                        <input type="file" id="parafImage" accept="image/png, image/jpeg, image/webp" required>
                     </div>
-                    <button type="submit" class="btn-upload">Simpan Paraf</button>
+ 
+                    <div class="signature-preview-row">
+                        <div class="signature-card">
+                            <div class="signature-label">Asli</div>
+                            <img id="parafPreview" style="display: none;" alt="Preview Asli">
+                        </div>
+                        <div class="signature-card">
+                            <div class="signature-label">Grayscale</div>
+                            <canvas id="grayscalePreview" style="display: none;" aria-label="Preview Grayscale"></canvas>
+                        </div>
+                    </div>
+                    <div id="signature-error-message" class="error-message" style="display:none;"></div>
+                    <div id="signature-success-message" class="success-message" style="display:none;"></div>
                 </form>
+            </div>
+            <div class="password-buttons">
+                <button id="cancel-signature-upload">Batal</button>
+                <button id="reset-signature" type="button">Reset</button>
+                <button id="confirm-signature-upload" type="button">Simpan Paraf</button>
             </div>
         </div>
     </main>
 
     <!-- Image Modal -->
     <div class="modal" id="imageModal">
-        <div class="blackbackground"></div>
+        <span class="close" onclick="closeImageModal()">&times;</span>
         <img src="" alt="Profile Picture" class="fotoprofil">
     </div>
         
@@ -277,6 +304,29 @@
         function goBack() {
             window.history.back();
         }
+        
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        }
+        
+        // Close modal when clicking outside the image
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageModal = document.getElementById('imageModal');
+            imageModal.addEventListener('click', function(e) {
+                if (e.target === imageModal) {
+                    closeImageModal();
+                }
+            });
+            
+            // Close modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && imageModal.style.display === 'flex') {
+                    closeImageModal();
+                }
+            });
+        });
     </script>
     <script src="design-n-script/script_frontback_java/header_script.js"></script>
     <script src="design-n-script/script_frontback_java/profile.js"></script>
@@ -288,6 +338,9 @@
                 const { ProfileController } = await import(
                     './frontend_import/profile/profile_frontend.js'
                 );
+                
+                // Import photo upload handler
+                await import('./frontend_import/profile/photo_upload_handler.js');
                 
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', () => {

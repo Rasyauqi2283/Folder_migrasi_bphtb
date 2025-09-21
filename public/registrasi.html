@@ -21,11 +21,12 @@
                 <i class="fas fa-user"></i>
                 <input type="text" id="nama" name="nama" placeholder="Nama Lengkap" required>
               </div>
-                <div class="form-group">
-                    <i class="fas fa-id-card"></i>
-                    <input type="number" id="nik" name="nik" pattern="\d{16}$" maxlength="16" placeholder="Isi NIK sesuai KTP">
-                    <div id="nikError" class="error-message">NIK harus 16 digit</div>
-                </div>
+              <div class="form-group">
+                <i class="fas fa-id-card"></i>
+                <input type="number" id="nik" name="nik" pattern="\d{16}$" maxlength="16" 
+                       placeholder="Isi NIK sesuai KTP" oninput="validateNIK(this)">
+                <div id="nikError" class="error-message">NIK harus 16 digit</div>
+            </div>
                 <div class="form-group">
                     <i class="fas fa-phone"></i>
                     <input type="number" id="telepon" name="telepon" pattern="^08\d{11}$" maxlength="13" placeholder="Pastikan no. telepon sesuai/cont: 08**" required>
@@ -53,7 +54,14 @@
         <div class="form-group">
             <div class="file-input">
                 <label for="fotoktp">KTP</label>
-                <input type="file" id="fotoktp" name="ktp" accept="image/png, image/jpeg, image/jpg, image/gif" required>
+                <input type="file" id="fotoktp" name="ktp" accept="image/png, image/jpeg, image/jpg, image/gif" onchange="processKTP(this.files[0])" required>
+            </div>
+
+            <div id="autoFillSuggestion" class="auto-fill-suggestion">
+                <p>Kami menemukan data dari KTP Anda:</p>
+                <p>Nama: <span id="detectedNama"></span></p>
+                <p>NIK: <span id="detectedNIK"></span></p>
+                <button type="button" class="auto-fill-btn" onclick="applyAutoFill()">Gunakan Data Ini</button>
             </div>
             <small onclick="openModal()">panduan foto KTP!</small>
         </div>

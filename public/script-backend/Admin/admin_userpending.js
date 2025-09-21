@@ -44,11 +44,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       pendingUsersResponse.json()
     ]);
 
-    // 4. Render Tables
+    // Pagination state
+    let PENDING_PAGE_SIZE = 20;
+    let currentPagePending = 1;
+
     const renderTable = (data, tableBodyId, isComplete = false) => {
       const tableBody = document.getElementById(tableBodyId);
       if (!tableBody) return;
-
       tableBody.innerHTML = data.map(user => `
         <tr>
           <td>${user.nama}</td>
@@ -68,7 +70,45 @@ document.addEventListener("DOMContentLoaded", async () => {
       `).join('');
     };
 
-    renderTable(pendingUsers, "pendingUsersTableBody");
+    function renderPaginationControls(total, containerId, onPage) {
+      const totalPages = Math.max(1, Math.ceil(total / PENDING_PAGE_SIZE));
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+      const mkBtn = (label, disabled, page) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.className = 'page-btn';
+        if (disabled) b.disabled = true;
+        b.addEventListener('click', () => onPage(page));
+        return b;
+      };
+      container.appendChild(mkBtn('«', currentPagePending === 1, 1));
+      container.appendChild(mkBtn('‹', currentPagePending === 1, currentPagePending - 1));
+      const windowSize = 3;
+      const start = Math.max(1, currentPagePending - windowSize);
+      const end = Math.min(totalPages, currentPagePending + windowSize);
+      for (let p = start; p <= end; p++) {
+        const btn = mkBtn(String(p), false, p);
+        if (p === currentPagePending) btn.classList.add('active');
+        container.appendChild(btn);
+      }
+      container.appendChild(mkBtn('›', currentPagePending === totalPages, currentPagePending + 1));
+      container.appendChild(mkBtn('»', currentPagePending === totalPages, totalPages));
+    }
+
+    function renderPendingPage(page) {
+      const total = pendingUsers.length;
+      const totalPages = Math.max(1, Math.ceil(total / PENDING_PAGE_SIZE));
+      currentPagePending = Math.min(Math.max(1, page), totalPages);
+      const startIdx = (currentPagePending - 1) * PENDING_PAGE_SIZE;
+      const slice = pendingUsers.slice(startIdx, startIdx + PENDING_PAGE_SIZE);
+      renderTable(slice, "pendingUsersTableBody");
+      renderPaginationControls(total, 'paginationControlsPending', renderPendingPage);
+    }
+
+    renderPendingPage(1);
 
     // 5. Form Handling
     const userIDDropdown = document.getElementById("userIDDropdown");

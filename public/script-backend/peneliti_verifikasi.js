@@ -22,8 +22,8 @@ async function loadTableDataPenelitiV() {
                     setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
             ]);
 
-            
-            if (!response.ok) {
+            // Jika 404, perlakukan sebagai tidak ada data (bukan error)
+            if (!response.ok && response.status !== 404) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
         } catch (fetchError) {
@@ -34,18 +34,23 @@ async function loadTableDataPenelitiV() {
         // Parse JSON data
         let data;
         try {
-            data = await response.json();
-            
-            if (!data || typeof data !== 'object') {
-                throw new Error('Invalid data format received from server');
-            }
-            
-            if (!data.success) {
-                throw new Error(data.message || 'Server returned unsuccessful response');
-            }
-            
-            if (!Array.isArray(data.data)) {
-                throw new Error('Expected array data not found in response');
+            if (response.status === 404) {
+                // Graceful empty state
+                data = { success: true, data: [] };
+            } else {
+                data = await response.json();
+                
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Invalid data format received from server');
+                }
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Server returned unsuccessful response');
+                }
+                
+                if (!Array.isArray(data.data)) {
+                    throw new Error('Expected array data not found in response');
+                }
             }
         } catch (parseError) {
             console.error('Parse Error:', parseError);
@@ -64,14 +69,15 @@ async function loadTableDataPenelitiV() {
         // Process each item
         data.data.forEach(item => {
             try {
-                // Validate required fields
+                // Validate required fields (relaxed)
                 const requiredFields = ['no_registrasi','nobooking', 'noppbb', 'userid', 
-                                      'namawajibpajak', 'namapemilikobjekpajak', 'tanggal_terima', 'status', 'trackstatus'];
-                
-                const missingFields = requiredFields.filter(field => !item[field]);
-                if (missingFields.length > 0) {
-                    console.warn(`Item with nobooking ${item.nobooking || 'unknown'} is missing fields:`, missingFields);
-                    return; // Skip this item
+                                      'namawajibpajak', 'namapemilikobjekpajak', 'tanggal_terima', 'creator_special_field', 'jenis_wajib_pajak'];
+                // Only enforce truly critical fields so rows still render
+                const criticalFields = ['no_registrasi','nobooking'];
+                const missingCritical = criticalFields.filter(field => !item[field]);
+                if (missingCritical.length > 0) {
+                    console.warn(`Skipping row missing critical fields for nobooking ${item.nobooking || 'unknown'}:`, missingCritical);
+                    return;
                 }
 
                 // Create table row
@@ -80,7 +86,8 @@ async function loadTableDataPenelitiV() {
                 // Add basic data cells
                 requiredFields.forEach((field, index) => {
                     const cell = row.insertCell(index);
-                    cell.textContent = item[field] || '-';
+                    const value = (item[field] === undefined || item[field] === null || item[field] === '') ? '-' : item[field];
+                    cell.textContent = value;
                 });
 
                 // Add action button
@@ -94,17 +101,20 @@ async function loadTableDataPenelitiV() {
                         const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
                         
                         if (confirmation) {
-                            if (!item || !item.nobooking || !item.userid || !item.namawajibpajak || !item.namapemilikobjekpajak) {
-                                throw new Error("Data yang diperlukan tidak lengkap.");
+                            // Hanya wajib: nobooking (opsional: no_registrasi)
+                            if (!item || !item.nobooking) {
+                                throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
                             }
 
                             const result = await sendToParafKasie(item);
-                            if (result.success) {
+                            if (result && result.success) {
                                 sendButton.disabled = true;
                                 sendButton.textContent = 'Data Terkirim';
+                                try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                                 alert("Data berhasil dikirim ke peneliti paraf!");
                             } else {
-                                throw new Error(result.message || "Gagal mengirim data ke peneliti.");
+                                const msg = (result && result.message) ? result.message : "Gagal mengirim data ke peneliti.";
+                                throw new Error(msg);
                             }
                         } else {
                             alert("Data tidak jadi dikirim.");
@@ -125,8 +135,18 @@ async function loadTableDataPenelitiV() {
                 dropdownContent.style.display = 'none';
                 
                 try {
+                    // Pesan status ringkas untuk kepegawaian
+                    const sudahSetuju = String(item.persetujuan||'').toLowerCase()==='true';
+                    const adaPemilihan = !!item.pemilihan; // tetap, karena pemilihan hanya ada di p_1_verifikasi
+                    const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
+                    // Tampilkan penandatangan berdasarkan paraf (p_3_clear_to_paraf.tanda_paraf_path -> a_2_verified_users)
+                    // Backend kini mengirim pc.tanda_paraf_path dan signer_userid
+                    const signerUser = item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+                    const pesan2 = (item.tanda_paraf_path || item.signer_userid) ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
                     dropdownContent.innerHTML = `
                         <p>No. registrasi: ${item.nobooking}</p>
+                        ${pesan1}
+                        ${pesan2}
                         ${item.peneliti_tanda_tangan_path ? `
                             <div class="form-group approval-section">
                                 <label>
@@ -290,7 +310,7 @@ async function loadTableDataPenelitiV() {
             const emptyRow = tbody.insertRow();
             const emptyCell = emptyRow.insertCell(0);
             emptyCell.colSpan = 10;
-            emptyCell.textContent = 'Tidak ada data yang valid untuk ditampilkan';
+            emptyCell.textContent = 'tidak ada data saat ini, 0 dari 0 data';
         }
 
     } catch (mainError) {
@@ -646,14 +666,22 @@ function resetNamaPemverifikasi(nobooking) {
 // Fungsi untuk mengirim data ke peneliti
 async function sendToParafKasie(item) {
     try {
+        // userid pada tabel p_3_clear_to_paraf:
+        // - userid   -> userid pembuat/pengirim nobooking (PPAT/PPATS) -> berasal dari item.userid
+        // - pemverifikasi -> userid peneliti (user yang sedang login)
+        const verifierUserid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
+        if (!verifierUserid) {
+            alert('User peneliti tidak ditemukan. Silakan login ulang.');
+            return { success: false, message: 'Tidak ada session peneliti' };
+        }
         const response = await fetch('http://localhost:3000/api/peneliti_send-to-paraf', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
-                userid: item.userid,
                 namawajibpajak: item.namawajibpajak,
                 namapemilikobjekpajak: item.namapemilikobjekpajak,
                 tanggal_terima: item.tanggal_terima,
@@ -664,7 +692,10 @@ async function sendToParafKasie(item) {
             }),
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({ success: false, message: 'Response tidak valid' }));
+        if (!response.ok) {
+            return { success: false, message: result.message || `HTTP ${response.status}` };
+        }
         if (result.success) {
             alert('Data berhasil dikirim ke peneliti!');
         } else {
@@ -674,9 +705,108 @@ async function sendToParafKasie(item) {
     } catch (error) {
         console.error('Error sending data to peneliti:', error);
         alert('Terjadi kesalahan saat mengirim data.');
+        return { success: false, message: error?.message || 'Unknown error' };
     }
 }
 
 
   ///
 window.onload = loadTableDataPenelitiV;
+
+// ===== Refactor: Signature flow using stored profile signature =====
+document.addEventListener('DOMContentLoaded', () => {
+    const showSignatureBtn = document.getElementById('showSignatureModal');
+    const overlay = document.getElementById('overlay-sign');
+    const overlayConfirmed = document.getElementById('overlay-sign-confirmed');
+    const overlayMsg = overlay?.querySelector('.overlay-content-sign p');
+    const btnCloseOverlay = document.getElementById('close_batal_overlay');
+    const btnAddSignature = document.getElementById('Tambahkan_tandatangan');
+    const btnCancelConfirm = document.getElementById('Tambahkan_tandatangan_batal_overlay');
+    const btnConfirm = document.getElementById('Tambahkan_tandatangan_confirmed');
+
+    if (showSignatureBtn) {
+        showSignatureBtn.addEventListener('click', async () => {
+            try {
+                // 1) Pastikan nobooking sudah dipilih
+                if (!selectedNoBooking) {
+                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum dipilih');
+                    return;
+                }
+
+                // 2) Pastikan user sudah punya tanda tangan di profil
+                const sigResp = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
+                const sigJson = await sigResp.json().catch(() => ({}));
+                if (!sigResp.ok || !sigJson.has_signature) {
+                    alert('Anda belum mengunggah tanda tangan di Profil. Silakan unggah terlebih dahulu.');
+                    return;
+                }
+
+                // 3) Pastikan dokumen sudah disimpan/diatur (tercantum di pv_1_clear_to_paraf)
+                const vResp = await fetch(`/api/validate-nobooking/${encodeURIComponent(selectedNoBooking)}`, { credentials: 'include' });
+                const vJson = await vResp.json().catch(() => ({}));
+                if (!vResp.ok || !vJson.success || !vJson.isValid) {
+                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum diatur sebagai dokumen yang disetujui.');
+                    return;
+                }
+
+                // 4) Semua valid → buka overlay konfirmasi penambahan tanda tangan
+                if (overlay) {
+                    overlay.style.display = 'flex';
+                    if (overlayMsg) {
+                        overlayMsg.textContent = `Dokumen Booking dengan No. Booking ${selectedNoBooking} telah dikirim oleh PPAT untuk verifikasi`;
+                    }
+                }
+            } catch (err) {
+                console.error('showSignatureModal error:', err);
+                alert('Terjadi kesalahan saat memeriksa status dokumen.');
+            }
+        });
+    }
+
+    if (btnCloseOverlay && overlay) {
+        btnCloseOverlay.addEventListener('click', () => {
+            overlay.style.display = 'none';
+        });
+    }
+
+    if (btnAddSignature && overlayConfirmed) {
+        btnAddSignature.addEventListener('click', () => {
+            overlayConfirmed.style.display = 'flex';
+        });
+    }
+
+    if (btnCancelConfirm && overlayConfirmed) {
+        btnCancelConfirm.addEventListener('click', () => {
+            overlayConfirmed.style.display = 'none';
+        });
+    }
+
+    if (btnConfirm) {
+        btnConfirm.addEventListener('click', async () => {
+            try {
+                if (!selectedNoBooking) {
+                    throw new Error('Parameter nobooking diperlukan');
+                }
+                // Transfer tanda tangan profil ke dokumen yang sudah disetujui dan belum memiliki tanda tangan
+                const resp = await fetch('/api/peneliti/transfer-signature', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nobooking: selectedNoBooking })
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (!resp.ok || json.success === false) {
+                    throw new Error(json.message || 'Gagal menambahkan tanda tangan');
+                }
+
+                alert('Tanda tangan berhasil ditambahkan pada dokumen yang memenuhi syarat.');
+            } catch (e) {
+                console.error('transfer-signature error:', e);
+                alert(`Gagal menandatangani dokumen: ${e.message}`);
+            } finally {
+                if (overlayConfirmed) overlayConfirmed.style.display = 'none';
+                if (overlay) overlay.style.display = 'none';
+            }
+        });
+    }
+});

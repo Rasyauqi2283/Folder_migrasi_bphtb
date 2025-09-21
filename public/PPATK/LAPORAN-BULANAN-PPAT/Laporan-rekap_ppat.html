@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PPATK | Rekap Berkas Diserahkan</title>
+  <link rel="stylesheet" href="/design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+</head>
+<body>
+  <main class="main-content">
+    <div class="table-container">
+      <div class="table-header">
+        <h3>Rekap Berkas Diserahkan</h3>
+        <div class="table-controls">
+          <div class="search-box">
+            <i class="search-icon">🔍</i>
+            <input id="searchInput" type="text" placeholder="Cari data...">
+          </div>
+          <button class="refresh-btn" id="refreshBtn"><i class="refresh-icon">🔄</i> Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="rekapTable" class="luxury-table">
+          <thead>
+            <tr>
+              <th>No Booking</th>
+              <th>NOP PBB</th>
+              <th>Tanggal</th>
+              <th>Tahun AJB</th>
+              <th>Nama Wajib Pajak</th>
+              <th>Nama Pemilik Objek Pajak</th>
+              <th>NPWP Wajib Pajak</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody class="data-tabel-badan" id="table-body">
+            <tr><td colspan="9" class="empty-message">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <div class="buttonPage"><div class="list-button" id="pager"></div></div>
+      </div>
+    </div>
+  </main>
+  <script>
+  (function(){
+    const PAGE_SIZE = 10;
+    let allRows = [];
+    let currentPage = 1;
+    const tbody = document.getElementById('table-body');
+    const pager = document.getElementById('pager');
+    const searchInput = document.getElementById('searchInput');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      if (!rows.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 9; td.className = 'empty-message';
+        td.textContent = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      rows.forEach(item => {
+        const tr = document.createElement('tr');
+        const vals = [item.nobooking, item.noppbb||'-', (item.updated_at||'').split('T')[0]||'-', item.tahunajb||'-', item.namawajibpajak||'-', item.namapemilikobjekpajak||'-', item.npwpwajibpajak||'-', item.trackstatus||'-'];
+        vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v||'-'; tr.appendChild(td); });
+        const action = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.textContent = 'Unduh Berkas';
+        btn.addEventListener('click', ()=> downloadValidatedFiles(item));
+        action.appendChild(btn); tr.appendChild(action);
+        tbody.appendChild(tr);
+        // dropdown row
+        const dd = document.createElement('tr');
+        const ddTd = document.createElement('td'); ddTd.colSpan = 9; ddTd.style.display = 'none';
+        ddTd.innerHTML = buildDropdownContent(item);
+        dd.appendChild(ddTd); tbody.appendChild(dd);
+        tr.addEventListener('click', ()=>{
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+      });
+    }
+
+    function buildDropdownContent(item){
+      const fileStempel = item.file_withstempel_path ? `<a href="/${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
+      const fileBooking = item.file_booking_path ? `<a href="/${item.file_booking_path}" target="_blank">Dokumen Booking</a>` : '<em>Tidak tersedia</em>';
+      return `<div style="padding:12px;">
+        <p><strong>No Booking:</strong> ${item.nobooking}</p>
+        <p><strong>Unduhan:</strong> ${fileStempel} | ${fileBooking}</p>
+      </div>`;
+    }
+
+    async function downloadValidatedFiles(item){
+      try {
+        if (item.file_withstempel_path) window.open('/'+item.file_withstempel_path, '_blank');
+        else if (item.file_booking_path) window.open('/'+item.file_booking_path, '_blank');
+        else alert('Tidak ada berkas untuk diunduh');
+      } catch(e){ alert('Gagal mengunduh: '+e.message); }
+    }
+
+    function renderPager(total){
+      pager.innerHTML = '';
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      function mk(label, disabled, on){ const b=document.createElement('button'); b.textContent=label; b.disabled=!!disabled; b.onclick=on; return b; }
+      pager.appendChild(mk('<', currentPage<=1, ()=>go(currentPage-1)));
+      for(let p=1;p<=totalPages;p++){ const b=mk(String(p), p===currentPage, ()=>go(p)); if(p===currentPage) b.style.fontWeight='700'; pager.appendChild(b);} 
+      pager.appendChild(mk('>', currentPage>=totalPages, ()=>go(currentPage+1)));
+    }
+    function go(p){
+      const total = allRows.length; const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      currentPage = Math.min(Math.max(1,p), totalPages);
+      const start = (currentPage-1)*PAGE_SIZE; const end = start+PAGE_SIZE;
+      renderRows(allRows.slice(start,end)); renderPager(total);
+    }
+
+    async function loadData(){
+      try{
+        const q = (searchInput.value||'').trim();
+        const url = q ? `/api/ppatk/rekap/diserahkan?page=1&limit=100&q=${encodeURIComponent(q)}` : '/api/ppatk/rekap/diserahkan?page=1&limit=100';
+        const res = await fetch(url, { credentials:'include' });
+        const js = await res.json();
+        if (!res.ok || !js.success) throw new Error(js.message||'Gagal memuat');
+        allRows = Array.isArray(js.rows) ? js.rows : [];
+        go(1);
+      }catch(e){
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-message">Gagal memuat data: ${e.message}</td></tr>`;
+        pager.innerHTML = '';
+      }
+    }
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadData();
+      if (refreshBtn) refreshBtn.addEventListener('click', loadData);
+      let t=null; if (searchInput) searchInput.addEventListener('input', ()=>{ if(t)clearTimeout(t); t=setTimeout(loadData,300); });
+    });
+  })();
+  </script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+</body>
+</html>

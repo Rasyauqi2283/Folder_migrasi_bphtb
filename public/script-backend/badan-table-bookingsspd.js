@@ -44,13 +44,21 @@ async function loadTableData(page = 1) {
                 cellNpwp.textContent = item.npwpwp;
                 celltrackingstats.textContent = item.trackstatus;
 
-                // [1] PEMBUATAN TOMBOL SEDERHANA
+                // [1] PEMBUATAN TOMBOL SEDERHANA (dengan guard status)
                 const sendButton = document.createElement('button');
                 sendButton.textContent = 'Kirim ke LTB';
                 sendButton.classList.add('btn-send-to-ltb');
                 sendButton.dataset.nobooking = item.nobooking;
-
-                sendButton.onclick =  () => sendToLtb(item.nobooking);
+                const isDraft = (item.trackstatus || '').toLowerCase() === 'draft';
+                if (!isDraft) {
+                    sendButton.disabled = true;
+                    sendButton.title = 'Aksi dinonaktifkan: status bukan Draft';
+                    try { sendButton.style.opacity = '0.5'; sendButton.style.cursor = 'not-allowed'; } catch(_) {}
+                }
+                sendButton.onclick = () => {
+                    if (sendButton.disabled) return;
+                    sendToLtb(item.nobooking);
+                };
 
                 cellkirim.appendChild(sendButton);
                 // Membuat dropdown row di bawah baris ini
@@ -59,9 +67,30 @@ async function loadTableData(page = 1) {
                 dropdownContent.colSpan = 9;
                 dropdownContent.style.display = 'none'; // Dropdown akan disembunyikan pertama kali
 dropdownContent.innerHTML = `
-<div class="dropdown-container">
+<div id='dropdown-case-badan' class="dropdown-container">
     <div class="header-section">
         <h4>Detail No. Booking: ${item.nobooking}</h4>
+    </div>
+
+        <div class="address-section">
+        <h5>Pengisian Data Alamat Permohonan Validasi</h5>
+        <div class="address-grid">
+            ${renderAddressField(item, 'alamat_pemohon', 'Alamat Pemohon')}
+        </div>
+
+                   <button class="btn-form" onclick="gotoform('${item.nobooking}')">
+                <i class="fas fa-file-alt"></i> Isi Form Permohonan
+            </button>
+    </div>
+    
+    <div class="action-buttons">
+        <h5>Dokumen Permohonan</h5>
+        <div class="form-actions">
+ 
+            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
+                <i class="fas fa-file-pdf"></i> Lihat Dokumen Validasi
+            </button>
+        </div>
     </div>
     
 <div class="document-section" id="document-${item.nobooking}">
@@ -92,12 +121,16 @@ dropdownContent.innerHTML = `
                 <div class="file-preview" id="aktaTanahPreview-${item.nobooking}">
                     ${item.akta_tanah_path ? `
                         <div class="file-preview-item">
-                            <i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>
-                            <div class="file-info">
-                                <span class="file-name">${item.akta_tanah_path.split('/').pop()}</span>
-                                <span class="file-size">(Uploaded)</span>
+                            <div class="file-content">
+                                ${item.akta_tanah_path.toLowerCase().endsWith('.pdf') ? 
+                                    '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
+                                    `<img src="${item.akta_tanah_url || '/' + item.akta_tanah_path}" class="file-thumbnail" alt="Preview">`}
+                                <div class="file-info">
+                                    <span class="file-name">${item.akta_tanah_path.split('/').pop()}</span>
+                                    <span class="file-size">(Uploaded)</span>
+                                </div>
                             </div>
-                            <a href="/${item.akta_tanah_path}" target="_blank" class="btn-view">
+                            <a href="${item.akta_tanah_url || '/' + item.akta_tanah_path}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>
@@ -124,14 +157,16 @@ dropdownContent.innerHTML = `
                 <div class="file-preview" id="sertifikatTanahPreview-${item.nobooking}">
                     ${item.sertifikat_tanah_path ? `
                         <div class="file-preview-item">
-                            ${item.sertifikat_tanah_path.endsWith('.pdf') ? 
-                                '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                `<img src="/${item.sertifikat_tanah_path}" class="file-thumbnail" alt="Preview">`}
-                            <div class="file-info">
-                                <span class="file-name">${item.sertifikat_tanah_path.split('/').pop()}</span>
-                                <span class="file-size">(Uploaded)</span>
+                            <div class="file-content">
+                                ${item.sertifikat_tanah_path.toLowerCase().endsWith('.pdf') ? 
+                                    '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
+                                    `<img src="${item.sertifikat_tanah_url || '/' + item.sertifikat_tanah_path}" class="file-thumbnail" alt="Preview">`}
+                                <div class="file-info">
+                                    <span class="file-name">${item.sertifikat_tanah_path.split('/').pop()}</span>
+                                    <span class="file-size">(Uploaded)</span>
+                                </div>
                             </div>
-                            <a href="/${item.sertifikat_tanah_path}" target="_blank" class="btn-view">
+                            <a href="${item.sertifikat_tanah_url || '/' + item.sertifikat_tanah_path}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>
@@ -158,14 +193,16 @@ dropdownContent.innerHTML = `
                 <div class="file-preview" id="pelengkapPreview-${item.nobooking}">
                     ${item.pelengkap_path ? `
                         <div class="file-preview-item">
-                            ${item.pelengkap_path.endsWith('.pdf') ? 
-                                '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                `<img src="/${item.pelengkap_path}" class="file-thumbnail" alt="Preview">`}
-                            <div class="file-info">
-                                <span class="file-name">${item.pelengkap_path.split('/').pop()}</span>
-                                <span class="file-size">(Uploaded)</span>
+                            <div class="file-content">
+                                ${item.pelengkap_path.toLowerCase().endsWith('.pdf') ? 
+                                    '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
+                                    `<img src="${item.pelengkap_url || '/' + item.pelengkap_path}" class="file-thumbnail" alt="Preview">`}
+                                <div class="file-info">
+                                    <span class="file-name">${item.pelengkap_path.split('/').pop()}</span>
+                                    <span class="file-size">(Uploaded)</span>
+                                </div>
                             </div>
-                            <a href="/${item.pelengkap_path}" target="_blank" class="btn-view">
+                            <a href="${item.pelengkap_url || '/' + item.pelengkap_path}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>
@@ -186,27 +223,7 @@ dropdownContent.innerHTML = `
     </div>
 
     
-    <div class="address-section">
-        <h5>Data Alamat</h5>
-        <div class="address-grid">
-            ${renderAddressField(item, 'alamat_pemohon', 'Alamat Pemohon')}
-            ${renderAddressField(item, 'kampungop', 'Kampung')}
-            ${renderAddressField(item, 'kelurahanop', 'Kelurahan')}
-            ${renderAddressField(item, 'kecamatanopj', 'Kecamatan')} <!--bagian ini kecamatanop perlu diganti menjadi kecamatanopj, diganti pada bagian endpoint database dan segala macam permohonan validasi-->
-        </div>
-    </div>
-    
-    <div class="action-buttons">
-        <h5>Dokumen Permohonan</h5>
-        <div class="form-actions">
-            <button class="btn-form" onclick="gotoform('${item.nobooking}')">
-                <i class="fas fa-file-alt"></i> Isi Form Permohonan
-            </button>
-            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
-                <i class="fas fa-file-pdf"></i> View PDF
-            </button>
-        </div>
-    </div>
+
 </div>
 `;
 
@@ -445,7 +462,7 @@ function downloadPDF(url, filename, timeout = 30000) {
             });
     });
 }
-//////////////////////////////          TANDA TANGAN PPATK DAN WAJIB PAJAK          ////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////          TANDA TANGAN WAJIB PAJAK          ////////////////////////////////////////////////////////////////////////////////////
 // Fungsi utama yang tetap sama
 function enableUploadTTD(nobooking) {
     sessionStorage.setItem('selectedNoBooking', nobooking);
@@ -564,30 +581,26 @@ function setupSignatureForm(nobooking) {
     
     // Setup preview
     setupFilePreview('signature1', 'preview1', 'previewImage1');
-    setupFilePreview('signature2', 'preview2', 'previewImage2');
     
     async function handleUpload() {
         try {
             console.log('Memulai proses upload...');
             
             const signature1Input = document.getElementById('signature1');
-            const signature2Input = document.getElementById('signature2');
             
-            if (!signature1Input || !signature2Input) {
-                showAlert('error', 'Input file tidak ditemukan!');
+            if (!signature1Input) {
+                showAlert('error', 'Input file tanda tangan wajib pajak tidak ditemukan!');
                 return;
             }
             
-            if (!signature2Input.files.length) {
-                showAlert('error', 'Harap upload tanda tangan PPATK!');
+            if (!signature1Input.files.length) {
+                showAlert('error', 'Harap upload tanda tangan wajib pajak!');
                 return;
             }
             
             const signature1 = signature1Input.files[0];
-            const signature2 = signature2Input.files[0];
             
             // Validasi file
-            if (!validateFile(signature2)) return;
             if (signature1 && !validateFile(signature1)) return;
             
             toggleLoading(true);
@@ -595,13 +608,11 @@ function setupSignatureForm(nobooking) {
             
             // Proses file dengan error handling yang lebih baik
             let processedSig1 = null;
-            let processedSig2 = null;
             
             try {
                 if (signature1) {
                     processedSig1 = await processSignature(signature1);
                 }
-                processedSig2 = await processSignature(signature2);
             } catch (error) {
                 console.error('Error processing files:', error);
                 showAlert('error', 'Gagal memproses file: ' + error.message);
@@ -610,7 +621,7 @@ function setupSignatureForm(nobooking) {
             }
 
             // Kirim ke backend
-            await uploadSignatures(nobooking, processedSig1, processedSig2);
+            await uploadSignatures(nobooking, processedSig1);
         } catch (error) {
             console.error('Upload error:', error);
             showAlert('error', error.message || 'Terjadi kesalahan saat upload');
@@ -701,18 +712,12 @@ function setupFilePreview(inputId, previewContainerId, previewImageId) {
 }
 
 // Fungsi upload yang diperbarui
-async function uploadSignatures(nobooking, signature1Blob, signature2Blob) {
+async function uploadSignatures(nobooking, signature1Blob) {
     try {
         console.log('Menyiapkan data untuk upload...');
         
         const formData = new FormData();
         formData.append('nobooking', nobooking);
-        
-        if (signature2Blob) {
-            formData.append('signature2', signature2Blob, 'signature2.png');
-        } else {
-            throw new Error('Tanda tangan PPATK wajib diupload!');
-        }
         
         if (signature1Blob) {
             formData.append('signature1', signature1Blob, 'signature1.png');
@@ -758,14 +763,10 @@ function closeModal() {
 
 function resetSignatureForm() {
     const signature1 = document.getElementById('signature1');
-    const signature2 = document.getElementById('signature2');
     const preview1 = document.getElementById('preview1');
-    const preview2 = document.getElementById('preview2');
     
     if (signature1) signature1.value = '';
-    if (signature2) signature2.value = '';
     if (preview1) preview1.style.display = 'none';
-    if (preview2) preview2.style.display = 'none';
 }
 
 function toggleLoading(show) {
@@ -841,6 +842,193 @@ function showAlert(type, message) {
         `;
         document.head.appendChild(style);
     }
+    
+    // Add styles for selected file preview
+    const selectedFileStyle = document.createElement('style');
+    selectedFileStyle.textContent = `
+        .selected-file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+        .file-input-wrapper {
+            transition: opacity 0.3s ease;
+        }
+        
+        .file-input-wrapper.hidden {
+            display: none !important;
+        }
+        
+        .file-info-uploaded {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e8;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+        }
+        
+        .uploaded-file-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .file-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+        
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+        
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+            word-break: break-word;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .btn-replace {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-replace:hover {
+            background: #5a6268;
+        }
+        
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+        
+        .file-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .file-thumbnail {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        .selected-file-info .file-thumbnail {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .pdf-icon {
+            font-size: 24px;
+            color: #dc3545;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .selected-file-info .pdf-icon {
+            font-size: 40px;
+            width: 60px;
+            height: 60px;
+        }
+        
+        .btn-view {
+            padding: 4px 8px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-view:hover {
+            background: #0056b3;
+            color: white;
+        }
+        
+
+        
+        .btn-remove {
+            padding: 2px 6px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: background-color 0.3s;
+            margin-left: auto;
+        }
+        
+        .selected-file-info .btn-remove {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        .btn-remove:hover {
+            background: #c82333;
+        }
+    `;
+    document.head.appendChild(selectedFileStyle);
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -874,13 +1062,15 @@ function showAlert(type, message) {
                 const input = document.getElementById(id);
                 if (input) {
                     input.addEventListener('change', function() {
-                        handleFilePreview(this, previewId, nobooking);
+                        const previewElement = document.getElementById(previewId);
+                        if (previewElement) {
+                            handleFilePreview(this, previewElement, nobooking);
+                        }
                     });
                 }
             });
         }
-        function handleFilePreview(input, previewId, nobooking) {
-            const previewElement = document.getElementById(previewId);
+        function handleFilePreview(input, previewElement, nobooking) {
             if (!previewElement) return;
 
             previewElement.innerHTML = '';
@@ -896,6 +1086,9 @@ function showAlert(type, message) {
             // Create preview
             createFilePreview(file, previewElement);
             setupFileRemoval(input, previewElement);
+            
+            // Update the upload area to show selected file info
+            updateUploadAreaDisplay(input, file, nobooking);
         }
         function validateFile(file, nobooking) {
             // Size validation
@@ -912,27 +1105,30 @@ function showAlert(type, message) {
 
             return true;
         }
-        function createFilePreview(file, previewId) {
-            const previewElement = document.getElementById(previewId);
+        function createFilePreview(file, previewElement) {
             const container = document.createElement('div');
             container.className = 'file-preview-item';
 
             if (file.type === 'application/pdf') {
                 container.innerHTML = `
-                    <i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>
-                    <div class="file-info">
-                        <span class="file-name">${file.name}</span>
-                        <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                    <div class="file-content">
+                        <i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>
+                        <div class="file-info">
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                        </div>
                     </div>
                 `;
             } else if (file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     container.innerHTML = `
-                        <img src="${e.target.result}" class="file-thumbnail" alt="Preview ${file.name}">
-                        <div class="file-info">
-                            <span class="file-name">${file.name}</span>
-                            <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                        <div class="file-content">
+                            <img src="${e.target.result}" class="file-thumbnail" alt="Preview ${file.name}">
+                            <div class="file-info">
+                                <span class="file-name">${file.name}</span>
+                                <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                            </div>
                         </div>
                     `;
                 };
@@ -941,8 +1137,7 @@ function showAlert(type, message) {
 
             previewElement.appendChild(container);
         }
-        function setupFileRemoval(input, previewId) {
-            const previewElement = document.getElementById(previewId);
+        function setupFileRemoval(input, previewElement) {
             const removeBtn = document.createElement('button');
             removeBtn.className = 'btn-remove';
             removeBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
@@ -950,6 +1145,22 @@ function showAlert(type, message) {
             removeBtn.onclick = () => {
                 input.value = '';
                 previewElement.innerHTML = '';
+                
+                // Clear upload area display and show upload button again
+                const nobooking = input.id.split('-').pop();
+                const fieldName = input.id.replace(`Input-${nobooking}`, '');
+                const container = document.getElementById(`${fieldName}Container-${nobooking}`);
+                if (container) {
+                    const fileInfoDisplay = container.querySelector('.selected-file-info');
+                    if (fileInfoDisplay) {
+                        fileInfoDisplay.remove();
+                    }
+                    
+                    const uploadWrapper = container.querySelector('.file-input-wrapper');
+                    if (uploadWrapper) {
+                        uploadWrapper.classList.remove('hidden');
+                    }
+                }
             };
 
             previewElement.querySelector('.file-preview-item')?.appendChild(removeBtn);
@@ -1031,17 +1242,31 @@ function showAlert(type, message) {
         }
         function updateDocumentDisplay(nobooking, data) {
             // Helper function to create uploaded file display
-            const createUploadedFileDisplay = (type, path) => {
+            const createUploadedFileDisplay = (type, path, url) => {
                 const container = document.getElementById(`${type}Container-${nobooking}`);
                 if (!container) return;
+
+                const isPdf = path.toLowerCase().endsWith('.pdf');
+                const fileName = path.split('/').pop();
+                const displayUrl = url || '/' + path;
 
                 container.innerHTML = `
                     <label>${type === 'aktaTanah' ? 'Akta Tanah' : type === 'sertifikatTanah' ? 'Sertifikat Tanah' : 'Dokumen Pelengkap'}:</label>
                     <div class="file-info-uploaded">
-                        <span class="file-name">${path.split('/').pop()}</span>
-                        <a href="/${path}" target="_blank" class="btn-view" aria-label="Lihat dokumen">
-                            <i class="fas fa-eye"></i> Lihat
-                        </a>
+                        <div class="uploaded-file-preview">
+                            <div class="file-content">
+                                ${isPdf ? 
+                                    '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
+                                    `<img src="${displayUrl}" class="file-thumbnail" alt="Preview">`}
+                                <div class="file-details">
+                                    <span class="file-name">${fileName}</span>
+                                    <span class="file-size">(Uploaded)</span>
+                                </div>
+                            </div>
+                            <a href="${displayUrl}" target="_blank" class="btn-view" aria-label="Lihat dokumen">
+                                <i class="fas fa-eye"></i> Lihat
+                            </a>
+                        </div>
                     </div>
                     <button class="btn-replace" onclick="replaceFile('${type}', '${nobooking}')" aria-label="Ganti file">
                         <i class="fas fa-sync-alt"></i> Ganti File
@@ -1055,19 +1280,55 @@ function showAlert(type, message) {
                 const input = document.getElementById(`${type}Input-${nobooking}`);
                 if (input) {
                     input.addEventListener('change', function() {
-                        handleFilePreview(this, `${type}Preview-${nobooking}`, nobooking);
+                        const previewElement = document.getElementById(`${type}Preview-${nobooking}`);
+                        if (previewElement) {
+                            handleFilePreview(this, previewElement, nobooking);
+                        }
                     });
                 }
             };
 
             // Update each file type if available
-            if (data.akta_tanah_path) createUploadedFileDisplay('aktaTanah', data.akta_tanah_path);
-            if (data.sertifikat_tanah_path) createUploadedFileDisplay('sertifikatTanah', data.sertifikat_tanah_path);
-            if (data.pelengkap_path) createUploadedFileDisplay('pelengkap', data.pelengkap_path);
+            if (data.akta_tanah_path) createUploadedFileDisplay('aktaTanah', data.akta_tanah_path, data.akta_tanah_url);
+            if (data.sertifikat_tanah_path) createUploadedFileDisplay('sertifikatTanah', data.sertifikat_tanah_path, data.sertifikat_tanah_url);
+            if (data.pelengkap_path) createUploadedFileDisplay('pelengkap', data.pelengkap_path, data.pelengkap_url);
         }
         function replaceFile(type, nobooking) {
             const input = document.getElementById(`${type}Input-${nobooking}`);
-            if (input) input.click();
+            if (input) {
+                // Clear any existing previews
+                const container = document.getElementById(`${type}Container-${nobooking}`);
+                if (container) {
+                    const fileInfoUploaded = container.querySelector('.file-info-uploaded');
+                    if (fileInfoUploaded) {
+                        fileInfoUploaded.remove();
+                    }
+                    
+                    const btnReplace = container.querySelector('.btn-replace');
+                    if (btnReplace) {
+                        btnReplace.remove();
+                    }
+                    
+                    const preview = container.querySelector('.file-preview');
+                    if (preview) {
+                        preview.innerHTML = '';
+                    }
+                    
+                    // Show upload area again
+                    const uploadWrapper = container.querySelector('.file-input-wrapper');
+                    if (uploadWrapper) {
+                        uploadWrapper.classList.remove('hidden');
+                    }
+                    
+                    // Clear selected file info
+                    const selectedFileInfo = container.querySelector('.selected-file-info');
+                    if (selectedFileInfo) {
+                        selectedFileInfo.remove();
+                    }
+                }
+                
+                input.click();
+            }
         }
         function resetFileInputs(nobooking) {
             const inputs = [
@@ -1078,7 +1339,29 @@ function showAlert(type, message) {
 
             inputs.forEach(id => {
                 const input = document.getElementById(id);
-                if (input) input.value = '';
+                if (input) {
+                    input.value = '';
+                    
+                    // Clear previews and show upload area
+                    const fieldName = id.replace(`Input-${nobooking}`, '');
+                    const container = document.getElementById(`${fieldName}Container-${nobooking}`);
+                    if (container) {
+                        const preview = container.querySelector('.file-preview');
+                        if (preview) {
+                            preview.innerHTML = '';
+                        }
+                        
+                        const selectedFileInfo = container.querySelector('.selected-file-info');
+                        if (selectedFileInfo) {
+                            selectedFileInfo.remove();
+                        }
+                        
+                        const uploadWrapper = container.querySelector('.file-input-wrapper');
+                        if (uploadWrapper) {
+                            uploadWrapper.classList.remove('hidden');
+                        }
+                    }
+                }
             });
         }
 
@@ -1363,8 +1646,35 @@ async function sendToLtb(nobooking) {
         const result = await response.json();
         
         if (result.success) {
-            alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
-            location.reload(); // Lebih reliable daripada loadTableData()
+            // Tampilkan overlay notifikasi 1-2 detik setelah pengiriman
+            try {
+                const overlay = document.getElementById('ltb-overlay');
+                const messageEl = document.getElementById('ltb-overlay-message');
+                const closeBtn = document.getElementById('ltb-overlay-close');
+                const audioEl = document.getElementById('ltb-success-audio');
+                if (overlay && messageEl) {
+                    const nob = nobooking;
+                    const noreg = result.no_registrasi || '-';
+                    messageEl.textContent = `Nobooking anda ${nob} telah masuk ke dalam daftar antrian di Loket Terima Berkas dengan antrian ${noreg}, dan sedang di olah`;
+                    setTimeout(() => {
+                        overlay.style.display = 'block';
+                        // Coba play audio notifikasi (beberapa browser hanya mengizinkan setelah user interaction)
+                        try { audioEl && audioEl.play && audioEl.play().catch(() => {}); } catch(_) {}
+                    }, 1000);
+                    if (closeBtn) {
+                        closeBtn.onclick = () => {
+                            overlay.style.display = 'none';
+                            location.reload();
+                        };
+                    }
+                } else {
+                    alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
+                    location.reload();
+                }
+            } catch (_) {
+                alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
+                location.reload();
+            }
         } else {
             alert(result.message || 'Gagal mengirim data');
         }
@@ -2358,111 +2668,6 @@ function clickform() {
     // Tambahkan logika untuk view form di sini
 }
 
-// Fungsi untuk menampilkan modal upload dokumen
-function showDocumentUploadModal() {
-    const modal = document.getElementById('documentUploadModal');
-    if (!modal) {
-        showAlert('error', 'Modal upload dokumen tidak ditemukan!');
-        return;
-    }
-    
-    modal.style.display = 'flex';
-    setupDocumentUploadForm();
-}
-
-// Setup form upload dokumen
-function setupDocumentUploadForm() {
-    const modal = document.getElementById('documentUploadModal');
-    const closeBtn = document.getElementById('closeDocModalBtn');
-    const cancelBtn = document.getElementById('cancelDocUploadBtn');
-    const uploadBtn = document.getElementById('uploadDocs');
-    
-    if (!modal || !closeBtn || !cancelBtn || !uploadBtn) {
-        showAlert('error', 'Elemen modal upload dokumen tidak lengkap!');
-        return;
-    }
-    
-    // Hapus event listener lama jika ada
-    closeBtn.removeEventListener('click', closeDocModal);
-    cancelBtn.removeEventListener('click', closeDocModal);
-    uploadBtn.removeEventListener('click', handleDocUpload);
-    modal.removeEventListener('click', handleDocModalClick);
-    
-    // Tambahkan event listener baru
-    closeBtn.addEventListener('click', closeDocModal);
-    cancelBtn.addEventListener('click', closeDocModal);
-    uploadBtn.addEventListener('click', handleDocUpload);
-    modal.addEventListener('click', handleDocModalClick);
-    
-    // Setup preview untuk dokumen
-    setupDocumentPreview('document1', 'docPreview1', 'docPreviewImage1');
-    setupDocumentPreview('document2', 'docPreview2', 'docPreviewImage2');
-    
-    // Populate booking selection dropdown
-    populateBookingDropdown();
-    
-    async function handleDocUpload() {
-        try {
-            console.log('Memulai proses upload dokumen...');
-            
-            const doc1Input = document.getElementById('document1');
-            const doc2Input = document.getElementById('document2');
-            const bookingSelect = document.getElementById('bookingSelect');
-            
-            console.log('Input elements found:', { doc1Input: !!doc1Input, doc2Input: !!doc2Input, bookingSelect: !!bookingSelect });
-            
-            if (!doc1Input || !doc2Input) {
-                showAlert('error', 'Input file dokumen tidak ditemukan!');
-                return;
-            }
-            
-            const doc1 = doc1Input.files[0];
-            const doc2 = doc2Input.files[0];
-            const selectedBookingId = bookingSelect ? bookingSelect.value : null;
-            
-            console.log('Files selected:', { 
-                doc1: doc1 ? { name: doc1.name, size: doc1.size, type: doc1.type } : null,
-                doc2: doc2 ? { name: doc2.name, size: doc2.size, type: doc2.type } : null,
-                bookingId: selectedBookingId
-            });
-            
-            // Validasi dokumen wajib
-            if (!doc1) {
-                showAlert('error', 'Dokumen wajib harus diupload!');
-                return;
-            }
-            
-            // Validasi file
-            if (!validateDocument(doc1)) {
-                console.log('Document1 validation failed');
-                return;
-            }
-            if (doc2 && !validateDocument(doc2)) {
-                console.log('Document2 validation failed');
-                return;
-            }
-            
-            console.log('All validations passed, starting upload...');
-            toggleDocLoading(true);
-            showAlert('info', 'Memproses dokumen...');
-            
-            // Upload dokumen dengan booking ID
-            await uploadDocuments(doc1, doc2, selectedBookingId);
-        } catch (error) {
-            console.error('Document upload error:', error);
-            showAlert('error', error.message || 'Terjadi kesalahan saat upload dokumen');
-        } finally {
-            toggleDocLoading(false);
-        }
-    }
-    
-    function handleDocModalClick(e) {
-        if (e.target === modal) {
-            closeDocModal();
-        }
-    }
-}
-
 // Validasi dokumen
 function validateDocument(file) {
     console.log('Validating document:', { name: file?.name, size: file?.size, type: file?.type });
@@ -2856,4 +3061,122 @@ function toggleDocLoading(show) {
     if (loadingIndicator) {
         loadingIndicator.style.display = show ? 'inline-block' : 'none';
     }
+}
+
+// Function to update upload area display when file is selected
+function updateUploadAreaDisplay(input, file, nobooking) {
+    const fieldName = input.id.replace(`Input-${nobooking}`, '');
+    const container = document.getElementById(`${fieldName}Container-${nobooking}`);
+    if (!container) return;
+
+    // Find the label element
+    const label = container.querySelector('.file-upload-label');
+    if (!label) return;
+
+    // Create or update the file info display
+    let fileInfoDisplay = container.querySelector('.selected-file-info');
+    if (!fileInfoDisplay) {
+        fileInfoDisplay = document.createElement('div');
+        fileInfoDisplay.className = 'selected-file-info';
+        label.appendChild(fileInfoDisplay);
+    }
+
+    if (file.type === 'application/pdf') {
+            fileInfoDisplay.innerHTML = `
+                <div class="file-preview-item">
+                    <div class="file-content">
+                        <i class="fas fa-file-pdf pdf-icon"></i>
+                        <div class="file-info">
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                        </div>
+                    </div>
+                    <button class="btn-remove" onclick="removeSelectedFile('${input.id}')" aria-label="Hapus file">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+    } else if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+                reader.onload = (e) => {
+                    fileInfoDisplay.innerHTML = `
+                        <div class="file-preview-item">
+                            <div class="file-content">
+                                <img src="${e.target.result}" class="file-thumbnail" alt="Preview ${file.name}">
+                                <div class="file-info">
+                                    <span class="file-name">${file.name}</span>
+                                    <span class="file-size">(${(file.size/1024/1024).toFixed(2)} MB)</span>
+                                </div>
+                            </div>
+                            <button class="btn-remove" onclick="removeSelectedFile('${input.id}')" aria-label="Hapus file">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                };
+        reader.readAsDataURL(file);
+    }
+
+    // Hide the original upload wrapper
+    const uploadWrapper = label.querySelector('.file-input-wrapper');
+    if (uploadWrapper) {
+        uploadWrapper.classList.add('hidden');
+    }
+}
+
+// Function to remove selected file
+function removeSelectedFile(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = '';
+        
+        const nobooking = inputId.split('-').pop();
+        const fieldName = inputId.replace(`Input-${nobooking}`, '');
+        const container = document.getElementById(`${fieldName}Container-${nobooking}`);
+        if (container) {
+            const fileInfoDisplay = container.querySelector('.selected-file-info');
+            if (fileInfoDisplay) {
+                fileInfoDisplay.remove();
+            }
+            
+            const uploadWrapper = container.querySelector('.file-input-wrapper');
+            if (uploadWrapper) {
+                uploadWrapper.classList.remove('hidden');
+            }
+            
+            const preview = container.querySelector('.file-preview');
+            if (preview) {
+                preview.innerHTML = '';
+            }
+        }
+    }
+}
+
+function setupFileRemoval(input, previewElement) {
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-remove';
+    removeBtn.innerHTML = '<i class="fas fa-times" aria-hidden="true"></i>';
+    removeBtn.setAttribute('aria-label', 'Hapus file');
+    removeBtn.onclick = () => {
+        input.value = '';
+        previewElement.innerHTML = '';
+        
+        // Clear upload area display and show upload button again
+        const nobooking = input.id.split('-').pop();
+        const fieldName = input.id.replace(`Input-${nobooking}`, '');
+        const container = document.getElementById(`${fieldName}Container-${nobooking}`);
+        if (container) {
+            const fileInfoDisplay = container.querySelector('.selected-file-info');
+            if (fileInfoDisplay) {
+                fileInfoDisplay.remove();
+            }
+            
+            const uploadWrapper = container.querySelector('.file-input-wrapper');
+            if (uploadWrapper) {
+                uploadWrapper.classList.remove('hidden');
+            }
+        }
+    };
+
+    previewElement.querySelector('.file-preview-item')?.appendChild(removeBtn);
 }

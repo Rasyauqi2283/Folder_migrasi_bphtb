@@ -1,0 +1,1707 @@
+/*Design untuk setiap Table Utama*/
+/* Excel-like table styling for main content tables */
+
+/* Container helpers */
+.main-content {
+  /* Prevent content from exceeding viewport width when sidebar expands */
+  max-width: 100vw;
+  overflow-x: hidden;
+  /* Keep right edge pinned to viewport; shrink from pushing (left) side */
+  margin-left: 60px; /* collapsed sidebar width */
+  width: calc(100vw - 60px);
+  transition: margin-left .3s ease, width .3s ease;
+  padding-right: 20px; /* right gutter so content not flush to viewport */
+  box-sizing: border-box;
+}
+
+.main-content .table-scroll {
+  max-width: 100%;
+  overflow-x: auto; /* Allow horizontal scroll if absolutely necessary */
+}
+
+/* When sidebar is expanded, shift content by sidebar width but keep right edge pinned */
+.main-content.shifted {
+  width: calc(100vw - 250px);
+}
+
+/* Base table */
+.main-content table.excel-table {
+  border-collapse: collapse;
+  background-color: #ffffff;
+  color: #0f172a; /* slate-900 */
+  font-size: 14px;
+}
+
+.main-content table.excel-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 100%); /* soft light blue */
+  color: #0c4a6e; /* cyan-900 */
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #cbd5e1; /* slate-300 */
+  box-shadow: 0 1px 0 #e2e8f0; /* subtle divider */
+}
+
+.main-content table.excel-table th,
+.main-content table.excel-table td {
+  border: 1px solid #e2e8f0; /* slate-200 */
+  padding: 10px 12px;
+  vertical-align: middle;
+  background-clip: padding-box; /* crisper borders */
+}
+
+/* Zebra rows */
+.main-content table.excel-table tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+.main-content table.excel-table tbody tr:nth-child(even) {
+  background-color: #f9fafb; /* slate-50 */
+}
+
+/* Hover highlight */
+.main-content table.excel-table tbody tr:hover {
+  background-color: #e0f2fe; /* sky-100 */
+}
+.main-content .table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.main-content .table-toolbar .search-input {
+  flex: 1;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.main-content .pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+.main-content .pagination .page-btn {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+.main-content .pagination .page-btn.active {
+  background: #0ea5e9; /* sky-500 */
+  color: #ffffff;
+  border-color: #0ea5e9;
+}
+.main-content .pagination .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cell text behavior: prefer wrapping long tokens gracefully */
+.main-content table.excel-table th,
+.main-content table.excel-table td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* Compact badges (optional, reused across pages) */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.status-badge.success { background: #dcfce7; color: #166534; }
+.status-badge.warning { background: #fef9c3; color: #854d0e; }
+.status-badge.info { background: #e0f2fe; color: #075985; }
+.status-badge.error { background: #fee2e2; color: #991b1b; }
+
+/* Sticky footer shadow illusion when scrolled */
+.main-content .table-scroll:is(:hover, :focus-within) thead th {
+  box-shadow: 0 1px 0 #cbd5e1, 0 6px 8px -6px rgba(15, 23, 42, 0.15);
+}
+
+/* ===== Moved table styles from table_design.css (unified) ===== */
+:root {
+  --primary-blue: #1a365d;
+  --secondary-blue: #2b6cb0;
+  --accent-gold: #d4af37;
+  --light-bg: #f8fafc;
+  --border-color: #e2e8f0;
+  --text-dark: #2d3748;
+  --text-light: #718096;
+}
+.table-container { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.08); overflow: hidden; margin: 20px 30px; border: 1px solid var(--border-color); }
+#KhususPPATbookingTable .table-header { display:flex; justify-content:space-between; align-items:center; padding:20px 25px; background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%); color:#fff; }
+#KhususPPATbookingTable .table-header h3 { margin:0; font-size:1.4rem; font-weight:600; }
+#KhususPPATbookingTable.table-controls { display:flex; gap:15px; align-items:center; }
+#KhususPPATbookingTable .table-footer {margin-top: 20px;display: flex;justify-content: center; width: 100%;}
+#KhususPPATbookingTable.buttonPage {display: flex;justify-content: center;width: 100%;}
+#KhususPPATbookingTable.list-button { display: flex;flex-wrap: wrap;gap: 8px;align-items: center;}
+#KhususPPATbookingTable.page-btn {  background: #4a6070; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500;cursor: pointer;transition: all 0.25s ease;min-width: 36px;text-align: center;}
+#KhususPPATbookingTable.page-btn:hover:not(:disabled) {background: #34495e;transform: translateY(-1px);}
+#KhususPPATbookingTable.page-btn:disabled {opacity: 0.4;cursor: not-allowed;}
+#KhususPPATbookingTable.page-btn.active {background: #16a34a; color: #fff;font-weight: 600;}
+@media (max-width: 480px) {
+  #KhususPPATbookingTable.page-btn { padding: 6px 10px; font-size: 13px;}}
+.search-box { position:relative; display:flex; align-items:center; }
+.search-box input { padding:8px 15px 8px 35px; border-radius:20px; border:none; background: rgba(255,255,255,.2); color:#fff; min-width:250px; transition:all .3s ease; }
+.search-box input::placeholder { color: rgba(255,255,255,.7); }
+.search-box input:focus { outline:none; background: rgba(255,255,255,.3); box-shadow:0 0 0 2px rgba(255,255,255,.2); }
+.search-icon { position:absolute; left:12px; color:#fff; font-size:14px; }
+.refresh-btn { background: rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.3); color:#fff; padding:8px 15px; border-radius:20px; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all .3s ease; }
+.refresh-btn:hover { background: rgba(255,255,255,.2); }
+
+.table-wrapper { overflow-x:auto; padding: 0 20px; }
+.luxury-table { width:100%; border-collapse:separate; border-spacing:0; margin:15px 0; font-size:.9rem; overflow:hidden; }
+.luxury-table thead { background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 100%); color:#fff; }
+.luxury-table thead tr:first-child th:first-child { border-top-left-radius:16px; padding-left:25px; }
+.luxury-table thead tr:first-child th:last-child { border-top-right-radius:16px; padding-right:25px; }
+.luxury-table thead th { background-color:#1a365d; color:#fff; padding:15px; border:none; position:sticky; top:0; }
+.luxury-table tbody tr { transition: all .2s ease; }
+.luxury-table tbody tr:hover { background-color: rgba(43,108,176,.05); }
+.luxury-table td { padding:12px 15px; border-bottom:1px solid var(--border-color); color: var(--text-dark); }
+.luxury-table tbody tr:last-child td { border-bottom:none; }
+.empty-message { text-align:center; color: var(--text-light); padding:30px !important; }
+.status-cell { display:inline-block; padding:4px 10px; border-radius:12px; font-size:.8rem; font-weight:500; }
+.status-pending { background:#fef3c7; color:#92400e; }
+.status-completed { background:#d1fae5; color:#065f46; }
+.status-rejected { background:#fee2e2; color:#991b1b; }
+.action-btn { background: var(--secondary-blue); color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; transition: all .2s ease; font-size:.8rem; }
+.action-btn:hover { background: var(--primary-blue); transform: translateY(-1px); }
+
+@media (max-width: 768px) {
+  .luxury-table { font-size:14px; }
+  .luxury-table th, .luxury-table td { padding:8px; }
+}
+
+/* ===== Legacy styles migrated from design_table/table_design.css (non-table UI) ===== */
+/*Dropdown content Badan Start*/
+:root {
+  --cloud-blue: #e8f3fb;      /* background utama */
+  --sky-blue:   #4a90e2;      /* warna utama tombol & aksen */
+  --blue-light: #b3d4fc;      /* hover/secondary */
+  --text-dark:  #2d3748;      /* teks utama */
+  --text-muted: #5a6b7d;      /* teks hint */
+}
+  /* --------------------------
+     LAYOUT
+     -------------------------- */
+     #dropdown-case-badan .dropdown-container {
+      background: var(--cloud-blue);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text-dark);
+  }
+  
+  #dropdown-case-badan .header-section h4,
+  #dropdown-case-badan .address-section h5,
+  #dropdown-case-badan .action-buttons h5,
+  #dropdown-case-badan .document-section h5 {
+      margin: 0 0 10px 0;
+      font-weight: 600;
+  }
+  #dropdown-case-badan .action-buttons .form-actions button {
+    display: block;
+    margin-top: 6px;   /* jarak dari heading */
+}
+
+  
+  /* Grid lebih padat */
+  #dropdown-case-badan .file-grid.compact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(250px,1fr));
+      gap: 15px;                /* lebih kecil supaya padat */
+  }
+  
+  /* --------------------------
+     FILE UPLOAD CARD 
+     -------------------------- */
+  #dropdown-case-badan .file-upload-card {
+      border: 2px dashed var(--blue-light);
+      padding: 12px;
+      border-radius: 10px;
+      background-color: #fff;
+      transition: all 0.3s ease;
+      min-height: 180px;        /* lebih kecil agar padat */
+  }
+  
+  #dropdown-case-badan .file-upload-card:hover {
+      border-color: var(--sky-blue);
+      background-color: var(--cloud-blue);
+  }
+  
+  /* Label & teks */
+  #dropdown-case-badan .file-upload-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      text-align: center;
+      gap: 6px;
+  }
+  
+  #dropdown-case-badan .label-text {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text-dark);
+  }
+  
+  #dropdown-case-badan .file-input-text {
+      color: var(--sky-blue);
+      font-weight: 500;
+  }
+  
+  /* Hint */
+  #dropdown-case-badan .file-hint {
+      color: var(--text-muted);
+      font-size: 0.8em;
+      margin-top: 5px;
+  }
+  
+  /* Icon upload */
+  #dropdown-case-badan .upload-icon {
+      font-size: 28px;
+      color: var(--sky-blue);
+      margin-bottom: 4px;
+  }
+  
+  /* --------------------------
+     FILE PREVIEW
+     -------------------------- */
+  #dropdown-case-badan .file-preview-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: var(--cloud-blue);
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 8px;
+      transition: all 0.3s ease;
+  }
+  
+  #dropdown-case-badan .file-preview-item:hover {
+      background: var(--blue-light);
+  }
+  
+  #dropdown-case-badan .file-preview-item img{
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+  }
+  #dropdown-case-badan .file-preview-item i{
+      color: var(--sky-blue);
+      font-size: 32px;
+  }
+  
+  /* Info file */
+  #dropdown-case-badan .file-info {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.85em;
+  }
+  
+  /* --------------------------
+     BUTTONS
+     -------------------------- */
+  #dropdown-case-badan .btn-upload,
+  #dropdown-case-badan .btn-view,
+  #dropdown-case-badan .btn-form {
+      background: var(--sky-blue);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+  }
+  #dropdown-case-badan .btn-upload:hover,
+  #dropdown-case-badan .btn-view:hover,
+  #dropdown-case-badan .btn-form:hover {
+      background: var(--blue-light);
+      transform: translateY(-2px);
+  }
+  
+  /* Progress Bar */
+  #dropdown-case-badan .progress-bar {
+      background: var(--blue-light);
+      border-radius: 5px;
+      height: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+  }
+  #dropdown-case-badan .progress-fill {
+      background: var(--sky-blue);
+      height: 100%;
+      width: 0;
+      transition: width 0.3s ease;
+  }
+  #dropdown-case-badan .status-message {
+      margin-top: 6px;
+      font-size: 0.85em;
+      color: var(--text-muted);
+  }
+/*Dropdown content Badan End*/
+  
+
+/* Style untuk preview dan lainnya tetap sama seperti sebelumnya */
+.validation-alert {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 80%;
+}
+
+.missing-field {
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+}
+
+.validation-alert button {
+    margin-top: 15px;
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+
+/**//**/
+/* Tombol Trigger */
+.btn-signature-trigger {
+  background-color: #4a6fdc;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn-signature-trigger:hover {
+  background-color: #3a5bc7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Modal Overlay */
+.signature-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #495057;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.signature-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.signature-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signature-upload h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 25px;
+  border: 2px dashed #ced4da;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-label:hover {
+  border-color: #4a6fdc;
+  background-color: #f0f5ff;
+}
+
+.upload-label i {
+  font-size: 2rem;
+  color: #4a6fdc;
+  margin-bottom: 10px;
+}
+
+.upload-label span {
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.signature-preview {
+  display: none;
+  position: relative;
+  margin-top: 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 10px;
+  background-color: #f8f9fa;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 40px;
+  display: block;
+  margin: 0 auto;
+}
+
+.clear-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.file-requirements {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #e2f0ff;
+  border-radius: 6px;
+  color: #2c3e50;
+  font-size: 0.85rem;
+}
+
+.file-requirements i {
+  color: #4a6fdc;
+  margin-right: 5px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #4a6fdc;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #3a5bc7;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.loading-indicator {
+  display: none;
+  margin-left: 8px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .modal-content {
+    width: 95%;
+  }
+  
+  .signature-upload-section {
+    gap: 20px;
+  }
+  
+  .upload-label {
+    padding: 20px;
+  }
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+}
+
+/* Form */
+form {
+    font-family: 'Montserrat', sans-serif; /* Pastikan font konsisten */    
+    gap: 10px;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #4c989f;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Untuk memastikan label dan input berada dalam satu grup yang teratur */
+.form-group {
+    display: flex;
+    flex-direction: column; /* Menyusun label di atas input */
+    gap: 5px; /* Menjaga jarak antar label dan input */
+}
+
+form label {
+    font-weight: bold;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+form input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+form input:focus {
+    border-color: #4A90E2;
+}
+
+form .short-input {
+    width: 60%; /* Lebar lebih pendek untuk input angka seperti Kode Pos, Tahun */
+}
+
+form button {
+    grid-column: span 4; /* Tombol memanjang di seluruh kolom */
+    background-color: #4A90E2;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+form button:hover {
+    background-color: #357ABD;
+}
+
+/* Styling untuk tiga input tanggal */
+.tanggal-inputs {
+    display: flex;
+    gap: 0; /* Menghapus gap antar inputan */
+    justify-content: space-between;
+}
+
+.tanggal-inputs input {
+    width: 30%; /* Mengatur lebar input agar lebih kecil dan saling berdekatan */
+    text-align: center;
+    margin: 0; /* Menghapus margin agar tidak ada jarak ekstra */
+}
+/* MIGRATED END */
+
+/* Data User Complete start */
+#datauser-complete .table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  margin-bottom: 80px;
+  margin-right: 20px;
+}
+
+/* Search box */
+#datauser-complete .search-box {
+  flex: 1;
+  max-width: 300px;
+  position: relative;
+}
+#datauser-complete .search-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+#datauser-complete .search-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+#datauser-complete .search-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+}
+#datauser-complete .search-box::before {
+  content: "🔍";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Filter dropdowns */
+#datauser-complete .filter-group {
+  display: flex;
+  gap: 12px;
+}
+#datauser-complete .filter-group select {
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+#datauser-complete .filter-group select:hover {
+  border-color: #2563eb;
+}
+#datauser-complete .filter-group select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+}
+#datauser-complete .table-info-wrapper {
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 5px;
+}
+
+#datauser-complete .table-info {
+  display: inline-block;
+  background: rgba(123, 147, 215, 0.37);
+  padding: 6px 150px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #151616; /* abu-abu terang */
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+
+#datauser-complete .table-responsive {
+  background: #0b0f1a;
+  border-radius: 16px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin-right: 20px;
+}
+
+/* Table Style */
+#datauser-complete-table.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #e5e7eb;
+}
+
+#datauser-complete-table thead th {
+  background: linear-gradient(180deg, #111827, #0b0f1a);
+  color: #c7d2fe;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid #1f2937;
+}
+
+#datauser-complete-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+}
+
+#datauser-complete-table tbody tr:hover {
+  background: #111827;
+  transition: background .2s ease;
+}
+
+/* Toolbar Controls */
+#datauser-complete .table-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, #111827, #0b0f1a);
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+/* Input dan select */
+#datauser-complete .form-control {
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 8px 12px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+#datauser-complete .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .3);
+  outline: none;
+}
+
+/* Tombol */
+#datauser-complete .btn {
+  background: #0ea5e9;
+  color: white;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .2s ease, transform .2s ease;
+}
+#datauser-complete .btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+.status-badge.success {
+  background: #193b2d;
+  color: #86efac;
+  border: 1px solid #14532d;
+}
+.status-badge.error {
+  background: #3f1d20;
+  color: #fecaca;
+  border: 1px solid #7f1d1d;
+}
+
+/* Pagination */
+#datauser-complete .pagination-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+#datauser-complete .pagination-controls .page-btn {
+  background: #111827;
+  color: #c7d2fe;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+#datauser-complete .pagination-controls .page-btn:hover {
+  background: #1e293b;
+}
+#datauser-complete .pagination-controls .page-btn.active {
+  background: #0ea5e9;
+  color: #fff;
+  border-color: #0ea5e9;
+}
+
+/* Badge divisi - palet berbeda per divisi */
+.badge { padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; display: inline-block; }
+.badge-admin { background: #1d4ed8; color: #e0e7ff; border: 1px solid #1e40af; }
+.badge-ppat { background: #0ea5e9; color: #e0f2fe; border: 1px solid #0369a1; }
+.badge-ppats { background: #f59e0b; color: #fff7ed; border: 1px solid #b45309; }
+.badge-ltb { background: #10b981; color: #ecfdf5; border: 1px solid #047857; }
+.badge-lsb { background: #8b5cf6; color: #ede9fe; border: 1px solid #6d28d9; }
+.badge-wp { background: #ef4444; color: #fee2e2; border: 1px solid #991b1b; }
+.badge-peneliti { background: #14b8a6; color: #ecfeff; border: 1px solid #0f766e; }
+.badge-peneliti-validasi { background: #0ea5e9; color: #e0f2fe; border: 1px solid #075985; }
+.badge-bank { background: #22c55e; color: #ecfdf5; border: 1px solid #16a34a; }
+
+/*bagian overlay design*/
+.action-cell {
+  position: relative;
+  text-align: center;
+  width: 50px;
+}
+
+
+/* Perubahan utama: dropdown-menu hidden secara default */
+.dropdown-menu-aksi {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: white;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 100; /* Pastikan di atas elemen lain */
+  border-radius: 4px;
+  padding: 5px 0;
+  border: 1px solid #f0f0f0;
+}
+
+.dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #333;
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.dropdown-item i {
+  width: 20px;
+  text-align: center;
+}
+
+/* Style khusus untuk tombol hapus */
+.dropdown-item.delete-btn {
+  color: #f5222d;
+}
+
+.dropdown-item.delete-btn:hover {
+  background-color: #fff1f0;
+}
+
+.dropdown-item.delete-btn i {
+  color: #f5222d;
+}
+
+/* Style untuk disabled buttons */
+.dropdown-item:disabled {
+  color: #d9d9d9;
+  cursor: not-allowed;
+  background: none !important;
+}
+
+.dropdown-item:disabled i {
+  color: #d9d9d9;
+}
+
+/*        */
+/* Overlay penuh layar */
+.overlay-edited {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(20, 20, 30, 0.6); /* soft gothic overlay */
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+}
+.overlay-edited.active{
+  display: flex;
+}
+
+/* Konten modal */
+.overlay-edited-content {
+  background: #f8f9fa; /* putih abu soft */
+  border-radius: 12px;
+  padding: 25px 30px;
+  max-width: 800px;
+  width: 90%;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Header modal */
+.overlay-edited-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding-bottom: 8px;
+}
+
+.overlay-edited-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #2c2c34; /* abu gelap */
+  font-weight: 600;
+}
+
+.close-btn-edited {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.3s;
+}
+.close-btn-edited:hover {
+  color: #4a6cf7;
+}
+
+/* Body form */
+.overlay-edited-body form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 20px;
+  margin-bottom: 20px;
+}
+
+.overlay-edited-body input[type="hidden"] {
+  grid-column: 1 / span 2;
+}
+
+/* Form group */
+.form-group-edited label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.form-control-edited {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  font-size: 14px;
+  background: #fff;
+  color: #222;
+  transition: all 0.3s ease;
+}
+.form-control-edited:focus {
+  outline: none;
+  border-color: #7b68ee; /* soft violet */
+  box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.2);
+}
+
+/* Footer button */
+.overlay-edited-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.overlay-edited-footer .btn {
+  padding: 10px 25px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.overlay-edited-footer .btn-secondary {
+  background: #adb5bd;
+  color: #fff;
+}
+.overlay-edited-footer .btn-secondary:hover {
+  background: #868e96;
+}
+
+.overlay-edited-footer .btn-primary {
+  background: #7b68ee; /* soft violet */
+  color: white;
+}
+.overlay-edited-footer .btn-primary:hover {
+  background: #6757d0;
+}
+
+/* Confirmation modal */
+.modal-overlay-confirmation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(20,20,30,0.7);
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content-confirmation {
+  background: #f9f9fb;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.modal-content-confirmation h3 {
+  color: #2c2c34;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.modal-content-confirmation p {
+  color: #555;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.modal-actions-confirmation {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.modal-actions-confirmation .btn-secondary {
+  background: #adb5bd;
+  color: white;
+}
+.modal-actions-confirmation .btn-secondary:hover {
+  background: #868e96;
+}
+
+.modal-actions-confirmation .btn-primary {
+  background: #7b68ee;
+  color: white;
+}
+.modal-actions-confirmation .btn-primary:hover {
+  background: #6757d0;
+}
+
+
+
+/* Data User Complete end */
+/*========================*/
+/* Data User Pending start */
+/* Container Cards */
+#datauser-pending .card {
+  background: #0b0f1a;
+  color: #0ea5e9;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+  margin-right: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+#userForm {
+  display: none; /* default tersembunyi */
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+}
+
+#userForm.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* Form Controls */
+#datauser-pending .form-control {
+  background: #0e1422;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all .2s ease;
+  margin-right: 20px;
+}
+#datauser-pending .form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.25);
+  outline: none;
+}
+
+/* Buttons */
+#datauser-pending .form-actions {
+  margin-top: 8px;
+}
+#datauser-pending .btn-primary {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+#datauser-pending .btn-primary:hover {
+  background: #1d4ed8;
+}
+#datauser-pending .btn-secondary {
+  background: #374151;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+#datauser-pending .btn-secondary:hover {
+  background: #4b5563;
+}
+
+/* Table */
+#datauser-pending-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+#datauser-pending-table thead th {
+  background: linear-gradient(180deg,#111827 0%,#0b0f1a 100%);
+  color: #93c5fd; /* soft blue */
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+#datauser-pending-table td {
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+  color: #e5e7eb;
+}
+#datauser-pending-table tbody tr:hover {
+  background: #111827;
+}
+
+/* Table info chip */
+#datauser-pending .table-info-wrapper {
+  text-align: center;
+  margin: 12px 0;
+}
+#datauser-pending .table-info {
+  display: inline-block;
+  background: #0e1422;
+  border: 1px solid #1f2937;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+/* Pagination */
+#datauser-pending .pagination-controls {
+  text-align: center;
+  margin-top: 10px;
+}
+#datauser-pending .pagination-controls .page-btn {
+  background: #0e1422;
+  border: 1px solid #1f2937;
+  color: #93c5fd;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 0 3px;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease;
+}
+#datauser-pending .pagination-controls .page-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+#datauser-pending .pagination-controls .page-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+/* Data User Pending end */
+/*========================*/
+/*========================*/
+/*========================*/
+/*BAGIAN*/
+/*Peneliti Start*/
+/* Verifikasi SSPD Start (Oleh Peneliti)*/
+
+/* --- TABLE --- */
+/* --- TABLE (Upgrade) --- */
+#penelitiverifikasiTable .table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  margin-right: 100px;
+  background: #fff;
+  border-radius: 12px; /* lebih bulat */
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* lebih lembut */
+}
+
+#penelitiverifikasiTable thead {
+  background: linear-gradient(135deg, #4a6070, #34495e);
+  color: #fff;
+}
+
+#penelitiverifikasiTable th,
+#penelitiverifikasiTable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+#penelitiverifikasiTable tbody tr:hover {
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+/* --- DROPDOWN CONTENT (Detail Card) --- */
+#penelitiverifikasiTable .dropdown-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Radio Button - Grid Layout */
+#penelitiverifikasiTable .radio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 kolom */
+  gap: 15px;
+  margin-top: 15px;
+}
+
+#penelitiverifikasiTable .form-group {
+  background: #f9fafb;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  transition: 0.2s;
+}
+
+#penelitiverifikasiTable .form-group:hover {
+  border-color: #4a90e2;
+  background: #f0f8ff;
+}
+
+#penelitiverifikasiTable .form-group input[type="radio"] {
+  margin-right: 6px;
+}
+
+/* Sub Inputs lebih rapat */
+#penelitiverifikasiTable .sub-inputs {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#penelitiverifikasiTable .sub-inputs input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+}
+
+/* --- CARD Khusus untuk "Setujui Paraf" --- */
+#penelitiverifikasiTable .approval-card {
+  background: #fff4f4;
+  border: 1px solid #f87171;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+/* --- BUTTONS (Refine) --- */
+#penelitiverifikasiTable .btn-simpaninput {
+  background: #16a34a;
+  color: #fff;
+  margin-top: 15px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+#penelitiverifikasiTable .btn-simpaninput:hover {
+  background: #15803d;
+}
+
+/* --- Animasi Smooth --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Verifikasi SSPD End (Oleh Peneliti)*/
+/*========================*/
+/*Paraf Kasie Start (Oleh Peneliti)*/
+#peneliti_paraf_kasie_Table {
+  opacity: 1;
+  width: 100%;
+  margin-top: 25px;
+  margin-left: -30px;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+#peneliti_paraf_kasie_Table thead {
+  background: #4a6070;
+  color: #fff;
+}
+
+#peneliti_paraf_kasie_Table th,
+#peneliti_paraf_kasie_Table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e2e2e2;
+}
+
+#peneliti_paraf_kasie_Table tbody tr:hover {
+  background: #f1f1f5;
+  cursor: pointer;
+}
+
+/* Tambahan untuk dropdown content */
+#peneliti_paraf_kasie_Table .signature-section {
+  margin: 15px 0;
+  padding: 12px;
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+#peneliti_paraf_kasie_Table .signature-preview {
+  text-align: center;
+}
+
+#peneliti_paraf_kasie_Table .signature-image {
+  max-width: 200px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+/* Supaya alert ga nempel */
+#peneliti_paraf_kasie_Table .alert {
+  margin-top: 10px;
+}
+/* Overlay dasar */
+
+
+/* Kalau aktif → muncul */
+#peneliti_paraf_kasie_Table .overlay-sign.active,
+#peneliti_paraf_kasie_Table .overlay-sign-confirmed.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Konten dalam overlay */
+#peneliti_paraf_kasie_Table .overlay-content-sign,
+#peneliti_paraf_kasie_Table .overlay-content-sign-confirmed {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  animation: scaleUp 0.3s ease;
+}
+
+/* Animasi scale saat muncul */
+@keyframes scaleUp {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Styling tombol */
+#peneliti_paraf_kasie_Table button {
+  margin: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#peneliti_paraf_kasie_Table button:hover {
+  opacity: 0.9;
+}
+
+#peneliti_paraf_kasie_Table #close_batal_overlay,
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan_batal_overlay {
+  background: #bbb;
+}
+
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan,
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan_confirmed {
+  background: #4a6070;
+  color: #fff;
+}
+/* Paraf Kasie End (Oleh Peneliti)*/
+/*========================*/
+/*========================*/
+/*BAGIAN*/
+/*LSB Start*/
+/* Pelayanan Penyerahan SSPD Start*/
+/* MAIN WRAPPER */
+#pelayanan_penyerahan_sspd_design {
+  padding: 20px;
+  background: #f9fafb; /* soft background */
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* BUTTON STYLE */
+#pelayanan_penyerahan_sspd_design .btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+#pelayanan_penyerahan_sspd_design .btn.viewpdf {
+  background: #2563eb; /* soft blue */
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  margin-bottom: 15px;
+}
+
+#pelayanan_penyerahan_sspd_design .btn.viewpdf:hover {
+  background: #1e4ed8;
+}
+
+/* TABLE WRAPPER */
+#LSBTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* HEADER */
+#LSBTable thead {
+  background: #4b5563; /* slate grey */
+  color: #fff;
+}
+
+#LSBTable th {
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* BODY */
+#LSBTable td {
+  padding: 12px 15px;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* HOVER ROW */
+#LSBTable tbody tr:hover {
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+/* DROPDOWN DETAIL CONTENT */
+#LSBTable .dropdown-content {
+  background: #ffffff;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+#LSBTable .dropdown-content p {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+#LSBTable .dropdown-content a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+#LSBTable .dropdown-content a:hover {
+  text-decoration: underline;
+}
+
+/* FILE UPLOAD BUTTON */
+#LSBTable .dropdown-content button {
+  background: #10b981; /* emerald green */
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#LSBTable .dropdown-content button:hover {
+  background: #059669;
+}
+
+/* FILE INPUT STYLE */
+#LSBTable .dropdown-content input[type="file"] {
+  margin-top: 8px;
+  padding: 6px;
+  font-size: 12px;
+}
+
+/* ANIMATION */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pelayanan Penyerahan SSPD End*/
+/* LSB End*/
+/*========================*/
+/*========================*/

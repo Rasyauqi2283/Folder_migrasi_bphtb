@@ -43,12 +43,25 @@ export const createApiClient = (userConfig = {}) => {
       photoLoading.show(loadingId);
 
       const fullUrl = config.baseURL + url;
-      const body = data ? JSON.stringify(data) : undefined;
+      
+      // Handle different data types
+      let body;
+      let finalHeaders = { ...config.headers, ...headers };
+      
+      if (data instanceof FormData) {
+        // For FormData, don't set Content-Type - let browser set it with boundary
+        body = data;
+        // Remove Content-Type header for FormData to let browser set it automatically
+        delete finalHeaders['Content-Type'];
+      } else if (data) {
+        // For JSON data, stringify and keep Content-Type: application/json
+        body = JSON.stringify(data);
+      }
 
       response = await withTimeout(
         fetch(fullUrl, {
           method,
-          headers: { ...config.headers, ...headers },
+          headers: finalHeaders,
           body,
           ...fetchOptions
         }),

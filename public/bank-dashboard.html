@@ -7,11 +7,11 @@
   <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
     <!---->
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
-    <!---->
-  <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
+  <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
 
 </head>
@@ -81,39 +81,12 @@
     <div class="box">
         <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
             <div class="icon-text-wrapper dropdown-toggle">
-                <i class="fa fa-address-book sidebar-icon"></i>
-                <span class="sidebar-text">Booking SSPD</span>
+                <i class="fa fa-usd sidebar-icon"></i>
+                <span class="sidebar-text">Transaksi BANK</span>
             </div>
         </div>
         <div class="dropdown-content">
-            <a href="../admins_PPAT/adminv_bookingsspd/adminv_Booking_SSPD_Badan/admin_booking_sspd_b.html" id="Booking_Badan">Booking SSPD Badan</a>
-            <a href="../admins_PPAT/adminv_bookingsspd/adminv_Booking_SSPD_Perorangan/admin_booking_sspd_p.html" id="Booking_Perorangan">Booking SSPD Perorangan</a>
-        </div>
-    </div>
-    <div class="box">
-        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
-            <div class="icon-text-wrapper dropdown-toggle">
-                <i class="fa fa-check-circle sidebar-icon"></i>
-                <span class="sidebar-text">Validasi BPHTB</span>
-            </div>
-        </div>
-        <div class="dropdown-content">
-            <a href="../admins_PPAT/adminv_validasibphtb/adminv_permohonan_Validasi_SSPD/admin_permohonan_validasisspd.html" id="">Permohonan Validasi SSPD</a>
-            <a href="../admins_PPAT/adminv_validasibphtb/adminv_Status_Validasi/admin_status_validasi.html" id="">Status Validasi</a>
-        </div>
-    </div>
-    <div class="box">
-        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
-            <div class="icon-text-wrapper dropdown-toggle">
-                <i class="fa fa-folder-open sidebar-icon"></i>
-                <span class="sidebar-text">Laporan Bulanan PPAT</span>
-            </div>
-        </div>
-        <div class="dropdown-content">
-            <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Input_Akta/admin_input_akta.html">Input Akta</a>
-            <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Laporan_Rekap_PPAT/admin_laporan_rekapppat.html">Laporan Rekap PPAT</a>
-            <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Monitoring_Keterlambatan/admin_monitoring_keterlambatan_pembayaran.html">Monitoring Keterlambatan</a>
-            <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Rincian_Laporan_Bulanan_PPAT/admin_rincian_laporan_bulananppat.html">Rincian Laporan Bulanan PPAT</a>
+            <a href="Bank/Hasil_Transaksi/hasil_transaksi.html">Hasil transaksi</a>
         </div>
     </div>
 <!--other section must be on all html-->
@@ -264,5 +237,9 @@
 <script src="design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="script-backend/header-backend.js"></script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 </body>
 </html>

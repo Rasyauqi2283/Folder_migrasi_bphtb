@@ -8,11 +8,12 @@
     <!---->
   <link rel="stylesheet" href="/design-n-script/design_css/asset_pelengkap.css">
     <!---->
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_dashboard.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/design_table/table_design.css">
+
     <!---->
-  <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="/design-n-script/design_css/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <link rel="stylesheet" href="/design-n-script/design_css/design_text/design_text.css">
 
     <style>
@@ -184,24 +185,11 @@
   <!---->
   <!---->
   <!-- MAIN -->
-  <main class="main-content">
-    <button id="showSignatureModal">Tambah Tanda Tangan</button>
+  <main id="verifikasi_p1_design" class="main-content">
     <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+    <button id="showSignatureModal">Tambah Paraf/Tanda Tangan</button>
 
-    <!-- Overlay TTD SIGN-->
-    <div id="overlay-sign" class="overlay-sign">
-        <div class="overlay-content-sign">
-            <button id="closeOverlayBtn">X</button>
-            <div>
-                <p>Penandatangan Pemverifikasi:</p>  
-                <input type="file" id="signature_verif" accept="image/*"> 
-                <img id="preview" style="max-width: 150px; display: none;">
-            </div>
-        </div>
-        <button id="uploadttd">Upload Tanda Tangan</button>
-    </div>
-
-    <table id="penelitiverifikasiTable">
+    <table id="penelitiverifikasiTable ">
         <thead>
             <tr>
                 <th>No. Registrasi</th>
@@ -211,8 +199,8 @@
                 <th>Nama Wajib Pajak</th>
                 <th>Nama Pemilik Objek Pajak</th>
                 <th>Tanggal Terima</th>
-                <th>Status</th>
-                <th>Track Status</th>
+                <th>Special Field</th>
+                <th>Jenis Wajib Pajak</th>
                 <th>Keterangan</th>
             </tr>
         </thead>
@@ -220,6 +208,23 @@
             <!-- Data akan dimasukkan ke sini oleh JavaScript -->
         </tbody>
     </table>
+
+    <!-- Overlay TTD SIGN-->
+    <div id="overlay-sign" class="overlay-sign">
+        <div class="overlay-content-sign">
+            <p>Dokumen Booking dengan [No. Booking] ini telah dikirim oleh PPAT untuk verifikasi</p>
+        <button id="close_batal_overlay">Batal</button>    
+        <button id="Tambahkan_tandatangan">Tambahkan Tanda Tangan</button>
+    </div>
+        <!-- Overlay TTD SIGN (confirmed)-->
+        <div id="overlay-sign-confirmed" class="overlay-sign-confirmed">
+            <div class="overlay-content-sign-confirmed">
+                <p>Apakah anda yakin ingin menambahkan tanda tangan?</p>
+            <button id="Tambahkan_tandatangan_batal_overlay">Batal</button>
+            <button id="Tambahkan_tandatangan_confirmed">Iya</button>
+        </div>
+
+
 </main>
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
@@ -245,9 +250,13 @@
 </div>
 <!--script front-->
 <script src="../../design-n-script/script_frontback_java/header_script.js"></script>
-<script src="/design-n-script/script_frontback_java/fungsi.js"></script>
+<script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="/script-backend/header-backend.js"></script>
   <script src="../../script-backend/peneliti_verifikasi.js"></script>
+  <script type="module">
+    import { initNotifications } from '/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
 </body>
 </html>

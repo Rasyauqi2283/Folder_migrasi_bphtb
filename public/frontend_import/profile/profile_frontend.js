@@ -9,15 +9,57 @@ import { initSignatureUpload } from './ttdverif_profile.js';
 // ==== 2. Profile API Service ====
 class ProfileService {
   static async getProfile(abortSignal) {
-    const response = await api.get('/api/auth/profile', { signal: abortSignal });
-    if (!response?.user?.id) throw new Error('Invalid profile data from server');
-    return response;
+    try {
+      const response = await api.get('/api/auth/profile', { signal: abortSignal });
+      
+      // Log the response for debugging
+      console.log('Raw API response:', response);
+      
+      // Check if response exists and has data
+      if (!response) {
+        throw new Error('No response from server');
+      }
+      
+      // Handle different response structures
+      let profileData;
+      if (response.user) {
+        // If response has user property
+        profileData = response.user;
+      } else if (response.data && response.data.user) {
+        // If response is wrapped in data property
+        profileData = response.data.user;
+      } else if (response.data) {
+        // If response.data is the user data directly
+        profileData = response.data;
+      } else {
+        // If response itself is the user data
+        profileData = response;
+      }
+      
+      // Validate that we have the minimum required data
+      if (!profileData || typeof profileData !== 'object') {
+        throw new Error('Invalid profile data structure from server');
+      }
+      
+      // Check for at least one identifying field
+      if (!profileData.userid && !profileData.id && !profileData.nama) {
+        throw new Error('Profile data missing required identification fields');
+      }
+      
+      // Return the profile data
+      return profileData;
+    } catch (error) {
+      console.error('ProfileService.getProfile error:', error);
+      throw error;
+    }
   }
 
   static async uploadPhoto(formData, abortSignal) {
-    return api.post('/api/auth/profile/upload', formData, {
-      signal: abortSignal,
-      headers: { 'Content-Type': 'multipart/form-data' }
+    // JANGAN set Content-Type header untuk multipart/form-data
+    // Biarkan browser set otomatis dengan boundary yang tepat
+    return api.post('/api/profile/upload', formData, {
+      signal: abortSignal
+      // Remove Content-Type header to let browser set it automatically
     });
   }
 
@@ -48,7 +90,15 @@ export class ProfileController {
     this.loadingIds = new Map();
     this.elements = {};
     this.isUpdating = false;
-    this.isDevelopment = true; // Define the missing variable
+    this.isDevelopment = true;
+    
+    // Photo upload specific properties
+    this.photoUploadState = {
+      isUploading: false,
+      selectedFile: null,
+      previewUrl: null,
+      uploadAbortController: null
+    };
   }
 
   initElements() {
@@ -64,21 +114,70 @@ export class ProfileController {
       nipField: getElement('nip-field'),
       specialField: getElement('special_field'),
       specialFieldInput: getElement('special_field_input'),
+      pejabat_umum: getElement('pejabat_umum_field'),
+      pejabat_umum_input: getElement('pejabat_umum_input'),
       specialParafv: getElement('special_ParafValidasi'),
       profileImg: document.getElementById('profileImg'),
       profilePictureWrapper: document.querySelector('.profile-picture-wrapper'),
+      pvSignatureLink: document.getElementById('pv-signature-link'),
       ttdPreview: document.getElementById('ttd-preview'),
       ttdInfo: document.getElementById('ttd-info'),
-      errorDisplay: document.getElementById('profile-error-message')
+      errorDisplay: document.getElementById('profile-error-message'),
+      
+      // Photo upload specific elements
+      photoOverlay: getElement('photo-overlay'),
+      newProfilePhoto: getElement('new-profile-photo'),
+      previewImage: getElement('preview-image-change'),
+      previewText: getElement('preview-text'),
+      savePhotoButton: getElement('save-photo-change'),
+      cancelPhotoButton: getElement('cancel-photo-change'),
+      uploadProgressBar: getElement('upload-progress-bar'),
+      uploadErrorMessage: getElement('upload-error-message'),
+      uploadSuccessMessage: getElement('upload-success-message'),
+      previewContainer: getElement('preview-container'),
+      previewPlaceholder: getElement('preview-placeholder')
     };
+
+    // Hide signature button by default; it will be shown conditionally later
+    const parafButton = document.getElementById('paraf-peneliti');
+    if (parafButton) {
+      parafButton.style.display = 'none';
+    }
+    if (this.elements.pvSignatureLink) {
+      this.elements.pvSignatureLink.style.display = 'none';
+    }
   }
 
   bindEvents() {
     this.loadProfile();
-    if (this.elements.photoUploadForm) {
-      this.elements.photoUploadForm.addEventListener('submit', (e) => this.handlePhotoUpload(e));
-    }
+    this.initPhotoUploadEvents();
     this.initPasswordToggles();
+  }
+
+  initPhotoUploadEvents() {
+    // Photo selection event
+    if (this.elements.newProfilePhoto) {
+      this.elements.newProfilePhoto.addEventListener('change', (e) => this.handlePhotoSelection(e));
+    }
+    
+    // Save photo button event
+    if (this.elements.savePhotoButton) {
+      this.elements.savePhotoButton.addEventListener('click', (e) => this.handlePhotoUpload(e));
+    }
+    
+    // Cancel photo button event
+    if (this.elements.cancelPhotoButton) {
+      this.elements.cancelPhotoButton.addEventListener('click', (e) => this.resetPhotoUpload());
+    }
+    
+    // Photo overlay close events
+    if (this.elements.photoOverlay) {
+      this.elements.photoOverlay.addEventListener('click', (e) => {
+        if (e.target === this.elements.photoOverlay) {
+          this.resetPhotoUpload();
+        }
+      });
+    }
   }
 
   setupUnloadHandler() {
@@ -98,62 +197,87 @@ export class ProfileController {
     this.abortController = new AbortController();
   }
 
+  async checkApiAvailability() {
+    try {
+      // Try to make a simple request to check if API is available
+      const response = await fetch('/api/auth/profile', { 
+        method: 'HEAD',
+        signal: this.abortController.signal 
+      });
+      return response.ok;
+    } catch (error) {
+      console.warn('API availability check failed:', error);
+      return false;
+    }
+  }
+
   async loadProfile() {
-    let loadingId;
     try {
         this.prepareRequest();
-        loadingId = this.showProfileLoading();
         
         if (this.isDevelopment) {
-        console.log('Loading profile data...');
+          console.log('Loading profile data...');
+        }
+        
+        // Check if API is available first
+        const apiAvailable = await this.checkApiAvailability();
+        if (!apiAvailable) {
+          throw new Error('API endpoint tidak tersedia. Periksa koneksi server.');
         }
         
         this.profileData = await ProfileService.getProfile(this.abortController.signal);
         
         if (this.isDevelopment) {
-        console.log('Profile data received:', this.profileData);
+          console.log('Profile data received:', this.profileData);
+          this.debugProfileData();
         }
         
         this.handleProfileData();
-        this.hideLoading(loadingId);
     } catch (error) {
+        if (this.isDevelopment) {
+          console.error('Profile loading failed:', error);
+          this.debugProfileData();
+        }
         this.handleProfileError(error);
-        this.hideLoading(loadingId);
-    } finally {
-        if (loadingId) this.cleanupLoading(loadingId);
-        this.currentTimeout = null;
     }
-    }
+  }
 
   // ==== 3.3 Profile Update Handler ====
   async handleProfileUpdate(updateFn) {
     if (this.isUpdating) return;
     
     this.isUpdating = true;
-    const loadingId = photoLoading.create(this.elements.profileContainer);
     
     try {
-      this.loadingIds.set(loadingId, { element: this.elements.profileContainer });
-      photoLoading.show(loadingId);
       await updateFn();
       await this.loadProfile();
     } catch (error) {
       console.error('Update error:', error);
       this.showError(error.message || 'Gagal menyimpan perubahan');
     } finally {
-      this.cleanupLoading(loadingId);
       this.isUpdating = false;
     }
   }
 
   // ==== 3.4 Utility Methods ====
   getUserDivisi() {
-    return localStorage.getItem('divisi') || this.profileData?.user?.divisi;
+    // Prefer localStorage (populated after render), then fallback to profile data
+    return (
+      localStorage.getItem('divisi') ||
+      this.profileData?.divisi ||
+      this.profileData?.user?.divisi ||
+      ''
+    );
   }
 
   cleanup() {
     this.cleanupCallbacks.forEach(cb => cb());
     this.cleanupCallbacks = [];
+    
+    // Cleanup photo upload state
+    if (this.photoUploadState.uploadAbortController) {
+      this.photoUploadState.uploadAbortController.abort();
+    }
   }
 
   addCleanup(callback) {
@@ -175,105 +299,195 @@ export class ProfileController {
   }
 
   // ==== 3.5 Loading Management ====
-  showProfileLoading() {
-    if (!this.elements.profileContainer) {
-      throw new Error('Profile container not found');
-    }
-
-    const loadingId = photoLoading.create(this.elements.profileContainer);
-    this.loadingIds.set(loadingId, { element: this.elements.profileContainer });
-    photoLoading.show(loadingId);
-    
-    this.currentTimeout = setTimeout(() => {
-      if (this.loadingIds.has(loadingId)) {
-        photoLoading.hide(loadingId);
-        this.showError('Request terlalu lama, silakan coba lagi');
-      }
-    }, 30000);
-    
-    return loadingId;
-  }
-
+  // Note: Profile loading no longer shows loading indicator
+  // Loading is only shown during photo uploads
+  
   hideLoading(loadingId) {
     if (loadingId && this.loadingIds.has(loadingId)) {
       photoLoading.hide(loadingId);
       photoLoading.destroy(loadingId);
       this.loadingIds.delete(loadingId);
     }
-    if (this.currentTimeout) {
-      clearTimeout(this.currentTimeout);
-      this.currentTimeout = null;
-    }
-  }
-
-  cleanupLoading(loadingId) {
-    if (this.currentTimeout) {
-      clearTimeout(this.currentTimeout);
-      this.currentTimeout = null;
-    }
-    
-    if (loadingId && this.loadingIds.has(loadingId)) {
-      try {
-        photoLoading.hide(loadingId);
-        photoLoading.destroy(loadingId);
-        this.loadingIds.delete(loadingId);
-      } catch (error) {
-        console.warn('Error during loading cleanup:', error);
-      }
-    }
   }
 
   // ==== 3.6 Profile Rendering ====
   handleProfileData() {
     if (this.isDevelopment) {
-      console.log('Profile data:', this.profileData);
+      console.log('Processing profile data:', this.profileData);
+      console.log('Profile data type:', typeof this.profileData);
+      console.log('Profile data keys:', Object.keys(this.profileData || {}));
     }
     
-    this.renderProfile();
-    this.initSubModules();
+    // Ensure we have valid data before proceeding
+    if (!this.profileData) {
+      console.error('No profile data available');
+      this.showError('Tidak ada data profil yang tersedia');
+      return;
+    }
+    
+    // Try to render the profile
+    try {
+      this.renderProfile();
+      this.initSubModules();
+    } catch (error) {
+      console.error('Error in handleProfileData:', error);
+      this.showError('Gagal memproses data profil: ' + error.message);
+    }
+  }
+
+  ensureProfileDataCompleteness() {
+    // Ensure all required fields have at least default values
+    const defaultValues = {
+      userid: 'N/A',
+      nama: 'N/A',
+      divisi: 'N/A',
+      email: 'N/A',
+      telepon: 'N/A',
+      username: 'N/A',
+      password: '••••••••',
+      nip: 'N/A',
+      special_field: 'N/A',
+      special_parafv: 'N/A',
+      pejabat_umum: 'N/A',
+      fotoprofil: null,
+      tanda_tangan_path: null
+    };
+
+    // Fill in missing fields with defaults
+    Object.keys(defaultValues).forEach(key => {
+      if (this.profileData[key] === undefined || this.profileData[key] === null) {
+        this.profileData[key] = defaultValues[key];
+        if (this.isDevelopment) {
+          console.log(`Set default value for ${key}:`, defaultValues[key]);
+        }
+      }
+    });
+
+    return this.profileData;
   }
 
   renderProfile() {
-    if (!this.profileData || !this.validateProfileData(this.profileData)) {
-      this.showError('Data profil tidak valid');
-      return;
-    }
+    try {
+      if (!this.profileData) {
+        this.showError('Data profil tidak tersedia');
+        return;
+      }
+      
+      // Ensure all required fields have values
+      this.ensureProfileDataCompleteness();
+      
+      if (!this.validateProfileData(this.profileData)) {
+        this.showError('Data profil tidak valid atau tidak lengkap');
+        return;
+      }
 
-    const userData = this.profileData;
-    const cacheBuster = `?t=${new Date().getTime()}`;
-    
-    this.handleDivisiSpecificFields(userData);
-    this.updateUserDataFields(userData);
-    this.updateProfilePhoto(userData, cacheBuster);
-    this.handleSignature(userData, cacheBuster);
-    this.hideError();
+      const userData = this.profileData;
+      const cacheBuster = `?t=${new Date().getTime()}`;
+
+      // Persist basic identifiers so other modules can reliably read them
+      try {
+        if (userData.divisi) localStorage.setItem('divisi', userData.divisi);
+        if (userData.userid) localStorage.setItem('userid', userData.userid);
+      } catch (_) {
+        // Ignore storage errors (e.g., private mode)
+      }
+      
+      // Update all profile sections
+      this.handleDivisiSpecificFields(userData);
+      this.updateUserDataFields(userData);
+      this.updateProfilePhoto(userData, cacheBuster);
+      this.handleSignature(userData, cacheBuster);
+      
+      // Hide any previous errors
+      this.hideError();
+      
+      if (this.isDevelopment) {
+        console.log('Profile rendered successfully');
+      }
+    } catch (error) {
+      console.error('Error rendering profile:', error);
+      this.showError('Gagal menampilkan profil: ' + error.message);
+    }
   }
 
   validateProfileData(userData) {
-    if (!userData) return false;
+    if (!userData) {
+      console.error('No user data provided');
+      return false;
+    }
     
+    // Log the data structure for debugging
+    if (this.isDevelopment) {
+      console.log('Validating profile data:', userData);
+    }
+    
+    // Check for basic required fields with fallbacks
     const mandatoryFields = ['userid', 'nama', 'divisi', 'email'];
+    const missingFields = [];
+    
     for (const field of mandatoryFields) {
-      if (userData[field] === undefined || userData[field] === null) {
-        console.error(`Missing required field: ${field}`);
+      if (userData[field] === undefined || userData[field] === null || userData[field] === '') {
+        missingFields.push(field);
+      }
+    }
+    
+    // If we have missing mandatory fields, try to provide fallbacks
+    if (missingFields.length > 0) {
+      console.warn('Missing mandatory fields:', missingFields);
+      
+      // Try to provide fallbacks for some fields
+      if (!userData.userid && userData.id) {
+        userData.userid = userData.id;
+        console.log('Using id as userid fallback');
+      }
+      
+      if (!userData.nama && userData.name) {
+        userData.nama = userData.name;
+        console.log('Using name as nama fallback');
+      }
+      
+      // Check again after fallbacks
+      const stillMissing = mandatoryFields.filter(field => 
+        userData[field] === undefined || userData[field] === null || userData[field] === ''
+      );
+      
+      if (stillMissing.length > 0) {
+        console.error('Still missing required fields after fallbacks:', stillMissing);
         return false;
       }
     }
 
+    // Handle divisi-specific requirements more gracefully
     const divisi = userData.divisi;
-    const divisiRequirements = {
-      'PPAT': ['special_field'],
-      'PPATS': ['special_field'],
-      'Peneliti Validasi': ['special_parafv']
-    };
+    if (divisi) {
+      const divisiRequirements = {
+        'PPAT': ['special_field', 'pejabat_umum'],
+        'PPATS': ['special_field', 'pejabat_umum'],
+        'Peneliti Validasi': ['special_parafv']
+      };
 
-    const requiredFields = divisiRequirements[divisi] || [];
-    for (const field of requiredFields) {
-      if (userData[field] === null || userData[field] === undefined) {
-        console.warn(`Missing required field for ${divisi}: ${field}`);
-        return false;
+      const requiredFields = divisiRequirements[divisi] || [];
+      for (const field of requiredFields) {
+        if (userData[field] === null || userData[field] === undefined) {
+          console.warn(`Missing required field for ${divisi}: ${field}, providing default`);
+          // Provide default values instead of failing
+          if (field === 'special_field') {
+            userData[field] = 'N/A';
+          } else if (field === 'special_parafv') {
+            userData[field] = 'N/A';
+          } else if (field === 'pejabat_umum') {
+            userData[field] = 'N/A';
+          }
+        }
       }
     }
+
+    // Ensure all required fields have at least empty string values
+    mandatoryFields.forEach(field => {
+      if (userData[field] === undefined || userData[field] === null) {
+        userData[field] = '';
+      }
+    });
 
     return true;
   }
@@ -292,31 +506,68 @@ export class ProfileController {
       const shouldShowSpecialField = ['PPAT', 'PPATS'].includes(userDivisi);
       this.elements.specialField.style.display = shouldShowSpecialField ? "block" : "none";
       if (shouldShowSpecialField) {
-        this.elements.specialFieldInput.value = user.special_field || '';
+        this.elements.specialFieldInput.value = user.special_field || user.special_field_name || '';
+      }
+    }
+    // Pejabat Umum Field
+    if (this.elements.pejabat_umum) {
+      const shouldShowPejabatUmumField = ['PPAT', 'PPATS'].includes(userDivisi);
+      this.elements.pejabat_umum.style.display = shouldShowPejabatUmumField ? "block" : "none";
+      if (shouldShowPejabatUmumField) {
+        this.elements.pejabat_umum_input.value = user.pejabat_umum || user.pejabat_umum_name || '';
       }
     }
     
     // Special Paraf Validasi
     if (this.elements.specialParafv) {
-      const shouldShowParaf = userDivisi === 'Peneliti Validasi';
-      this.elements.specialParafv.style.display = shouldShowParaf ? "block" : "none";
-      if (shouldShowParaf) {
+      const isPV = userDivisi === 'Peneliti Validasi';
+      this.elements.specialParafv.style.display = isPV ? "block" : "none";
+      if (isPV) {
         document.getElementById('special_parafv').value = user.special_parafv || '';
       }
+    }
+
+    // PV: sembunyikan tombol Paraf Khusus (overlay upload) dan tampilkan link ke autentikasi_bsre.html
+    const parafButton = document.getElementById('paraf-peneliti');
+    if (parafButton) {
+      parafButton.style.display = (userDivisi === 'Peneliti Validasi') ? 'none' : 'block';
+    }
+    if (this.elements.pvSignatureLink) {
+      this.elements.pvSignatureLink.style.display = (userDivisi === 'Peneliti Validasi') ? 'inline-block' : 'none';
     }
   }
 
   updateUserDataFields(user) {
-    this.updateField('.userid', user.userid);
-    this.updateField('.nama', user.nama);
-    this.updateField('.divisi', user.divisi);
-    this.updateField('#email', user.email);
-    this.updateField('#telepon', user.telepon);
-    this.updateField('#username', user.username);
-    this.updateField('#password', user.password);
-    this.updateField('#nip', user.nip || '-');
-    this.updateField('#special_field_input', user.special_field || 'Divisi Tidak Sesuai');
-    this.updateField('#special_parafv', user.special_parafv || 'Divisi Tidak Sesuai');
+    // Update basic fields with fallbacks
+    this.updateField('.userid', user.userid || user.id || 'N/A');
+    this.updateField('.nama', user.nama || user.name || 'N/A');
+    this.updateField('.divisi', user.divisi || 'N/A');
+    this.updateField('#email', user.email || 'N/A');
+    this.updateField('#telepon', user.telepon || user.phone || 'N/A');
+    this.updateField('#username', user.username || user.user_name || 'N/A');
+    this.updateField('#password', user.password || '••••••••');
+    this.updateField('#nip', user.nip || 'N/A');
+    
+    // Update special fields with fallbacks
+    this.updateField('#special_field_input', user.special_field || user.special_field_name || 'N/A');
+    this.updateField('#pejabat_umum_input', user.pejabat_umum || user.pejabat_umum_name || 'N/A');
+    this.updateField('#special_parafv', user.special_parafv || user.special_parafv_name || 'N/A');
+    
+    // Log what fields were updated for debugging
+    if (this.isDevelopment) {
+      console.log('Updated user fields:', {
+        userid: user.userid || user.id,
+        nama: user.nama || user.name,
+        divisi: user.divisi,
+        email: user.email,
+        telepon: user.telepon || user.phone,
+        username: user.username || user.user_name,
+        nip: user.nip,
+        special_field: user.special_field || user.special_field_name,
+        special_parafv: user.special_parafv || user.special_parafv_name,
+        pejabat_umum: user.pejabat_umum || user.pejabat_umum_name
+      });
+    }
   }
 
   updateField(selector, value) {
@@ -337,7 +588,9 @@ export class ProfileController {
     if (user.fotoprofil) {
       try {
         const cleanPath = user.fotoprofil.replace(/\\/g, '/');
-        fotoProfilUrl = `${decodeURIComponent(cleanPath)}${cacheBuster}`;
+        // Add cache buster to force image refresh
+        const timestamp = cacheBuster || `?t=${new Date().getTime()}`;
+        fotoProfilUrl = `${decodeURIComponent(cleanPath)}${timestamp}`;
       } catch (e) {
         console.error('Error processing photo URL:', e);
       }
@@ -358,24 +611,32 @@ export class ProfileController {
   
     if (user.tanda_tangan_path) {
       this.elements.ttdPreview.src = `${user.tanda_tangan_path}${cacheBuster}`;
+      this.elements.ttdPreview.style.display = 'block';
       this.elements.ttdPreview.onerror = () => {
-        this.elements.ttdPreview.src = '/default-signature.png';
+        // Jika gagal load, sembunyikan preview tanpa fallback default
+        this.elements.ttdPreview.src = '';
+        this.elements.ttdPreview.style.display = 'none';
       };
       this.elements.ttdInfo.textContent = `Tipe: ${user.tanda_tangan_mime || 'image/jpeg'}`;
+      // Store for overlay usage
+      try {
+        localStorage.setItem('signature_path', user.tanda_tangan_path);
+        localStorage.setItem('has_signature', 'true');
+      } catch (_) {}
     } else {
-      this.elements.ttdPreview.src = '/default-signature.png';
+      this.elements.ttdPreview.src = '';
+      this.elements.ttdPreview.style.display = 'none';
       this.elements.ttdInfo.textContent = 'Tanda tangan belum diunggah';
+      try { 
+        localStorage.removeItem('signature_path');
+        localStorage.setItem('has_signature', 'false');
+      } catch (_) {}
     }
   }
 
   // ==== 3.7 Submodules Initialization ====
   initSubModules() {
     const modules = [
-      { 
-        name: 'Photo Upload', 
-        init: () => initPhotoUpload(),
-        shouldLoad: true
-      },
       { 
         name: 'Password Change', 
         init: () => initPasswordChange(),
@@ -384,6 +645,7 @@ export class ProfileController {
       { 
         name: 'Signature Upload', 
         init: () => initSignatureUpload(),
+        // Jangan load modul upload signature untuk Peneliti Validasi (mereka pakai halaman BSRE)
         shouldLoad: this.shouldLoadSignatureModule()
       }
     ];
@@ -402,68 +664,215 @@ export class ProfileController {
 
   shouldLoadSignatureModule() {
     const userDivisi = this.getUserDivisi();
-    return ['Peneliti', 'Peneliti Validasi', 'PPAT', 'PPATS'].includes(userDivisi);
+    // Allow Peneliti, PPAT, PPATS; PV tidak karena diarahkan ke halaman BSRE
+    return ['Peneliti', 'PPAT', 'PPATS'].includes(userDivisi);
   }
 
-  // ==== 3.8 Photo Upload Handling ====
-  validatePhotoInput(form) {
-    const fileInput = form.querySelector('input[type="file"]');
-    if (!fileInput || !fileInput.files[0]) {
-      this.showError('Pilih file foto terlebih dahulu');
-      return false;
+  // ==== 3.8 Enhanced Photo Upload Handling ====
+  handlePhotoSelection(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+      this.resetPhotoPreview();
+      return;
     }
 
-    const file = fileInput.files[0];
+    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-
     if (!allowedTypes.includes(file.type)) {
-      this.showError('Format file tidak didukung. Gunakan JPG, JPEG, atau PNG');
-      return false;
+      this.showPhotoError('Format file tidak didukung. Gunakan JPG, JPEG, atau PNG.');
+      event.target.value = '';
+      return;
     }
 
+    // Validate file size (2MB max - sesuai dengan backend multer config)
+    const maxSize = 2 * 1024 * 1024;
     if (file.size > maxSize) {
-      this.showError('Ukuran file terlalu besar. Maksimal 5MB');
-      return false;
+      this.showPhotoError('Ukuran file terlalu besar. Maksimal 2MB.');
+      event.target.value = '';
+      return;
     }
 
-    return true;
+    // Store selected file
+    this.photoUploadState.selectedFile = file;
+    
+    // Show preview
+    this.displayPhotoPreview(file);
+    
+    // Enable save button
+    if (this.elements.savePhotoButton) {
+      this.elements.savePhotoButton.disabled = false;
+    }
   }
 
-  async uploadPhoto(form) {
-    const formData = new FormData(form);
-    return await ProfileService.uploadPhoto(formData, this.abortController.signal);
+  displayPhotoPreview(file) {
+    if (!this.elements.previewImage || !this.elements.previewText) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.photoUploadState.previewUrl = e.target.result;
+      this.elements.previewImage.src = e.target.result;
+      this.elements.previewImage.style.display = 'block';
+      
+      if (this.elements.previewPlaceholder) {
+        this.elements.previewPlaceholder.style.display = 'none';
+      }
+      
+      this.elements.previewText.textContent = file.name;
+    };
+    
+    reader.onerror = () => {
+      this.showPhotoError('Gagal memuat preview gambar');
+      this.resetPhotoPreview();
+    };
+    
+    reader.readAsDataURL(file);
+  }
+
+  resetPhotoPreview() {
+    if (this.elements.previewImage) {
+      this.elements.previewImage.src = '';
+      this.elements.previewImage.style.display = 'none';
+    }
+    
+    if (this.elements.previewText) {
+      this.elements.previewText.textContent = 'Tidak ada gambar terpilih';
+    }
+    
+    if (this.elements.previewPlaceholder) {
+      this.elements.previewPlaceholder.style.display = 'block';
+    }
+    
+    if (this.elements.savePhotoButton) {
+      this.elements.savePhotoButton.disabled = true;
+    }
+    
+    this.photoUploadState.selectedFile = null;
+    this.photoUploadState.previewUrl = null;
   }
 
   async handlePhotoUpload(event) {
     event.preventDefault();
     
-    if (!this.validatePhotoInput(event.target)) return;
+    if (!this.photoUploadState.selectedFile) {
+      this.showPhotoError('Pilih file foto terlebih dahulu');
+      return;
+    }
+    
+    if (this.photoUploadState.isUploading) {
+      return; // Prevent multiple uploads
+    }
+    
+    this.photoUploadState.isUploading = true;
+    this.photoUploadState.uploadAbortController = new AbortController();
     
     const loadingId = this.showPhotoLoading();
     
     try {
-        const result = await this.uploadPhoto(event.target);
+      // Create FormData dengan field name yang sesuai dengan backend
+      const formData = new FormData();
+      
+      // Backend mengharapkan field name 'fotoprofil' (sesuai dengan index.js)
+      formData.append('fotoprofil', this.photoUploadState.selectedFile);
+      
+      // Log untuk debugging
+      if (this.isDevelopment) {
+        console.log('Uploading file:', this.photoUploadState.selectedFile);
+        console.log('FormData entries:');
+        for (let [key, value] of formData.entries()) {
+          console.log(`${key}:`, value);
+        }
+      }
+      
+      // Upload photo menggunakan endpoint yang benar sesuai backend
+      const response = await fetch('/api/profile/upload', {
+        method: 'POST',
+        body: formData,
+        signal: this.photoUploadState.uploadAbortController.signal,
+        credentials: 'include', // Include cookies untuk session
+        // JANGAN set Content-Type header - biarkan browser set otomatis dengan boundary
+      });
+      
+      if (this.isDevelopment) {
+        console.log('Upload response status:', response.status);
+        console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (this.isDevelopment) {
+          console.error('Upload failed with status:', response.status);
+          console.error('Error response:', errorData);
+        }
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (this.isDevelopment) {
+        console.log('Upload response:', result);
+      }
+      
+      // Backend hanya mengirim message, tidak ada path dalam response
+      // Kita perlu refresh profile data untuk mendapatkan foto yang baru
+      if (result.message && result.message.includes('berhasil')) {
+        // Refresh profile data untuk mendapatkan foto yang baru
+        await this.loadProfile();
         
-        if (result?.success && result?.path) {
-            this.updateProfilePhoto({ fotoprofil: result.path });
-            this.showSuccess('Foto profil berhasil diupdate');
-        } else {
-            throw new Error('Invalid server response');
-        }
+        this.showPhotoSuccess('Foto profil berhasil diupdate');
+        this.resetPhotoUpload();
+      } else {
+        throw new Error('Upload gagal: ' + (result.message || 'Unknown error'));
+      }
     } catch (error) {
-        if (error.name !== 'AbortError') {
-            this.showError(error.message || 'Failed to upload photo');
-            console.error('Upload error:', error);
-        }
+      if (error.name !== 'AbortError') {
+        console.error('Photo upload error:', error);
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+        this.showPhotoError(error.message || 'Gagal mengupload foto');
+      }
     } finally {
-        this.hidePhotoLoading(loadingId);
+      this.hidePhotoLoading(loadingId);
+      this.photoUploadState.isUploading = false;
+      this.photoUploadState.uploadAbortController = null;
     }
   }
 
+  resetPhotoUpload() {
+    // Abort any ongoing upload
+    if (this.photoUploadState.uploadAbortController) {
+      this.photoUploadState.uploadAbortController.abort();
+      this.photoUploadState.uploadAbortController = null;
+    }
+    
+    // Reset file input
+    if (this.elements.newProfilePhoto) {
+      this.elements.newProfilePhoto.value = '';
+    }
+    
+    // Reset preview
+    this.resetPhotoPreview();
+    
+    // Hide overlay
+    if (this.elements.photoOverlay) {
+      this.elements.photoOverlay.style.display = 'none';
+    }
+    
+    // Reset progress
+    this.updatePhotoProgress(0);
+    
+    // Hide messages
+    this.hidePhotoMessages();
+  }
+
   showPhotoLoading() {
-    const loadingId = photoLoading.create(this.elements.profilePictureWrapper);
-    this.loadingIds.set(loadingId, { element: this.elements.profilePictureWrapper });
+    if (!this.elements.photoOverlay) return null;
+    
+    const loadingId = photoLoading.create(this.elements.photoOverlay);
+    this.loadingIds.set(loadingId, { element: this.elements.photoOverlay });
     photoLoading.show(loadingId);
     return loadingId;
   }
@@ -471,10 +880,55 @@ export class ProfileController {
   hidePhotoLoading(loadingId) {
     if (loadingId && this.loadingIds.has(loadingId)) {
       photoLoading.hide(loadingId);
+      photoLoading.destroy(loadingId);
+      this.loadingIds.delete(loadingId);
+    }
+  }
+
+  updatePhotoProgress(percent) {
+    if (this.elements.uploadProgressBar) {
+      this.elements.uploadProgressBar.style.width = `${percent}%`;
+      this.elements.uploadProgressBar.textContent = percent === 100 ? 'Menyelesaikan...' : `${percent}%`;
+      
+      if (percent >= 100) {
+        setTimeout(() => {
+          this.elements.uploadProgressBar.style.width = '0%';
+          this.elements.uploadProgressBar.textContent = '';
+        }, 1000);
+      }
+    }
+  }
+
+  showPhotoError(message) {
+    if (this.elements.uploadErrorMessage) {
+      this.elements.uploadErrorMessage.textContent = message;
+      this.elements.uploadErrorMessage.style.display = 'block';
       setTimeout(() => {
-        photoLoading.destroy(loadingId);
-        this.loadingIds.delete(loadingId);
-      }, 300);
+        this.elements.uploadErrorMessage.style.display = 'none';
+      }, 5000);
+    } else {
+      this.showError(message);
+    }
+  }
+
+  showPhotoSuccess(message) {
+    if (this.elements.uploadSuccessMessage) {
+      this.elements.uploadSuccessMessage.textContent = message;
+      this.elements.uploadSuccessMessage.style.display = 'block';
+      setTimeout(() => {
+        this.elements.uploadSuccessMessage.style.display = 'none';
+      }, 3000);
+    } else {
+      console.log('Success:', message);
+    }
+  }
+
+  hidePhotoMessages() {
+    if (this.elements.uploadErrorMessage) {
+      this.elements.uploadErrorMessage.style.display = 'none';
+    }
+    if (this.elements.uploadSuccessMessage) {
+      this.elements.uploadSuccessMessage.style.display = 'none';
     }
   }
 
@@ -500,11 +954,15 @@ export class ProfileController {
         AbortError: { user: null, log: 'Request aborted' },
         network: 'Tidak ada respon dari server. Periksa koneksi internet Anda.',
         invalidData: 'Data profil tidak valid dari server',
+        apiUnavailable: 'API endpoint tidak tersedia. Periksa koneksi server.',
         http: {
         401: 'Sesi telah berakhir. Silakan login kembali.',
         403: 'Anda tidak memiliki izin untuk mengakses profil ini',
         404: 'Profil tidak ditemukan',
-        500: 'Terjadi kesalahan server'
+        500: 'Terjadi kesalahan server',
+        502: 'Server tidak tersedia',
+        503: 'Layanan sedang tidak tersedia',
+        504: 'Gateway timeout'
         }
     };
 
@@ -519,7 +977,10 @@ export class ProfileController {
     let shouldRedirect = false;
     let logDetails = error.message || 'Unknown error';
 
-    if (error.response) {
+    if (error.message?.includes('API endpoint tidak tersedia')) {
+        userMessage = ERROR_MESSAGES.apiUnavailable;
+        logDetails = 'API endpoint unavailable';
+    } else if (error.response) {
         // HTTP Error responses
         const status = error.response.status;
         userMessage = ERROR_MESSAGES.http[status] || ERROR_MESSAGES.default;
@@ -532,6 +993,9 @@ export class ProfileController {
     } else if (error.message?.includes('Invalid profile data')) {
         // Custom service errors
         userMessage = ERROR_MESSAGES.invalidData;
+    } else if (error.message?.includes('No response from server')) {
+        userMessage = ERROR_MESSAGES.network;
+        logDetails = 'No response from server';
     }
 
     // Enhanced error logging
@@ -563,6 +1027,23 @@ export class ProfileController {
         // In production, you might want to send this to an error tracking service
         console.error('[Profile Error]', details);
     }
+  }
+
+  debugProfileData() {
+    if (!this.isDevelopment) return;
+    
+    console.group('[Profile] Debug Information');
+    console.log('Profile Data:', this.profileData);
+    console.log('Profile Data Type:', typeof this.profileData);
+    console.log('Profile Data Keys:', Object.keys(this.profileData || {}));
+    console.log('Elements:', this.elements);
+    console.log('Current State:', {
+      isUpdating: this.isUpdating,
+      abortController: !!this.abortController,
+      profileContainer: !!this.elements.profileContainer,
+      photoUploadState: this.photoUploadState
+    });
+    console.groupEnd();
   }
 
   safeRedirectToLogin() {
@@ -602,7 +1083,7 @@ export class ProfileController {
           } else if (input && input.type === 'text') {
             input.type = 'password';
             toggleBtn.textContent = '👁️';
-          }
+        }
         });
       }
     });

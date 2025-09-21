@@ -1,0 +1,602 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin| Pemutakhiran PPAT</title>
+  <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
+  <link rel="stylesheet" href="design-n-script/design_css/design_pemutakhiran.css">
+    <!---->
+  <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
+  <link rel="stylesheet" href="design-n-script/design_css/admin_design.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <!---->
+  <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="design-n-script/design_css/design_text/design_text.css">
+</head>
+<body>
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Pemutakhiran PPAT </div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <div class="profile-header">
+                <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic">
+                <div class="profile-info">
+                    <h4><span class="nama">Load</span></h4>
+                    <p><span class="userid">Load</span></p>
+                </div>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor"/>
+                        <path d="M12 14C7.58172 14 4 17.5817 4 22H20C20 17.5817 16.4183 14 12 14Z" fill="currentColor"/>
+                    </svg>
+                    Profil
+                </button>
+                <button class="AUT logout-button">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 16L21 12M21 12L17 8M21 12H7M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Keluar
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+  <!-- Item Dashboard dengan hyperlink -->
+  <div class="box">
+      <div class="menu-item" id="dashboard_page">
+          <a href="admin-dashboard.html" class="icon-text-wrapper">
+              <i class="fa fa-home sidebar-icon"></i>
+              <span class="sidebar-text">Dashboard</span>
+          </a>
+      </div>
+  </div>
+<!-- Admin Section -->
+  <!-- Admin Section Start-->
+      <div class="box">
+      <div class="menu-item" id="aplikasi_page">
+          <a href="Admin/Aplikasi/aplikasi-admin.html" class="icon-text-wrapper">
+              <i class="fa fa-window-maximize sidebar-icon"></i>
+              <span class="sidebar-text">Aplikasi</span>
+          </a>
+      </div>
+  </div>
+  <div class="box" onclick="redirectToLink('/Admin/Permohonan Validasi/Permohonan_validasi.html')">
+      <div class="menu-item" id="PO_page">
+          <a href="/Admin/Permohonan Validasi/Permohonan_validasi.html" class="icon-text-wrapper">
+              <i class="fa fa-envelope sidebar-icon"></i>
+              <span class="sidebar-text">Permohonan Validasi</span>
+          </a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item dropdown" data-dropdown="true" id="referensi_user">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-share-alt sidebar-icon"></i>
+              <span class="sidebar-text">Referensi User</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+          <a href="/Admin/Referensi User/Pemutakhiran Data PPAT/pemutakhiran_data_ppat.html" id="PD_PPAT">Pemutakhiran Data PPAT</a>
+          <a href="/Admin/Referensi User/Status PPAT/status_ppat.html" id="Status_PPAT"> Status PPAT</a>
+      </div>
+  </div>
+  <div class="box">
+    <div class="menu-item dropdown" data-dropdown="true" id="referensi_user">
+        <div class="icon-text-wrapper dropdown-toggle">
+            <i class="fa fa-id-badge sidebar-icon"></i>
+            <span class="sidebar-text">User Data</span>
+        </div>
+    </div>
+    <div class="dropdown-content">
+        <a href="admin-datauser-pending.html" id="PD_PPAT">verifikasi Data User</a>
+        <a href="admin-datauser-complete.html" id="Status_PPAT"> Data User</a>
+    </div>
+</div>
+
+  <div class="box" onclick="redirectToLink('/Admin/Users Group/Users_group.html')">
+      <div class="menu-item" id="UG_page">
+          <a href="/Admin/Users Group/Users_group.html" class="icon-text-wrapper">
+              <i class="fa fa-id-card sidebar-icon"></i>
+              <span class="sidebar-text">Users Group</span>
+          </a>
+      </div>
+  </div>
+  <div class="box" onclick="redirectToLink('/Admin/Group Users/Group_users.html')">
+      <div class="menu-item" id="GU_page">
+          <a href="/Admin/Group Users/Group_users.html" class="icon-text-wrapper">
+              <i class="fa fa-users sidebar-icon"></i>
+              <span class="sidebar-text">Group Users</span>
+          </a>
+      </div>
+  </div>
+  <div class="box" onclick="redirectToLink('/Admin/Group Privilege/Group_privilege.html')">
+      <div class="menu-item" id="GP_page">
+          <a href="/Admin/Group Privilege/Group_privilege.html" class="icon-text-wrapper">
+              <i class="fa fa-filter sidebar-icon"></i>
+              <span class="sidebar-text">Group Privilege</span>
+          </a>
+      </div>
+  </div>
+<!-- Admin End Section -->
+  <!---->
+<div class="toggle-btn" onclick="toggleContainer()">Menu Lain</div>
+  <!-- PPAT SECTION -->
+<div id="side-container" class="container hidden">
+  <div class="tier-box">PPAT</div>
+  <div class="box">
+      <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-address-book sidebar-icon"></i>
+              <span class="sidebar-text">Booking SSPD</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+          <a href="../admins_PPAT/adminv_bookingsspd/adminv_Booking_SSPD_Badan/admin_booking_sspd_b.html" id="Booking_Badan">Booking SSPD Badan</a>
+          <a href="../admins_PPAT/adminv_bookingsspd/adminv_Booking_SSPD_Perorangan/admin_booking_sspd_p.html" id="Booking_Perorangan">Booking SSPD Perorangan</a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-check-circle sidebar-icon"></i>
+              <span class="sidebar-text">Validasi BPHTB</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+          <a href="../admins_PPAT/adminv_validasibphtb/adminv_permohonan_Validasi_SSPD/admin_permohonan_validasisspd.html" id="">Permohonan Validasi SSPD</a>
+          <a href="../admins_PPAT/adminv_validasibphtb/adminv_Status_Validasi/admin_status_validasi.html" id="">Status Validasi</a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-folder-open sidebar-icon"></i>
+              <span class="sidebar-text">Laporan Bulanan PPAT</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+          <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Input_Akta/admin_input_akta.html">Input Akta</a>
+          <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Laporan_Rekap_PPAT/admin_laporan_rekapppat.html">Laporan Rekap PPAT</a>
+          <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Monitoring_Keterlambatan/admin_monitoring_keterlambatan_pembayaran.html">Monitoring Keterlambatan</a>
+          <a href="../admins_PPAT/adminv_laporanbulananppat/adminv_Rincian_Laporan_Bulanan_PPAT/admin_rincian_laporan_bulananppat.html">Rincian Laporan Bulanan PPAT</a>
+      </div>
+  </div>
+<!-- PPAT End SECTION -->
+  <!---->
+<!-- LTB Section -->
+<div class="tier-box">Loket Terima Berkas</div> 
+  <!-- LTB -->
+  <div class="box">
+  <div class="menu-item dropdown" data-dropdown="true">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-folder sidebar-icon"></i>
+          <span class="sidebar-text">Terima Berkas SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../admins_LTB/adminv_Terima_Berkas_SSPD/admin_permohonan_validasi.html">Permohonan Validasi SSPD</a>
+  </div>
+  </div>
+<!-- LTB End Section -->
+  <!---->
+<!-- LSB Section -->
+<div class="tier-box">Loket Serah Berkas</div>
+<!-- LSB SECTION -->
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-paper-plane sidebar-icon"></i>
+          <span class="sidebar-text">Pelayanan Penyerahan SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../admins_LSB/adminv_pelayananpenyerahansspd/adminv_Pelayanan_Penyerahan_SSPD/admin_pelayanan_penyerahansspd.html" id="">Pelayanan Penyerahan SSPD </a>
+      <a href="../admins_LSB/adminv_pelayananpenyerahansspd/adminv_Monitoring_Penyerahan_SSPD/admin_monitoring_penyerahansspd.html" id="">Monitoring Penyerahan SSPD</a>
+  </div>
+</div>
+<!-- LSB End Section -->
+  <!---->
+<!-- Peneliti Section -->
+<div class="tier-box">Peneliti</div>
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-gavel sidebar-icon"></i>
+          <span class="sidebar-text">Verifikasi SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd.html" id="pemutakhiran_data_ppat">Verifikasi SSPD</a>
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html" id="status_ppat_1">Verifikasi SSPD Offline</a>
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Kasie_Verifikasi_SSPD/admin_kasie_verifikasisspd.html" id="">Kasie Verifikasi SSPD</a>
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Kasie_Verifikasi_SSPD/admin_kasie_verifikasisspd_off.html" id="">Kasie Verifikasi SSPD Offline</a>
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar.html" id="">Proses SKPD Kurang Bayar</a>
+      <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar_off.html" id="">Proses SKPD Kurang Bayar Offline</a>
+  </div>
+</div>
+<div class="box">
+  <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-television sidebar-icon"></i>
+          <span class="sidebar-text">Monitoring SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../admins_Peneliti/adminv_monitoringsspd/adminv_Monitoring_Verifikasi_SSPD/admin_monitoring_verifikasisspd.html">Monitoring Verifikasi SSPD</a>
+      <a href="../admins_Peneliti/adminv_monitoringsspd/adminv_Monitoring_SKPD_KurangBayar/admin_monitoring_skpd_kurangbayar.html">Monitoring SKPD Kurang Bayar</a>
+  </div>
+</div>
+<!-- Peneliti End Section -->
+<!---->
+<!--BANK Section-->
+<div class="tier-box">BANK</div>
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-usd sidebar-icon"></i>
+          <span class="sidebar-text">Transaksi Bank</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../admins_Bank/adminv_Transaksi_Bank/admin_hasil_transaksi.html">Hasil transaksi</a>
+  </div>
+</div>
+</div>
+<!--BANK End Section-->
+<!---->
+<!-- Pejabat Section -->
+<!---->
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="#faqpge" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="#logout" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+<main id="pemutakhiranppat_design" class="main-content">
+  <div class="tax-dashboard">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+      <div class="rekapandata">
+        <label for="jangkawaktu">Rekap</label>
+        <select id="jangkawaktu" name="Jangka Waktu" class="time-select">
+          <option value="1">1 Bulan</option>
+          <option value="3">3 Bulan</option>
+          <option value="6">6 Bulan</option>
+          <option value="12">1 Tahun</option>
+        </select>
+        <select id="tahuns" name="tahuns" class="year-select">
+          <!-- Years will be populated by JavaScript -->
+        </select>
+      </div>
+      <div class="search-container">
+        <input type="text" placeholder="Cari..." class="search-input">
+        <svg class="search-icon" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 0 0 1.48-5.34c-.47-2.78-2.79-5-5.59-5.34a6.505 6.505 0 0 0-7.27 7.27c.34 2.8 2.56 5.12 5.34 5.59a6.5 6.5 0 0 0 5.34-1.48l.27.28v.79l4.25 4.25c.41.41 1.08.41 1.49 0 .41-.41.41-1.08 0-1.49L15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Transaction Value Section -->
+    <div class="transaction-section">
+      <div class="transaction-header">
+        <h2 class="section-title">Nilai transaksi pajak <span class="transaction-amount">Rp 300.000.000</span></h2>
+        <div class="statistics-badge">
+          <span>statistik</span>
+          <div class="chart-tabs">
+            <button class="chart-tab active">Batang</button>
+            <button class="chart-tab">Garis</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="taxChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Data Table Section -->
+    <div class="data-section">
+      <div class="data-header">
+        <h3 class="data-title">Data rekap pajak by nobooking</h3>
+        <div class="table-actions">
+          <button class="export-btn">
+            <svg viewBox="0 0 24 24" class="export-icon">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            Export
+          </button>
+          <div class="entries-count">
+            Show 
+            <select class="entries-select">
+              <option>10</option>
+              <option>25</option>
+              <option>50</option>
+              <option>100</option>
+            </select>
+            entries
+          </div>
+        </div>
+      </div>
+      
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nama PPAT</th>
+              <th>Userid</th>
+              <th>ppatk_khusus</th>
+              <th>Nilai Pajak</th>
+              <th>Booking</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="bookingBody">
+              <!-- data akan diisi oleh javascript dari tabel pat_1_bookingsspd dengan status "Diserahkan" -->
+            <tr><td colspan="6" class="empty-message">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <div class="pagination-info">
+          Showing 0 to 0 of 0 entries
+        </div>
+        <div class="pagination">
+          <button class="page-nav disabled">&lt;</button>
+          <button class="page-number active">1</button>
+          <button class="page-number">2</button>
+          <button class="page-number">3</button>
+          <span class="page-ellipsis">...</span>
+          <button class="page-number">5</button>
+          <button class="page-nav">&gt;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- area tempat notifikasi yang masuk (notifikasi dibagi menjadi 3 = 1. Booking baru (trackstatus=diolah), 2. Dalam proses(trackstatus=dilanjutkan, diverifikasi, terverifikasi), 3. selesai (trackstatus= Terselesaikan ) sama seperti contoh yang sudah saya buat di cobacontoh.html-->  
+<div class="notification-container" id="notificationContainer"></div>
+
+
+
+</main>
+
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>2024 BAPPENDA Kabupaten Bogor</p>
+        </div>
+        <div class="footer-links">
+            <a href="#ini_link_ngarah_ke_linkedin">Farras</a>
+            <a href="#ini_link_ngarah_ke_linkedin">Vendor</a>
+        </div>
+    </footer>
+</div>
+<div id="admin-notifications">
+    <span id="notification-badge" class="badge hidden">New Processed Data!</span>
+</div>
+
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!---->
+<!--script front-->
+<script src="design-n-script/script_frontback_java/header_script.js"></script>
+<script src="design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="script-backend/header-backend.js"></script>
+  <!---->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Initialize year select dropdown
+const yearSelect = document.getElementById('tahuns');
+const currentYear = new Date().getFullYear();
+for (let year = currentYear; year >= 2010; year--) {
+  const option = document.createElement('option');
+  option.value = year;
+  option.textContent = year;
+  if (year === currentYear) {
+    option.selected = true;
+  }
+  yearSelect.appendChild(option);
+}
+
+// Initialize chart
+const ctx = document.getElementById('taxChart').getContext('2d');
+const taxChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    datasets: [{
+      label: 'Nilai Pajak',
+      data: [25000000, 30000000, 35000000, 40000000, 45000000, 50000000, 55000000, 60000000, 55000000, 50000000, 45000000, 40000000],
+      backgroundColor: 'rgba(67, 97, 238, 0.7)',
+      borderColor: 'rgba(67, 97, 238, 1)',
+      borderWidth: 1
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value) {
+            return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          }
+        }
+      }
+    },
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            return 'Nilai: Rp ' + context.raw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+          }
+        }
+      },
+      legend: {
+        display: false
+      }
+    }
+  }
+});
+
+// Chart tab switching
+document.querySelectorAll('.chart-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelector('.chart-tab.active').classList.remove('active');
+    this.classList.add('active');
+    
+    if (this.textContent === 'Garis') {
+      taxChart.config.type = 'line';
+      taxChart.update();
+    } else {
+      taxChart.config.type = 'bar';
+      taxChart.update();
+    }
+  });
+});
+</script>
+<script type="module">
+import { initNotifications } from '/script-backend/notification-setup.js';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await initNotifications({
+    containerId: 'notificationContainer',
+    createPanel: true,
+    panelOptions: { width: '360px', top: '130px', right: '24px', maxItems: 200 },
+    historyLimit: 50
+  });
+});
+
+// Fetch total nilai bphtb dan tampilkan di .transaction-amount
+(async function loadTaxSummary() {
+  try {
+    const res = await fetch('/api/analytics/tax/summary');
+    const data = await res.json();
+    if (data?.success) {
+      const total = Number(data.total_bphtb || 0);
+      const el = document.querySelector('.transaction-amount');
+      if (el) {
+        el.textContent = 'Rp ' + total.toLocaleString('id-ID');
+      }
+    }
+  } catch (e) {
+    console.error('Gagal memuat ringkasan pajak:', e);
+  }
+})();
+
+// Fetch per-user table data dan render ke tbody
+(async function loadPerUserTable() {
+  try {
+    const res = await fetch('/api/analytics/tax/per-user?limit=25&page=1');
+    const data = await res.json();
+    if (data?.success && Array.isArray(data.rows)) {
+      const tbody = document.getElementById('bookingBody');
+      console.log(tbody);
+      if (tbody) {
+        tbody.innerHTML = '';
+        data.rows.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${row.nama_ppat || ''}</td>
+            <td>${row.userid || ''}</td>
+            <td>${row.ppatk_khusus || ''}</td>
+            <td>Rp ${Number(row.nilai_pajak || 0).toLocaleString('id-ID')}</td>
+            <td>${row.booking || 0}</td>
+            <td><button class="action-btn" data-userid="${row.userid||''}">Cek Akun</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+        // wire actions (delegation) agar tetap bekerja setelah re-render
+        if (!window.__wireCekAkun) {
+          window.__wireCekAkun = true;
+          const table = document.querySelector('.data-table');
+          table.addEventListener('click', (e)=>{
+            const btn = e.target.closest('.action-btn');
+            if (!btn) return;
+            const userid = btn.getAttribute('data-userid')||'';
+            if (!userid) return;
+            window.location.href = `admin-datauser-pemutakhiranppat.html?userid=${encodeURIComponent(userid)}`;
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Gagal memuat data tabel:', e);
+  }
+})();
+</script>
+</body>
+</html>

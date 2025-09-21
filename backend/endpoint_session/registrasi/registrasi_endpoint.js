@@ -19,7 +19,7 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
   
     try {
         // Cek apakah email sudah ada di verified_users dengan status selain "unverified"
-        const checkEmailQueryVerified = 'SELECT * FROM verified_users WHERE email = $1';
+        const checkEmailQueryVerified = 'SELECT * FROM a_2_verified_users WHERE email = $1';
         const resultEmailVerified = await pool.query(checkEmailQueryVerified, [email]);
 
         if (resultEmailVerified.rows.length > 0) {
@@ -32,13 +32,13 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
         const otp = generateOTP();
 
         // Cek apakah email sudah ada di unverified_users
-        const checkEmailQuery = 'SELECT * FROM unverified_users WHERE email = $1';
+        const checkEmailQuery = 'SELECT * FROM a_1_unverified_users WHERE email = $1';
         const resultEmail = await pool.query(checkEmailQuery, [email]);
     
         if (resultEmail.rows.length > 0) {
             // Jika ada, update semua data pengguna termasuk OTP yang baru
             const updateQuery = `
-            UPDATE unverified_users
+            UPDATE a_1_unverified_users
             SET
                 nama = $1,
                 nik = $2,
@@ -69,7 +69,7 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
         } else {
             // Jika email tidak ada, insert data baru
             const insertQuery = `
-            INSERT INTO unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil)
+            INSERT INTO a_1_unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
             `;
             const insertValues = [
@@ -108,7 +108,7 @@ const { email, otp } = req.body;
 
     try {
         // 1. Cek email di unverified_users
-        const query = 'SELECT * FROM unverified_users WHERE email = $1';
+        const query = 'SELECT * FROM a_1_unverified_users WHERE email = $1';
         const result = await pool.query(query, [email]);
         const user = result.rows[0];
 
@@ -133,7 +133,7 @@ const { email, otp } = req.body;
         console.log(`OTP yang dimasukkan: ${otp.trim()}`);
 
         // 3. Cek duplikasi di verified_users
-        const checkVerifiedQuery = 'SELECT * FROM verified_users WHERE email = $1';
+        const checkVerifiedQuery = 'SELECT * FROM a_2_verified_users WHERE email = $1';
         const verifiedResult = await pool.query(checkVerifiedQuery, [email]);
 
         if (verifiedResult.rows.length > 0) {
@@ -145,7 +145,7 @@ const { email, otp } = req.body;
 
         // 4. Pindahkan ke verified_users
         const insertQuery = `
-            INSERT INTO verified_users (
+            INSERT INTO a_2_verified_users (
                 nama, nik, telepon, email, password, foto, 
                 otp, verifiedstatus, userid, divisi, 
                 fotoprofil, ppatk_khusus, statuspengguna
@@ -165,7 +165,7 @@ const { email, otp } = req.body;
             await client.query('BEGIN');
             
             const insertResult = await client.query(insertQuery, insertValues);
-            await client.query('DELETE FROM unverified_users WHERE email = $1', [email]);
+            await client.query('DELETE FROM a_1_unverified_users WHERE email = $1', [email]);
             
             await client.query('COMMIT');
             
@@ -202,7 +202,7 @@ router.post('/resend-otp', async (req, res) => {
   
     try {
       // Ambil data pengguna dari PostgreSQL
-      const query = 'SELECT * FROM unverified_users WHERE email = $1';
+      const query = 'SELECT * FROM a_1_unverified_users WHERE email = $1';
       const result = await pool.query(query, [email]);
       const user = result.rows[0];
   
@@ -218,7 +218,7 @@ router.post('/resend-otp', async (req, res) => {
       const otp = generateOTP();
   
       // Update OTP di PostgreSQL (gunakan unverified_users)
-      const updateQuery = 'UPDATE unverified_users SET otp = $1 WHERE email = $2 RETURNING *';
+      const updateQuery = 'UPDATE a_1_unverified_users SET otp = $1 WHERE email = $2 RETURNING *';
       await pool.query(updateQuery, [otp, email]);
   
       // Kirim OTP baru

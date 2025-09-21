@@ -1,7 +1,9 @@
 /* Reset and Base Styles */
 html, body {
     height: 100%;
+    /* allow network errors not to break scroll; keep overlays centered */
     overflow-x: hidden;
+    overflow-y: auto;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -11,14 +13,16 @@ html, body {
 
 /* Main Profile Container */
 #profile-container {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
-    max-width: 1000px;
+    max-width: 1200px;
+    max-height: 500px;
     margin: 20px auto;
-    padding: 40px;
+    padding: 25px;
     border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
     position: relative;
     overflow: hidden;
 }
@@ -36,11 +40,23 @@ html, body {
     z-index: 1;
 }
 
+/*Kepala profile Start*/
+#kepala-profile {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
+    padding: 20px 0; /* Ditambah padding vertikal */
+    min-height: 60px; /* Pastikan tinggi cukup */
+}
+
 /* Back Arrow Button */
 .arrow-button {
     position: absolute;
-    top: 20px;
+    top: 50%;
     left: 20px;
+    transform: translateY(-50%); /* Untuk vertikal center */
     background: rgba(255, 255, 255, 0.2);
     border: none;
     width: 50px;
@@ -56,39 +72,46 @@ html, body {
 
 .arrow-button:hover {
     background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
+    transform: translateY(-50%) scale(1.1); /* Tetap pertahankan translateY */
 }
 
 /* Profile Header */
-#profile-container h2 {
-    text-align: center;
+#kepala-profile h2 {
     color: white;
-    font-size: 2.5em;
-    font-weight: 300;
-    margin: 0 0 10px 0;
+    font-size: 2.2em;
+    font-weight: 400;
+    margin: 0;
     position: relative;
     z-index: 2;
 }
 
 .divisi-label {
-    text-align: center;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%); /* Untuk vertikal center */
     color: rgba(255, 255, 255, 0.8);
-    font-size: 1.1em;
-    margin-bottom: 30px;
-    position: relative;
+    font-size: 1em;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
     z-index: 2;
+    margin: 0; /* Pastikan tidak ada margin */
 }
 
 .divisi-label span {
     font-weight: 600;
     color: white;
 }
+/*Kepala profile End*/
 
 /* Profile Content Layout */
 .profile-content-wrapper {
     display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 40px;
+    grid-template-columns: 270px 1fr;
+    grid-template-rows: auto auto;
+    gap: 25px;
     align-items: start;
     position: relative;
     z-index: 2;
@@ -102,6 +125,8 @@ html, body {
     border-radius: 20px;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    grid-column: 1;
+    grid-row: 1;
 }
 
 .profile-picture-wrapper img {
@@ -141,14 +166,41 @@ html, body {
 /* Profile Details Section */
 .profile-details {
     background: rgba(255, 255, 255, 0.1);
-    padding: 30px;
+    padding: 20px;
     border-radius: 20px;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(7px);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 11px;
+    grid-column: 2;
+    grid-row: 1;
+}
+
+/* Profile Column Styling */
+.profile-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Two-column layout for larger screens */
+@media (min-width: 1000px) {
+    .profile-details {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+    
+
+    
+    /* Adjust spacing for columns */
+    .profile-column {
+        gap: 14px;
+    }
 }
 
 .profile-field {
-    margin-bottom: 25px;
+    margin-bottom: 0; /* Remove margin since we're using gap in flexbox */
 }
 
 .profile-field:last-child {
@@ -159,13 +211,13 @@ html, body {
     display: block;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
-    margin-bottom: 8px;
-    font-size: 0.95em;
+    margin-bottom: 5px;
+    font-size: 0.9em;
 }
 
 .profile-field input {
     width: 100%;
-    padding: 12px 16px;
+    padding: 10px 12px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.1);
@@ -173,6 +225,7 @@ html, body {
     font-size: 1em;
     transition: all 0.3s ease;
     backdrop-filter: blur(5px);
+    height: 38px;
 }
 
 .profile-field input:focus {
@@ -215,15 +268,98 @@ html, body {
     backdrop-filter: blur(5px);
 }
 
+.modal.show {
+    /* Center the modal content when shown */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .modal img {
     max-width: 80%;
     max-height: 80%;
     border-radius: 10px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    object-fit: contain;
+}
+
+/* Specific styling for image modal */
+#imageModal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+#imageModal.show {
+    /* Center the modal content when shown */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#imageModal img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 15px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    object-fit: contain;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+#imageModal img:hover {
+    transform: scale(1.02);
+}
+
+/* Responsive adjustments for image modal */
+@media (max-width: 768px) {
+    #imageModal img {
+        max-width: 95%;
+        max-height: 95%;
+    }
+    
+    #imageModal .close {
+        top: 15px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        font-size: 28px;
+    }
+}
+
+/* Close button for image modal */
+#imageModal .close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: white;
+    font-size: 35px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 1001;
+    background: rgba(0, 0, 0, 0.5);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+#imageModal .close:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
 }
 
 /* Overlay Styles */
-.password-overlay, .photo-overlay {
+.password-overlay {
     display: none;
     position: fixed;
     top: 50%;
@@ -231,7 +367,7 @@ html, body {
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 500px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
     border-radius: 20px;
     padding: 30px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -281,6 +417,9 @@ html, body {
 .password-input-wrapper {
     position: relative;
 }
+.password-input-wrapper input {
+    padding-right: 35px;
+}
 
 .toggle-password {
     position: absolute;
@@ -301,6 +440,58 @@ html, body {
     display: flex;
     gap: 15px;
     justify-content: center;
+}
+
+/* Signature overlay specific layout */
+.signature-preview-row {
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: center;
+    align-items: stretch;
+    margin: 10px 0 20px 0;
+}
+
+.signature-card {
+    flex: 1 1 0;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+}
+
+.signature-card img,
+.signature-card canvas {
+    width: 100%;
+    height: 260px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: white;
+}
+
+.signature-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9em;
+    margin-bottom: 8px;
+    align-self: flex-start;
+}
+
+/* Uploaded signature large preview (like profile photo) */
+.signature-preview-uploaded {
+    margin: 10px 0 14px 0;
+    display: none;
+}
+.signature-preview-uploaded img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    background: white;
 }
 
 .password-buttons button, .photo-buttons button {
@@ -439,6 +630,11 @@ html, body {
     border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
+.bungkus-baru {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
 /* Animation */
 @keyframes gradientShift {
     0% { background-position: 0% 50%; }
@@ -447,6 +643,29 @@ html, body {
 }
 
 /* Responsive Design */
+@media (max-width: 1000px) {
+    .profile-details {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .profile-column {
+        gap: 17px;
+    }
+    
+    #paraf-peneliti {
+        grid-column: 1;
+        grid-row: 2;
+        margin-top: 20px;
+        margin-bottom: 15px;
+        max-width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+        width: 270px; /* Sesuai lebar profile picture */
+        align-self: flex-start; /* Sejajar dengan kolom kiri */
+    }
+}
+
 @media (max-width: 768px) {
     #profile-container {
         margin: 10px;
@@ -467,6 +686,12 @@ html, body {
         height: 120px;
     }
     
+    #paraf-peneliti {
+        margin-top: 8px;
+        margin-bottom: 12px;
+        padding: 10px 20px;
+    }
+    
     .password-overlay, .photo-overlay {
         width: 95%;
         padding: 20px;
@@ -478,6 +703,10 @@ html, body {
     
     .password-buttons button, .photo-buttons button {
         width: 100%;
+    }
+
+    .signature-preview-row {
+        flex-direction: column;
     }
 }
 
@@ -498,6 +727,29 @@ html, body {
     .profile-field input {
         padding: 10px 12px;
     }
+}
+
+/* Paraf Button Styling */
+#paraf-peneliti {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+#paraf-peneliti:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 /* Utility Classes */

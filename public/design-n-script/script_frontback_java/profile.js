@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // General function to close all overlays
     function closeOverlays() {
         passwordOverlay.style.display = 'none';
+        const signatureOverlay = document.getElementById('signature-overlay');
+        if (signatureOverlay) signatureOverlay.style.display = 'none';
         photoOverlay.style.display = 'none';
         overlayBackdrop.style.display = 'none';
         resetPhotoInput();
@@ -72,25 +74,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileImg = document.getElementById("profileImg");
     const modal = document.getElementById("imageModal");
     const modalImg = modal.querySelector("img");
-    const blackBackground = modal.querySelector(".blackbackground");
 
     // Show modal when profile image is clicked
     profileImg.onclick = function () {
-        modal.style.display = "flex"; // Tampilkan modal
+        modal.style.display = "flex";
+        modal.classList.add("show");
         modalImg.src = profileImg.src; // Set gambar modal dengan gambar profil yang diklik
-    };
-
-    // Hide modal when clicking outside the modal image (clicking on the black background)
-    blackBackground.onclick = function () {
-        modal.style.display = "none"; // Sembunyikan modal
     };
 
     // Hide modal when clicking outside the modal image
     modal.onclick = function (event) {
         if (event.target === modal) {
-            modal.style.display = "none"; // Sembunyikan modal jika klik di luar gambar
+            modal.style.display = "none";
+            modal.classList.remove("show");
         }
     };
-
-
 });

@@ -6,64 +6,91 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Pastikan selalu mengacu ke root proyek (bukan folder modul ini)
+const ROOT_DIR = path.resolve(__dirname, '../../..');
 
 // Configuration
-const TTD_VERIF_PATH = path.join(__dirname, '..', 'public', 'penting_F_simpan', 'tanda-tangan-verif');
+// Direktori dasar tanda tangan di dalam public root
+const BASE_SIGNATURE_DIR = path.join(ROOT_DIR, 'public', 'penting_F_simpan', 'folderttd');
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // increase limit to be tolerant
 
 // Ensure storage directory exists
-const ensureDir = async (path) => {
+const ensureDir = async (dirPath) => {
   try {
-    await fs.access(path);
+    await fs.access(dirPath);
   } catch {
-    await fs.mkdir(path, { recursive: true });
+    await fs.mkdir(dirPath, { recursive: true });
   }
 };
 
 // Memory storage for initial upload
 const storage = multer.memoryStorage();
-// Tambahkan pada uploadTTDVerif middleware:
+// IMPORTANT: multer's fileFilter is called BEFORE buffering, so file.buffer is undefined here.
+// Only perform lightweight checks and defer heavy validation to processTTDVerif.
 const fileFilter = (req, file, cb) => {
-    // Validasi ekstensi file
+  try {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-        return cb(new Error('Hanya file gambar yang diperbolehkan'), false);
+    const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
+    const isMimeAllowed = ALLOWED_MIME_TYPES.includes(file.mimetype);
+    if (!allowedExt.includes(ext) || !isMimeAllowed) {
+      return cb(new Error('Hanya file gambar (JPG/PNG/WebP) yang diperbolehkan'), false);
     }
-    // Validasi dimensi gambar
-    sharp(file.buffer).metadata()
-        .then(metadata => {
-            if (metadata.width > 2000 || metadata.height > 1000) {
-                return cb(new Error('Dimensi gambar terlalu besar'), false);
-            }
-            cb(null, true);
-        });
+    return cb(null, true);
+  } catch (e) {
+    return cb(new Error('Gagal memproses file upload'), false);
+  }
+};
+
+// Resolve subfolder based on user division
+const resolveSignatureFolder = (req) => {
+  const divisiRaw = req.session?.user?.divisi || '';
+  const useridRaw = req.session?.user?.userid || '';
+  const divisi = String(divisiRaw).toLowerCase();
+  const useridUpper = String(useridRaw).toUpperCase();
+
+  if (divisi === 'peneliti validasi' || divisi === 'peneliti_validasi') return 'parafv_sign';
+  if (divisi === 'peneliti') return 'peneliti_sign';
+  if (divisi === 'ppat' || divisi === 'ppats') return 'ppat_sign';
+  // Fallback berdasarkan prefix userid
+  if (useridUpper.startsWith('PAT') || useridUpper.startsWith('PATS')) return 'ppat_sign';
+  return 'ppat_sign';
 };
 
 const processTTDVerif = async (req, res, next) => {
-  if (!req.file) return next();
-  
+  // Support both single('signature1') and fields(['signature','signature1'])
+  const pickFile = () => {
+    if (req.file) return req.file;
+    if (req.files) {
+      if (Array.isArray(req.files.signature) && req.files.signature[0]) return req.files.signature[0];
+      if (Array.isArray(req.files.signature1) && req.files.signature1[0]) return req.files.signature1[0];
+    }
+    return null;
+  };
+
+  const uploaded = pickFile();
+  if (!uploaded) return next();
+
   try {
-    await ensureDir(TTD_VERIF_PATH);
-    
+    const subfolder = resolveSignatureFolder(req);
+    const targetDir = path.join(BASE_SIGNATURE_DIR, subfolder);
+    await ensureDir(targetDir);
+
     const userid = req.session?.user?.userid || 'unknown';
-    const timestamp = Date.now();
-    const fileExt = req.file.mimetype.split('/')[1] || 'jpg';
-    const filename = `ttd-${userid}-${timestamp}.${fileExt}`;
-    const filePath = path.join(TTD_VERIF_PATH, filename);
-    const publicUrl = `/penting_F_simpan/tanda-tangan-verif/${filename}`;
+    // Gunakan nama file tetap agar selalu overwrite versi lama
+    const filename = `ttd-${userid}.png`;
+    const filePath = path.join(targetDir, filename);
+    const publicUrl = `/penting_F_simpan/folderttd/${subfolder}/${filename}`;
 
     // Process image
-    await sharp(req.file.buffer)
+    await sharp(uploaded.buffer)
       .greyscale()
-      .resize(800, 300, {
+      // Normalize canvas to square (1:1) and center the image
+      .resize(800, 800, {
         fit: 'contain',
-        background: { r: 255, g: 255, b: 255 }
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // transparan
       })
-      .toFormat('jpeg', { 
-        quality: 90,
-        mozjpeg: true 
-      })
+      .png({ compressionLevel: 9 }) // simpan ke PNG dengan transparansi
       .toFile(filePath);
 
     // Attach processed file info to request
@@ -71,7 +98,7 @@ const processTTDVerif = async (req, res, next) => {
       path: filePath,
       url: publicUrl,
       size: (await fs.stat(filePath)).size,
-      mimeType: 'image/jpeg' // Default to JPEG since we converted it
+      mimeType: 'image/png'
     };
     
     next();
@@ -89,7 +116,11 @@ const uploadTTDVerif = multer({
 
 // Middleware for handling TTD verification upload
 export const ttdVerifMiddleware = [
-  uploadTTDVerif.single('signature'),
+  // Terima 'signature' (frontend profil) atau 'signature1' (varian lain)
+  (req, res, next) => uploadTTDVerif.fields([
+    { name: 'signature', maxCount: 1 },
+    { name: 'signature1', maxCount: 1 }
+  ])(req, res, next),
   processTTDVerif
 ];
 
@@ -98,8 +129,7 @@ export const uploadTTD = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       const folders = {
-        signature1: path.join(__dirname, '..', 'public', 'penting_F_simpan', 'folderttd', 'folderttdwp'),
-        signature2: path.join(__dirname, '..', 'public', 'penting_F_simpan', 'folderttd', 'folderttd_ppatk')
+        signature1: path.join(ROOT_DIR, 'public', 'penting_F_simpan', 'folderttd', 'folderttdwp')
       };
       const destPath = folders[file.fieldname];
       ensureDir(destPath)
@@ -116,7 +146,7 @@ export const uploadTTD = multer({
   }),
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB
-    files: 2
+    files: 1
   },
   fileFilter
 });
@@ -124,4 +154,4 @@ export const uploadTTD = multer({
 // For Kasie signature (memory storage only)
 export const uploadTTDKasie = multer({ 
   storage: multer.memoryStorage() 
-}).fields([{ name: 'signature', maxCount: 1 }]);
+}).fields([{ name: 'signature1', maxCount: 1 }]);

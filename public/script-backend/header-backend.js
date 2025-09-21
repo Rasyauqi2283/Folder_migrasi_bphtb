@@ -82,6 +82,12 @@ fetch('/api/profile')
     console.log('Data userID:', user.userid);
     console.log('Data pengguna:', user.statuspengguna);
 
+    // Ekspos divisi & userid secara global untuk komponen lain (poller/notification UI)
+    try {
+        window.currentUserDivisi = user.divisi;
+        window.currentUserId = user.userid || user.id;
+    } catch (_) {}
+
     // Mengubah textContent atau value untuk semua elemen dengan class yang sesuai
     document.querySelectorAll('.userid').forEach(element => {
         element.value = user.userid;
@@ -100,6 +106,18 @@ fetch('/api/profile')
     });
 
     console.log('Foto Profil yang Ditampilkan:', fotoProfilUrl);
+
+    // Log tanda tangan untuk debugging overlay paraf
+    try {
+        const signatureUrl = user.tanda_tangan_path ? decodeURIComponent(String(user.tanda_tangan_path).replace('\\', '/')) : null;
+        // Ekspos agar modul lain bisa pakai bila perlu
+        window.currentSignaturePath = signatureUrl || null;
+        if (signatureUrl) {
+            try { localStorage.setItem('signature_path', signatureUrl); } catch(_) {}
+        }
+    } catch (e) {
+        console.warn('Gagal memproses path tanda tangan:', e?.message || e);
+    }
 })
 .catch(err => console.error('Gagal mengambil data profil:', err));
 //

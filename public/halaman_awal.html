@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>E-BPHTB | Selamat Datang</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #0d1b2a, #1b263b, #415a77);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    header {
+      width: 100%;
+      padding: 20px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .nav-buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .nav-buttons button {
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .nav-buttons .register {
+      background: #00b4d8;
+      color: #fff;
+    }
+    .nav-buttons .register:hover {
+      background: #0096c7;
+      transform: translateY(-2px);
+    }
+
+    .nav-buttons .login {
+      background: #fff;
+      color: #1b263b;
+    }
+    .nav-buttons .login:hover {
+      background: #e2e8f0;
+      transform: translateY(-2px);
+    }
+
+    /* Hero Section */
+    .hero {
+      margin-top: 120px; /* supaya tidak ketutup navbar */
+      width: 90%;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 40px;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.7s ease forwards;
+    }
+
+    .hero-text {
+      flex: 1;
+    }
+    .hero-text h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+    .hero-text p {
+      font-size: 1.1rem;
+      color: #e2e8f0;
+      margin-bottom: 25px;
+    }
+    .hero-text .cta {
+      padding: 12px 25px;
+      background: #00b4d8;
+      color: #fff;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .hero-text .cta:hover {
+      background: #0096c7;
+      transform: translateY(-2px);
+    }
+
+    .hero img {
+      flex: 1;
+      max-width: 500px;
+      width: 100%;
+      height: auto;
+    }
+
+    /* Banner / Notice */
+    .banner {
+      margin-top: 60px;
+      width: 90%;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 40px;
+      text-align: center;
+      background: rgba(255,255,255,0.08);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: fadeInUp 0.7s ease forwards;
+    }
+
+    .banner h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .banner p {
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.05);
+    }
+
+    /* Animasi */
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header {
+        padding: 15px 25px;
+      }
+      .logo {
+        font-size: 1.2rem;
+      }
+      .hero {
+        flex-direction: column;
+        text-align: center;
+      }
+      .hero-text h1 {
+        font-size: 2rem;
+      }
+      .banner {
+        width: 95%;
+        padding: 25px;
+      }
+      .banner h2 {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <header>
+    <div class="logo">E-BPHTB</div>
+    <div class="nav-buttons">
+      <button class="login">Masuk</button>
+      <button class="register">Registrasi</button>
+    </div>
+  </header>
+    <!-- Banner / Notice -->
+    <section class="banner">
+        <h2>Informasi Penting</h2>
+        <p>Website ini merupakan layanan resmi Pemerintah Kabupaten Bogor untuk memudahkan masyarakat dalam proses pengajuan dan pelaporan BPHTB secara online.</p>
+      </section>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Selamat Datang di E-BPHTB Kabupaten Bogor</h1>
+      <p>Layanan resmi Bea Perolehan Hak atas Tanah dan Bangunan secara digital, cepat, dan transparan.</p>
+      <button class="cta">Pelajari Lebih Lanjut</button>
+    </div>
+    <img src="asset/Tax-amico.png" alt="Ilustrasi Pajak" />
+  </section>
+
+
+
+  <!-- Footer -->
+  <footer>
+    © 2025 Pemerintah Kabupaten Bogor – Dinas Pendapatan Daerah
+  </footer>
+</body>
+</html>

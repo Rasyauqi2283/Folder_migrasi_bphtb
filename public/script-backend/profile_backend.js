@@ -144,76 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
             previewImage.src = '';
         }
     });
-    // Menyimpan foto baru
-    saveButton.addEventListener('click', async (event) => {
-        event.preventDefault();
-
-        // Validasi file
-        const file = inputFile.files[0];
-        if (!file) {
-            alert('Pilih gambar terlebih dahulu.');
-            return;
-        }
-
-        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!validTypes.includes(file.type)) {
-            alert('Hanya format JPEG, PNG, atau WEBP yang diperbolehkan.');
-            return;
-        }
-
-        if (file.size > 2 * 1024 * 1024) {
-            alert('Ukuran file maksimal 2MB.');
-            return;
-        }
-
-        // UI Loading State
-        saveButton.disabled = true;
-        saveButton.textContent = 'Mengupload...';
-
-        try {
-            const formData = new FormData();
-            formData.append('fotoprofil', file);
-
-            const response = await fetch('/api/auth/profile/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            // Handle HTTP errors
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Upload gagal');
-            }
-
-            const data = await response.json();
-
-            // Pastikan response sukses
-            if (!data.success) {
-                throw new Error(data.message || 'Upload gagal');
-            }
-
-            // Update gambar tanpa reload halaman
-            const timestamp = new Date().getTime();
-            document.querySelectorAll('.fotoprofil').forEach(img => {
-                img.src = `${data.foto_path}?t=${timestamp}`; // Gunakan path dari backend
-            });
-
-            // Reset form
-            photoOverlay.style.display = 'none';
-            inputFile.value = '';
-            previewImage.src = '';
-            previewText.textContent = 'Tidak ada gambar terpilih';
-
-            alert('Foto profil berhasil diperbarui!');
-        } catch (error) {
-            console.error('Upload error:', error);
-            alert(`Gagal mengupload: ${error.message}`);
-        } finally {
-            // Reset button state
-            saveButton.disabled = false;
-            saveButton.textContent = 'Simpan Foto';
-        }
-    });
+    // Menyimpan foto baru - DISABLED karena sudah dihandle oleh ProfileController
+    // saveButton.addEventListener('click', async (event) => {
+    //     // Event handler ini dinonaktifkan karena sudah dihandle oleh ProfileController
+    //     // yang memiliki implementasi yang lebih robust
+    // });
     //
     //
        // patch 3
@@ -256,8 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Tampilkan button hanya untuk divisi pemilik tanda tangan
 document.addEventListener('DOMContentLoaded', () => {
   const userDivisi = localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
-  if (userDivisi === 'Peneliti' || userDivisi === 'Peneliti Validasi' || userDivisi === 'PPAT' || userDivisi === 'PPATS') {
+  if (userDivisi === 'Peneliti' || userDivisi === 'PPAT' || userDivisi === 'PPATS') {
     document.getElementById('paraf-peneliti').style.display = 'block';
+  } else if (userDivisi === 'Peneliti Validasi') {
+    const btn = document.getElementById('paraf-peneliti');
+    if (btn) btn.style.display = 'none';
+    const link = document.getElementById('pv-signature-link');
+    if (link) link.style.display = 'inline-block';
   }
 });
 

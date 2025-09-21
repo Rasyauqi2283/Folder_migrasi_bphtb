@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Notifikasi Booking</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7f9;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 250px;
+            background-color: var(--primary);
+            color: white;
+            padding: 20px 0;
+        }
+        
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            margin-top: 20px;
+        }
+        
+        .sidebar-menu li {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .sidebar-menu li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-menu li.active {
+            background-color: var(--secondary);
+            border-left: 4px solid white;
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 350px;
+        }
+        
+        .notification {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            animation: slideIn 0.5s forwards;
+            position: relative;
+            overflow: hidden;
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .notification.hide {
+            animation: slideOut 0.5s forwards;
+        }
+        
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .notification-content {
+            margin-bottom: 12px;
+            color: #555;
+        }
+        
+        .notification-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #ddd;
+            color: #777;
+        }
+        
+        .btn-outline:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background-color: var(--secondary);
+            animation: progress 30s linear forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes progress {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+        
+        .card-header {
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-primary {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .booking-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .booking-item:last-child {
+            border-bottom: none;
+        }
+        
+        .booking-id {
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .booking-details {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+        
+        .status-pending {
+            background-color: #fff4e6;
+            color: #f39c12;
+        }
+        
+        .status-approved {
+            background-color: #e9f7ef;
+            color: #2ecc71;
+        }
+        
+        .status-rejected {
+            background-color: #feecea;
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>BAPPENDA</h2>
+                <p>BPHTB Kab. Bogor</p>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active">Dashboard</li>
+                <li>Booking</li>
+                <li>Laporan</li>
+                <li>Pengaturan</li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <h1>Dashboard Admin</h1>
+                <div class="user-info">
+                    <div class="avatar">A</div>
+                    <div>
+                        <div>Administrator</div>
+                        <small>admin@bappenda-bphtb-kabbogor.com</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <span>Booking Baru</span>
+                        <span class="badge badge-primary">3</span>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00001-2025</div>
+                        <div class="booking-details">PPAT: Johan &bull; WP: Ahmad Sanusi</div>
+                        <div class="booking-details">Jumlah: Rp 5.250.000</div>
+                        <div class="status status-pending">Menunggu LTB</div>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00002-2025</div>
+                        <div class="booking-details">PPAT: Sinta &bull; WP: Bambang Sutioso</div>
+                        <div class="booking-details">Jumlah: Rp 3.750.000</div>
+                        <div class="status status-pending">Menunggu LTB</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span>Dalam Proses</span>
+                        <span class="badge badge-primary">5</span>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00003-2025</div>
+                        <div class="booking-details">PPAT: David &bull; WP: Cici Handayani</div>
+                        <div class="status status-pending">Diproses Peneliti</div>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00004-2025</div>
+                        <div class="booking-details">PPAT: Rina &bull; WP: Dedi Suprapto</div>
+                        <div class="status status-pending">Verifikasi akhir</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span>Selesai</span>
+                        <span class="badge badge-primary">12</span>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00005-2025</div>
+                        <div class="booking-details">PPAT: Eko &bull; WP: Fajar Nugroho</div>
+                        <div class="status status-approved">Terverifikasi</div>
+                    </div>
+                    <div class="booking-item">
+                        <div class="booking-id">20001-00006-2025</div>
+                        <div class="booking-details">PPAT: Fitri &bull; WP: Guntur Wibowo</div>
+                        <div class="status status-rejected">Ditolak</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="notification-container" id="notificationContainer">
+            <!-- Notifications will be added here dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // Simulasi notifikasi
+        const notifications = [
+            {
+                id: 1,
+                title: "Booking: 20001-00001-2025",
+                message: "PPAT: Johan, Jenis: BPHTB, WP: Ahmad Sanusi, Jumlah: Rp 5.250.000",
+                type: "info",
+                bookingId: "20001-00001-2025"
+            },
+            {
+                id: 2,
+                title: "Booking: 20001-00002-2025",
+                message: "PPAT: Sinta, Jenis: BPHTB, WP: Bambang Sutioso, Jumlah: Rp 3.750.000",
+                type: "info",
+                bookingId: "20001-00002-2025"
+            },
+            {
+                id: 3,
+                title: "Verifikasi Selesai",
+                message: "Booking 20001-00005-2025 telah diverifikasi dan selesai",
+                type: "success",
+                bookingId: "20001-00005-2025"
+            }
+        ];
+
+        function showNotification(notification) {
+            const notificationContainer = document.getElementById('notificationContainer');
+            
+            const notificationEl = document.createElement('div');
+            notificationEl.className = 'notification';
+            notificationEl.innerHTML = `
+                <div class="notification-header">
+                    <span>${notification.title}</span>
+                    <span>&times;</span>
+                </div>
+                <div class="notification-content">
+                    ${notification.message}
+                </div>
+                <div class="notification-footer">
+                    <button class="btn btn-outline">Abaikan</button>
+                    <button class="btn btn-primary" onclick="viewBooking('${notification.bookingId}')">Lihat</button>
+                </div>
+                <div class="progress-bar"></div>
+            `;
+            
+            notificationContainer.appendChild(notificationEl);
+            
+            // Close button functionality
+            const closeBtn = notificationEl.querySelector('.notification-header span:last-child');
+            closeBtn.addEventListener('click', () => {
+                notificationEl.classList.add('hide');
+                setTimeout(() => {
+                    notificationContainer.removeChild(notificationEl);
+                }, 500);
+            });
+            
+            // Auto hide after 30 seconds
+            setTimeout(() => {
+                if (notificationContainer.contains(notificationEl)) {
+                    notificationEl.classList.add('hide');
+                    setTimeout(() => {
+                        if (notificationContainer.contains(notificationEl)) {
+                            notificationContainer.removeChild(notificationEl);
+                        }
+                    }, 500);
+                }
+            }, 30000);
+        }
+        
+        function viewBooking(bookingId) {
+            alert(`Melihat detail booking: ${bookingId}`);
+            // Dalam implementasi nyata, akan redirect ke halaman detail booking
+        }
+        
+        // Simulate incoming notifications
+        setTimeout(() => showNotification(notifications[0]), 1000);
+        setTimeout(() => showNotification(notifications[1]), 4000);
+        setTimeout(() => showNotification(notifications[2]), 8000);
+        
+        // Simulate polling for new notifications
+        setInterval(() => {
+            // Dalam implementasi nyata, akan melakukan fetch ke endpoint server
+            console.log("Memeriksa notifikasi baru...");
+        }, 10000);
+    </script>
+</body>
+</html>
