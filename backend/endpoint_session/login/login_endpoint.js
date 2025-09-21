@@ -18,9 +18,9 @@ router.post('/login', async (req, res) => {
         SELECT 
             userid, password, nama, email, divisi, 
             fotoprofil, statuspengguna, verifiedstatus,
-            username, nip, special_field, special_parafv,
+            username, nip, special_field, special_parafv, pejabat_umum,
             tanda_tangan_mime, tanda_tangan_path, telepon
-        FROM verified_users 
+        FROM a_2_verified_users 
         WHERE (email = $1 OR userid = $1 OR username = $1)
         AND verifiedstatus = 'complete'
     `;
@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
     if (user.divisi === 'Wajib Pajak') {
       isProfileComplete = !!user.username;
     } else if (user.divisi === 'PPAT' || user.divisi === 'PPATS') {
-      isProfileComplete = !!user.username && !!user.special_field;
+      isProfileComplete = !!user.username && !!user.special_field && !!user.pejabat_umum;
     } else if (user.divisi === 'Peneliti Validasi') {
       isProfileComplete = !!user.username && !!user.nip && !!user.special_parafv;
     } else {
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
 
     // Update status & last_active jadi online saat login
     await client.query(
-      `UPDATE verified_users 
+      `UPDATE a_2_verified_users 
        SET statuspengguna = $1, last_active = NOW() 
        WHERE userid = $2`,
       ['online', user.userid]
@@ -77,6 +77,7 @@ router.post('/login', async (req, res) => {
       nip: user.nip,
       special_field: user.special_field,
       special_parafv: user.special_parafv,
+      pejabat_umum: user.pejabat_umum,
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,
@@ -97,6 +98,7 @@ router.post('/login', async (req, res) => {
       nip: user.nip,
       special_field: user.special_field,
       special_parafv: user.special_parafv,
+      pejabat_umum: user.pejabat_umum,
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,
@@ -118,7 +120,7 @@ router.post('/login', async (req, res) => {
 // Patch 2 Endpoint Complete Profile
 // Endpoint Complete Profile yang Disempurnakan
 router.post('/complete-profile', async (req, res) => {
-  const { userid, nip, username, special_field, special_parafv } = req.body;
+  const { userid, nip, username, special_field, special_parafv, pejabat_umum } = req.body;
   const client = await pool.connect();
 
   try {
@@ -126,7 +128,7 @@ router.post('/complete-profile', async (req, res) => {
 
     // Dapatkan data user lengkap untuk validasi
     const userQuery = await client.query(
-      'SELECT divisi, username FROM verified_users WHERE userid = $1 FOR UPDATE',
+      'SELECT divisi, username FROM a_2_verified_users WHERE userid = $1 FOR UPDATE',
       [userid]
     );
     const user = userQuery.rows[0];
@@ -145,7 +147,7 @@ router.post('/complete-profile', async (req, res) => {
     }
     if (username !== user.username) {
       const existingUser = await client.query(
-        'SELECT userid FROM verified_users WHERE username = $1',
+        'SELECT userid FROM a_2_verified_users WHERE username = $1',
         [username]
       );
       if (existingUser.rows.length > 0) {
@@ -162,10 +164,10 @@ router.post('/complete-profile', async (req, res) => {
         message: 'NIP wajib diisi untuk divisi ini.' 
       });
     }
-    if ((user.divisi === 'PPAT' || user.divisi === 'PPATS') && !special_field) {
+    if ((user.divisi === 'PPAT' || user.divisi === 'PPATS') && (!special_field || !pejabat_umum)) {
       return res.status(400).json({ 
         success: false,
-        message: 'Bidang khusus wajib diisi untuk PPAT/PPATS.' 
+        message: 'Nama PPAT dan Gelar Pejabat wajib diisi untuk PPAT/PPATS.' 
       });
     }
     if ((user.divisi === 'Peneliti Validasi') && !special_parafv) {
@@ -177,11 +179,11 @@ router.post('/complete-profile', async (req, res) => {
 
     // Update profil user (dengan RETURNING seperti di update-profile)
     const updateResult = await client.query(
-      `UPDATE verified_users 
-       SET nip = $1, username = $2, special_field = $3, special_parafv = $5 
-       WHERE userid = $4
-       RETURNING username, nip, special_field, special_parafv`,
-      [nip, username, special_field, userid, special_parafv]
+      `UPDATE a_2_verified_users 
+       SET nip = $1, username = $2, special_field = $3, pejabat_umum = $4, special_parafv = $6 
+       WHERE userid = $5
+       RETURNING username, nip, special_field, pejabat_umum, special_parafv`,
+      [nip, username, special_field, pejabat_umum || null, userid, special_parafv]
     );
 
     const updatedUser = updateResult.rows[0];
@@ -197,6 +199,7 @@ router.post('/complete-profile', async (req, res) => {
     // Tambahkan field khusus sesuai divisi
     if (user.divisi === 'PPAT' || user.divisi === 'PPATS') {
       responseData.special_field = updatedUser.special_field;
+      responseData.pejabat_umum = updatedUser.pejabat_umum;
     } else if (user.divisi === 'Peneliti Validasi') {
       responseData.special_parafv = updatedUser.special_parafv;
     }
