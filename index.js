@@ -115,7 +115,7 @@ import { buildValidasiPdf } from './backend/services/GeneratorPDF_withKEY/genera
 // App part (core & api couriers)
 import axios from 'axios';
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -5890,7 +5890,6 @@ app.post('/api/pv/generate-qr', async (req, res) => {
   }
 });
 
-app.get("/", (req, res) => {
-    res.send("✅ Server Railway jalan");
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server berjalan di port ${PORT}`);
   });
-  
