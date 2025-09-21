@@ -343,3 +343,59 @@ animation: moveLeft 15s linear infinite, colorFade 4s ease-in-out infinite;
   display: flex;
   align-items: center;
 }
+
+/* Responsive: Mobile (HP) */
+@media (max-width: 768px) {
+    html, body {
+        overflow: auto;
+        height: auto;
+    }
+    .login-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    .left-panel {
+        width: 100%;
+        padding: 16px;
+    }
+    .logo-section {
+        width: 100%;
+        height: auto;
+        padding: 16px;
+    }
+    .logo {
+        width: 72px;
+    }
+    .right-panel {
+        display: none;
+    }
+    .right-panel-d {
+        margin: 0;
+        width: 100%;
+        padding: 16px;
+    }
+    .description {
+        font-size: 1em;
+        text-align: center;
+    }
+    .input-wrapper input {
+        font-size: 16px; /* hindari zoom otomatis di iOS */
+    }
+    .login-button {
+        font-size: 16px;
+    }
+}
+
+/* Responsive: Desktop/Large */
+@media (min-width: 1200px) {
+    .left-panel {
+        width: 360px;
+    }
+    .right-panel {
+        width: calc(100% - 360px);
+    }
+    .description {
+        font-size: 1.6em;
+    }
+}
