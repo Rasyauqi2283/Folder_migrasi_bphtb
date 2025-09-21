@@ -11,11 +11,11 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const { Pool } = pkg;
 
 const pool = new Pool({
-  user: process.env.PGUSER,
-  host: process.env.PGHOST,
-  database: process.env.PGDATABASE,
-  password: process.env.PGPASSWORD,
-  port: process.env.PGPORT,
+  user: process.env.PG_USER,        // tambah underscore
+  host: process.env.PG_HOST,        // tambah underscore  
+  database: process.env.PG_DATABASE, // tambah underscore
+  password: process.env.PG_PASSWORD, // tambah underscore
+  port: process.env.PG_PORT,        // tambah underscore
 });
 
 // Query Executor dengan Logging
