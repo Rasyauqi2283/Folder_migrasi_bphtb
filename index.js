@@ -495,9 +495,15 @@ app.get('/check-cookie', (req, res) => {
 // Middleware
 // TODO-CORE: Aktifkan CORS dengan credentials agar cookie session terkirim
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean) || ['http://localhost:5173','http://localhost:3000'],
-  credentials: true
-}));
+    origin: process.env.CORS_ORIGINS?.split(',')
+                      .map(s => s.trim())
+                      .filter(Boolean)
+            || ['http://localhost:5173','http://localhost:3000'],
+    credentials: true
+  }));
+console.log(process.env.CORS_ORIGINS?.split(',')
+  .map(s => s.trim())
+  .filter(Boolean));
 // Mount API routes early to avoid accidental fallthrough to static handlers
 
 app.use('/design-n-script', express.static(path.join(__dirname, 'design-n-script')));
