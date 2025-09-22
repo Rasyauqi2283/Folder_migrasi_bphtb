@@ -119,6 +119,9 @@ const PORT = process.env.PORT || 8080;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Feature flag to disable pat_3_documents usage while keeping DB objects
+const PAT3_DISABLED = process.env.DISABLE_PAT3 === '1';
+
 staticConfig(app);
 
 // TODO-CORE: Logger harus dibuat sebelum morgan digunakan
@@ -1279,16 +1282,20 @@ app.post('/api/ppatk_create-booking-and-bphtb', morganMiddleware,async (req, res
 
         // 4. (Opsional) Siapkan baris awal dokumen, tanda tangan, dan validasi surat
         // Gunakan savepoint agar jika tabel/kolom tidak cocok, transaksi utama tetap lanjut
-        try {
-            await client.query('SAVEPOINT sp_docs');
-            const insertDocs = `
-                INSERT INTO pat_3_documents (userid, nama, path_document1, path_document2, booking_id, upload_date)
-                VALUES ($1, $2, NULL, NULL, $3, NOW())
-            `;
-            await client.query(insertDocs, [userid, nama, Bookingid]);
-        } catch (e) {
-            await client.query('ROLLBACK TO SAVEPOINT sp_docs');
-            console.warn('Skip init pat_3_documents:', e.message);
+        if (!PAT3_DISABLED) {
+            try {
+                await client.query('SAVEPOINT sp_docs');
+                const insertDocs = `
+                    INSERT INTO pat_3_documents (userid, nama, path_document1, path_document2, booking_id, upload_date)
+                    VALUES ($1, $2, NULL, NULL, $3, NOW())
+                `;
+                await client.query(insertDocs, [userid, nama, Bookingid]);
+            } catch (e) {
+                await client.query('ROLLBACK TO SAVEPOINT sp_docs');
+                console.warn('Skip init pat_3_documents:', e.message);
+            }
+        } else {
+            console.log('Lewati init pat_3_documents (dinonaktifkan)');
         }
 
         try {
@@ -5265,6 +5272,9 @@ app.post('/api/ppatk_upload-documents', uploadDocumentMiddleware.fields([
         logger.debug('Data user valid:', { userid, nama });
 
         // 5. Simpan ke Database dengan booking_id jika ada
+        if (PAT3_DISABLED) {
+            return res.status(503).json({ success: false, message: 'Fitur dokumen dinonaktifkan' });
+        }
         logger.debug('Menyimpan dokumen ke database...');
         
         const insertQuery = `
@@ -5367,6 +5377,9 @@ app.post('/api/ppatk_upload-documents', uploadDocumentMiddleware.fields([
 
 // Endpoint untuk mengambil dokumen yang sudah diupload
 app.get('/api/ppatk_get-documents', async (req, res) => {
+  if (PAT3_DISABLED) {
+    return res.status(503).json({ success: false, message: 'Fitur dokumen dinonaktifkan' });
+  }
     try {
         // Validasi session
         if (!req.session || !req.session.user) {
@@ -5466,8 +5479,12 @@ const createPpatkDocumentsTable = async () => {
     }
 };
 
-// Panggil fungsi pembuatan tabel
-createPpatkDocumentsTable();
+// Panggil fungsi pembuatan tabel (hanya jika fitur tidak dinonaktifkan)
+if (!PAT3_DISABLED) {
+  createPpatkDocumentsTable();
+} else {
+  console.log('Fitur pat_3_documents dinonaktifkan (DISABLE_PAT3=1), melewati inisialisasi tabel');
+}
 
 // BSRE auth endpoints for PV UI
 app.post('/api/bsre/auth', async (req, res) => {
