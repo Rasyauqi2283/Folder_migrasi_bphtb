@@ -5165,10 +5165,7 @@ app.get('/', (_req, res) => {
 const targetPath = path.join(__dirname, 'public', 'login.html');
 console.log('Resolved path:', targetPath);
 
-// Menjalankan server
-app.listen(PORT, () => {
-    console.log(`Server berjalan di http://localhost:${PORT}`);
-});
+// Menjalankan server (listener utama didefinisikan di bagian akhir file)
 
 // Endpoint untuk upload dokumen PPATK
 app.post('/api/ppatk_upload-documents', uploadDocumentMiddleware.fields([
