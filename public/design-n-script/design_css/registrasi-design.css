@@ -219,7 +219,7 @@ h1 {
 
 .form-group input[type="text"],  .form-group input[type="number"],.form-group input[type="password"], .form-group input[type="email"] {
     width: 100%;
-    padding: 10px 10px 10px 30px;
+    padding: 10px 40px 10px 30px;
     border: none;
     border-bottom: 1px solid #AAAAAA;
     background: transparent;
@@ -229,6 +229,22 @@ h1 {
 }
 .form-group input::placeholder {
     color: #aca1a1;
+}
+
+/* Toggle password icon styling */
+.toggle-password {
+    color: #8F8F8F !important;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.toggle-password:hover {
+    color: #007bff !important;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.toggle-password:active {
+    transform: translateY(-50%) scale(0.95);
 }
 .form-column small {
     margin-bottom: 30px;
@@ -352,10 +368,48 @@ input[type="number"]::-webkit-inner-spin-button {
 /**/
 .error-message {
     position: relative;
-    color: red;
-    font-size: 0.9em;
-    margin-bottom: -5px;
+    color: #dc3545;
+    font-size: 0.85em;
+    margin-top: 5px;
+    margin-bottom: 10px;
     display: none;
+    padding: 5px 8px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Animation for error messages */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Input field styling when there's an error */
+.form-group input.error {
+    border-bottom-color: #dc3545 !important;
+    box-shadow: 0 2px 0 0 #dc3545;
+}
+
+/* Success message styling */
+.success-message {
+    color: #28a745;
+    font-size: 0.85em;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    padding: 5px 8px;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
 }
 .submit:disabled {
     background-color: #ccc;

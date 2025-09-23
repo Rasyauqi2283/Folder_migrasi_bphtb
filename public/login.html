@@ -107,9 +107,8 @@
             messageDiv.textContent = "";
             messageDiv.style.display = "none";
             messageDiv.className = "";
-            const API_URL = import.meta.env.APIURL_CASE;
             try {
-                const res = await fetch(`${API_URL}/api/auth/login`, {
+                const res = await fetch(`/api/auth/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
