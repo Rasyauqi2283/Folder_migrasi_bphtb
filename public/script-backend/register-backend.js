@@ -29,9 +29,10 @@
         formData.append("password", password);
         formData.append("fotoktp", fotoktp);
   
+        const API_URL = import.meta.env.APIURL_CASE;
         try {
           // Mengirimkan data ke backend menggunakan fetch
-          const response = await fetch("http://localhost:3000/api/auth/register", {
+          const response = await fetch(`${API_URL}/api/auth/register`, {
             method: "POST",
             body: formData,
           });
