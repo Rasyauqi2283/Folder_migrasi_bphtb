@@ -468,3 +468,91 @@ input[type="number"]::-webkit-inner-spin-button {
 #otp-modal {
     display: none;
 }
+
+/*Untuk ukuran hp*/
+/* --- Responsive untuk mobile --- */
+@media (max-width: 768px) {
+    body {
+        justify-content: flex-start; /* biar form turun ke bawah */
+        align-items: flex-start;
+        padding: 15px;
+        height: auto; /* biar tidak terpaksa 100vh */
+        overflow-y: auto;
+    }
+
+    h1 {
+        font-size: 18px;
+        padding: 15px;
+    }
+
+    form {
+        width: 100%;
+        max-width: 100%;
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .form-row {
+        flex-direction: column; /* kolom kiri-kanan ditumpuk */
+        gap: 10px;
+    }
+
+    .form-column {
+        width: 100%; /* penuh */
+    }
+
+    .form-group input[type="text"],  
+    .form-group input[type="number"],
+    .form-group input[type="password"], 
+    .form-group input[type="email"] {
+        font-size: 14px;
+        padding: 12px 35px 12px 35px; /* beri ruang icon biar tidak mepet */
+    }
+
+    .form-group i {
+        left: 8px; /* icon lebih masuk */
+        font-size: 14px;
+    }
+
+    .toggle-password {
+        right: 8px; /* icon mata pas di HP */
+        font-size: 14px;
+    }
+
+    .form-group.recaptcha {
+        margin-left: 0;
+        justify-content: center;
+        padding: 10px;
+    }
+
+    .form-group.recaptcha label {
+        font-size: 12px;
+    }
+
+    .recaptcha-image img {
+        width: 60px; /* kecilkan gambar captcha */
+    }
+
+    .form-group .file-input {
+        flex-direction: column; /* input file & button stack */
+        gap: 10px;
+    }
+
+    .form-group .file-input input[type="file"] {
+        width: 100%;
+    }
+
+    .form-group .buttons {
+        flex-direction: column; /* tombol submit & cancel ditumpuk */
+        gap: 10px;
+    }
+
+    .form-group .buttons button {
+        width: 100%; /* tombol penuh */
+        font-size: 14px;
+    }
+
+    .guide-image {
+        max-height: 300px; /* gambar modal lebih kecil */
+    }
+}
