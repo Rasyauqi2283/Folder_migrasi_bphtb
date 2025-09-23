@@ -344,48 +344,93 @@ animation: moveLeft 15s linear infinite, colorFade 4s ease-in-out infinite;
   align-items: center;
 }
 
-/* Responsive: Mobile (HP) */
+/* Tambahan CSS untuk Mobile */
 @media (max-width: 768px) {
-    html, body {
-        overflow: auto;
+    body, html {
+        overflow-y: auto;
         height: auto;
+        background: #093c3f; /* fallback background */
     }
+
     .login-container {
         flex-direction: column;
-        height: auto;
         min-height: 100vh;
+        height: auto;
+        padding: 0;
+        background: none;
     }
+
+    /* Panel kiri (form login) jadi full width */
     .left-panel {
         width: 100%;
-        padding: 16px;
+        background: rgba(0,0,0,0.7);
+        padding: 24px;
+        border-radius: 0;
+        box-shadow: none;
     }
+
     .logo-section {
         width: 100%;
-        height: auto;
-        padding: 16px;
+        text-align: center;
+        padding: 16px 8px;
+        margin-top: 0;
+        background-size: cover;
     }
     .logo {
-        width: 72px;
+        width: 80px;
+        margin-bottom: 10px;
     }
-    .right-panel {
-        display: none;
-    }
-    .right-panel-d {
-        margin: 0;
-        width: 100%;
-        padding: 16px;
-    }
-    .description {
-        font-size: 1em;
+    .logo-section h1,
+    .logo-section h3,
+    .logo-section p {
+        font-size: 0.9em;
         text-align: center;
     }
+
+    /* Form login */
+    .login-form {
+        width: 100%;
+        margin-top: 20px;
+    }
     .input-wrapper input {
-        font-size: 16px; /* hindari zoom otomatis di iOS */
+        width: 100%;
+        font-size: 16px; /* hindari auto-zoom di iOS */
+        padding: 12px;
     }
     .login-button {
+        width: 100%;
+        padding: 12px;
         font-size: 16px;
+        margin-top: 16px;
+    }
+
+    /* Link bawah */
+    .forgot-password {
+        font-size: 0.85em;
+        text-align: center;
+        display: block;
+    }
+    .register {
+        font-size: 0.9em;
+        margin-top: 12px;
+    }
+
+    /* Panel kanan (gambar + deskripsi) disembunyikan */
+    .right-panel,
+    .right-panel-d {
+        display: none !important;
+    }
+
+    /* Description di bawah form (opsional, bisa tetap ada) */
+    .description {
+        font-size: 0.95em;
+        text-align: center;
+        margin-top: 20px;
+        line-height: 1.4;
+        padding: 0 12px;
     }
 }
+
 
 /* Responsive: Desktop/Large */
 @media (min-width: 1200px) {

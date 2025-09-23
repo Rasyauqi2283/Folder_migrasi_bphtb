@@ -74,8 +74,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     // Ambil token dari URL
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const API_URL = import.meta.env.APIURL_CASE;
+    const token = urlParams.get('token');   
     if (!token) {
         showError("Token tidak valid", true);
         return;
@@ -83,7 +82,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // Verifikasi token dengan backend
-        const response = await fetch(`${API_URL}/api/auth/verify-reset-token`, {
+        const response = await fetch(`/api/auth/verify-reset-token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -137,10 +136,9 @@ document.getElementById('changePasswordForm').addEventListener('submit', async (
         showError("Konfirmasi password tidak sesuai");
         return;
     }
-    const API_URL = import.meta.env.APIURL_CASE;
 
     try {
-        const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+        const response = await fetch(`/api/auth/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
