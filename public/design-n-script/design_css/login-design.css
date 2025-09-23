@@ -415,32 +415,19 @@ animation: moveLeft 15s linear infinite, colorFade 4s ease-in-out infinite;
         margin-top: 12px;
     }
 
-    /* Panel kanan (gambar + deskripsi) disembunyikan */
+    /* Hide right panel + moving text di HP */
     .right-panel,
-    .right-panel-d {
+    .right-panel-d,
+    .moving-text {
         display: none !important;
     }
 
-    /* Description di bawah form (opsional, bisa tetap ada) */
+    /* Description (kalau mau tetap muncul di bawah form) */
     .description {
         font-size: 0.95em;
         text-align: center;
         margin-top: 20px;
         line-height: 1.4;
         padding: 0 12px;
-    }
-}
-
-
-/* Responsive: Desktop/Large */
-@media (min-width: 1200px) {
-    .left-panel {
-        width: 360px;
-    }
-    .right-panel {
-        width: calc(100% - 360px);
-    }
-    .description {
-        font-size: 1.6em;
     }
 }
