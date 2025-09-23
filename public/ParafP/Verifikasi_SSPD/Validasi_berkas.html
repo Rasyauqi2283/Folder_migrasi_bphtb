@@ -662,9 +662,32 @@ if(btnApprove){
     try{ 
       const reason = prompt('Alasan penolakan? (wajib)');
       if(!reason) return; 
-      const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/decision`, { body:{ decision:'reject', reason } });
-      log(js.message || 'Dokumen ditolak', js);
-      console.debug('[PV][FE] decision reject ok', js);
+      
+      // Cek apakah nobooking sudah pernah digunakan
+      const checkResponse = await fetch(`/api/check-nobooking-usage/${encodeURIComponent(noVal())}`);
+      const checkData = await checkResponse.json();
+      
+      if (checkData.success && checkData.isUsed) {
+        alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
+        return;
+      }
+      
+      // Kirim penolakan dengan auto-delete
+      const js = await callPV(`/api/pv/reject-with-auto-delete`, { 
+        body:{ 
+          nobooking: noVal(),
+          rejectionReason: reason,
+          userid: getCurrentUserId() // Pastikan fungsi ini ada
+        } 
+      });
+      
+      if (js.success) {
+        log(`Dokumen ditolak. Data akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(js.scheduledDeleteAt).toLocaleString('id-ID')}`, js);
+        console.debug('[PV][FE] decision reject with auto-delete ok', js);
+      } else {
+        log('REJECT Gagal: ' + (js.message || 'Terjadi kesalahan'), js);
+      }
+      
       await loadPvDocs();
     }catch(e){ log('REJECT Gagal: '+e.message);} 
   }; }

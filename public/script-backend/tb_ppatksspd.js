@@ -358,7 +358,7 @@ async function viewPDF(nobooking) {
     }
 }
 ////////////////////////           /////////////////////////
-// Fungsi untuk mengonfirmasi penolakan
+// Fungsi untuk mengonfirmasi penolakan dengan auto-delete
 async function confirmReject() {
     const rejectionReason = document.getElementById('rejectionReason').value;
     if (!rejectionReason) {
@@ -378,35 +378,43 @@ async function confirmReject() {
         alert('User ID tidak ditemukan!');
         return;
     }
+    
     try {
-        // Kirim data penolakan ke backend
-        const response = await fetch('http://localhost:3000/api/ltb_ltb-reject', {
+        // Cek apakah nobooking sudah pernah digunakan
+        const checkResponse = await fetch(`http://localhost:3000/api/check-nobooking-usage/${selectedNoBooking}`);
+        const checkData = await checkResponse.json();
+        
+        if (checkData.success && checkData.isUsed) {
+            alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
+            return;
+        }
+        
+        // Kirim data penolakan ke backend dengan auto-delete
+        const response = await fetch('http://localhost:3000/api/ltb/reject-with-auto-delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                nobooking: selectedNoBooking,  // Gunakan selectedNoBooking
-                trackstatus: 'Ditolak',
+                nobooking: selectedNoBooking,
                 rejectionReason: rejectionReason,
-                userid: userid  // Gunakan userId yang valid
+                userid: userid
             })
         });
+        
         const data = await response.json();
-        console.log({
-            nobooking: selectedNoBooking,
-            trackstatus: 'Ditolak',
-            rejectionReason: rejectionReason,
-            userid: userid
-        });
+        console.log('Rejection response:', data);
+        
         if (data.success) {
-            alert('Dokumen berhasil ditolak.');
-            location.reload();  // Bisa disesuaikan dengan kebutuhan Anda
+            alert(`Dokumen berhasil ditolak.\nData akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(data.scheduledDeleteAt).toLocaleString('id-ID')}`);
+            location.reload();
         } else {
-            alert('Gagal menolak dokumen.');
+            alert(`Gagal menolak dokumen: ${data.message || 'Terjadi kesalahan'}`);
         }
+        
         // Menutup overlay setelah konfirmasi
         document.getElementById('overlay').style.display = 'none';
+        
     } catch (error) {
         console.error('Terjadi kesalahan:', error);
         alert('Terjadi kesalahan, coba lagi nanti.');

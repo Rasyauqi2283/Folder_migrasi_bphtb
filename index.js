@@ -2213,6 +2213,53 @@ app.get('/api/admin/ltb-processed', async (_req, res) => {
 });
 //
 
+app.get('/api/ppatk_get-booking-data-completed', async (req, res) => {
+    try {
+        // Validasi session
+        if (!req.session.user || !req.session.user.userid) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { userid } = req.session.user;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const offset = (page - 1) * limit;
+
+        // Query utama dengan optimasi
+        const query = `
+            SELECT
+                b.nobooking, b.noppbb, b.tanggal, b.tahunajb,
+                b.namawajibpajak, b.namapemilikobjekpajak, b.npwpwp,
+                b.trackstatus, b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path,
+                o.letaktanahdanbangunan AS alamat_objek, pv.*
+            FROM pat_1_bookingsspd b
+            LEFT JOIN pat_4_objek_pajak o ON b.nobooking = o.nobooking
+            LEFT JOIN pat_8_validasi_tambahan pv ON b.nobooking = pv.nobooking
+            WHERE b.userid = $1 AND b.trackstatus IN ('Diserahkan')
+            ORDER BY b.created_at DESC
+            LIMIT $2 OFFSET $3;
+        `;
+
+        const result = await pool.query(query, [userid, limit, offset]);
+
+        // Query count terpisah untuk performa lebih baik
+        const countQuery = `SELECT COUNT(*) FROM pat_1_bookingsspd WHERE userid = $1`;
+        const countResult = await pool.query(countQuery, [userid]);
+        
+        res.json({
+            success: true,
+            data: result.rows,
+            pagination: {
+                total: parseInt(countResult.rows[0].count),
+                page,
+                totalPages: Math.ceil(countResult.rows[0].count / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Database error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
 
 // End PPATK Endpoint //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

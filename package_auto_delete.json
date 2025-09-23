@@ -1,0 +1,21 @@
+{
+  "name": "auto-delete-system-dependencies",
+  "version": "1.0.0",
+  "description": "Dependencies untuk sistem auto-delete data yang ditolak",
+  "dependencies": {
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test-auto-delete": "node test/auto_delete_test.js",
+    "setup-database": "psql -d your_database -f database/auto_delete_system.sql"
+  },
+  "keywords": [
+    "auto-delete",
+    "cleanup",
+    "rejected-data",
+    "scheduled-job"
+  ],
+  "author": "BAPPENDA Team",
+  "license": "MIT"
+}
