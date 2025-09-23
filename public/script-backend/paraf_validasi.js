@@ -1,5 +1,5 @@
 // Constants
-const API_ENDPOINT = 'http://localhost:3000/api/paraf/get-berkas-till-clear';
+const API_ENDPOINT = '/api/paraf/get-berkas-till-clear';
 const REQUEST_TIMEOUT = 10000;
 const REQUIRED_FIELDS = [
     // Kolom yang ditampilkan pada tabel PV (ringkas)

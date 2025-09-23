@@ -4,8 +4,7 @@
 // =====================================================
 
 import cron from 'node-cron';
-import AutoDeleteService from './auto_delete_service';
-import logger from './logger';
+const AutoDeleteService = import('./auto_delete_service');
 
 class ScheduledCleanup {
     constructor() {
@@ -39,7 +38,7 @@ class ScheduledCleanup {
         this.cronJob.start();
         this.cronJob6h.start();
         
-        logger.info('Scheduled cleanup jobs started', {
+        console.log('Scheduled cleanup jobs started', {
             dailySchedule: '02:00 WIB',
             frequentSchedule: 'Every 6 hours',
             timezone: 'Asia/Jakarta'
@@ -62,7 +61,7 @@ class ScheduledCleanup {
             this.cronJob6h.stop();
         }
         
-        logger.info('Scheduled cleanup jobs stopped');
+        console.log('Scheduled cleanup jobs stopped');
     }
     
     /**
@@ -70,7 +69,7 @@ class ScheduledCleanup {
      */
     async executeCleanup() {
         if (this.isRunning) {
-            logger.warn('Cleanup already running, skipping this execution');
+            console.warn('Cleanup already running, skipping this execution');
             return;
         }
         
@@ -78,7 +77,7 @@ class ScheduledCleanup {
         const startTime = new Date();
         
         try {
-            logger.info('Starting scheduled cleanup', {
+            console.log('Starting scheduled cleanup', {
                 startTime: startTime.toISOString()
             });
             
@@ -94,7 +93,7 @@ class ScheduledCleanup {
             const endTime = new Date();
             const duration = endTime - startTime;
             
-            logger.info('Scheduled cleanup completed', {
+            console.log('Scheduled cleanup completed', {
                 startTime: startTime.toISOString(),
                 endTime: endTime.toISOString(),
                 duration: `${duration}ms`,
@@ -108,7 +107,7 @@ class ScheduledCleanup {
             this.nextRun = new Date(endTime.getTime() + 6 * 60 * 60 * 1000); // Next run in 6 hours
             
         } catch (error) {
-            logger.error('Error in scheduled cleanup', {
+            console.error('Error in scheduled cleanup', {
                 error: error.message,
                 stack: error.stack,
                 startTime: startTime.toISOString()
@@ -135,7 +134,7 @@ class ScheduledCleanup {
      * Menjalankan cleanup manual
      */
     async manualCleanup() {
-        logger.info('Manual cleanup requested');
+        console.log('Manual cleanup requested');
         await this.executeCleanup();
     }
 }
@@ -145,15 +144,15 @@ const scheduledCleanup = new ScheduledCleanup();
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-    logger.info('Received SIGINT, stopping scheduled cleanup...');
+    console.log('Received SIGINT, stopping scheduled cleanup...');
     scheduledCleanup.stop();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    logger.info('Received SIGTERM, stopping scheduled cleanup...');
+    console.log('Received SIGTERM, stopping scheduled cleanup...');
     scheduledCleanup.stop();
     process.exit(0);
 });
 
-module.exports = scheduledCleanup;
+export default scheduledCleanup;

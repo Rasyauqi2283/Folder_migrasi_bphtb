@@ -4,8 +4,8 @@
 // =====================================================
 
 import express from 'express';
-import AutoDeleteService from './auto_delete_service';
-import logger from './logger';
+const AutoDeleteService = import('./auto_delete_service');
+const { pool } = import('../../../db.js');
 
 const router = express.Router();
 
@@ -54,13 +54,12 @@ router.post('/ltb/reject-with-auto-delete', async (req, res) => {
         }
         
         // Update status di database utama (sesuai dengan kode yang ada)
-        const { pool } = await import('../dataconnect/db_connect');
         await pool.query(
             'UPDATE ltb_1_terima_berkas_sspd SET trackstatus = $1 WHERE nobooking = $2',
             ['Ditolak', nobooking]
         );
         
-        logger.info('LTB data rejected and added to auto-delete tracker', {
+        console.log('LTB data rejected and added to auto-delete tracker', {
             nobooking,
             rejectionReason,
             userid
@@ -74,7 +73,7 @@ router.post('/ltb/reject-with-auto-delete', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error in LTB rejection endpoint', {
+        console.error('Error in LTB rejection endpoint', {
             error: error.message,
             body: req.body
         });
@@ -131,13 +130,12 @@ router.post('/pv/reject-with-auto-delete', async (req, res) => {
         }
         
         // Update status di database utama (sesuai dengan kode yang ada)
-        const { pool } = await import('../dataconnect/db_connect');
         await pool.query(
             'UPDATE p_1_verifikasi SET trackstatus = $1 WHERE nobooking = $2',
             ['Ditolak', nobooking]
         );
         
-        logger.info('PV data rejected and added to auto-delete tracker', {
+        console.log('PV data rejected and added to auto-delete tracker', {
             nobooking,
             rejectionReason,
             userid
@@ -151,7 +149,7 @@ router.post('/pv/reject-with-auto-delete', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error in PV rejection endpoint', {
+        console.error('Error in PV rejection endpoint', {
             error: error.message,
             body: req.body
         });
@@ -185,7 +183,7 @@ router.post('/admin/execute-auto-delete', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error executing manual auto-delete', {
+        console.error('Error executing manual auto-delete', {
             error: error.message
         });
         
@@ -211,7 +209,7 @@ router.get('/admin/pending-deletions', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error getting pending deletions', {
+        console.error('Error getting pending deletions', {
             error: error.message
         });
         
@@ -236,7 +234,7 @@ router.get('/admin/used-nobooking-summary', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error getting used nobooking summary', {
+        console.error('Error getting used nobooking summary', {
             error: error.message
         });
         
@@ -278,7 +276,7 @@ router.get('/check-nobooking-usage/:nobooking', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error checking nobooking usage', {
+        console.error('Error checking nobooking usage', {
             error: error.message,
             nobooking: req.params.nobooking
         });
@@ -306,7 +304,7 @@ router.post('/admin/manual-cleanup', async (req, res) => {
         });
         
     } catch (error) {
-        logger.error('Error in manual cleanup', {
+        console.error('Error in manual cleanup', {
             error: error.message
         });
         

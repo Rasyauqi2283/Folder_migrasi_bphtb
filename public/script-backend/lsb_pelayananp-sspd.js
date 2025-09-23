@@ -321,7 +321,7 @@ sessionStorage.setItem('divisi', 'LSB');
 ////////////////////// END FU   ///////////////////////////////////////////////////////////////////
 async function validateNoBooking(nobooking) {
     try {
-        const response = await fetch(`http://localhost:3000/api/validate-nobooking/${nobooking}`);
+        const response = await fetch(`/api/validate-nobooking/${nobooking}`);
         const result = await response.json();
         return result.isValid;  // Mengembalikan status validasi
     } catch (error) {
@@ -364,7 +364,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `/api/validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -382,7 +382,7 @@ async function viewDocument(nobooking) {
 // Fungsi untuk mengirim data ke peneliti
 async function sendToPPAT_complete(item) {
     try {
-        const response = await fetch('http://localhost:3000/api/LSB_send-to-ppat', {
+        const response = await fetch('/api/LSB_send-to-ppat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

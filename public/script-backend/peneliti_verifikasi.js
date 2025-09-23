@@ -17,7 +17,7 @@ async function loadTableDataPenelitiV() {
         let response;
         try {
             response = await Promise.race([
-                fetch('http://localhost:3000/api/peneliti_get-berkas-fromltb'),
+                fetch('/api/peneliti_get-berkas-fromltb'),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
             ]);
@@ -373,7 +373,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -557,7 +557,7 @@ async function simpanData(buttonElement) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
 
-        const saveResponse = await fetch('http://localhost:3000/api/peneliti_update-berdasarkan-pemilihan', {
+        const saveResponse = await fetch('/api/peneliti_update-berdasarkan-pemilihan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data }),
@@ -601,7 +601,7 @@ async function simpanData(buttonElement) {
 // pada bagian ini masih ada tracking
 async function generatePDF(nobooking, base64TandaTangan) {
     try {
-        const response = await fetch(`http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`, {
+        const response = await fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -635,7 +635,7 @@ async function generatePDF(nobooking, base64TandaTangan) {
 }
 ////
 function resetNamaPemverifikasi(nobooking) {
-    fetch('http://localhost:3000/api/reset-nama-pemverifikasi', {
+    fetch('/api/reset-nama-pemverifikasi', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -674,7 +674,7 @@ async function sendToParafKasie(item) {
             alert('User peneliti tidak ditemukan. Silakan login ulang.');
             return { success: false, message: 'Tidak ada session peneliti' };
         }
-        const response = await fetch('http://localhost:3000/api/peneliti_send-to-paraf', {
+        const response = await fetch('/api/peneliti_send-to-paraf', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

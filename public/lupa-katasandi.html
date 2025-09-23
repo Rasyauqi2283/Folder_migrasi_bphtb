@@ -94,7 +94,7 @@
 </div>
 <script>
 // Mengambil data profil pengguna dari API
-fetch('http://localhost:3000/api/profile')
+fetch('/api/profile')
     .then(response => response.json())
     .then(user => {
         console.log('Data pengguna diperoleh', user);

@@ -1,7 +1,7 @@
 Test getCompleteUsersHandler
-GET http://localhost:3000/api/users/complete
+GET ${API_BASE_URL}/api/users/complete
 Content-Type: application/json
 
 Test getPendingUsersHandler
-GET http://localhost:3000/api/users/pending
+GET ${API_BASE_URL}/api/users/pending
 Content-Type: application/json

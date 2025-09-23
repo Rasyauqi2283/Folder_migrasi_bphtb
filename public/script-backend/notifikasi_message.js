@@ -1,4 +1,4 @@
-const socket = new WebSocket('ws://localhost:8080');
+const socket = new WebSocket(`ws://${window.location.host}`);
 
 // Mendengarkan pesan yang datang
 socket.onmessage = function(event) {

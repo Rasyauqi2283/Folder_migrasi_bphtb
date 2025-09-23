@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 //// Fungsi untuk memeriksa apakah ada data yang diproses oleh LTB
 async function checkProcessedData() {
     try {
-        const response = await fetch('http://localhost:3000/api/admin/ltb-processed');
+        const response = await fetch('/api/admin/ltb-processed');
         const data = await response.json();
 
         // Menampilkan notifikasi jika ada data yang diproses oleh LTB

@@ -3,8 +3,7 @@
 // Service untuk mengelola auto-delete data yang ditolak
 // =====================================================
 
-const { pool } = require('../dataconnect/db_connect');
-const logger = require('./logger');
+import { pool } from '../../../db.js';
 
 class AutoDeleteService {
     
@@ -26,14 +25,14 @@ class AutoDeleteService {
             const success = result.rows[0].success;
             
             if (success) {
-                logger.info('Rejected booking added to tracker', {
+                console.log('Rejected booking added to tracker', {
                     nobooking,
                     rejectionSource,
                     rejectionReason,
                     rejectedBy
                 });
             } else {
-                logger.error('Failed to add rejected booking to tracker', {
+                console.error('Failed to add rejected booking to tracker', {
                     nobooking,
                     rejectionSource,
                     rejectionReason,
@@ -43,7 +42,7 @@ class AutoDeleteService {
             
             return success;
         } catch (error) {
-            logger.error('Error adding rejected booking to tracker', {
+            console.error('Error adding rejected booking to tracker', {
                 error: error.message,
                 nobooking,
                 rejectionSource,
@@ -63,14 +62,14 @@ class AutoDeleteService {
             const result = await pool.query('SELECT auto_delete_rejected_data() as deleted_count');
             const deletedCount = result.rows[0].deleted_count;
             
-            logger.info('Auto-delete executed', {
+            console.log('Auto-delete executed', {
                 deletedCount,
                 timestamp: new Date().toISOString()
             });
             
             return deletedCount;
         } catch (error) {
-            logger.error('Error executing auto-delete', {
+            console.error('Error executing auto-delete', {
                 error: error.message,
                 timestamp: new Date().toISOString()
             });
@@ -92,7 +91,7 @@ class AutoDeleteService {
             
             return result.rows[0].is_used;
         } catch (error) {
-            logger.error('Error checking nobooking usage', {
+            console.error('Error checking nobooking usage', {
                 error: error.message,
                 nobooking
             });
@@ -109,7 +108,7 @@ class AutoDeleteService {
             const result = await pool.query('SELECT * FROM v_rejected_bookings_pending');
             return result.rows;
         } catch (error) {
-            logger.error('Error getting pending deletions', {
+            console.error('Error getting pending deletions', {
                 error: error.message
             });
             return [];
@@ -125,7 +124,7 @@ class AutoDeleteService {
             const result = await pool.query('SELECT * FROM v_used_nobooking_summary');
             return result.rows;
         } catch (error) {
-            logger.error('Error getting used nobooking summary', {
+            console.error('Error getting used nobooking summary', {
                 error: error.message
             });
             return [];
@@ -141,7 +140,7 @@ class AutoDeleteService {
             const result = await pool.query('SELECT * FROM manual_cleanup_rejected_data()');
             return result.rows;
         } catch (error) {
-            logger.error('Error in manual cleanup', {
+            console.error('Error in manual cleanup', {
                 error: error.message
             });
             return [];
@@ -162,7 +161,7 @@ class AutoDeleteService {
             
             return result.rows[0] || null;
         } catch (error) {
-            logger.error('Error getting rejected booking detail', {
+            console.error('Error getting rejected booking detail', {
                 error: error.message,
                 nobooking
             });
@@ -185,12 +184,12 @@ class AutoDeleteService {
             const success = result.rowCount > 0;
             
             if (success) {
-                logger.info('Scheduled delete cancelled', { nobooking });
+                console.log('Scheduled delete cancelled', { nobooking });
             }
             
             return success;
         } catch (error) {
-            logger.error('Error cancelling scheduled delete', {
+            console.error('Error cancelling scheduled delete', {
                 error: error.message,
                 nobooking
             });
@@ -199,4 +198,4 @@ class AutoDeleteService {
     }
 }
 
-module.exports = AutoDeleteService;
+export default AutoDeleteService;

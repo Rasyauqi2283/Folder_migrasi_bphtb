@@ -479,7 +479,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     try {
         // Get current user data first
-        const userResponse = await fetch("http://localhost:3000/api/profile", {
+        const userResponse = await fetch("/api/profile", {
             credentials: 'include'
         });
         if (userResponse.ok) {
@@ -488,7 +488,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         
         // Load all users data
-        const response = await fetch("http://localhost:3000/api/users/complete");
+        const response = await fetch("/api/users/complete");
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -941,7 +941,7 @@ function showDeleteConfirmation(userid, nama) {
     
     modal.querySelector('.confirm-delete').addEventListener('click', async () => {
         try {
-            const response = await fetch(`http://localhost:3000/api/users/${userid}`, {
+            const response = await fetch(`/api/users/${userid}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -956,7 +956,7 @@ function showDeleteConfirmation(userid, nama) {
             document.body.removeChild(modal);
             
             // Refresh data
-            const refreshResponse = await fetch("http://localhost:3000/api/users/complete");
+            const refreshResponse = await fetch("/api/users/complete");
             if (refreshResponse.ok) {
                 allUsers = await refreshResponse.json();
                 displayUsers(allUsers);
@@ -1102,7 +1102,7 @@ function showEditConfirmation(formData) {
     modal.querySelector('.confirm-edit').addEventListener('click', async () => {
         try {
             // Send update request to backend
-            const response = await fetch(`http://localhost:3000/api/users/${currentEditUser}`, {
+            const response = await fetch(`/api/users/${currentEditUser}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1119,7 +1119,7 @@ function showEditConfirmation(formData) {
             const newStatus = statusSel ? statusSel.value : null;
             const canUpdateStatus = currentUser && currentUser.divisi === 'Administrator';
             if (canUpdateStatus && newStatus) {
-                const statusRes = await fetch(`http://localhost:3000/api/users/${currentEditUser}/status-ppat`, {
+                const statusRes = await fetch(`/api/users/${currentEditUser}/status-ppat`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status_ppat: newStatus })
@@ -1139,7 +1139,7 @@ function showEditConfirmation(formData) {
             alert('Data berhasil diupdate dan notifikasi email telah dikirim');
             
             // Refresh data
-            const refreshResponse = await fetch("http://localhost:3000/api/users/complete");
+            const refreshResponse = await fetch("/api/users/complete");
             if (refreshResponse.ok) {
                 allUsers = await refreshResponse.json();
                 displayUsers(allUsers);

@@ -2,8 +2,9 @@
 // AUTO DELETE SYSTEM TEST
 // Test untuk memastikan sistem auto-delete berfungsi
 // =====================================================
-import { pool } from '../dataconnect/db_connect';
-import AutoDeleteService from '../backend/auto_delete_service';
+
+import { pool } from '../../../dataconnect/db_connect';
+import AutoDeleteService from './auto_delete_service';
 
 class AutoDeleteTest {
     
@@ -216,7 +217,7 @@ class AutoDeleteTest {
 }
 
 // Run tests if this file is executed directly
-if (require.main === module) {
+if (import.meta.main) {
     AutoDeleteTest.runAllTests()
         .then(() => {
             console.log('🎉 All tests completed successfully!');
@@ -228,4 +229,4 @@ if (require.main === module) {
         });
 }
 
-module.exports = AutoDeleteTest;
+export default AutoDeleteTest;

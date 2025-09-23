@@ -10,7 +10,7 @@ async function loadTableDataLTB() {
     }
 
     try {
-        const response = await fetch('http://localhost:3000/api/ltb_get-ltb-berkas'); // Endpoint API untuk mendapatkan data berkas LTB
+        const response = await fetch('/api/ltb_get-ltb-berkas'); // Endpoint API untuk mendapatkan data berkas LTB
         const data = await response.json();
 
         // Log untuk melihat apakah data berhasil di-fetch
@@ -266,7 +266,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -381,7 +381,7 @@ async function confirmReject() {
     
     try {
         // Cek apakah nobooking sudah pernah digunakan
-        const checkResponse = await fetch(`http://localhost:3000/api/check-nobooking-usage/${selectedNoBooking}`);
+        const checkResponse = await fetch(`/api/check-nobooking-usage/${selectedNoBooking}`);
         const checkData = await checkResponse.json();
         
         if (checkData.success && checkData.isUsed) {
@@ -390,7 +390,7 @@ async function confirmReject() {
         }
         
         // Kirim data penolakan ke backend dengan auto-delete
-        const response = await fetch('http://localhost:3000/api/ltb/reject-with-auto-delete', {
+        const response = await fetch('/api/ltb/reject-with-auto-delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -434,7 +434,7 @@ async function sendToPeneliti(item) {
     try {
         const namaPengirim = sessionStorage.getItem('nama') || localStorage.getItem('nama');
 
-        const response = await fetch('http://localhost:3000/api/ltb_send-to-peneliti', {
+        const response = await fetch('/api/ltb_send-to-peneliti', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

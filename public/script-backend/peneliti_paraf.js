@@ -490,7 +490,7 @@ sessionStorage.setItem('divisi', 'Peneliti');
 ////////////////////// END FU   ///////////////////////////////////////////////////////////////////
 async function validateNoBooking(nobooking) {
     try {
-        const response = await fetch(`http://localhost:3000/api/validate-nobooking/${nobooking}`);
+        const response = await fetch(`/api/validate-nobooking/${nobooking}`);
         const result = await response.json();
         return result.isValid;  // Mengembalikan status validasi
     } catch (error) {
@@ -501,7 +501,7 @@ async function validateNoBooking(nobooking) {
 ////////////////////// END VN   ///////////////////////////////////////////////////////////////////
 // Fungsi untuk generate PDF
 function generatePDF(nobooking, stempelStatusP) {
-    fetch(`http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`)
+    fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`)
     .then(response => response.blob())
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
@@ -548,7 +548,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `http://localhost:3000/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -632,7 +632,7 @@ async function simpanData(buttonElement) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
 
-        const saveResponse = await fetch('http://localhost:3000/api/peneliti_update-ttd-paraf', {
+        const saveResponse = await fetch('/api/peneliti_update-ttd-paraf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data }),
@@ -674,7 +674,7 @@ async function simpanData(buttonElement) {
 // Fungsi untuk mengirim data ke peneliti
 async function sendToParafValidate(item) {
     try {
-        const response = await fetch('http://localhost:3000/api/peneliti_send-to-ParafValidate', {
+        const response = await fetch('/api/peneliti_send-to-ParafValidate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
