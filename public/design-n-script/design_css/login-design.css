@@ -357,62 +357,131 @@ animation: moveLeft 15s linear infinite, colorFade 4s ease-in-out infinite;
         min-height: 100vh;
         height: auto;
         padding: 0;
-        background: none;
+        background: url('/asset/Background_login.svg') no-repeat center center/cover;
+        position: relative;
     }
 
-    /* Panel kiri (form login) jadi full width */
+    /* Panel kiri (form login) jadi full width dan full height */
     .left-panel {
         width: 100%;
-        background: rgba(0,0,0,0.7);
-        padding: 24px;
+        min-height: 100vh;
+        background: rgba(0,0,0,0.8);
+        padding: 20px 16px;
         border-radius: 0;
         box-shadow: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .logo-section {
         width: 100%;
         text-align: center;
-        padding: 16px 8px;
+        padding: 20px 8px;
         margin-top: 0;
         background-size: cover;
+        flex-shrink: 0;
     }
+    
     .logo {
-        width: 80px;
-        margin-bottom: 10px;
+        width: 70px;
+        margin-bottom: 8px;
     }
-    .logo-section h1,
-    .logo-section h3,
-    .logo-section p {
-        font-size: 0.9em;
+    
+    .logo-section h1 {
+        font-size: 1.8em;
+        margin: 8px 0;
         text-align: center;
     }
+    
+    .logo-section h3 {
+        font-size: 1.1em;
+        margin: 8px 0;
+        text-align: center;
+        line-height: 1.2;
+    }
+    
+    .logo-section p {
+        font-size: 0.85em;
+        text-align: center;
+        margin: 8px 0;
+    }
 
-    /* Form login */
+    /* Form login - perbaikan input field */
     .login-form {
         width: 100%;
         margin-top: 20px;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
+    
+    .input-group {
+        margin-bottom: 16px;
+    }
+    
+    .input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    
     .input-wrapper input {
         width: 100%;
         font-size: 16px; /* hindari auto-zoom di iOS */
-        padding: 12px;
+        padding: 12px 50px 12px 12px; /* padding kanan untuk icon */
+        box-sizing: border-box;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.9);
+        color: #333;
     }
+    
+    .input-wrapper .icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        stroke: #666;
+        pointer-events: none;
+    }
+    
     .login-button {
         width: 100%;
-        padding: 12px;
+        padding: 14px;
         font-size: 16px;
-        margin-top: 16px;
+        margin-top: 20px;
+        border-radius: 8px;
+        background: #00A99D;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: bold;
     }
 
     /* Link bawah */
     .forgot-password {
-        font-size: 0.85em;
-        text-align: center;
+        font-size: 0.9em;
+        text-align: right;
         display: block;
+        margin: 8px 0;
+        color: #fff;
+        text-decoration: none;
     }
+    
     .register {
         font-size: 0.9em;
-        margin-top: 12px;
+        margin-top: 16px;
+        text-align: center;
+        color: #fff;
+    }
+    
+    .register a {
+        color: #00A99D;
+        text-decoration: none;
+        font-weight: bold;
     }
 
     /* Hide right panel + moving text di HP */
@@ -422,12 +491,68 @@ animation: moveLeft 15s linear infinite, colorFade 4s ease-in-out infinite;
         display: none !important;
     }
 
-    /* Description (kalau mau tetap muncul di bawah form) */
-    .description {
-        font-size: 0.95em;
+    /* Message box styling */
+    .message-box {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 4px;
         text-align: center;
-        margin-top: 20px;
-        line-height: 1.4;
-        padding: 0 12px;
+        font-size: 0.9em;
+    }
+
+    /* Label styling */
+    .input-group label {
+        display: block;
+        margin-bottom: 6px;
+        color: #fff;
+        font-weight: 500;
+        font-size: 0.9em;
+    }
+}
+
+/* Perbaikan khusus untuk Samsung A51 dan layar kecil */
+@media (max-width: 480px) {
+    .left-panel {
+        padding: 16px 12px;
+    }
+    
+    .logo-section {
+        padding: 16px 4px;
+    }
+    
+    .logo {
+        width: 60px;
+        margin-bottom: 6px;
+    }
+    
+    .logo-section h1 {
+        font-size: 1.6em;
+        margin: 6px 0;
+    }
+    
+    .logo-section h3 {
+        font-size: 1em;
+        margin: 6px 0;
+    }
+    
+    .logo-section p {
+        font-size: 0.8em;
+        margin: 6px 0;
+    }
+    
+    .input-wrapper input {
+        padding: 10px 45px 10px 10px;
+        font-size: 16px;
+    }
+    
+    .input-wrapper .icon {
+        width: 18px;
+        height: 18px;
+        right: 10px;
+    }
+    
+    .login-button {
+        padding: 12px;
+        font-size: 16px;
     }
 }
