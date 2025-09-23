@@ -10,6 +10,31 @@
   <!---->
   <link rel="stylesheet" href="design-n-script/design_css/registrasi-design.css">
 
+  <script>
+    function showError(inputId, message) {
+        const input = document.getElementById(inputId);
+        const errorDiv = document.getElementById(inputId + 'Error');
+        
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block'; // tampilkan
+            errorDiv.className = 'error-message';
+        }
+        
+        if (input) {
+            input.classList.add('error');
+        }
+    }
+    
+    // === Modal open/close ===
+    function openModal() {
+        document.getElementById('modalOverlay').classList.add('show');
+    }
+    
+    function closeModal(e) {
+        document.getElementById('modalOverlay').classList.remove('show');
+    }
+    </script>    
 </head>
 <body>
   <div class="container">
@@ -82,7 +107,7 @@
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal-content" onclick="event.stopPropagation()">
       <h2>Panduan Foto KTP</h2>
-      <img src="../ScriptnDesign_bphtb/file_gambar/Panduan_FotoKTP.png" alt="Panduan Foto KTP" class="guide-image">
+      <img src="asset/Panduan_FotoKTP.png" alt="Panduan Foto KTP" class="guide-image">
   </div>
 </div>
   <!--script backend-->

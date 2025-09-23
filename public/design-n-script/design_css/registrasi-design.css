@@ -124,15 +124,55 @@
   
   /* error message */
   .error-message {
+    display: none; /* <-- disembunyikan sejak awal */
     color: #dc3545;
     font-size: 0.85em;
     margin-top: 5px;
+    margin-bottom: 10px;
+    padding: 5px 8px;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
   }
-  
-  /* ========== RESPONSIVE ========== */
-  @media (max-width: 768px) {
-    form { padding: 20px; }
-    h1 { font-size: 20px; }
-    .form-row { flex-direction: column; }
-  }
-  
+
+  /**/
+  /* ===== MODAL OVERLAY ===== */
+.modal-overlay {
+    display: none;                 /* awalnya disembunyikan */
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.2); /* gelap dengan opacity 0.2 */
+    z-index: 9999;
+    justify-content: center;       /* center horizontal */
+    align-items: center;           /* center vertical */
+}
+
+/* Saat modal dibuka (JS menambah class 'show') */
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    text-align: center;
+}
+
+.guide-image {
+    max-width: 100%;
+    height: auto;
+    margin-top: 10px;
+    cursor: pointer; /* biar user tahu bisa di klik */
+}
+
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+form { padding: 20px; }
+h1 { font-size: 20px; }
+.form-row { flex-direction: column; }
+}
