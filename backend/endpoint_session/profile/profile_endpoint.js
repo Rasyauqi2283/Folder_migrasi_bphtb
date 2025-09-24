@@ -11,7 +11,15 @@ const router = express.Router();
 // Patch 1
 // Endpoint untuk mendapatkan data profil pengguna
 router.get('/profile', async (req, res) => {
+    console.log('🔍 Profile API called:', {
+        sessionID: req.sessionID,
+        hasSession: !!req.session,
+        hasUser: !!req.session?.user,
+        cookies: req.headers.cookie
+    });
+    
     if (!req.session.user) {
+        console.log('❌ No user in session');
         return res.status(401).json({ 
             success: false,
             message: 'User belum login.',

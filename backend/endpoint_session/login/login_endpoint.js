@@ -84,6 +84,12 @@ router.post('/login', async (req, res) => {
       tanda_tangan_path: user.tanda_tangan_path
     };
 
+    console.log('🍪 Session saved:', {
+      sessionID: req.sessionID,
+      hasUser: !!req.session.user,
+      userid: req.session.user.userid
+    });
+
     // Kirim response ke frontend
     res.status(200).json({
       success: true,

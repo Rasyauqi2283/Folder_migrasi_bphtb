@@ -80,6 +80,9 @@ const API_URL = 'https://bphtb-bappenda.up.railway.app';
 console.log('🌐 Using Production API URL:', API_URL);
 console.log('🔍 Starting profile data fetch...');
 
+// Cek cookies sebelum fetch profile
+console.log("🍪 Document cookies before profile fetch:", document.cookie);
+
 // Load profile data
 fetch(`${API_URL}/api/profile`, {credentials: 'include'})
 .then(response => {
