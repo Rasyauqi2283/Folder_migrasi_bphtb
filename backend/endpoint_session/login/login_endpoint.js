@@ -90,6 +90,13 @@ router.post('/login', async (req, res) => {
       userid: req.session.user.userid
     });
 
+    // Debug cookie settings
+    console.log('🍪 Cookie settings:', {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+      sameSite: 'lax'
+    });
+
     // Kirim response ke frontend
     res.status(200).json({
       success: true,

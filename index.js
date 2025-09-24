@@ -232,17 +232,38 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Changed from 'none' to 'lax' for better compatibility
+    secure: false, // Set to false untuk debugging Railway
+    httpOnly: false, // Set to false untuk debugging
+    sameSite: 'lax', // Simplified untuk Railway compatibility
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     // Remove domain restriction for Railway
   },
   name: 'bappenda.sid' // Custom session name
 }));
+
+// Debug session middleware
+app.use((req, res, next) => {
+  console.log('🔍 Session Debug:', {
+    sessionID: req.sessionID,
+    hasSession: !!req.session,
+    cookies: req.headers.cookie,
+    userAgent: req.headers['user-agent']?.substring(0, 50)
+  });
+  next();
+});
 app.get('/check-cookie', (req, res) => {
   const userCookie = req.cookies['user'];
   res.send(userCookie ? `Hello ${userCookie}` : 'No user cookie found');
+});
+
+// Test session endpoint
+app.get('/test-session', (req, res) => {
+  res.json({
+    sessionID: req.sessionID,
+    hasSession: !!req.session,
+    cookies: req.headers.cookie,
+    sessionData: req.session
+  });
 });
 
 // Middleware
