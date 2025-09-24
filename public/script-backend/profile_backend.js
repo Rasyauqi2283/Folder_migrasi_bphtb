@@ -18,7 +18,8 @@ const setLoading = (isLoading) => {
 
 // Penggunaan
 setLoading(true);
-fetch('/api/auth/profile', { credentials: 'include' })
+const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+fetch(`${API_URL}/api/profile`, { credentials: 'include' })
   .then(response => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
@@ -26,7 +27,7 @@ fetch('/api/auth/profile', { credentials: 'include' })
   
   .finally(() => setLoading(false));
 
-fetch('/api/auth/profile', { credentials: 'include' })
+fetch(`${API_URL}/api/profile`, { credentials: 'include' })
 .then(response => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();

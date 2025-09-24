@@ -23,8 +23,8 @@ document.addEventListener("DOMContentLoaded", () => {
  
     async function fetchMemberList() {
         try {
-            const API_URL = import.meta.env.VITE_API_URI;
-            const response = await fetch('${API_URL}/api/members-header', { credentials: 'include' });
+            const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+            const response = await fetch(`${API_URL}/api/members-header`, { credentials: 'include' });
             const data = await response.json();
 
             if (data && data.usersm) {
@@ -76,8 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
 //
 //
 // Mengambil data profil pengguna dari API
-const API_URL = import.meta.env.VITE_API_URI;
-fetch('${API_URL}/api/profile', {credentials: 'include'})
+const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+fetch(`${API_URL}/api/profile`, {credentials: 'include'})
 .then(response => {
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
