@@ -123,7 +123,7 @@ const __dirname = path.dirname(__filename);
 // Feature flag to disable pat_3_documents usage while keeping DB objects
 const PAT3_DISABLED = process.env.DISABLE_PAT3 === '1';
 // letak api_url
-const API_URL = process.env.VITE_API_URI || process.env.API_URL || 'http://localhost:8080';
+const API_URL = process.env.VITE_API_URI || process.env.API_URL;
 console.log('🌐 API_URL configured as:', API_URL);
 console.log('🔧 VITE_API_URI:', process.env.VITE_API_URI);
 console.log('🔧 API_URL env:', process.env.API_URL);
