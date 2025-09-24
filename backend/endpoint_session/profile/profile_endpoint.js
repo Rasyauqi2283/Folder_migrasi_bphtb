@@ -420,4 +420,44 @@ router.post('/update-password', updatePasswordLimiter, async (req, res) => {
   }
 });
 
+// Debug endpoint untuk reset password (hanya untuk development)
+router.post('/reset-password-debug', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Endpoint ini hanya tersedia di development' 
+    });
+  }
+
+  const { userid, newPassword } = req.body;
+  
+  if (!userid || !newPassword) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'UserID dan password baru wajib diisi' 
+    });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await pool.query(
+      'UPDATE a_2_verified_users SET password = $1 WHERE userid = $2',
+      [hashedPassword, userid]
+    );
+
+    res.json({ 
+      success: true,
+      message: `Password untuk user ${userid} berhasil direset`,
+      newPassword: newPassword
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Gagal reset password' 
+    });
+  }
+});
+
 export default router;

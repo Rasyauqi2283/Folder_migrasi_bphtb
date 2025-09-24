@@ -135,6 +135,24 @@ app.get('/api/config', (req, res) => {
     environment: process.env.NODE_ENV
   });
 });
+
+// Debug endpoint untuk check session
+app.get('/api/debug-session', (req, res) => {
+  console.log('🔍 Session Debug:', {
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    sessionID: req.sessionID,
+    cookies: req.headers.cookie,
+    userAgent: req.headers['user-agent']
+  });
+  
+  res.json({
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    sessionID: req.sessionID,
+    user: req.session?.user || null
+  });
+});
 staticConfig(app);
 
 // TODO-CORE: Logger harus dibuat sebelum morgan digunakan
@@ -216,9 +234,9 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' untuk cross-origin di production
+    sameSite: 'lax', // Changed from 'none' to 'lax' for better compatibility
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    domain: process.env.NODE_ENV === 'production' ? '.railway.app' : undefined // Railway domain
+    // Remove domain restriction for Railway
   },
   name: 'bappenda.sid' // Custom session name
 }));

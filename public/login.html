@@ -108,7 +108,8 @@
             messageDiv.style.display = "none";
             messageDiv.className = "";
             try {
-                const res = await fetch(`/api/auth/login`, {
+                const API_URL = 'https://bphtb-bappenda.up.railway.app';
+                const res = await fetch(`${API_URL}/api/auth/login`, {
                     method: "POST",
                     credentials: 'include',
                     headers: {
