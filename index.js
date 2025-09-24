@@ -123,7 +123,7 @@ const __dirname = path.dirname(__filename);
 // Feature flag to disable pat_3_documents usage while keeping DB objects
 const PAT3_DISABLED = process.env.DISABLE_PAT3 === '1';
 // letak api_url
-const API_URL = process.env.VITE_API_URI || process.env.API_URL;
+const API_URL = process.env.VITE_API_URI || process.env.API_URL || 'https://bphtb-bappenda.up.railway.app';
 console.log('🌐 API_URL configured as:', API_URL);
 console.log('🔧 VITE_API_URI:', process.env.VITE_API_URI);
 console.log('🔧 API_URL env:', process.env.API_URL);
@@ -222,6 +222,25 @@ app.use(session({
   },
   name: 'bappenda.sid' // Custom session name
 }));
+app.get('/check-cookie', (req, res) => {
+  const userCookie = req.cookies['user'];
+  res.send(userCookie ? `Hello ${userCookie}` : 'No user cookie found');
+});
+
+// Middleware
+// TODO-CORE: Aktifkan CORS dengan credentials agar cookie session terkirim
+app.use(cors({
+  origin: process.env.CORS_ORIGINS?.split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+          || ['http://localhost:5173'],
+  credentials: true
+}));
+console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
+.map(s => s.trim())
+.filter(Boolean));
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 // Body parsers must come before API routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -505,25 +524,7 @@ async function sendUserStatusChangeEmail(userEmail, userName, userid, newStatus)
   }
 }
 
-app.get('/check-cookie', (req, res) => {
-    const userCookie = req.cookies['user'];
-    res.send(userCookie ? `Hello ${userCookie}` : 'No user cookie found');
-});
 
-// Middleware
-// TODO-CORE: Aktifkan CORS dengan credentials agar cookie session terkirim
-app.use(cors({
-    origin: process.env.CORS_ORIGINS?.split(',')
-                      .map(s => s.trim())
-                      .filter(Boolean)
-            || ['http://localhost:5173'],
-    credentials: true
-  }));
-console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
-  .map(s => s.trim())
-  .filter(Boolean));
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 // Mount API routes early to avoid accidental fallthrough to static handlers
 
 app.use('/design-n-script', express.static(path.join(__dirname, 'design-n-script')));
