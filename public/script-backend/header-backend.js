@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
 //
 //
 // Mengambil data profil pengguna dari API
-fetch('/api/profile')
+fetch('/api/profile', {credentials: 'include'})
 .then(response => response.json())
 .then(user => {
     console.log('Data pengguna diperoleh', user);
