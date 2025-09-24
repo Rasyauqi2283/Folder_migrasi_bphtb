@@ -93,8 +93,8 @@ router.post('/login', async (req, res) => {
     // Debug cookie settings
     console.log('🍪 Cookie settings:', {
       secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: 'none'
+      httpOnly: false,
+      sameSite: 'lax'
     });
 
     // Kirim response ke frontend
