@@ -18,7 +18,7 @@ const setLoading = (isLoading) => {
 
 // Penggunaan
 setLoading(true);
-const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+const API_URL = 'https://bphtb-bappenda.up.railway.app';
 fetch(`${API_URL}/api/profile`, { credentials: 'include' })
   .then(response => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Kirim data password ke backend untuk diperbarui
-        const response = await fetch('/api/auth/update-password', {
+        const response = await fetch(`${API_URL}/api/update-password`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -242,7 +242,7 @@ document.getElementById('parafForm').addEventListener('submit', async (e) => {
     const formData = new FormData();
     formData.append('signature', fileInput.files[0]);
 
-    const response = await fetch('/api/auth/update-profile-paraf', {
+    const response = await fetch(`${API_URL}/api/update-profile-paraf`, {
       method: 'POST',
       body: formData,
       credentials: 'include'

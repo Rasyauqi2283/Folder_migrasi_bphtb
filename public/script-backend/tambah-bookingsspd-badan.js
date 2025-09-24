@@ -206,7 +206,8 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
 
     // Kirim data booking dan perhitungan BPHTB ke backend menggunakan fetch dan async/await
     try {
-        const response = await fetch('/api/ppatk_create-booking-and-bphtb', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/ppatk_create-booking-and-bphtb`, {
             method: 'POST',
             credentials: 'include',
             body: JSON.stringify(data),

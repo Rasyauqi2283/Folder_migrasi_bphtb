@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
  
     async function fetchMemberList() {
         try {
+            const API_URL = 'https://bphtb-bappenda.up.railway.app';
             const response = await fetch(`${API_URL}/api/members-header`, { credentials: 'include' });
             const data = await response.json();
 
@@ -75,25 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
 //
 //
 // Mengambil data profil pengguna dari API
-let API_URL = window.location.origin; // Default fallback
+const API_URL = 'https://bphtb-bappenda.up.railway.app';
+console.log('🌐 Using Production API URL:', API_URL);
 
-// Get API URL from server config
-fetch('/api/config')
-  .then(response => response.json())
-  .then(config => {
-    API_URL = config.apiUrl;
-    console.log('🌐 Using API URL:', API_URL);
-  })
-  .catch(err => {
-    console.warn('⚠️ Failed to get API config, using fallback:', err);
-  })
-  .finally(() => {
-    // Load profile data after getting API URL
-    loadProfileData();
-  });
-
-function loadProfileData() {
-  fetch(`${API_URL}/api/profile`, {credentials: 'include'})
+// Load profile data
+fetch(`${API_URL}/api/profile`, {credentials: 'include'})
 .then(response => {
     if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -171,20 +158,19 @@ function loadProfileData() {
     } catch (e) {
         console.warn('Gagal memproses path tanda tangan:', e?.message || e);
     }
-  })
-  .catch(err => {
-      console.error('Gagal mengambil data profil:', err);
-      // Set default values jika gagal mengambil data
-      document.querySelectorAll('.userid').forEach(element => {
-          element.textContent = 'N/A';
-      });
-      document.querySelectorAll('.nama').forEach(element => {
-          element.textContent = 'User';
-      });
-      document.querySelectorAll('.fotoprofil').forEach(element => {
-          element.src = 'asset/men_dashboard-removebg-preview.png';
-      });
-  });
-}
+})
+.catch(err => {
+    console.error('Gagal mengambil data profil:', err);
+    // Set default values jika gagal mengambil data
+    document.querySelectorAll('.userid').forEach(element => {
+        element.textContent = 'N/A';
+    });
+    document.querySelectorAll('.nama').forEach(element => {
+        element.textContent = 'User';
+    });
+    document.querySelectorAll('.fotoprofil').forEach(element => {
+        element.src = 'asset/men_dashboard-removebg-preview.png';
+    });
+});
 //
 //

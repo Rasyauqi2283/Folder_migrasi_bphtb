@@ -405,7 +405,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Fungsi untuk copy nomor validasi
 async function copyNovalToTable(noval, targetTable) {
     try {
-        const response = await fetch('/api/copy-noval', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/copy-noval`, {
             method: 'POST',
             credentials: 'include',
             headers: {

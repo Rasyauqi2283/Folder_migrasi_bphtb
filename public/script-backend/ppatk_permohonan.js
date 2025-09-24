@@ -35,7 +35,8 @@ document.querySelector('.btn-simpan').addEventListener('click', async function(e
             showErrorNotification('Field wajib tidak boleh kosong');
             return;
         }
-        const response = await fetch('/api/ppatk_create-permohonan-validasi', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/ppatk_create-permohonan-validasi`, {
             method: 'POST',
             credentials: 'include',
             headers: {

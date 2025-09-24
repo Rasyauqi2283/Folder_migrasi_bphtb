@@ -187,7 +187,8 @@ async function sendToLSB(item) {
         no_validasi: item.no_validasi,
         nobooking: item.nobooking
     };
-    const resp = await fetch('/api/pv/send-to-lsb', {
+    const API_URL = 'https://bphtb-bappenda.up.railway.app';
+    const resp = await fetch(`${API_URL}/api/pv/send-to-lsb`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -574,7 +575,8 @@ async function processDigitalSignature(nobooking) {
         if (!confirmed) return { success: false, message: 'Proses dibatalkan' };
 
         // 3. Proses tanda tangan via BSRE
-        const response = await fetch('/api/Validasi/sign-document', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/Validasi/sign-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -794,7 +796,8 @@ async function handleApprovalSubmission(button) {
 async function processDigitalSignature(nobooking) {
     // Implementasi BSRE akan dibahas lebih detail
     try {
-        const response = await fetch('/api/Validasi/sign-document', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/Validasi/sign-document`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -897,7 +900,8 @@ async function submitApprovalToServer(nobooking, approvalStatus) {
     // Akan diimplementasikan nanti setelah pembahasan BSRE
     
     try {
-        const response = await fetch('/api/approve-signature', {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/approve-signature`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -335,7 +335,7 @@
 
     messageEl.innerText = "Memverifikasi OTP...";
     messageEl.className = "status-message";
-    const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+    const API_URL = 'https://bphtb-bappenda.up.railway.app';
 
     try {
       const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
@@ -373,7 +373,7 @@
 
     messageEl.innerText = "Mengirim ulang OTP...";
     messageEl.className = "status-message";
-    const API_URL = import.meta.env.VITE_API_URI || window.location.origin;
+    const API_URL = 'https://bphtb-bappenda.up.railway.app';
     try {
       const response = await fetch(`${API_URL}/api/auth/resend-otp`, {
         method: "POST",
