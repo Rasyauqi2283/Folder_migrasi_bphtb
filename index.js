@@ -234,7 +234,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax', // Changed from 'none' to 'lax' for better compatibility
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Changed from 'none' to 'lax' for better compatibility
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     // Remove domain restriction for Railway
   },
