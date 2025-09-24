@@ -232,9 +232,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to false untuk debugging Railway
-    httpOnly: false, // Set to false untuk debugging
-    sameSite: 'lax', // Simplified untuk Railway compatibility
+    secure: true, // Set to false untuk debugging Railway
+    httpOnly: true, // Set to false untuk debugging
+    sameSite: 'none', // Simplified untuk Railway compatibility
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     // Remove domain restriction for Railway
   },
