@@ -101,14 +101,20 @@
 
         loginForm.addEventListener("submit", async function (e) {
             e.preventDefault();
+            console.log("🔑 Login button clicked - Event fired!");
+            
             const identifier = document.getElementById("identifier").value;
             const password = document.getElementById("password").value;
+            
+            console.log("📝 Login data:", { identifier, password: password ? "***" : "empty" });
+            
             // Clear previous messages
             messageDiv.textContent = "";
             messageDiv.style.display = "none";
             messageDiv.className = "";
-            console.log("login button clicked");
+            
             try {
+                console.log("🌐 Making login request to Railway...");
                 const API_URL = 'https://bphtb-bappenda.up.railway.app';
                 const res = await fetch(`${API_URL}/api/auth/login`, {
                     method: "POST",
@@ -119,12 +125,18 @@
                     body: JSON.stringify({ identifier, password }),
                 });
 
+                console.log("📊 Login Response Status:", res.status);
+                console.log("📋 Login Response Headers:", res.headers);
+                
                 const data = await res.json();
+                console.log("📄 Login Response Data:", data);
 
                 // Tampilkan pesan
                 messageDiv.style.display = "block";
                 
                 if (res.ok) {
+                    console.log("✅ Login successful!");
+                    console.log("🍪 Cookies should be set by server");
                     // Tampilkan pesan sukses
                     messageDiv.innerHTML = `
                         <div class="message-content">
@@ -150,15 +162,23 @@
 
                     // Redirect berdasarkan status profil dan divisi
                     setTimeout(() => {
+                        console.log("🔄 Starting redirect process...");
+                        console.log("👤 User division:", data.divisi);
+                        console.log("📋 Profile complete:", data.is_profile_complete);
+                        
                         if (!data.is_profile_complete) {
-                            // Jika profil belum lengkap, arahkan ke halaman complete-profile
+                            console.log("➡️ Redirecting to profile-completetask.html");
                             window.location.href = "profile-completetask.html";
                         } else {
-                            // Jika profil sudah lengkap, arahkan ke dashboard sesuai divisi
+                            console.log("➡️ Redirecting to dashboard based on division");
                             redirectBasedOnDivision(data.divisi);
                         }
                     }, 1000);
                 } else {
+                    console.log("❌ Login failed!");
+                    console.log("📊 Error status:", res.status);
+                    console.log("📄 Error message:", data.message);
+                    
                     // Tampilkan pesan error
                     let errorMessage = data.message;
                     
@@ -196,8 +216,11 @@
 
         // Fungsi untuk redirect berdasarkan divisi
         function redirectBasedOnDivision(divisi) {
+            console.log("🎯 Redirecting to dashboard for division:", divisi);
+            
             switch (divisi) {
                 case "Administrator":
+                    console.log("➡️ Redirecting to admin-dashboard.html");
                     window.location.href = "admin-dashboard.html";
                     break;
                 case "Customer Service":

@@ -78,13 +78,19 @@ document.addEventListener("DOMContentLoaded", () => {
 // Mengambil data profil pengguna dari API
 const API_URL = 'https://bphtb-bappenda.up.railway.app';
 console.log('🌐 Using Production API URL:', API_URL);
+console.log('🔍 Starting profile data fetch...');
 
 // Load profile data
 fetch(`${API_URL}/api/profile`, {credentials: 'include'})
 .then(response => {
+    console.log('📊 Profile API Response Status:', response.status);
+    console.log('📋 Profile API Response Headers:', response.headers);
+    
     if (!response.ok) {
+        console.log('❌ Profile API failed with status:', response.status);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
+    console.log('✅ Profile API response OK, parsing JSON...');
     return response.json();
 })
 .then(user => {
