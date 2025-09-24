@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Fetch total nilai bphtb dan tampilkan di .transaction-amount
 (async function loadTaxSummary() {
   try {
-    const res = await fetch('/api/analytics/tax/summary');
+    const res = await fetch('/api/analytics/tax/summary', { credentials: 'include' });
     const data = await res.json();
     if (data?.success) {
       const total = Number(data.total_bphtb || 0);
@@ -560,7 +560,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Fetch per-user table data dan render ke tbody
 (async function loadPerUserTable() {
   try {
-    const res = await fetch('/api/analytics/tax/per-user?limit=25&page=1');
+    const res = await fetch('/api/analytics/tax/per-user?limit=25&page=1', { credentials: 'include' });
     const data = await res.json();
     if (data?.success && Array.isArray(data.rows)) {
       const tbody = document.getElementById('bookingBody');

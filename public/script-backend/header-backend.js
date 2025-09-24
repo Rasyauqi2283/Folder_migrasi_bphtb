@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function fetchMemberList() {
         try {
-            const response = await fetch('/api/members-header');
+            const response = await fetch('/api/members-header', { credentials: 'include' });
             const data = await response.json();
 
             if (data && data.usersm) {

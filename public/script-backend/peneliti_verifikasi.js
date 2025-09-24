@@ -17,7 +17,7 @@ async function loadTableDataPenelitiV() {
         let response;
         try {
             response = await Promise.race([
-                fetch('/api/peneliti_get-berkas-fromltb'),
+                fetch('/api/peneliti_get-berkas-fromltb', { credentials: 'include' }),
                 new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
             ]);
@@ -368,7 +368,7 @@ async function viewDocument(nobooking) {
     }
 
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`);
+        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
         const data = await response.json();  // Mengonversi respons ke JSON
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
@@ -450,7 +450,7 @@ async function simpanData(buttonElement) {
 
     try {
         console.log('Memproses No Booking:', nobooking);
-        const signatureCheck = await fetch('/api/peneliti/check-signature');
+        const signatureCheck = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
         const { has_signature } = await signatureCheck.json();
         if (!has_signature) {
             throw new Error('Anda belum mengunggah tanda tangan!');
@@ -482,7 +482,7 @@ async function simpanData(buttonElement) {
         if (userData.divisi !== 'Peneliti') {  // Ganti `divisi` -> `userData.divisi`
             throw new Error('Hanya divisi Peneliti yang dapat menyetujui');
         }
-        const tandaTanganResponse = await fetch(`/api/get-tanda-tangan?userid=${userData.userid}`);  // Ganti `userid` -> `userData.userid`
+        const tandaTanganResponse = await fetch(`/api/get-tanda-tangan?userid=${userData.userid}`, { credentials: 'include' });  // Ganti `userid` -> `userData.userid`
         if (!tandaTanganResponse.ok) {
             throw new Error('Gagal mengambil tanda tangan');
         }
@@ -559,6 +559,7 @@ async function simpanData(buttonElement) {
 
         const saveResponse = await fetch('/api/peneliti_update-berdasarkan-pemilihan', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data }),
             signal: controller.signal
@@ -603,6 +604,7 @@ async function generatePDF(nobooking, base64TandaTangan) {
     try {
         const response = await fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`, {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -637,6 +639,7 @@ async function generatePDF(nobooking, base64TandaTangan) {
 function resetNamaPemverifikasi(nobooking) {
     fetch('/api/reset-nama-pemverifikasi', {
         method: 'POST',
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json'
         },
@@ -676,10 +679,10 @@ async function sendToParafKasie(item) {
         }
         const response = await fetch('/api/peneliti_send-to-paraf', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
                 namawajibpajak: item.namawajibpajak,

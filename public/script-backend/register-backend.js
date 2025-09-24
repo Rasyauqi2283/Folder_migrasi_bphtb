@@ -32,6 +32,7 @@
           // Mengirimkan data ke backend menggunakan fetch
           const response = await fetch(`/api/auth/register`, {
             method: "POST",
+            credentials: 'include',
             body: formData,
           });
   

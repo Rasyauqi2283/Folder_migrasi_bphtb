@@ -321,7 +321,7 @@ sessionStorage.setItem('divisi', 'LSB');
 ////////////////////// END FU   ///////////////////////////////////////////////////////////////////
 async function validateNoBooking(nobooking) {
     try {
-        const response = await fetch(`/api/validate-nobooking/${nobooking}`);
+        const response = await fetch(`/api/validate-nobooking/${nobooking}`, { credentials: 'include' });
         const result = await response.json();
         return result.isValid;  // Mengembalikan status validasi
     } catch (error) {
@@ -358,7 +358,7 @@ async function viewDocument(nobooking) {
         return;
     }
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`);
+        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
         const data = await response.json();  // Mengonversi respons ke JSON
 
         if (response.ok && data && data.userid) {
@@ -384,6 +384,7 @@ async function sendToPPAT_complete(item) {
     try {
         const response = await fetch('/api/LSB_send-to-ppat', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },

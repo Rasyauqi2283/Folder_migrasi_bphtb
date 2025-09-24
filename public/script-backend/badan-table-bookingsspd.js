@@ -4,7 +4,7 @@ async function loadTableData(page = 1) {
     try {
         // Menggunakan parameter page jika ada
         const url = `/api/ppatk_get-booking-data?page=${page}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -328,7 +328,8 @@ function deleteSelectedRow() {
         if (isConfirmed) {
             const nobooking = selectedRow.cells[0].textContent;
             fetch(`/api/ppatk_update-trackstatus/${nobooking}`, {
-                method: 'PUT'
+                method: 'PUT',
+                credentials: 'include'
             })
             .then(response => response.json())
             .then(data => {
@@ -401,7 +402,7 @@ async function viewPDF(nobooking) {
     try {
         viewBtn.textContent = 'Loading...';
         viewBtn.disabled = true;
-        const response = await fetch(`/api/ppatk/generate-pdf-mohon-validasi/${nobooking}`);
+        const response = await fetch(`/api/ppatk/generate-pdf-mohon-validasi/${nobooking}`, { credentials: 'include' });
         if (!response.ok) {
             throw new Error(response.statusText || 'Gagal mengambil PDF');
         }
@@ -436,7 +437,7 @@ function downloadPDF(url, filename, timeout = 30000) {
             reject(new Error('Timeout: Dokumen terlalu lama diproses'));
         }, timeout);
 
-        fetch(url)
+        fetch(url, { credentials: 'include' })
             .then(response => {
                 if (!response.ok) throw new Error(response.statusText);
                 return response.blob();
@@ -1215,6 +1216,7 @@ function showAlert(type, message) {
 
                 const response = await fetch(config.apiEndpoint, {
                     method: 'POST',
+                    credentials: 'include',
                     body: formData
                 });
 
@@ -1634,6 +1636,7 @@ async function sendToLtb(nobooking) {
     try {
         const response = await fetch('/api/ppatk_ltb-process', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nobooking: nobooking,
@@ -2350,11 +2353,11 @@ async function gotoform(nobooking) {
                                 // Send to server
                                 const response = await fetch('/api/save-ppatk-additional-data', {
                                     method: 'POST',
+                                    credentials: 'include',
                                     headers: {
                                         'Content-Type': 'application/json',
                                     },
-                                    body: JSON.stringify(formData),
-                                    credentials: 'include'
+                                    body: JSON.stringify(formData)
                                 });
 
                                 const result = await response.json();

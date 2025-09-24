@@ -84,6 +84,7 @@ async function fetchWithTimeout(url, options, timeout) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include',
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -490,7 +491,7 @@ sessionStorage.setItem('divisi', 'Peneliti');
 ////////////////////// END FU   ///////////////////////////////////////////////////////////////////
 async function validateNoBooking(nobooking) {
     try {
-        const response = await fetch(`/api/validate-nobooking/${nobooking}`);
+        const response = await fetch(`/api/validate-nobooking/${nobooking}`, { credentials: 'include' });
         const result = await response.json();
         return result.isValid;  // Mengembalikan status validasi
     } catch (error) {
@@ -501,7 +502,7 @@ async function validateNoBooking(nobooking) {
 ////////////////////// END VN   ///////////////////////////////////////////////////////////////////
 // Fungsi untuk generate PDF
 function generatePDF(nobooking, stempelStatusP) {
-    fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`)
+    fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`, { credentials: 'include' })
     .then(response => response.blob())
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
@@ -542,7 +543,7 @@ async function viewDocument(nobooking) {
         return;
     }
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`);
+        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
         const data = await response.json();  // Mengonversi respons ke JSON
 
         if (response.ok && data && data.userid) {
@@ -576,7 +577,7 @@ async function simpanData(buttonElement) {
 
     try {
         console.log('Memproses No Booking:', nobooking);
-        const signatureCheck = await fetch('/api/peneliti/check-signature');
+        const signatureCheck = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
         const { has_signature } = await signatureCheck.json();
         if (!has_signature) {
             throw new Error('Anda belum mengunggah tanda tangan!');
@@ -609,6 +610,7 @@ async function simpanData(buttonElement) {
             throw new Error('Hanya divisi Peneliti yang dapat menyetujui');
         }
         const tandaTanganResponse = await fetch(`/api/get-tanda-tangan?userid=${userData.userid}`, {
+            credentials: 'include',
             cache: 'force-cache'
         });  // Ganti `userid` -> `userData.userid`
         if (!tandaTanganResponse.ok) {
@@ -634,6 +636,7 @@ async function simpanData(buttonElement) {
 
         const saveResponse = await fetch('/api/peneliti_update-ttd-paraf', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ data }),
             signal: controller.signal
@@ -676,10 +679,10 @@ async function sendToParafValidate(item) {
     try {
         const response = await fetch('/api/peneliti_send-to-ParafValidate', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
                 namawajibpajak: item.namawajibpajak,

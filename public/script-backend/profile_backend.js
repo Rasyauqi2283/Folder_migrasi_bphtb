@@ -18,7 +18,7 @@ const setLoading = (isLoading) => {
 
 // Penggunaan
 setLoading(true);
-fetch('/api/auth/profile')
+fetch('/api/auth/profile', { credentials: 'include' })
   .then(response => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
@@ -26,7 +26,7 @@ fetch('/api/auth/profile')
   
   .finally(() => setLoading(false));
 
-fetch('/api/auth/profile')
+fetch('/api/auth/profile', { credentials: 'include' })
 .then(response => {
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return response.json();
@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Kirim data password ke backend untuk diperbarui
         const response = await fetch('/api/auth/update-password', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },

@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             // Mengirim permintaan ke backend untuk mendapatkan jumlah anggota berdasarkan divisi
-            const response = await fetch(`/api/member-count/admin-access?divisi=${selectedDivisi}`);
+            const response = await fetch(`/api/member-count/admin-access?divisi=${selectedDivisi}`, { credentials: 'include' });
             const data = await response.json();
 
             // Menampilkan jumlah anggota pada elemen memberValue
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 //// Fungsi untuk memeriksa apakah ada data yang diproses oleh LTB
 async function checkProcessedData() {
     try {
-        const response = await fetch('/api/admin/ltb-processed');
+        const response = await fetch('/api/admin/ltb-processed', { credentials: 'include' });
         const data = await response.json();
 
         // Menampilkan notifikasi jika ada data yang diproses oleh LTB

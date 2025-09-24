@@ -208,6 +208,7 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
     try {
         const response = await fetch('/api/ppatk_create-booking-and-bphtb', {
             method: 'POST',
+            credentials: 'include',
             body: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json',

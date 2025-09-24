@@ -37,6 +37,7 @@ document.querySelector('.btn-simpan').addEventListener('click', async function(e
         }
         const response = await fetch('/api/ppatk_create-permohonan-validasi', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },

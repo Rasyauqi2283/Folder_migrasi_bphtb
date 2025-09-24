@@ -10,7 +10,7 @@ async function loadTableDataLTB() {
     }
 
     try {
-        const response = await fetch('/api/ltb_get-ltb-berkas'); // Endpoint API untuk mendapatkan data berkas LTB
+        const response = await fetch('/api/ltb_get-ltb-berkas', { credentials: 'include' }); // Endpoint API untuk mendapatkan data berkas LTB
         const data = await response.json();
 
         // Log untuk melihat apakah data berhasil di-fetch
@@ -260,7 +260,7 @@ async function viewDocument(nobooking) {
     }
 
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`);
+        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
         const data = await response.json();  // Mengonversi respons ke JSON
 
         if (response.ok && data && data.userid) {
@@ -297,7 +297,7 @@ async function viewPDF(nobooking) {
 
     try {
         // 1. Fetch data creator
-        const creatorResponse = await fetch(`/api/getCreatorMohonValidasi/${encodeURIComponent(nobooking)}`);
+        const creatorResponse = await fetch(`/api/getCreatorMohonValidasi/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
         
         if (!creatorResponse.ok) {
             const errorData = await creatorResponse.json().catch(() => null);
@@ -381,7 +381,7 @@ async function confirmReject() {
     
     try {
         // Cek apakah nobooking sudah pernah digunakan
-        const checkResponse = await fetch(`/api/check-nobooking-usage/${selectedNoBooking}`);
+        const checkResponse = await fetch(`/api/check-nobooking-usage/${selectedNoBooking}`, { credentials: 'include' });
         const checkData = await checkResponse.json();
         
         if (checkData.success && checkData.isUsed) {
@@ -392,6 +392,7 @@ async function confirmReject() {
         // Kirim data penolakan ke backend dengan auto-delete
         const response = await fetch('/api/ltb/reject-with-auto-delete', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -436,6 +437,7 @@ async function sendToPeneliti(item) {
 
         const response = await fetch('/api/ltb_send-to-peneliti', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 no_registrasi: item.no_registrasi,

@@ -48,6 +48,7 @@ async function fetchData() {
     try {
         const response = await fetch(API_ENDPOINT, {
             signal: controller.signal,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'

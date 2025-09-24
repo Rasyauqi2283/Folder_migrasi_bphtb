@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.append('page', currentPage);
             params.append('limit', itemsPerPage);
 
-            const response = await fetch(`/api/ppatk_validasi?${params.toString()}`);
+            const response = await fetch(`/api/ppatk_validasi?${params.toString()}`, { credentials: 'include' });
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             modal.modal('show');
             
-            const response = await fetch(`/api/ppatk_validasi/${id}`);
+            const response = await fetch(`/api/ppatk_validasi/${id}`, { credentials: 'include' });
             const result = await response.json();
             
             if (!response.ok) throw new Error(result.message || 'Gagal memuat detail');
@@ -407,6 +407,7 @@ async function copyNovalToTable(noval, targetTable) {
     try {
         const response = await fetch('/api/copy-noval', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
