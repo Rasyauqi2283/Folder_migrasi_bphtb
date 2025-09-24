@@ -204,8 +204,9 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' untuk cross-origin di production
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    domain: process.env.NODE_ENV === 'production' ? '.railway.app' : undefined // Railway domain
   },
   name: 'bappenda.sid' // Custom session name
 }));
@@ -506,9 +507,11 @@ app.use(cors({
             || ['http://localhost:5173'],
     credentials: true
   }));
-console.log(process.env.CORS_ORIGINS?.split(',')
+console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
   .map(s => s.trim())
   .filter(Boolean));
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 // Mount API routes early to avoid accidental fallthrough to static handlers
 
 app.use('/design-n-script', express.static(path.join(__dirname, 'design-n-script')));
@@ -4505,5 +4508,34 @@ app.post('/api/pv/generate-qr', async (req, res) => {
   }
 });
 
+// Check database connection and session table
+const checkDatabaseAndSession = async () => {
+  try {
+    // Test database connection
+    await pool.query('SELECT NOW()');
+    console.log('✅ Database connection successful');
+    
+    // Check if session table exists
+    const sessionTableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'user_sessions'
+      );
+    `);
+    
+    if (sessionTableCheck.rows[0].exists) {
+      console.log('✅ Session table exists');
+    } else {
+      console.log('⚠️  Session table does not exist, will be created automatically');
+    }
+  } catch (error) {
+    console.error('❌ Database check failed:', error.message);
+  }
+};
+
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => console.log(`Running on ${PORT}`));
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  await checkDatabaseAndSession();
+});
