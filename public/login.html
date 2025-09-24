@@ -107,6 +107,7 @@
             messageDiv.textContent = "";
             messageDiv.style.display = "none";
             messageDiv.className = "";
+            console.log("login button clicked");
             try {
                 const API_URL = 'https://bphtb-bappenda.up.railway.app';
                 const res = await fetch(`${API_URL}/api/auth/login`, {
