@@ -76,40 +76,75 @@ document.addEventListener("DOMContentLoaded", () => {
 //
 // Mengambil data profil pengguna dari API
 fetch('/api/profile', {credentials: 'include'})
-.then(response => response.json())
+.then(response => {
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
+})
 .then(user => {
+    // Validasi data user sebelum diproses
+    if (!user || typeof user !== 'object') {
+        console.warn('Data user tidak valid atau kosong');
+        return;
+    }
+
     console.log('Data pengguna diperoleh', user);
     console.log('Data userID:', user.userid);
     console.log('Data pengguna:', user.statuspengguna);
 
     // Ekspos divisi & userid secara global untuk komponen lain (poller/notification UI)
     try {
-        window.currentUserDivisi = user.divisi;
-        window.currentUserId = user.userid || user.id;
+        window.currentUserDivisi = user.divisi || null;
+        window.currentUserId = user.userid || user.id || null;
     } catch (_) {}
 
     // Mengubah textContent atau value untuk semua elemen dengan class yang sesuai
-    document.querySelectorAll('.userid').forEach(element => {
-        element.value = user.userid;
-        element.textContent = user.userid;
-    });
-    document.querySelectorAll('.nama').forEach(element => {
-        element.value = user.nama;
-        element.textContent = user.nama;
-    });
-        // Memperbaiki path gambar untuk src
-        const fotoProfilUrl = decodeURIComponent(user.fotoprofil.replace('\\', '/'));  // Path relatif dari root
-    // Pilih semua elemen dengan class 'fotoprofil' dan perbarui src-nya
-    const fotoProfilElements = document.querySelectorAll('.fotoprofil');
-    fotoProfilElements.forEach(element => {
-        element.src = fotoProfilUrl;
-    });
+    if (user.userid) {
+        document.querySelectorAll('.userid').forEach(element => {
+            element.value = user.userid;
+            element.textContent = user.userid;
+        });
+    }
+    
+    if (user.nama) {
+        document.querySelectorAll('.nama').forEach(element => {
+            element.value = user.nama;
+            element.textContent = user.nama;
+        });
+    }
 
-    console.log('Foto Profil yang Ditampilkan:', fotoProfilUrl);
+    // Memperbaiki path gambar untuk src dengan null check
+    if (user.fotoprofil && typeof user.fotoprofil === 'string') {
+        try {
+            const fotoProfilUrl = decodeURIComponent(user.fotoprofil.replace(/\\/g, '/'));
+            // Pilih semua elemen dengan class 'fotoprofil' dan perbarui src-nya
+            const fotoProfilElements = document.querySelectorAll('.fotoprofil');
+            fotoProfilElements.forEach(element => {
+                element.src = fotoProfilUrl;
+                element.onerror = function() {
+                    this.src = 'asset/men_dashboard-removebg-preview.png'; // Fallback image
+                };
+            });
+            console.log('Foto Profil yang Ditampilkan:', fotoProfilUrl);
+        } catch (e) {
+            console.warn('Gagal memproses foto profil:', e?.message || e);
+            // Set default avatar jika error
+            document.querySelectorAll('.fotoprofil').forEach(element => {
+                element.src = 'asset/men_dashboard-removebg-preview.png';
+            });
+        }
+    } else {
+        // Set default avatar jika fotoprofil tidak ada
+        document.querySelectorAll('.fotoprofil').forEach(element => {
+            element.src = 'asset/men_dashboard-removebg-preview.png';
+        });
+    }
 
     // Log tanda tangan untuk debugging overlay paraf
     try {
-        const signatureUrl = user.tanda_tangan_path ? decodeURIComponent(String(user.tanda_tangan_path).replace('\\', '/')) : null;
+        const signatureUrl = user.tanda_tangan_path ? 
+            decodeURIComponent(String(user.tanda_tangan_path).replace(/\\/g, '/')) : null;
         // Ekspos agar modul lain bisa pakai bila perlu
         window.currentSignaturePath = signatureUrl || null;
         if (signatureUrl) {
@@ -119,6 +154,18 @@ fetch('/api/profile', {credentials: 'include'})
         console.warn('Gagal memproses path tanda tangan:', e?.message || e);
     }
 })
-.catch(err => console.error('Gagal mengambil data profil:', err));
+.catch(err => {
+    console.error('Gagal mengambil data profil:', err);
+    // Set default values jika gagal mengambil data
+    document.querySelectorAll('.userid').forEach(element => {
+        element.textContent = 'N/A';
+    });
+    document.querySelectorAll('.nama').forEach(element => {
+        element.textContent = 'User';
+    });
+    document.querySelectorAll('.fotoprofil').forEach(element => {
+        element.src = 'asset/men_dashboard-removebg-preview.png';
+    });
+});
 //
 //

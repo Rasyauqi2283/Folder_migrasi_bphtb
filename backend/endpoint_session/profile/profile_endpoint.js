@@ -12,57 +12,74 @@ const router = express.Router();
 // Endpoint untuk mendapatkan data profil pengguna
 router.get('/profile', async (req, res) => {
     if (!req.session.user) {
-        return res.status(401).json({ message: 'User belum login.' });
+        return res.status(401).json({ 
+            success: false,
+            message: 'User belum login.',
+            error: 'UNAUTHORIZED'
+        });
     }
+    
     try {
-    let user = {
-      userid: req.session.user.userid,
-      nama: req.session.user.nama,
-      email: req.session.user.email,
-      telepon: req.session.user.telepon,
-      divisi: req.session.user.divisi,
-      fotoprofil: req.session.user.fotoprofil,
-      username: req.session.user.username,
-      nip: req.session.user.nip,
-      special_field: req.session.user.special_field,
-      special_parafv: req.session.user.special_parafv,
-      pejabat_umum: req.session.user.pejabat_umum,
-      statuspengguna: req.session.user.statuspengguna,
-      tanda_tangan_path: req.session.user.tanda_tangan_path,
-      tanda_tangan_mime: req.session.user.tanda_tangan_mime
-    };
-    // Jika data penting tidak ada, ambil dari DB
-    if (!user.nama || !user.email) {
-      const dbUser = await pool.query(
-        'SELECT * FROM a_2_verified_users WHERE userid = $1',
-        [user.userid]
-      );
-      if (dbUser.rows[0]) {
-        user = { ...user, ...dbUser.rows[0] }; // Gabungkan data
-        req.session.user = user; // Update session
-      }
-    }
+        let user = {
+            userid: req.session.user.userid,
+            nama: req.session.user.nama,
+            email: req.session.user.email,
+            telepon: req.session.user.telepon,
+            divisi: req.session.user.divisi,
+            fotoprofil: req.session.user.fotoprofil,
+            username: req.session.user.username,
+            nip: req.session.user.nip,
+            special_field: req.session.user.special_field,
+            special_parafv: req.session.user.special_parafv,
+            pejabat_umum: req.session.user.pejabat_umum,
+            statuspengguna: req.session.user.statuspengguna,
+            tanda_tangan_path: req.session.user.tanda_tangan_path,
+            tanda_tangan_mime: req.session.user.tanda_tangan_mime
+        };
+        
+        // Jika data penting tidak ada, ambil dari DB
+        if (!user.nama || !user.email) {
+            const dbUser = await pool.query(
+                'SELECT * FROM a_2_verified_users WHERE userid = $1',
+                [user.userid]
+            );
+            if (dbUser.rows[0]) {
+                user = { ...user, ...dbUser.rows[0] }; // Gabungkan data
+                req.session.user = user; // Update session
+            }
+        }
+
+        // Pastikan semua field memiliki nilai default jika null/undefined
+        const responseData = {
+            userid: user.userid || null,
+            nama: user.nama || 'N/A',
+            email: user.email || null,
+            telepon: user.telepon || null,
+            divisi: user.divisi || null,
+            fotoprofil: user.fotoprofil || '/penting_F_simpan/profile-photo/default-foto-profile.png',
+            username: user.username || null,
+            nip: user.nip || null,
+            special_field: user.special_field || null,
+            special_parafv: user.special_parafv || null,
+            pejabat_umum: user.pejabat_umum || null,
+            statuspengguna: user.statuspengguna || 'offline',
+            tanda_tangan_path: user.tanda_tangan_path || null,
+            tanda_tangan_mime: user.tanda_tangan_mime || null
+        };
 
         res.json({
-            userid: user.userid,
-            nama: user.nama,
-            email: user.email,
-            telepon: user.telepon,
-            divisi: user.divisi,
-            fotoprofil: user.fotoprofil,
-            username: user.username,
-            nip: user.nip,
-            special_field: user.special_field,
-            special_parafv: user.special_parafv,
-            pejabat_umum: user.pejabat_umum,
-            statuspengguna: user.statuspengguna,
-            tanda_tangan_path: user.tanda_tangan_path,
-            tanda_tangan_mime: user.tanda_tangan_mime
+            success: true,
+            ...responseData
         });
-    }   catch (error) {
-      console.error('Profile error:', error);
-      res.status(500).json({ message: 'Gagal memuat profil' });
-  }
+        
+    } catch (error) {
+        console.error('Profile error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Gagal memuat profil',
+            error: process.env.NODE_ENV === 'development' ? error.message : null
+        });
+    }
 });
 
 // Patch 2
