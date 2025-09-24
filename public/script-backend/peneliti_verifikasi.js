@@ -229,10 +229,10 @@ async function loadTableDataPenelitiV() {
                             <!-- Akta Tanah -->
                             ${item.akta_tanah_path ? 
                                 item.akta_tanah_path.endsWith('.pdf') ? 
-                                `<p>Akta Tanah: <a href="/${item.akta_tanah_path}" target="_blank">
+                                `<p>Akta Tanah: <a href="${item.akta_tanah_path}" target="_blank">
                                 <button class="btn-view">View PDF</button>
                                 </a></p>` : 
-                                `<p>Akta Tanah: <a href="/${item.akta_tanah_path}" target="_blank">
+                                `<p>Akta Tanah: <a href="${item.akta_tanah_path}" target="_blank">
                                 <img src="/${item.akta_tanah_path}" alt="Akta Tanah" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
                                 </a></p>`
                             : ''}
@@ -240,10 +240,10 @@ async function loadTableDataPenelitiV() {
                             <!-- Sertifikat Tanah -->
                             ${item.sertifikat_tanah_path ? 
                                 item.sertifikat_tanah_path.endsWith('.pdf') ? 
-                                `<p>Sertifikat Tanah: <a href="/${item.sertifikat_tanah_path}" target="_blank">
+                                `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
                                 <button class="btn-view">View PDF</button>
                                 </a></p>` : 
-                                `<p>Sertifikat Tanah: <a href="/${item.sertifikat_tanah_path}" target="_blank">
+                                `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
                                 <img src="/${item.sertifikat_tanah_path}" alt="Sertifikat Tanah" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
                                 </a></p>`
                             : ''}
@@ -251,10 +251,10 @@ async function loadTableDataPenelitiV() {
                             <!-- File Pelengkap -->
                             ${item.pelengkap_path ? 
                                 item.pelengkap_path.endsWith('.pdf') ? 
-                                `<p>File Pelengkap: <a href="/${item.pelengkap_path}" target="_blank">
+                                `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
                                 <button class="btn-view">View PDF</button>
                                 </a></p>` : 
-                                `<p>File Pelengkap: <a href="/${item.pelengkap_path}" target="_blank">
+                                `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
                                 <img src="/${item.pelengkap_path}" alt="Pelengkap Image" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
                                 </a></p>`
                             : ''}

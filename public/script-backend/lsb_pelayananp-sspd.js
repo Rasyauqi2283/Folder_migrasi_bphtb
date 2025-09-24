@@ -265,7 +265,7 @@ function generateDropdownContent(item) {
         </div>
         <p>Upload Files yang di unduh serta sudah diberikan stempel, letakkan disini</p>
         ${item.file_withstempel_path ? 
-            `<p>File yang sudah di stempel: <a href="/${item.file_withstempel_path}" target="_blank">${item.file_withstempel_path.split('/').pop()}</a></p>` : 
+            `<p>File yang sudah di stempel: <a href="${item.file_withstempel_path}" target="_blank">${item.file_withstempel_path.split('/').pop()}</a></p>` : 
             `<label for="FileStempel-${item.nobooking}">Upload File dengan stempel (PDF):</label>
             <input type="file" id="FileStempel-${item.nobooking}" name="FileStempel" accept="application/pdf"><br>`}
         <button onclick="uploadFilesStempel('${item.nobooking}')">Upload Files (with stempel)</button>
@@ -275,7 +275,7 @@ function generateDropdownContent(item) {
 }
 function generateFileLink(path, label) {
     return path ? 
-        `<p>${label}: <a href="/${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
+        `<p>${label}: <a href="${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
 }
 document.querySelectorAll('#LSBTable tbody tr').forEach(row => {
     row.addEventListener('click', function() {

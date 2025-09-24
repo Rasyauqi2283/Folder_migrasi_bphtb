@@ -1612,7 +1612,7 @@ function renderFileSection(item, fieldName, label) {
         return `
             <div class="file-item">
                 <span>${label}: ${item[fieldName].split('/').pop()}</span>
-                <a href="/${item[fieldName]}" target="_blank" class="view-btn">
+                <a href="${item[fieldName]}" target="_blank" class="view-btn">
                     <i class="fas fa-eye"></i> View
                 </a>
             </div>
@@ -1724,7 +1724,7 @@ async function gotoform(nobooking) {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Formulir Validasi PPATK - ${nobooking}</title>
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-                <link rel="icon" href="/asset/TitleE-bphtb.png" type="image/png">
+                <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
                 <style>
                 :root {
                     --navy-blue: #001f3f;

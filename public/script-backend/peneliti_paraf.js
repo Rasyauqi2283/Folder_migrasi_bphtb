@@ -444,7 +444,7 @@ function generateDropdownContent(item) {
 }
 function generateFileLink(path, label) {
     return path ? 
-        `<p>${label}: <a href="/${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
+        `<p>${label}: <a href="${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
 }
 document.querySelectorAll('#penelitikasieTable tbody tr').forEach(row => {
     row.addEventListener('click', function() {
