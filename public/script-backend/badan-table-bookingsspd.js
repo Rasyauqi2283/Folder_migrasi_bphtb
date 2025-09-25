@@ -1632,58 +1632,108 @@ function renderFileSection(item, fieldName, label) {
 ///////////////
 // Fungsi untuk mengirim data ke LTB (complete)
 async function sendToLtb(nobooking) {
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 detik
     
-    try {
-        const response = await fetch('/api/ppatk_ltb-process', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                nobooking: nobooking,
-                trackstatus: 'Diolah',
-                userid: sessionStorage.getItem('userid') || localStorage.getItem('userid'),
-                nama: sessionStorage.getItem('nama') || localStorage.getItem('nama')
-            })
-        });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            // Tampilkan loading indicator
+            const sendButton = document.querySelector(`[data-booking="${nobooking}"] .btn-send-to-ltb`);
+            if (sendButton) {
+                sendButton.disabled = true;
+                sendButton.textContent = `Mengirim... (${attempt}/${maxRetries})`;
+            }
 
-        const result = await response.json();
-        
-        if (result.success) {
-            // Tampilkan overlay notifikasi 1-2 detik setelah pengiriman
-            try {
-                const overlay = document.getElementById('ltb-overlay');
-                const messageEl = document.getElementById('ltb-overlay-message');
-                const closeBtn = document.getElementById('ltb-overlay-close');
-                const audioEl = document.getElementById('ltb-success-audio');
-                if (overlay && messageEl) {
-                    const nob = nobooking;
-                    const noreg = result.no_registrasi || '-';
-                    messageEl.textContent = `Nobooking anda ${nob} telah masuk ke dalam daftar antrian di Loket Terima Berkas dengan antrian ${noreg}, dan sedang di olah`;
-                    setTimeout(() => {
-                        overlay.style.display = 'block';
-                        // Coba play audio notifikasi (beberapa browser hanya mengizinkan setelah user interaction)
-                        try { audioEl && audioEl.play && audioEl.play().catch(() => {}); } catch(_) {}
-                    }, 1000);
-                    if (closeBtn) {
-                        closeBtn.onclick = () => {
-                            overlay.style.display = 'none';
-                            location.reload();
-                        };
+            // Set timeout untuk request
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 detik timeout
+
+            const response = await fetch('/api/ppatk_ltb-process', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nobooking: nobooking,
+                    trackstatus: 'Diolah',
+                    userid: sessionStorage.getItem('userid') || localStorage.getItem('userid'),
+                    nama: sessionStorage.getItem('nama') || localStorage.getItem('nama')
+                }),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                // Reset button state
+                const sendButton = document.querySelector(`[data-booking="${nobooking}"] .btn-send-to-ltb`);
+                if (sendButton) {
+                    sendButton.disabled = false;
+                    sendButton.textContent = 'Kirim ke LTB';
+                }
+
+                // Tampilkan overlay notifikasi 1-2 detik setelah pengiriman
+                try {
+                    const overlay = document.getElementById('ltb-overlay');
+                    const messageEl = document.getElementById('ltb-overlay-message');
+                    const closeBtn = document.getElementById('ltb-overlay-close');
+                    const audioEl = document.getElementById('ltb-success-audio');
+                    if (overlay && messageEl) {
+                        const nob = nobooking;
+                        const noreg = result.no_registrasi || '-';
+                        messageEl.textContent = `Nobooking anda ${nob} telah masuk ke dalam daftar antrian di Loket Terima Berkas dengan antrian ${noreg}, dan sedang di olah`;
+                        setTimeout(() => {
+                            overlay.style.display = 'block';
+                            // Coba play audio notifikasi (beberapa browser hanya mengizinkan setelah user interaction)
+                            try { audioEl && audioEl.play && audioEl.play().catch(() => {}); } catch(_) {}
+                        }, 1000);
+                        if (closeBtn) {
+                            closeBtn.onclick = () => {
+                                overlay.style.display = 'none';
+                                location.reload();
+                            };
+                        }
+                    } else {
+                        alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
+                        location.reload();
                     }
-                } else {
+                } catch (_) {
                     alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
                     location.reload();
                 }
-            } catch (_) {
-                alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
-                location.reload();
+                return; // Berhasil, keluar dari loop retry
+            } else {
+                throw new Error(result.message || 'Gagal mengirim data');
             }
-        } else {
-            alert(result.message || 'Gagal mengirim data');
+        } catch (error) {
+            console.error(`Attempt ${attempt} failed:`, error);
+            
+            // Reset button state
+            const sendButton = document.querySelector(`[data-booking="${nobooking}"] .btn-send-to-ltb`);
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.textContent = 'Kirim ke LTB';
+            }
+
+            if (attempt === maxRetries) {
+                // Semua percobaan gagal
+                if (error.name === 'AbortError') {
+                    alert('Request timeout - proses terlalu lama. Silakan coba lagi.');
+                } else {
+                    alert(`Gagal mengirim data setelah ${maxRetries} percobaan. Error: ${error.message}`);
+                }
+                return;
+            } else {
+                // Tunggu sebelum retry
+                console.log(`Retrying in ${retryDelay}ms... (attempt ${attempt + 1}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
         }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan jaringan');
     }
 }
 ///////////////////         END             //////////////////////////////

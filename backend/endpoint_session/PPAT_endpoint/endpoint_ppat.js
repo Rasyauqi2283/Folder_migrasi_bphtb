@@ -913,135 +913,174 @@ async function generateRegistrationNumber() {
 app.post('/api/ppatk_ltb-process', async (req, res) => {
     const { nobooking, trackstatus, userid, nama } = req.body;
 
-    try {
-        // Memastikan userid valid
-        const userCheckQuery = 'SELECT * FROM a_2_verified_users WHERE userid = $1';
-        const userCheckResult = await pool.query(userCheckQuery, [userid]);
-
-        if (userCheckResult.rows.length === 0) {
-            return res.status(400).json({ success: false, message: 'User ID tidak ditemukan.' });
+    // Set timeout untuk response
+    const timeout = setTimeout(() => {
+        if (!res.headersSent) {
+            res.status(408).json({ 
+                success: false, 
+                message: 'Request timeout - proses terlalu lama. Silakan coba lagi.' 
+            });
         }
-        // Pastikan nobooking, trackstatus, dan userid ada dan valid
+    }, 30000); // 30 detik timeout
+
+    try {
+        // Validasi input dengan cepat
         if (!nobooking || !trackstatus || !userid || !nama) {
+            clearTimeout(timeout);
             return res.status(400).json({ success: false, message: 'Data yang diperlukan tidak lengkap.' });
         }
+        
         const allowedStatuses = ['Diolah', 'Diterima', 'Ditolak'];
         if (!allowedStatuses.includes(trackstatus)) {
+            clearTimeout(timeout);
             return res.status(400).json({ success: false, message: 'Status tidak valid.' });
         }
 
-        // 1. Cek apakah nobooking ada di pat_1_bookingsspd dan status saat ini
-        const checkNobookingQuery = `
-        SELECT 
-        pb.*, bp.*, o.*, vu.*, pv.*
-        FROM 
-            pat_1_bookingsspd pb
-        LEFT JOIN 
-            pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
-        LEFT JOIN 
-            pat_4_objek_pajak o ON pb.nobooking = o.nobooking
-        LEFT JOIN
-            a_2_verified_users vu ON vu.nama = pb.nama
-        LEFT JOIN
-            pat_8_validasi_tambahan pv ON pb.nobooking = pv.nobooking
-        WHERE 
-            pb.nobooking = $1;
-        `;
-        const checkResult = await pool.query(checkNobookingQuery, [nobooking]);
-        if (checkResult.rows.length === 0) {
-            return res.status(400).json({ success: false, message: 'No Booking tidak ditemukan.' });
-        }
+        // Optimasi: Gunakan client connection untuk transaction
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
 
-        const rowData = checkResult.rows[0];
-
-        // Guard: hanya boleh kirim dari status Draft -> Diolah
-        const currentStatus = (rowData.trackstatus || '').toLowerCase();
-        if (currentStatus !== 'draft') {
-            return res.status(409).json({
-                success: false,
-                message: `Tidak dapat mengirim. Status saat ini '${rowData.trackstatus}' (bukan Draft).`
-            });
-        }
-        if (!rowData.akta_tanah_path || !rowData.sertifikat_tanah_path || !rowData.pelengkap_path) {
-            return res.status(400).json({
-                success: false,
-                message: 'File yang diperlukan belum di-upload atau tidak lengkap. Pastikan Akta Tanah, Sertifikat Tanah, dan File Pelengkap telah di-upload.'
-            });
-        }
-        if (!rowData.alamat_pemohon || !rowData.kampungop || !rowData.kelurahanop || !rowData.kecamatanopj) {
-            const missingFields = [];
-            if (!rowData.alamat_pemohon) missingFields.push("alamat_pemohon");
-            if (!rowData.kampungop) missingFields.push("kampungop");
-            if (!rowData.kelurahanop) missingFields.push("kelurahanop");
-            if (!rowData.kecamatanopj) missingFields.push("kecamatanopj");
-            return res.status(400).json({
-                success: false,
-                message: `Data alamat pemohon belum lengkap. Field yang wajib diisi: ${missingFields.join(', ')}`
-            });
-        }
-        // Generate nomor registrasi
-        const noRegistrasi = await generateRegistrationNumber();
-
-        // 2. Update trackstatus menjadi status yang baru pada pat_1_bookingsspd
-        const updateQuery = 'UPDATE pat_1_bookingsspd SET trackstatus = $1 WHERE nobooking = $2 RETURNING *';
-        const updateValues = [trackstatus, nobooking];
-        const updateResult = await pool.query(updateQuery, updateValues);
-
-        if (updateResult.rows.length > 0) {
-            // 3. Menyimpan data ke tabel ltb_1_terima_berkas_sspd setelah status diperbarui
-            const insertQuery = `
-                INSERT INTO ltb_1_terima_berkas_sspd 
-                (nobooking, tanggal_terima, status, trackstatus, userid, namawajibpajak, namapemilikobjekpajak, divisi, nama, jenis_wajib_pajak, no_registrasi)
-                VALUES 
-                ($1, CURRENT_DATE, 'Diterima', $2, $3, $4, $5, 'LTB', $6, 'Badan Usaha', $7);
+            // Optimasi: Query yang lebih efisien - hanya ambil field yang diperlukan
+            const checkNobookingQuery = `
+                SELECT 
+                    pb.nobooking, pb.trackstatus, pb.namawajibpajak, pb.namapemilikobjekpajak, pb.nama,
+                    pb.akta_tanah_path, pb.sertifikat_tanah_path, pb.pelengkap_path,
+                    pb.alamat_pemohon, pb.kampungop, pb.kelurahanop, pb.kecamatanopj
+                FROM pat_1_bookingsspd pb
+                WHERE pb.nobooking = $1
+                FOR UPDATE;
             `;
-            const insertValues = [
-                nobooking, 
-                trackstatus, 
-                userid, 
-                rowData.namawajibpajak, 
-                rowData.namapemilikobjekpajak,
-                rowData.nama,
-                noRegistrasi
-            ];
-            const insertResult = await pool.query(insertQuery, insertValues);
-
-            if (insertResult.rowCount > 0) {
-            // Buat entry verifikasi BANK (status awal Pending) menggunakan no_registrasi
-            try {
-                await upsertBankVerification(nobooking, 'Pending', null, null, noRegistrasi);
-            } catch (bankErr) {
-                console.warn('Gagal membuat entri verifikasi BANK:', bankErr?.message);
+            
+            const checkResult = await client.query(checkNobookingQuery, [nobooking]);
+            if (checkResult.rows.length === 0) {
+                await client.query('ROLLBACK');
+                clearTimeout(timeout);
+                return res.status(400).json({ success: false, message: 'No Booking tidak ditemukan.' });
             }
-            // Modify this part in your endpoint to trigger the notification:
-            try {
-                const bookingId = updateResult.rows[0]?.bookingid;
-                const actedBy = userid; // gunakan userid string
-                if (bookingId) {
-                    // Rekomendasi: by status
-                    await triggerNotificationByStatus(bookingId, 'pending_ltb', actedBy);
-                    // Alternatif: by action
-                    // await createBookingNotification(bookingId, 'BOOKING_CREATED', actedBy);
-                }
-            } catch (notifyErr) {
-                console.warn('Gagal mengirim notifikasi LTB/Admin:', notifyErr.message);
-            }
-                console.log(`Data dengan No. Booking ${nobooking} telah diproses oleh LTB dan status diubah menjadi ${trackstatus}.`);
 
-                res.status(200).json({
-                    success: true,
-                    message: `Data dengan No. Booking ${nobooking} berhasil diproses oleh LTB.`,
-                    no_registrasi: noRegistrasi
+            const rowData = checkResult.rows[0];
+
+            // Guard: hanya boleh kirim dari status Draft -> Diolah
+            const currentStatus = (rowData.trackstatus || '').toLowerCase();
+            if (currentStatus !== 'draft') {
+                await client.query('ROLLBACK');
+                clearTimeout(timeout);
+                return res.status(409).json({
+                    success: false,
+                    message: `Tidak dapat mengirim. Status saat ini '${rowData.trackstatus}' (bukan Draft).`
                 });
-            } else {
-                res.status(400).json({ success: false, message: 'Gagal menyimpan data ke tabel ltb_1_terima_berkas_sspd.' });
             }
-        } else {
-            res.status(400).json({ success: false, message: 'Gagal mengubah status data.' });
+
+            // Validasi file yang diperlukan
+            if (!rowData.akta_tanah_path || !rowData.sertifikat_tanah_path || !rowData.pelengkap_path) {
+                await client.query('ROLLBACK');
+                clearTimeout(timeout);
+                return res.status(400).json({
+                    success: false,
+                    message: 'File yang diperlukan belum di-upload atau tidak lengkap. Pastikan Akta Tanah, Sertifikat Tanah, dan File Pelengkap telah di-upload.'
+                });
+            }
+
+            // Validasi alamat pemohon
+            if (!rowData.alamat_pemohon || !rowData.kampungop || !rowData.kelurahanop || !rowData.kecamatanopj) {
+                const missingFields = [];
+                if (!rowData.alamat_pemohon) missingFields.push("alamat_pemohon");
+                if (!rowData.kampungop) missingFields.push("kampungop");
+                if (!rowData.kelurahanop) missingFields.push("kelurahanop");
+                if (!rowData.kecamatanopj) missingFields.push("kecamatanopj");
+                await client.query('ROLLBACK');
+                clearTimeout(timeout);
+                return res.status(400).json({
+                    success: false,
+                    message: `Data alamat pemohon belum lengkap. Field yang wajib diisi: ${missingFields.join(', ')}`
+                });
+            }
+
+            // Generate nomor registrasi
+            const noRegistrasi = await generateRegistrationNumber();
+
+            // 2. Update trackstatus menjadi status yang baru pada pat_1_bookingsspd
+            const updateQuery = 'UPDATE pat_1_bookingsspd SET trackstatus = $1 WHERE nobooking = $2 RETURNING *';
+            const updateValues = [trackstatus, nobooking];
+            const updateResult = await client.query(updateQuery, updateValues);
+
+            if (updateResult.rows.length > 0) {
+                // 3. Menyimpan data ke tabel ltb_1_terima_berkas_sspd setelah status diperbarui
+                const insertQuery = `
+                    INSERT INTO ltb_1_terima_berkas_sspd 
+                    (nobooking, tanggal_terima, status, trackstatus, userid, namawajibpajak, namapemilikobjekpajak, divisi, nama, jenis_wajib_pajak, no_registrasi)
+                    VALUES 
+                    ($1, CURRENT_DATE, 'Diterima', $2, $3, $4, $5, 'LTB', $6, 'Badan Usaha', $7);
+                `;
+                const insertValues = [
+                    nobooking, 
+                    trackstatus, 
+                    userid, 
+                    rowData.namawajibpajak, 
+                    rowData.namapemilikobjekpajak,
+                    rowData.nama,
+                    noRegistrasi
+                ];
+                const insertResult = await client.query(insertQuery, insertValues);
+
+                if (insertResult.rowCount > 0) {
+                    // Buat entry verifikasi BANK (status awal Pending) menggunakan no_registrasi
+                    try {
+                        await upsertBankVerification(nobooking, 'Pending', null, null, noRegistrasi);
+                    } catch (bankErr) {
+                        console.warn('Gagal membuat entri verifikasi BANK:', bankErr?.message);
+                    }
+                    
+                    // Trigger notification
+                    try {
+                        const bookingId = updateResult.rows[0]?.bookingid;
+                        const actedBy = userid;
+                        if (bookingId) {
+                            await triggerNotificationByStatus(bookingId, 'pending_ltb', actedBy);
+                        }
+                    } catch (notifyErr) {
+                        console.warn('Gagal mengirim notifikasi LTB/Admin:', notifyErr.message);
+                    }
+                    
+                    // Commit transaction
+                    await client.query('COMMIT');
+                    clearTimeout(timeout);
+                    
+                    console.log(`Data dengan No. Booking ${nobooking} telah diproses oleh LTB dan status diubah menjadi ${trackstatus}.`);
+
+                    return res.status(200).json({
+                        success: true,
+                        message: `Data dengan No. Booking ${nobooking} berhasil diproses oleh LTB.`,
+                        no_registrasi: noRegistrasi
+                    });
+                } else {
+                    await client.query('ROLLBACK');
+                    clearTimeout(timeout);
+                    return res.status(400).json({ success: false, message: 'Gagal menyimpan data ke tabel ltb_1_terima_berkas_sspd.' });
+                }
+            } else {
+                await client.query('ROLLBACK');
+                clearTimeout(timeout);
+                return res.status(400).json({ success: false, message: 'Gagal mengubah status data.' });
+            }
+        } catch (error) {
+            try {
+                await client.query('ROLLBACK');
+            } catch (rollbackErr) {
+                console.error('Error during rollback:', rollbackErr);
+            }
+            clearTimeout(timeout);
+            console.error('Error processing data:', error.message);
+            return res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses data.' });
+        } finally {
+            client.release();
         }
     } catch (error) {
-        console.error('Error processing data:', error.message);
-        res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses data.' });
+        clearTimeout(timeout);
+        console.error('Error in ppatk_ltb-process:', error.message);
+        return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
     }
 });
 
@@ -1361,8 +1400,13 @@ app.post('/api/ppatk_upload-documents', uploadDocumentMiddleware.fields([
 
 // Endpoint untuk mengambil dokumen yang sudah diupload
 app.get('/api/ppatk_get-documents', async (req, res) => {
+  // Jika PAT3_DISABLED, return empty data instead of 503 error
   if (PAT3_DISABLED) {
-    return res.status(503).json({ success: false, message: 'Fitur dokumen dinonaktifkan' });
+    return res.json({ 
+      success: true, 
+      data: [], 
+      message: 'Fitur dokumen dinonaktifkan - mengembalikan data kosong' 
+    });
   }
     try {
         // Validasi session
