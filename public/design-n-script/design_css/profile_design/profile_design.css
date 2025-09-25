@@ -816,87 +816,80 @@ html, body {
 }
 
 @media (max-width: 480px) {
-    #profile-container {
-        margin: 5px;
-        padding: 12px;
-        border-radius: 15px;
+    /* Profile Content Layout - Stack vertically */
+    .profile-content-wrapper {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 15px;
     }
     
-    #kepala-profile h2 {
-        font-size: 1.6em;
+    /* Profile Picture Section - Move to top */
+    .profile-picture-wrapper {
+        grid-column: 1;
+        grid-row: 1;
+        max-width: 100%;
+        margin: 0 auto;
     }
     
-    .divisi-label {
-        font-size: 0.8em;
-        padding: 5px 10px;
-        right: 10px;
+    /* Bungkus-baru section - Move to middle */
+    .bungkus-baru {
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    /* Profile Details Section - Move to bottom */
+    .profile-details {
+        grid-column: 1;
+        grid-row: 3;
+        grid-template-columns: 1fr !important;
+        width: 100%;
+    }
+    
+    /* Ensure columns stack vertically */
+    .profile-column {
+        width: 100%;
+    }
+    
+    /* Adjust spacing for mobile */
+    .profile-field {
+        margin-bottom: 8px;
+    }
+    
+    /* Make Paraf button full width but centered */
+    #paraf-peneliti {
+        width: 100%;
+        max-width: 300px;
+        margin: 10px auto;
+    }
+    
+    /* Adjust header for better mobile experience */
+    #kepala-profile {
+        flex-direction: column;
+        text-align: center;
+        padding: 10px 0;
     }
     
     .arrow-button {
-        width: 35px;
-        height: 35px;
-        font-size: 16px;
-        left: 10px;
+        position: relative;
+        top: auto;
+        left: auto;
+        transform: none;
+        margin-bottom: 10px;
+        align-self: flex-start;
     }
     
-    .profile-picture-wrapper {
-        padding: 15px;
-    }
-    
-    .profile-picture-wrapper img {
-        width: 100px;
-        height: 100px;
-    }
-    
-    .profile-details {
-        padding: 12px;
-        gap: 10px;
-    }
-    
-    .profile-column {
-        gap: 8px;
-    }
-    
-    .profile-field input {
-        padding: 10px 12px;
-        font-size: 16px;
-        height: 42px;
-    }
-    
-    .profile-field label {
-        font-size: 0.85em;
-        margin-bottom: 4px;
-    }
-    
-    #paraf-peneliti {
-        padding: 10px 15px;
-        font-size: 0.9em;
-    }
-    
-    .password-overlay, .photo-overlay {
-        width: 98%;
-        padding: 15px;
-        margin: 5px;
-    }
-    
-    .password-overlay h3, .photo-overlay h3 {
-        font-size: 1.5em;
-        margin-bottom: 20px;
-    }
-    
-    .password-field input {
-        padding: 10px 12px;
-        font-size: 16px;
-    }
-    
-    .password-buttons button, .photo-buttons button {
-        padding: 12px 18px;
-        font-size: 0.9em;
-    }
-    
-    .signature-card img,
-    .signature-card canvas {
-        height: 150px;
+    .divisi-label {
+        position: relative;
+        top: auto;
+        right: auto;
+        transform: none;
+        margin-top: 10px;
+        align-self: center;
     }
 }
 
