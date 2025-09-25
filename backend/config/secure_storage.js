@@ -11,8 +11,34 @@ const __dirname = dirname(__filename);
 if (!process.env.FILE_ENCRYPTION_KEY) {
     throw new Error("FILE_ENCRYPTION_KEY is not set in environment variables");
 }
+
 const ENCRYPTION_KEY_RAW = process.env.FILE_ENCRYPTION_KEY;
-const ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_RAW, 'hex');
+
+// Validasi dan generate key yang tepat untuk AES-256-GCM
+let ENCRYPTION_KEY;
+
+try {
+    // Coba parse sebagai hex string
+    if (ENCRYPTION_KEY_RAW.length === 64) {
+        // 64 hex characters = 32 bytes
+        ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_RAW, 'hex');
+    } else {
+        // Jika bukan hex atau panjang tidak tepat, gunakan PBKDF2
+        console.log('🔒 [SECURE] Generating key from string using PBKDF2');
+        const salt = crypto.createHash('sha256').update('KTP_ENCRYPTION_SALT').digest();
+        ENCRYPTION_KEY = crypto.pbkdf2Sync(ENCRYPTION_KEY_RAW, salt, 10000, 32, 'sha256');
+    }
+    
+    // Pastikan key panjangnya 32 bytes untuk AES-256
+    if (ENCRYPTION_KEY.length !== 32) {
+        throw new Error(`Invalid key length: ${ENCRYPTION_KEY.length} bytes. Expected 32 bytes for AES-256.`);
+    }
+    
+    console.log('🔒 [SECURE] Encryption key initialized successfully');
+} catch (error) {
+    console.error('🔒 [SECURE] Error initializing encryption key:', error);
+    throw new Error('Failed to initialize encryption key');
+}
 
 const ALGORITHM = 'aes-256-gcm';
 
