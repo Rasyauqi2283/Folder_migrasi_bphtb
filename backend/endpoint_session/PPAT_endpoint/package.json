@@ -1,27 +1,3 @@
 {
-  "name": "ppat-endpoint-auto-delete",
-  "version": "1.0.0",
-  "description": "Auto-delete system untuk data yang ditolak di PPAT endpoint",
-  "main": "index.js",
-  "dependencies": {
-    "node-cron": "^3.0.3"
-  },
-  "devDependencies": {},
-  "scripts": {
-    "test": "node test_auto_delete.js",
-    "test:db": "node test_auto_delete.js testDatabaseFunctions"
-  },
-  "keywords": [
-    "auto-delete",
-    "cleanup",
-    "rejected-data",
-    "scheduled-job",
-    "ppat",
-    "bappenda"
-  ],
-  "author": "BAPPENDA Team",
-  "license": "MIT",
-  "engines": {
-    "node": ">=14.0.0"
-  }
+  "type": "module"
 }

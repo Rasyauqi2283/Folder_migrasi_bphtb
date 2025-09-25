@@ -1103,37 +1103,55 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
                         console.warn('Gagal membuat entri verifikasi BANK:', bankErr?.message);
                     }
                     
-                    // Trigger notification
+                    // Trigger notification dengan timeout
                     try {
                         const bookingId = updateResult.rows[0]?.bookingid;
                         const actedBy = userid;
                         if (bookingId) {
-                            await triggerNotificationByStatus(bookingId, 'pending_ltb', actedBy);
+                            // Set timeout untuk notification
+                            const notificationTimeout = new Promise((_, reject) => {
+                                setTimeout(() => reject(new Error('Notification timeout')), 5000); // 5 detik timeout
+                            });
+                            
+                            await Promise.race([
+                                triggerNotificationByStatus(bookingId, 'pending_ltb', actedBy),
+                                notificationTimeout
+                            ]);
                         }
                     } catch (notifyErr) {
-                        console.warn('Gagal mengirim notifikasi LTB/Admin:', notifyErr.message);
+                        console.warn('⚠️ [LTB-PROCESS] Gagal mengirim notifikasi LTB/Admin:', notifyErr.message);
+                        // Jangan throw error, biarkan proses lanjut
                     }
                     
                     // Commit transaction
                     await client.query('COMMIT');
                     clearTimeout(timeout);
                     
-                    console.log(`Data dengan No. Booking ${nobooking} telah diproses oleh LTB dan status diubah menjadi ${trackstatus}.`);
+                    console.log(`✅ [LTB-PROCESS] Data dengan No. Booking ${nobooking} telah diproses oleh LTB dan status diubah menjadi ${trackstatus}.`);
 
-                    return res.status(200).json({
-                        success: true,
-                        message: `Data dengan No. Booking ${nobooking} berhasil diproses oleh LTB.`,
-                        no_registrasi: noRegistrasi
-                    });
+                    // Check if response already sent
+                    if (!res.headersSent) {
+                        return res.status(200).json({
+                            success: true,
+                            message: `Data dengan No. Booking ${nobooking} berhasil diproses oleh LTB.`,
+                            no_registrasi: noRegistrasi
+                        });
+                    } else {
+                        console.log('⚠️ [LTB-PROCESS] Response already sent, skipping response');
+                    }
                 } else {
                     await client.query('ROLLBACK');
                     clearTimeout(timeout);
-                    return res.status(400).json({ success: false, message: 'Gagal menyimpan data ke tabel ltb_1_terima_berkas_sspd.' });
+                    if (!res.headersSent) {
+                        return res.status(400).json({ success: false, message: 'Gagal menyimpan data ke tabel ltb_1_terima_berkas_sspd.' });
+                    }
                 }
             } else {
                 await client.query('ROLLBACK');
                 clearTimeout(timeout);
-                return res.status(400).json({ success: false, message: 'Gagal mengubah status data.' });
+                if (!res.headersSent) {
+                    return res.status(400).json({ success: false, message: 'Gagal mengubah status data.' });
+                }
             }
         } catch (error) {
             try {
@@ -1144,7 +1162,9 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             clearTimeout(timeout);
             console.error('❌ [LTB-PROCESS] Error processing data:', error.message);
             console.error('❌ [LTB-PROCESS] Error stack:', error.stack);
-            return res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses data.' });
+            if (!res.headersSent) {
+                return res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses data.' });
+            }
         } finally {
             client.release();
         }
@@ -1152,7 +1172,9 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
         clearTimeout(timeout);
         console.error('❌ [LTB-PROCESS] Error in ppatk_ltb-process:', error.message);
         console.error('❌ [LTB-PROCESS] Error stack:', error.stack);
-        return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
+        }
     }
 });
 
