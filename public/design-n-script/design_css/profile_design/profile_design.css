@@ -962,9 +962,7 @@ html, body {
         -webkit-text-size-adjust: 100%;
         -ms-text-size-adjust: 100%;
     }
-    main #profile-main-design {
-        width: 100vw;
-    }
+
     /* Better touch targets */
     .profile-field input,
     button,

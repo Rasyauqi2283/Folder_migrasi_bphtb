@@ -42,7 +42,12 @@ read-only{
     overflow: auto;
     padding: 20px; 
 }
-
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: -80px;
+        width: 100vw;
+    }
+}
 .main-content.shifted {
     transform: translateX(180px);
 }
