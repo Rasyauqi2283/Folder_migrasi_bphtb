@@ -86,7 +86,6 @@
             </div>
         </div>
         <div class="dropdown-content">
-            <a href="Peneliti/Verifikasi_sspd/coba_verifikasi.html">Coba Verifikasi SSPD</a>
             <a href="Peneliti/Verifikasi_sspd/verifikasi-data.html">Verifikasi SSPD</a>
             <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html">Verifikasi SSPD Offline</a>
             <a href="Peneliti/ParafKasie-sspd/paraf-kasie.html" id="">Kasie Verifikasi SSPD</a>
@@ -120,100 +119,43 @@
   <!---->
   <!-- MAIN -->
   <main class="main-content">
-    <section class="welcome-section">
-        <div class="welcome-banner">
-            <div class="welcome-text">
-                <h2>Selamat Datang, <span class="Username">Loading...</span> dilaman <span class="Divisi">Load</span>.</h2>
-                <h5>Ingin melakukan apa hari ini, Apakah Kamu Ingin Melihat Validasi?</h5>
-            </div>
-            <div class="illustration-container">
-                <!-- Placeholder for the illustration image -->
-                <img src="asset/men_dashboard-removebg-preview.png" alt="Illustration" class="illustration-image">
-            </div>
-            <div class="calendar-container">
-                <p id="calendar-month" class="calendar-month"></p>
-                <div class="month-dropdown" id="monthDropdown">
-                    <div class="month-option">January</div>
-                    <div class="month-option">February</div>
-                    <div class="month-option">March</div>
-                    <div class="month-option">April</div>
-                    <div class="month-option">May</div>
-                    <div class="month-option">June</div>
-                    <div class="month-option">July</div>
-                    <div class="month-option">August</div>
-                    <div class="month-option">September</div>
-                    <div class="month-option">October</div>
-                    <div class="month-option">November</div>
-                    <div class="month-option">December</div>
-                </div>
-                <div class="calendar-grid" id="calendar-grid">
-                    <div class="day">Mo</div>
-                    <div class="day">Tu</div>
-                    <div class="day">We</div>
-                    <div class="day">Th</div>
-                    <div class="day">Fr</div>
-                    <div class="day weekend">Sa</div>
-                    <div class="day weekend">Su</div>
-                    <!-- Dates will be generated dynamically -->
-                </div>
-            </div>
+    <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+    <button id="showSignatureModal">Tambah Paraf/Tanda Tangan</button>
+
+    <table id="penelitiverifikasiTable ">
+        <thead>
+            <tr>
+                <th>No. Registrasi</th>
+                <th>No. Booking</th>
+                <th>NOP PBB</th>
+                <th>User ID</th>
+                <th>Nama Wajib Pajak</th>
+                <th>Nama Pemilik Objek Pajak</th>
+                <th>Tanggal Terima</th>
+                <th>Special Field</th>
+                <th>Jenis Wajib Pajak</th>
+                <th>Keterangan</th>
+            </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+    </table>
+
+    <!-- Overlay TTD SIGN-->
+    <div id="overlay-sign" class="overlay-sign">
+        <div class="overlay-content-sign">
+            <p>Dokumen Booking dengan [No. Booking] ini telah dikirim oleh PPAT untuk verifikasi</p>
+        <button id="close_batal_overlay">Batal</button>    
+        <button id="Tambahkan_tandatangan">Tambahkan Tanda Tangan</button>
+    </div>
+        <!-- Overlay TTD SIGN (confirmed)-->
+        <div id="overlay-sign-confirmed" class="overlay-sign-confirmed">
+            <div class="overlay-content-sign-confirmed">
+                <p>Apakah anda yakin ingin menambahkan tanda tangan?</p>
+            <button id="Tambahkan_tandatangan_batal_overlay">Batal</button>
+            <button id="Tambahkan_tandatangan_confirmed">Iya</button>
         </div>
-    </section>
-    <section class="content_admin">
-        <div class="content-cards">
-            <div class="card">
-                <h3>User</h3>
-                <div class="user-dropdown">
-                    <label for="jumlahKaryawan">Jumlah Anggota</label>
-                    <select id="jumlahKaryawan" name="jumlahKaryawan">
-                        <option value="Administrator">Admin</option>
-                        <option id="PPAT">PPAT</option>
-                        <option value="PPATS">PPATS</option>
-                        <option value="LTB">Loket Terima Berkas</option>
-                        <option value="LSB">Loket Serah Berkas</option>
-                        <option value="Peneliti">Peneliti</option>
-                        <option value="BANK">Bank</option>
-                        <option value="Wajib Pajak">Wajib Pajak</option>
-                    </select>
-                    <p id="memberValue" class="slide-down"></p>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Permohonan Validasi</h3>
-                <span class="icon ini">&#x1F5C3;</span>
-                <a href="../Permohonan Validasi/Permohonan_validasi.html" class="view-all">View All</a>
-            </div>
-            <div class="card special-access">
-                <h3>Hak Akses Khusus</h3>
-                <ul id="accessList">
-                    <li><span class="user-icon"></span>Bapak Hendri Aji - <span class="status" id="status-hendri">Offline</span></li>
-                    <li><span class="user-icon"></span>Bapak Ilham - <span class="status" id="status-ilham">Offline</span></li>
-                </ul>
-            </div>
-            <div class="card">
-                <h3>Jumlah Penerimaan BPHTB</h3>
-                <img src="asset/JumlahPenerimaanPajak_dekorasi.png" alt="gambar_dekorasi JMP BPHTB" class="img-dekor">
-                <a href="#" class="view-all">View All</a>
-            </div>
-            <div class="card chart">
-                <h3>Statistik Total Permohonan Validasi</h3>
-                <div class="chart-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="card chart">
-            <h3>Statistik Total Permohonan Validasi</h3>
-            <div class="chart-container">
-                <ul class="chart-legend">
-                    <li><span class="green"></span>Sudah Di Validasi 20%</li>
-                    <li><span class="blue"></span>Tinggal Verifikasi 30%</li>
-                    <li><span class="orange"></span>Masih Pending 15%</li>
-                    <li><span class="grey"></span>Belum Terurus 35%</li>
-                </ul>
-            </div>
-        </div>
-    </section>
 </main>
 
     <!-- Footer berada di dalam page-wrapper -->
@@ -239,11 +181,15 @@
     </div>
 </div>
 <!--script front-->
-<script src="design-n-script/script_frontback_java/dashboard.js"></script>
-<script src="design-n-script/script_frontback_java/header_script.js"></script>
-<script src="design-n-script/script_frontback_java/fungsi.js"></script>
+<!--script front-->
+<script src="../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
+<script src="../../design-n-script/script_frontback_java/script_pentingFront/main_layout.js"></script>
+<script src="../../design-n-script/script_frontback_java/ltb_script_tampilan.js"></script>
+  <!--backend-->
+  <script src="../../script-backend/peneliti_verifikasi.js"></script>
   <!---->
-  <script src="script-backend/header-backend.js"></script>
+  <script src="../../script-backend/header-backend.js"></script>
   <script type="module">
     import { initNotifications } from '/script-backend/notification-setup.js';
     initNotifications();
