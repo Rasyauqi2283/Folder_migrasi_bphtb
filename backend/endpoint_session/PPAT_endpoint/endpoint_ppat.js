@@ -986,8 +986,9 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
                 SELECT 
                     pb.nobooking, pb.trackstatus, pb.namawajibpajak, pb.namapemilikobjekpajak, pb.nama,
                     pb.akta_tanah_path, pb.sertifikat_tanah_path, pb.pelengkap_path,
-                    pb.alamat_pemohon, pb.kampungop, pb.kelurahanop, pb.kecamatanopj
+                    vt.alamat_pemohon, vt.kampungop, vt.kelurahanop, vt.kecamatanopj
                 FROM pat_1_bookingsspd pb
+                LEFT JOIN pat_8_validasi_tambahan vt ON pb.nobooking = vt.nobooking
                 WHERE pb.nobooking = $1
                 FOR UPDATE;
             `;
