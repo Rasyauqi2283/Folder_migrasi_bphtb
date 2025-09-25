@@ -980,15 +980,15 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             console.log('🔄 [LTB-PROCESS] Starting transaction...');
             await client.query('BEGIN');
 
-            // Optimasi: Query yang lebih efisien - hanya ambil field yang diperlukan
+            // Optimasi: Query yang lebih efisien - pisahkan query untuk menghindari FOR UPDATE dengan LEFT JOIN
             console.log('🔍 [LTB-PROCESS] Checking booking:', nobooking);
+            
+            // 1. Query utama dengan FOR UPDATE (tanpa LEFT JOIN)
             const checkNobookingQuery = `
                 SELECT 
                     pb.nobooking, pb.trackstatus, pb.namawajibpajak, pb.namapemilikobjekpajak, pb.nama,
-                    pb.akta_tanah_path, pb.sertifikat_tanah_path, pb.pelengkap_path,
-                    vt.alamat_pemohon, vt.kampungop, vt.kelurahanop, vt.kecamatanopj
+                    pb.akta_tanah_path, pb.sertifikat_tanah_path, pb.pelengkap_path
                 FROM pat_1_bookingsspd pb
-                LEFT JOIN pat_8_validasi_tambahan vt ON pb.nobooking = vt.nobooking
                 WHERE pb.nobooking = $1
                 FOR UPDATE;
             `;
@@ -1004,20 +1004,45 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             }
 
             const rowData = checkResult.rows[0];
+            
+            // 2. Query tambahan untuk data validasi (tanpa FOR UPDATE)
+            const validasiQuery = `
+                SELECT 
+                    alamat_pemohon, kampungop, kelurahanop, kecamatanopj
+                FROM pat_8_validasi_tambahan
+                WHERE nobooking = $1;
+            `;
+            
+            const validasiResult = await client.query(validasiQuery, [nobooking]);
+            const validasiData = validasiResult.rows[0] || {};
+            
+            console.log('📊 [LTB-PROCESS] Validasi data result:', validasiResult.rows.length, 'rows found');
+            console.log('📊 [LTB-PROCESS] Validasi data:', validasiData);
+            
+            // Merge data
+            const mergedData = {
+                ...rowData,
+                alamat_pemohon: validasiData.alamat_pemohon,
+                kampungop: validasiData.kampungop,
+                kelurahanop: validasiData.kelurahanop,
+                kecamatanopj: validasiData.kecamatanopj
+            };
+            
+            console.log('📊 [LTB-PROCESS] Merged data:', mergedData);
 
             // Guard: hanya boleh kirim dari status Draft -> Diolah
-            const currentStatus = (rowData.trackstatus || '').toLowerCase();
+            const currentStatus = (mergedData.trackstatus || '').toLowerCase();
             if (currentStatus !== 'draft') {
                 await client.query('ROLLBACK');
                 clearTimeout(timeout);
                 return res.status(409).json({
                     success: false,
-                    message: `Tidak dapat mengirim. Status saat ini '${rowData.trackstatus}' (bukan Draft).`
+                    message: `Tidak dapat mengirim. Status saat ini '${mergedData.trackstatus}' (bukan Draft).`
                 });
             }
 
             // Validasi file yang diperlukan
-            if (!rowData.akta_tanah_path || !rowData.sertifikat_tanah_path || !rowData.pelengkap_path) {
+            if (!mergedData.akta_tanah_path || !mergedData.sertifikat_tanah_path || !mergedData.pelengkap_path) {
                 await client.query('ROLLBACK');
                 clearTimeout(timeout);
                 return res.status(400).json({
@@ -1027,12 +1052,12 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             }
 
             // Validasi alamat pemohon
-            if (!rowData.alamat_pemohon || !rowData.kampungop || !rowData.kelurahanop || !rowData.kecamatanopj) {
+            if (!mergedData.alamat_pemohon || !mergedData.kampungop || !mergedData.kelurahanop || !mergedData.kecamatanopj) {
                 const missingFields = [];
-                if (!rowData.alamat_pemohon) missingFields.push("alamat_pemohon");
-                if (!rowData.kampungop) missingFields.push("kampungop");
-                if (!rowData.kelurahanop) missingFields.push("kelurahanop");
-                if (!rowData.kecamatanopj) missingFields.push("kecamatanopj");
+                if (!mergedData.alamat_pemohon) missingFields.push("alamat_pemohon");
+                if (!mergedData.kampungop) missingFields.push("kampungop");
+                if (!mergedData.kelurahanop) missingFields.push("kelurahanop");
+                if (!mergedData.kecamatanopj) missingFields.push("kecamatanopj");
                 await client.query('ROLLBACK');
                 clearTimeout(timeout);
                 return res.status(400).json({
@@ -1063,9 +1088,9 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
                     nobooking, 
                     trackstatus, 
                     userid, 
-                    rowData.namawajibpajak, 
-                    rowData.namapemilikobjekpajak,
-                    rowData.nama,
+                    mergedData.namawajibpajak, 
+                    mergedData.namapemilikobjekpajak,
+                    mergedData.nama,
                     noRegistrasi
                 ];
                 const insertResult = await client.query(insertQuery, insertValues);
