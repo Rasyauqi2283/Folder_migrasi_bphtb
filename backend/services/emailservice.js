@@ -1,23 +1,106 @@
 import nodemailer from 'nodemailer';
 import { pool } from '../../db.js';
 
-const transporter = nodemailer.createTransport({
+// Gmail SMTP configuration dengan fallback
+const gmailTransporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
-    // Timeout configuration untuk mencegah hanging
-    connectionTimeout: 10000, // 10 detik
-    greetingTimeout: 5000,    // 5 detik
-    socketTimeout: 15000,     // 15 detik
+    // Timeout configuration yang lebih agresif
+    connectionTimeout: 5000,  // 5 detik
+    greetingTimeout: 3000,    // 3 detik
+    socketTimeout: 10000,     // 10 detik
     // Pool configuration
     pool: true,
-    maxConnections: 5,
-    maxMessages: 100,
-    rateDelta: 1000,
-    rateLimit: 5
+    maxConnections: 2,
+    maxMessages: 50,
+    rateDelta: 2000,
+    rateLimit: 2,
+    // TLS options untuk Railway
+    secure: true,
+    tls: {
+        rejectUnauthorized: false
+    }
 });
+
+// Fallback transporter untuk testing
+const testTransporter = nodemailer.createTransporter({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+        user: 'ethereal.user@ethereal.email',
+        pass: 'ethereal.pass'
+    }
+});
+
+// Test koneksi email
+export const testEmailConnection = async () => {
+    try {
+        console.log('📧 Testing email connection...');
+        await gmailTransporter.verify();
+        console.log('✅ Gmail SMTP connection successful');
+        return true;
+    } catch (error) {
+        console.error('❌ Gmail SMTP connection failed:', error.message);
+        return false;
+    }
+};
+
+// Fallback email service dengan logging
+export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`📧 Email attempt ${attempt}/${maxRetries} to ${mailOptions.to}`);
+            
+            // Test koneksi dulu
+            const isConnected = await testEmailConnection();
+            if (!isConnected) {
+                throw new Error('SMTP connection failed');
+            }
+            
+            // Kirim email dengan timeout yang lebih pendek
+            const info = await Promise.race([
+                gmailTransporter.sendMail(mailOptions),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Email timeout after 20 seconds')), 20000)
+                )
+            ]);
+            
+            console.log(`✅ Email sent successfully to ${mailOptions.to}: ${info.response}`);
+            return info;
+            
+        } catch (error) {
+            console.error(`❌ Email attempt ${attempt} failed:`, error.message);
+            
+            if (attempt === maxRetries) {
+                console.error('❌ All email attempts failed, logging OTP for manual verification');
+                
+                // Log OTP ke database untuk manual verification
+                try {
+                    await pool.query(
+                        'INSERT INTO otp_logs (email, otp, created_at, status) VALUES ($1, $2, NOW(), $3)',
+                        [mailOptions.to, mailOptions.text.split(': ')[1].split('.')[0], 'failed_to_send']
+                    );
+                } catch (dbError) {
+                    console.error('Failed to log OTP to database:', dbError.message);
+                }
+                
+                throw new Error(`Email delivery failed after ${maxRetries} attempts`);
+            }
+            
+            // Wait before retry
+            const waitTime = attempt * 3000; // 3s, 6s
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    }
+};
+
+// Pilih transporter berdasarkan environment
+const transporter = process.env.NODE_ENV === 'production' ? gmailTransporter : testTransporter;
 
 // patch 1
 // pembuatan otp
@@ -34,10 +117,28 @@ export const sendOTPAsync = async (email, otp) => {
     // Kirim OTP secara async tanpa menunggu response
     setImmediate(async () => {
         try {
-            await sendOTPWithRetry(email, otp, 2); // Coba 2 kali saja untuk async
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'OTP untuk Registrasi',
+                text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`
+            };
+            
+            await sendEmailWithFallback(mailOptions, 2);
             console.log(`✅ Async OTP sent successfully to ${email}`);
         } catch (error) {
             console.error(`❌ Async OTP failed for ${email}:`, error.message);
+            
+            // Fallback: Simpan OTP di database untuk admin bisa cek
+            try {
+                await pool.query(
+                    'INSERT INTO otp_logs (email, otp, created_at, status) VALUES ($1, $2, NOW(), $3)',
+                    [email, otp, 'failed_to_send']
+                );
+                console.log(`📝 OTP logged to database for ${email}: ${otp}`);
+            } catch (dbError) {
+                console.error('Failed to log OTP to database:', dbError.message);
+            }
         }
     });
     
