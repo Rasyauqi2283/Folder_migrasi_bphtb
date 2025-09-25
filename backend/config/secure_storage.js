@@ -29,12 +29,16 @@ if (!fs.existsSync(SECURE_STORAGE_PATH)) {
 export function encryptFile(data) {
     try {
         const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipherGCM(ALGORITHM, ENCRYPTION_KEY, iv);
-        cipher.setAAD(Buffer.from('KTP_ENCRYPTION', 'utf8'));
+        
+        // Generate key from ENCRYPTION_KEY_RAW using PBKDF2
+        const key = crypto.pbkdf2Sync(ENCRYPTION_KEY_RAW, iv, 10000, 32, 'sha256');
+        
+        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
         
         let encrypted = cipher.update(data);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
         
+        // Get auth tag from GCM (built-in authentication)
         const authTag = cipher.getAuthTag();
         
         return {
@@ -57,8 +61,12 @@ export function encryptFile(data) {
  */
 export function decryptFile(encryptedData, iv, authTag) {
     try {
-        const decipher = crypto.createDecipherGCM(ALGORITHM, ENCRYPTION_KEY, iv);
-        decipher.setAAD(Buffer.from('KTP_ENCRYPTION', 'utf8'));
+        // Generate key from ENCRYPTION_KEY_RAW using PBKDF2
+        const key = crypto.pbkdf2Sync(ENCRYPTION_KEY_RAW, iv, 10000, 32, 'sha256');
+        
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        
+        // Set auth tag for GCM verification
         decipher.setAuthTag(authTag);
         
         let decrypted = decipher.update(encryptedData);
