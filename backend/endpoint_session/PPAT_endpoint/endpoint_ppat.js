@@ -488,19 +488,19 @@ app.post('/api/ppatk_upload-input_validasisspd',
         return res.status(400).json({ success: false, message: 'No booking selected' });
     }
 
-    // Menyimpan jalur file ke dalam database (relative dari folder public dengan absolute path)
+    // Menyimpan jalur file ke dalam database (relative dari folder public)
     const toRelativePublicPath = (filePath) => {
         if (!filePath) return null;
         const normalized = filePath.replace(/\\/g, '/');
         const idx = normalized.toLowerCase().lastIndexOf('/public/');
         if (idx !== -1) {
             const relativePath = normalized.substring(idx + '/public/'.length);
-            // Pastikan path dimulai dengan '/' untuk absolute path
-            return relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+            // Pastikan path tidak dimulai dengan '/' untuk relative path
+            return relativePath.startsWith('/') ? relativePath.substring(1) : relativePath;
         }
         // fallback: jika tidak ditemukan segmen public
         const fallbackPath = normalized.replace(/^public\//i, '');
-        return fallbackPath.startsWith('/') ? fallbackPath : `/${fallbackPath}`;
+        return fallbackPath.startsWith('/') ? fallbackPath.substring(1) : fallbackPath;
     };
 
     const aktaTanahPath = req.files.aktaTanah ? toRelativePublicPath(req.files.aktaTanah[0].path) : null;
@@ -562,12 +562,8 @@ app.post('/api/ppatk_upload-input_validasisspd',
             // Bangun URL web-friendly (pastikan diawali slash dan relatif ke root static 'public')
             const buildPublicUrl = (storedRelPath) => {
                 if (!storedRelPath) return null;
-                // Jika path sudah dimulai dengan '/', gunakan langsung
-                if (storedRelPath.startsWith('/')) {
-                    return storedRelPath;
-                }
-                // Jika tidak, tambahkan '/'
-                return `/${storedRelPath}`;
+                // Pastikan path dimulai dengan '/' untuk absolute path
+                return storedRelPath.startsWith('/') ? storedRelPath : `/${storedRelPath}`;
             };
 
             // Build URLs untuk response

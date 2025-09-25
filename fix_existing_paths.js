@@ -19,25 +19,58 @@ async function fixExistingPaths() {
             const updates = {};
             let needsUpdate = false;
             
-            // Fix akta_tanah_path
-            if (row.akta_tanah_path && !row.akta_tanah_path.startsWith('/')) {
-                updates.akta_tanah_path = `/${row.akta_tanah_path}`;
-                needsUpdate = true;
-                console.log(`🔧 [FIX-PATHS] Fixing akta_tanah_path: ${row.akta_tanah_path} -> ${updates.akta_tanah_path}`);
+            // Fix akta_tanah_path - pastikan path dimulai dengan penting_F_simpan
+            if (row.akta_tanah_path) {
+                let fixedPath = row.akta_tanah_path;
+                if (!fixedPath.startsWith('penting_F_simpan/')) {
+                    if (fixedPath.startsWith('/')) {
+                        fixedPath = fixedPath.substring(1); // Remove leading slash
+                    }
+                    if (!fixedPath.startsWith('penting_F_simpan/')) {
+                        fixedPath = `penting_F_simpan/${fixedPath}`;
+                    }
+                }
+                if (fixedPath !== row.akta_tanah_path) {
+                    updates.akta_tanah_path = fixedPath;
+                    needsUpdate = true;
+                    console.log(`🔧 [FIX-PATHS] Fixing akta_tanah_path: ${row.akta_tanah_path} -> ${fixedPath}`);
+                }
             }
             
-            // Fix sertifikat_tanah_path
-            if (row.sertifikat_tanah_path && !row.sertifikat_tanah_path.startsWith('/')) {
-                updates.sertifikat_tanah_path = `/${row.sertifikat_tanah_path}`;
-                needsUpdate = true;
-                console.log(`🔧 [FIX-PATHS] Fixing sertifikat_tanah_path: ${row.sertifikat_tanah_path} -> ${updates.sertifikat_tanah_path}`);
+            // Fix sertifikat_tanah_path - pastikan path dimulai dengan penting_F_simpan
+            if (row.sertifikat_tanah_path) {
+                let fixedPath = row.sertifikat_tanah_path;
+                if (!fixedPath.startsWith('penting_F_simpan/')) {
+                    if (fixedPath.startsWith('/')) {
+                        fixedPath = fixedPath.substring(1); // Remove leading slash
+                    }
+                    if (!fixedPath.startsWith('penting_F_simpan/')) {
+                        fixedPath = `penting_F_simpan/${fixedPath}`;
+                    }
+                }
+                if (fixedPath !== row.sertifikat_tanah_path) {
+                    updates.sertifikat_tanah_path = fixedPath;
+                    needsUpdate = true;
+                    console.log(`🔧 [FIX-PATHS] Fixing sertifikat_tanah_path: ${row.sertifikat_tanah_path} -> ${fixedPath}`);
+                }
             }
             
-            // Fix pelengkap_path
-            if (row.pelengkap_path && !row.pelengkap_path.startsWith('/')) {
-                updates.pelengkap_path = `/${row.pelengkap_path}`;
-                needsUpdate = true;
-                console.log(`🔧 [FIX-PATHS] Fixing pelengkap_path: ${row.pelengkap_path} -> ${updates.pelengkap_path}`);
+            // Fix pelengkap_path - pastikan path dimulai dengan penting_F_simpan
+            if (row.pelengkap_path) {
+                let fixedPath = row.pelengkap_path;
+                if (!fixedPath.startsWith('penting_F_simpan/')) {
+                    if (fixedPath.startsWith('/')) {
+                        fixedPath = fixedPath.substring(1); // Remove leading slash
+                    }
+                    if (!fixedPath.startsWith('penting_F_simpan/')) {
+                        fixedPath = `penting_F_simpan/${fixedPath}`;
+                    }
+                }
+                if (fixedPath !== row.pelengkap_path) {
+                    updates.pelengkap_path = fixedPath;
+                    needsUpdate = true;
+                    console.log(`🔧 [FIX-PATHS] Fixing pelengkap_path: ${row.pelengkap_path} -> ${fixedPath}`);
+                }
             }
             
             if (needsUpdate) {
