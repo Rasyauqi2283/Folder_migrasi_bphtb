@@ -26,7 +26,7 @@ const gmailTransporter = nodemailer.createTransport({
 });
 
 // Fallback transporter untuk testing
-const testTransporter = nodemailer.createTransporter({
+const testTransporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
