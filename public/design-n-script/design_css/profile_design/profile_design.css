@@ -119,7 +119,10 @@ html, body {
 
 /* Profile Picture Section */
 .profile-picture-wrapper {
-    text-align: center;
+    display: flex;           
+    flex-direction: column;  
+    align-items: center;     
+    justify-content: center; 
     background: rgba(255, 255, 255, 0.1);
     padding: 30px;
     border-radius: 20px;
