@@ -865,6 +865,7 @@ async function generateRegistrationNumber() {
         // WHERE no_registrasi ~ '^[0-9]{4}O[0-9]{5}$';
 
         // Cek tahun terakhir dari data created_at
+        console.log('🔍 [REG-NUMBER] Checking last entry...');
         const lastEntry = await pool.query('SELECT created_at FROM ltb_1_terima_berkas_sspd ORDER BY created_at DESC LIMIT 1');
         const lastEntryYear = lastEntry.rows[0] ? new Date(lastEntry.rows[0].created_at).getFullYear() : currentYear;
         
@@ -874,6 +875,7 @@ async function generateRegistrationNumber() {
         }
 
         // Cari nomor registrasi terakhir dari tahun yang sama
+        console.log('🔍 [REG-NUMBER] Checking last registration number...');
         const lastRegQuery = `
             SELECT no_registrasi 
             FROM ltb_1_terima_berkas_sspd 
@@ -883,6 +885,7 @@ async function generateRegistrationNumber() {
         `;
         const regexPattern = `^${currentYear}O[0-9]{5}$`;
         const lastRegResult = await pool.query(lastRegQuery, [regexPattern]);
+        console.log('📊 [REG-NUMBER] Last registration result:', lastRegResult.rows.length, 'rows found');
         
         let nextNumber = 1; // Reset setiap tahun baru
         
@@ -913,6 +916,9 @@ async function generateRegistrationNumber() {
 app.post('/api/ppatk_ltb-process', async (req, res) => {
     const { nobooking, trackstatus, userid, nama } = req.body;
 
+    // Log request untuk debugging
+    console.log('🔍 [LTB-PROCESS] Request received:', { nobooking, trackstatus, userid, nama });
+
     // Set timeout untuk response
     const timeout = setTimeout(() => {
         if (!res.headersSent) {
@@ -927,22 +933,27 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
         // Validasi input dengan cepat
         if (!nobooking || !trackstatus || !userid || !nama) {
             clearTimeout(timeout);
+            console.log('❌ [LTB-PROCESS] Validation failed - missing required fields');
             return res.status(400).json({ success: false, message: 'Data yang diperlukan tidak lengkap.' });
         }
         
         const allowedStatuses = ['Diolah', 'Diterima', 'Ditolak'];
         if (!allowedStatuses.includes(trackstatus)) {
             clearTimeout(timeout);
+            console.log('❌ [LTB-PROCESS] Validation failed - invalid trackstatus:', trackstatus);
             return res.status(400).json({ success: false, message: 'Status tidak valid.' });
         }
 
         // Optimasi: Gunakan client connection untuk transaction
+        console.log('🔗 [LTB-PROCESS] Connecting to database...');
         const client = await pool.connect();
         
         try {
+            console.log('🔄 [LTB-PROCESS] Starting transaction...');
             await client.query('BEGIN');
 
             // Optimasi: Query yang lebih efisien - hanya ambil field yang diperlukan
+            console.log('🔍 [LTB-PROCESS] Checking booking:', nobooking);
             const checkNobookingQuery = `
                 SELECT 
                     pb.nobooking, pb.trackstatus, pb.namawajibpajak, pb.namapemilikobjekpajak, pb.nama,
@@ -954,9 +965,12 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             `;
             
             const checkResult = await client.query(checkNobookingQuery, [nobooking]);
+            console.log('📊 [LTB-PROCESS] Booking check result:', checkResult.rows.length, 'rows found');
+            
             if (checkResult.rows.length === 0) {
                 await client.query('ROLLBACK');
                 clearTimeout(timeout);
+                console.log('❌ [LTB-PROCESS] Booking not found:', nobooking);
                 return res.status(400).json({ success: false, message: 'No Booking tidak ditemukan.' });
             }
 
@@ -999,7 +1013,9 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             }
 
             // Generate nomor registrasi
+            console.log('🔢 [LTB-PROCESS] Generating registration number...');
             const noRegistrasi = await generateRegistrationNumber();
+            console.log('✅ [LTB-PROCESS] Registration number generated:', noRegistrasi);
 
             // 2. Update trackstatus menjadi status yang baru pada pat_1_bookingsspd
             const updateQuery = 'UPDATE pat_1_bookingsspd SET trackstatus = $1 WHERE nobooking = $2 RETURNING *';
@@ -1069,17 +1085,19 @@ app.post('/api/ppatk_ltb-process', async (req, res) => {
             try {
                 await client.query('ROLLBACK');
             } catch (rollbackErr) {
-                console.error('Error during rollback:', rollbackErr);
+                console.error('❌ [LTB-PROCESS] Error during rollback:', rollbackErr);
             }
             clearTimeout(timeout);
-            console.error('Error processing data:', error.message);
+            console.error('❌ [LTB-PROCESS] Error processing data:', error.message);
+            console.error('❌ [LTB-PROCESS] Error stack:', error.stack);
             return res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses data.' });
         } finally {
             client.release();
         }
     } catch (error) {
         clearTimeout(timeout);
-        console.error('Error in ppatk_ltb-process:', error.message);
+        console.error('❌ [LTB-PROCESS] Error in ppatk_ltb-process:', error.message);
+        console.error('❌ [LTB-PROCESS] Error stack:', error.stack);
         return res.status(500).json({ success: false, message: 'Terjadi kesalahan server.' });
     }
 });

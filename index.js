@@ -139,13 +139,7 @@ app.get('/api/config', (req, res) => {
 
 // Debug endpoint untuk check session
 app.get('/api/debug-session', (req, res) => {
-  console.log('🔍 Session Debug:', {
-    hasSession: !!req.session,
-    hasUser: !!req.session?.user,
-    sessionID: req.sessionID,
-    cookies: req.headers.cookie,
-    userAgent: req.headers['user-agent']
-  });
+  ;
   
   res.json({
     hasSession: !!req.session,
