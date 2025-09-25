@@ -141,8 +141,20 @@ async function loadTableDataPenelitiV() {
                     const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
                     // Tampilkan penandatangan berdasarkan paraf (p_3_clear_to_paraf.tanda_paraf_path -> a_2_verified_users)
                     // Backend kini mengirim pc.tanda_paraf_path dan signer_userid
-                    const signerUser = item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
-                    const pesan2 = (item.tanda_paraf_path || item.signer_userid) ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
+                    const signerUser = item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+                    
+                    // Cek apakah sudah ada tanda tangan/paraf - gunakan tanda_paraf_path atau peneliti_tanda_tangan_path
+                    const hasSignature = item.peneliti_tanda_tangan_path || item.signer_userid;
+                    
+                    // Debug logging
+                    console.log('🔍 [PENELITI-VERIF] Signature check for booking:', item.nobooking);
+                    console.log('🔍 [PENELITI-VERIF] - tanda_paraf_path:', item.tanda_paraf_path);
+                    console.log('🔍 [PENELITI-VERIF] - peneliti_tanda_tangan_path:', item.peneliti_tanda_tangan_path);
+                    console.log('🔍 [PENELITI-VERIF] - signer_userid:', item.signer_userid);
+                    console.log('🔍 [PENELITI-VERIF] - hasSignature:', hasSignature);
+                    console.log('🔍 [PENELITI-VERIF] - signerUser:', signerUser);
+                    
+                    const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
                     dropdownContent.innerHTML = `
                         <p>No. registrasi: ${item.nobooking}</p>
                         ${pesan1}
