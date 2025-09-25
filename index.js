@@ -104,6 +104,7 @@ import noticeRoutes from './backend/routesxcontroller/noticeRoutes.js';
 //session endpoint
 import loginRouter from './backend/endpoint_session/login/login_endpoint.js';
 import regisRouter from './backend/endpoint_session/registrasi/registrasi_endpoint.js';
+import secureFileRoutes from './backend/endpoint_session/registrasi/secure_file_routes.js';
 import passwordResetRouter from './backend/endpoint_session/password_service.js';
 import profileRouter from './backend/endpoint_session/profile/profile_endpoint.js';
 import notificationRouter from './backend/endpoint_session/notification/notification_routes.js';
@@ -582,6 +583,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/penting_F_simpan', express.static(path.join(__dirname, 'public', 'penting_F_simpan')));
 app.use('/api/auth', loginRouter);
 app.use('/api/auth', regisRouter);
+app.use('/api/secure-files', secureFileRoutes);
 app.use('/api/auth', passwordResetRouter);
 app.use('/api/auth', profileRouter);
 app.use('/api', profileRouter);

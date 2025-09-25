@@ -8,7 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Konfigurasi enkripsi
-const ENCRYPTION_KEY = process.env.FILE_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const ENCRYPTION_KEY_RAW = process.env.FILE_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_RAW, 'hex');
 const ALGORITHM = 'aes-256-gcm';
 
 // Direktori penyimpanan aman (di luar public)
@@ -28,7 +29,7 @@ if (!fs.existsSync(SECURE_STORAGE_PATH)) {
 export function encryptFile(data) {
     try {
         const iv = crypto.randomBytes(16);
-        const cipher = crypto.createCipher(ALGORITHM, ENCRYPTION_KEY);
+        const cipher = crypto.createCipherGCM(ALGORITHM, ENCRYPTION_KEY, iv);
         cipher.setAAD(Buffer.from('KTP_ENCRYPTION', 'utf8'));
         
         let encrypted = cipher.update(data);
@@ -56,7 +57,7 @@ export function encryptFile(data) {
  */
 export function decryptFile(encryptedData, iv, authTag) {
     try {
-        const decipher = crypto.createDecipher(ALGORITHM, ENCRYPTION_KEY);
+        const decipher = crypto.createDecipherGCM(ALGORITHM, ENCRYPTION_KEY, iv);
         decipher.setAAD(Buffer.from('KTP_ENCRYPTION', 'utf8'));
         decipher.setAuthTag(authTag);
         
@@ -263,5 +264,5 @@ export function validateKTPFile(file) {
 
 export {
     SECURE_STORAGE_PATH,
-    ENCRYPTION_KEY
+    ENCRYPTION_KEY_RAW as ENCRYPTION_KEY
 };
