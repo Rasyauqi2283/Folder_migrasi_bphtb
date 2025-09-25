@@ -584,6 +584,8 @@ app.use('/design-n-script', express.static(path.join(__dirname, 'design-n-script
 app.use('/asset', express.static(path.join(__dirname, 'asset')));
 // Serve uploads with a fixed base path
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+// Serve penting_F_simpan files
+app.use('/penting_F_simpan', express.static(path.join(__dirname, 'public', 'penting_F_simpan')));
 app.use('/api/auth', loginRouter);
 app.use('/api/auth', regisRouter);
 app.use('/api/auth', passwordResetRouter);

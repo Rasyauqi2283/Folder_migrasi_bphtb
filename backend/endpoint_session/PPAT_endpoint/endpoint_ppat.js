@@ -488,16 +488,19 @@ app.post('/api/ppatk_upload-input_validasisspd',
         return res.status(400).json({ success: false, message: 'No booking selected' });
     }
 
-    // Menyimpan jalur file ke dalam database (relative dari folder public)
+    // Menyimpan jalur file ke dalam database (relative dari folder public dengan absolute path)
     const toRelativePublicPath = (filePath) => {
         if (!filePath) return null;
         const normalized = filePath.replace(/\\/g, '/');
         const idx = normalized.toLowerCase().lastIndexOf('/public/');
         if (idx !== -1) {
-            return normalized.substring(idx + '/public/'.length);
+            const relativePath = normalized.substring(idx + '/public/'.length);
+            // Pastikan path dimulai dengan '/' untuk absolute path
+            return relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
         }
         // fallback: jika tidak ditemukan segmen public
-        return normalized.replace(/^public\//i, '');
+        const fallbackPath = normalized.replace(/^public\//i, '');
+        return fallbackPath.startsWith('/') ? fallbackPath : `/${fallbackPath}`;
     };
 
     const aktaTanahPath = req.files.aktaTanah ? toRelativePublicPath(req.files.aktaTanah[0].path) : null;
@@ -505,10 +508,21 @@ app.post('/api/ppatk_upload-input_validasisspd',
     const pelengkapPath = req.files.pelengkap ? toRelativePublicPath(req.files.pelengkap[0].path) : null;
 
     // Debugging: Console log untuk melihat apakah file path sudah benar
-    console.log('Uploaded files paths:');
-    console.log('Akta Tanah Path:', aktaTanahPath);
-    console.log('Sertifikat Tanah Path:', sertifikatTanahPath);
-    console.log('File Pelengkap Path:', pelengkapPath);
+    console.log('📁 [UPLOAD] Uploaded files paths:');
+    console.log('📁 [UPLOAD] Akta Tanah Path:', aktaTanahPath);
+    console.log('📁 [UPLOAD] Sertifikat Tanah Path:', sertifikatTanahPath);
+    console.log('📁 [UPLOAD] File Pelengkap Path:', pelengkapPath);
+    
+    // Log original file paths untuk debugging
+    if (req.files.aktaTanah) {
+        console.log('📁 [UPLOAD] Original Akta Tanah Path:', req.files.aktaTanah[0].path);
+    }
+    if (req.files.sertifikatTanah) {
+        console.log('📁 [UPLOAD] Original Sertifikat Tanah Path:', req.files.sertifikatTanah[0].path);
+    }
+    if (req.files.pelengkap) {
+        console.log('📁 [UPLOAD] Original Pelengkap Path:', req.files.pelengkap[0].path);
+    }
 
     try {
         // Cek apakah nobooking yang dipilih ada di pat_1_bookingsspd
@@ -540,22 +554,40 @@ app.post('/api/ppatk_upload-input_validasisspd',
 
         // Debugging: Cek apakah data berhasil di-update di database
         if (resultUpdate.rowCount > 0) {
-            console.log('File paths successfully updated in the database:', resultUpdate.rows[0]);
+            console.log('✅ [UPLOAD] File paths successfully updated in the database:', resultUpdate.rows[0]);
+            console.log('✅ [UPLOAD] Updated paths in DB:');
+            console.log('✅ [UPLOAD] - akta_tanah_path:', resultUpdate.rows[0].akta_tanah_path);
+            console.log('✅ [UPLOAD] - sertifikat_tanah_path:', resultUpdate.rows[0].sertifikat_tanah_path);
+            console.log('✅ [UPLOAD] - pelengkap_path:', resultUpdate.rows[0].pelengkap_path);
             // Bangun URL web-friendly (pastikan diawali slash dan relatif ke root static 'public')
             const buildPublicUrl = (storedRelPath) => {
                 if (!storedRelPath) return null;
-                const clean = storedRelPath.replace(/^\/?/, '');
-                return `/${clean}`;
+                // Jika path sudah dimulai dengan '/', gunakan langsung
+                if (storedRelPath.startsWith('/')) {
+                    return storedRelPath;
+                }
+                // Jika tidak, tambahkan '/'
+                return `/${storedRelPath}`;
             };
+
+            // Build URLs untuk response
+            const aktaUrl = buildPublicUrl(resultUpdate.rows[0].akta_tanah_path);
+            const sertifikatUrl = buildPublicUrl(resultUpdate.rows[0].sertifikat_tanah_path);
+            const pelengkapUrl = buildPublicUrl(resultUpdate.rows[0].pelengkap_path);
+            
+            console.log('🌐 [UPLOAD] Built URLs:');
+            console.log('🌐 [UPLOAD] - akta_tanah_url:', aktaUrl);
+            console.log('🌐 [UPLOAD] - sertifikat_tanah_url:', sertifikatUrl);
+            console.log('🌐 [UPLOAD] - pelengkap_url:', pelengkapUrl);
 
             res.json({ success: true, message: 'Files uploaded and paths saved in database.',
                 data:{
                     akta_tanah_path: resultUpdate.rows[0].akta_tanah_path,
-                    akta_tanah_url: buildPublicUrl(resultUpdate.rows[0].akta_tanah_path),
+                    akta_tanah_url: aktaUrl,
                     sertifikat_tanah_path: resultUpdate.rows[0].sertifikat_tanah_path,
-                    sertifikat_tanah_url: buildPublicUrl(resultUpdate.rows[0].sertifikat_tanah_path),
+                    sertifikat_tanah_url: sertifikatUrl,
                     pelengkap_path: resultUpdate.rows[0].pelengkap_path,
-                    pelengkap_url: buildPublicUrl(resultUpdate.rows[0].pelengkap_path)
+                    pelengkap_url: pelengkapUrl
                 }
              });
         } else {
