@@ -10,12 +10,10 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const { Pool } = pkg;
 
-const pool = new Pool({
-  user: process.env.PG_USER,        // tambah underscore
-  host: process.env.PG_HOST,        // tambah underscore  
-  database: process.env.PG_DATABASE, // tambah underscore
-  password: process.env.PG_PASSWORD, // tambah underscore
-  port: process.env.PG_PORT,        // tambah underscore
+// Konfigurasi database dengan prioritas DATABASE_URL
+const dbConfig = process.env.DATABASE_URL ? {
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   
   // Optimasi connection pool untuk mengurangi checkpoint
   max: 20,                          // Maksimal 20 koneksi
@@ -32,8 +30,48 @@ const pool = new Pool({
   allowExitOnIdle: true,            // Allow exit when idle
   keepAlive: true,                  // Keep connections alive
   keepAliveInitialDelayMillis: 10000, // 10 detik keep alive delay
-});
+} : {
+  // Fallback ke individual environment variables
+  user: process.env.PG_USER,
+  host: process.env.PG_HOST,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD,
+  port: process.env.PG_PORT,
+  
+  // Optimasi connection pool untuk mengurangi checkpoint
+  max: 20,
+  min: 2,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  acquireTimeoutMillis: 60000,
+  statement_timeout: 30000,
+  query_timeout: 30000,
+  allowExitOnIdle: true,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
+};
 
+const pool = new Pool(dbConfig);
+
+// Logging konfigurasi database
+if (process.env.DATABASE_URL) {
+  console.log('🌐 DB URL yang dipakai backend:', process.env.DATABASE_URL);
+  try {
+    const dbUrl = new URL(process.env.DATABASE_URL);
+    console.log('🌐 DB host:', dbUrl.hostname);
+    console.log('🌐 DB port:', dbUrl.port);
+    console.log('🌐 DB database:', dbUrl.pathname.substring(1));
+  } catch (error) {
+    console.warn('⚠️ Error parsing DATABASE_URL:', error.message);
+  }
+} else {
+  console.log('🌐 DB config (individual vars):', {
+    host: process.env.PG_HOST,
+    port: process.env.PG_PORT,
+    database: process.env.PG_DATABASE,
+    user: process.env.PG_USER
+  });
+}
 // Query Executor dengan Logging
 export const query = async (text, params) => {
   const start = Date.now();
