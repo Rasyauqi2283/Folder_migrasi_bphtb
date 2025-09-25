@@ -77,6 +77,7 @@ import registerGeneratePdfCheckPeneliti from './backend/services/Generator_PDF/g
 import registerGeneratePdfVerifParaf from './backend/services/GeneratorPDF_withKEY/generatepdfverif_paraf.js';
 //database port
 import { pool } from './db.js';
+import { runFullDatabaseMonitoring } from './database_monitoring.js';
 import pgSession from 'connect-pg-simple';
 //cek upload file
 import uploadKTP from './backend/config/uploads/upload_ktp.js';
@@ -152,6 +153,25 @@ app.get('/api/debug-session', (req, res) => {
     sessionID: req.sessionID,
     user: req.session?.user || null
   });
+});
+
+// Database monitoring endpoint
+app.get('/api/database-monitoring', async (req, res) => {
+  try {
+    console.log('🔍 Running database monitoring...');
+    await runFullDatabaseMonitoring();
+    res.json({ 
+      success: true, 
+      message: 'Database monitoring completed. Check server logs for details.' 
+    });
+  } catch (error) {
+    console.error('❌ Database monitoring failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Database monitoring failed', 
+      error: error.message 
+    });
+  }
 });
 staticConfig(app);
 

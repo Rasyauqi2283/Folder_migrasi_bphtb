@@ -16,6 +16,22 @@ const pool = new Pool({
   database: process.env.PG_DATABASE, // tambah underscore
   password: process.env.PG_PASSWORD, // tambah underscore
   port: process.env.PG_PORT,        // tambah underscore
+  
+  // Optimasi connection pool untuk mengurangi checkpoint
+  max: 20,                          // Maksimal 20 koneksi
+  min: 2,                           // Minimal 2 koneksi
+  idleTimeoutMillis: 30000,         // 30 detik idle timeout
+  connectionTimeoutMillis: 10000,   // 10 detik connection timeout
+  acquireTimeoutMillis: 60000,      // 60 detik acquire timeout
+  
+  // Optimasi untuk mengurangi WAL activity
+  statement_timeout: 30000,         // 30 detik statement timeout
+  query_timeout: 30000,             // 30 detik query timeout
+  
+  // Connection pooling optimizations
+  allowExitOnIdle: true,            // Allow exit when idle
+  keepAlive: true,                  // Keep connections alive
+  keepAliveInitialDelayMillis: 10000, // 10 detik keep alive delay
 });
 
 // Query Executor dengan Logging
