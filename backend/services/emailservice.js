@@ -6,7 +6,17 @@ const transporter = nodemailer.createTransport({
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-    }
+    },
+    // Timeout configuration untuk mencegah hanging
+    connectionTimeout: 10000, // 10 detik
+    greetingTimeout: 5000,    // 5 detik
+    socketTimeout: 15000,     // 15 detik
+    // Pool configuration
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: 5
 });
 
 // patch 1
@@ -14,8 +24,24 @@ const transporter = nodemailer.createTransport({
 export const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
 export const validateOTPFormat = (otp) => {
     return /^\d{6}$/.test(otp);
+};
+
+// Async OTP sender - tidak menghalangi proses registrasi
+export const sendOTPAsync = async (email, otp) => {
+    // Kirim OTP secara async tanpa menunggu response
+    setImmediate(async () => {
+        try {
+            await sendOTPWithRetry(email, otp, 2); // Coba 2 kali saja untuk async
+            console.log(`✅ Async OTP sent successfully to ${email}`);
+        } catch (error) {
+            console.error(`❌ Async OTP failed for ${email}:`, error.message);
+        }
+    });
+    
+    return { success: true, message: 'OTP sedang dikirim...' };
 };
 
 export const sendOTP = async (email, otp) => {
@@ -25,42 +51,61 @@ export const sendOTP = async (email, otp) => {
         subject: 'OTP untuk Registrasi',
         text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`
     };
+    
     try {
-        // Mengirim email OTP pertama kali
-        const info = await transporter.sendMail(mailOptions);
-        console.log(`OTP telah dikirim ke email ${email}: ${info.response}`);
-        return info;  // Mengembalikan info pengiriman email
+        // Mengirim email OTP dengan timeout
+        const info = await Promise.race([
+            transporter.sendMail(mailOptions),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000)
+            )
+        ]);
+        
+        console.log(`✅ OTP telah dikirim ke email ${email}: ${info.response}`);
+        return info;
     } catch (error) {
-        console.error('Gagal mengirim OTP:', error.message);
-        throw error; // Lemparkan error jika gagal mengirimkan email
+        console.error('❌ Gagal mengirim OTP:', error.message);
+        throw error;
     }
 };
 
 export const sendOTPWithRetry = async (email, otp, retries = 3) => {
-      // Menyusun konten email
-      const mailOptions = {
-          from: process.env.EMAIL_USER,  // Email pengirim
-          to: email,                     // Email penerima
-          subject: 'OTP untuk Registrasi',
-          text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.` // Isi email
-      };  
-      try {
-          // Mengirim email OTP
-          const info = await transporter.sendMail(mailOptions);
-          console.log(`OTP telah dikirim ke email ${email}: ${info.response}`);
-          return info; // Mengembalikan informasi pengiriman email jika berhasil
-      } catch (error) {
-          // Jika terjadi error, coba ulang sesuai dengan jumlah percobaan yang ditentukan
-          if (retries > 0) {
-              console.log(`Gagal mengirim OTP ke ${email}. Percobaan ulang ${retries} kali.`);
-              // Mengulangi pengiriman OTP dengan percobaan yang tersisa
-              await sendOTPWithRetry(email, otp, retries - 1);
-          } else {
-              // Jika sudah mencoba ulang beberapa kali dan gagal, log error dan lemparkan error
-              console.error('Gagal mengirim OTP setelah beberapa kali percobaan:', error.message);
-              throw error; // Lemparkan error jika percobaan habis
-          }
-      }
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: 'OTP untuk Registrasi',
+        text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`
+    };
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            console.log(`📧 Attempt ${attempt}/${retries}: Sending OTP to ${email}`);
+            
+            // Mengirim email OTP dengan timeout
+            const info = await Promise.race([
+                transporter.sendMail(mailOptions),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000)
+                )
+            ]);
+            
+            console.log(`✅ OTP berhasil dikirim ke email ${email} (attempt ${attempt}): ${info.response}`);
+            return info;
+            
+        } catch (error) {
+            console.error(`❌ Attempt ${attempt}/${retries} failed:`, error.message);
+            
+            if (attempt === retries) {
+                console.error('❌ Semua percobaan gagal untuk mengirim OTP ke:', email);
+                throw new Error(`Failed to send OTP after ${retries} attempts: ${error.message}`);
+            }
+            
+            // Wait before retry (exponential backoff)
+            const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+    }
 };
 
 // patch 2

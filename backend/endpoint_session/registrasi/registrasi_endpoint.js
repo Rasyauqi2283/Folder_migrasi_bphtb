@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import { secureUploadKTP, processKTPUpload } from '../../config/uploads/secure_upload_ktp.js';
 import { pool } from '../../../db.js';
-import { generateOTP, sendOTP, sendOTPWithRetry } from '../../services/emailservice.js';
+import { generateOTP, sendOTP, sendOTPWithRetry, sendOTPAsync } from '../../services/emailservice.js';
 
 
 const router = express.Router();
@@ -59,8 +59,8 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
             // Update data pengguna yang ada di unverified_users
             const updatedUser = await pool.query(updateQuery, updateValues);
 
-            // Kirim OTP baru
-            await sendOTP(email, otp);
+            // Kirim OTP baru secara async (tidak menghalangi response)
+            await sendOTPAsync(email, otp);
 
             res.status(200).json({
             message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
@@ -79,8 +79,8 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
             // Insert data pengguna baru
             await pool.query(insertQuery, insertValues);
 
-            // Kirim OTP baru
-            await sendOTP(email, otp);
+            // Kirim OTP baru secara async (tidak menghalangi response)
+            await sendOTPAsync(email, otp);
 
             res.status(200).json({
             message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
