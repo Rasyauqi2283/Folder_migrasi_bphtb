@@ -132,26 +132,30 @@ fetch(`${API_URL}/api/profile`, {credentials: 'include'})
     if (user.fotoprofil && typeof user.fotoprofil === 'string') {
         try {
             const fotoProfilUrl = decodeURIComponent(user.fotoprofil.replace(/\\/g, '/'));
+            // Pastikan path dimulai dengan '/' untuk absolute path dari root server
+            const absoluteFotoProfilUrl = fotoProfilUrl.startsWith('/') ? fotoProfilUrl : `/${fotoProfilUrl}`;
+            
             // Pilih semua elemen dengan class 'fotoprofil' dan perbarui src-nya
             const fotoProfilElements = document.querySelectorAll('.fotoprofil');
             fotoProfilElements.forEach(element => {
-                element.src = fotoProfilUrl;
+                element.src = absoluteFotoProfilUrl;
                 element.onerror = function() {
-                    this.src = 'asset/men_dashboard-removebg-preview.png'; // Fallback image
+                    // Fallback image dengan absolute path
+                    this.src = '/asset/men_dashboard-removebg-preview.png';
                 };
             });
-            console.log('Foto Profil yang Ditampilkan:', fotoProfilUrl);
+            console.log('Foto Profil yang Ditampilkan:', absoluteFotoProfilUrl);
         } catch (e) {
             console.warn('Gagal memproses foto profil:', e?.message || e);
-            // Set default avatar jika error
+            // Set default avatar jika error dengan absolute path
             document.querySelectorAll('.fotoprofil').forEach(element => {
-                element.src = 'asset/men_dashboard-removebg-preview.png';
+                element.src = '/asset/men_dashboard-removebg-preview.png';
             });
         }
     } else {
-        // Set default avatar jika fotoprofil tidak ada
+        // Set default avatar jika fotoprofil tidak ada dengan absolute path
         document.querySelectorAll('.fotoprofil').forEach(element => {
-            element.src = 'asset/men_dashboard-removebg-preview.png';
+            element.src = '/asset/men_dashboard-removebg-preview.png';
         });
     }
 
@@ -159,10 +163,14 @@ fetch(`${API_URL}/api/profile`, {credentials: 'include'})
     try {
         const signatureUrl = user.tanda_tangan_path ? 
             decodeURIComponent(String(user.tanda_tangan_path).replace(/\\/g, '/')) : null;
+        
+        // Pastikan path tanda tangan juga menggunakan absolute path
+        const absoluteSignatureUrl = signatureUrl && !signatureUrl.startsWith('/') ? `/${signatureUrl}` : signatureUrl;
+        
         // Ekspos agar modul lain bisa pakai bila perlu
-        window.currentSignaturePath = signatureUrl || null;
-        if (signatureUrl) {
-            try { localStorage.setItem('signature_path', signatureUrl); } catch(_) {}
+        window.currentSignaturePath = absoluteSignatureUrl || null;
+        if (absoluteSignatureUrl) {
+            try { localStorage.setItem('signature_path', absoluteSignatureUrl); } catch(_) {}
         }
     } catch (e) {
         console.warn('Gagal memproses path tanda tangan:', e?.message || e);
@@ -178,7 +186,7 @@ fetch(`${API_URL}/api/profile`, {credentials: 'include'})
         element.textContent = 'User';
     });
     document.querySelectorAll('.fotoprofil').forEach(element => {
-        element.src = 'asset/men_dashboard-removebg-preview.png';
+        element.src = '/asset/men_dashboard-removebg-preview.png';
     });
 });
 //
