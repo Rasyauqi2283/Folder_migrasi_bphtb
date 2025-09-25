@@ -89,7 +89,7 @@ export const processKTPUpload = async (req, res, next) => {
         }
         
         // Simpan file dengan enkripsi
-        const userId = req.session?.user?.userid || 'temp_user';
+        const userId = req.session?.user?.userid ;
         const secureFile = await saveSecureFile(req.file, userId);
         
         // Tambahkan informasi file yang sudah dienkripsi ke request

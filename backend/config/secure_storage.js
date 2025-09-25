@@ -8,8 +8,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Konfigurasi enkripsi
-const ENCRYPTION_KEY_RAW = process.env.FILE_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+if (!process.env.FILE_ENCRYPTION_KEY) {
+    throw new Error("FILE_ENCRYPTION_KEY is not set in environment variables");
+}
+const ENCRYPTION_KEY_RAW = process.env.FILE_ENCRYPTION_KEY;
 const ENCRYPTION_KEY = Buffer.from(ENCRYPTION_KEY_RAW, 'hex');
+
 const ALGORITHM = 'aes-256-gcm';
 
 // Direktori penyimpanan aman (di luar public)
@@ -28,12 +32,9 @@ if (!fs.existsSync(SECURE_STORAGE_PATH)) {
  */
 export function encryptFile(data) {
     try {
-        const iv = crypto.randomBytes(16);
+        const iv = crypto.randomBytes(12);
         
-        // Generate key from ENCRYPTION_KEY_RAW using PBKDF2
-        const key = crypto.pbkdf2Sync(ENCRYPTION_KEY_RAW, iv, 10000, 32, 'sha256');
-        
-        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
         
         let encrypted = cipher.update(data);
         encrypted = Buffer.concat([encrypted, cipher.final()]);
@@ -61,10 +62,8 @@ export function encryptFile(data) {
  */
 export function decryptFile(encryptedData, iv, authTag) {
     try {
-        // Generate key from ENCRYPTION_KEY_RAW using PBKDF2
-        const key = crypto.pbkdf2Sync(ENCRYPTION_KEY_RAW, iv, 10000, 32, 'sha256');
         
-        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
         
         // Set auth tag for GCM verification
         decipher.setAuthTag(authTag);
@@ -177,7 +176,7 @@ export async function getSecureFile(fileId, userId, requesterRole = 'user') {
         const decryptedData = decryptFile(encryptedData, iv, authTag);
         
         // Log akses file
-        await logFileAccess(fileId, userId, requesterRole, 'READ');
+        await logFileAccess(fileId, userId, requesterRole, 'READ', req);
         
         return {
             data: decryptedData,
@@ -197,7 +196,7 @@ export async function getSecureFile(fileId, userId, requesterRole = 'user') {
  * @param {string} requesterRole - Role yang mengakses
  * @param {string} action - Aksi yang dilakukan
  */
-export async function logFileAccess(fileId, userId, requesterRole, action) {
+export async function logFileAccess(fileId, userId, requesterRole, action, req) {
     try {
         const logEntry = {
             timestamp: new Date().toISOString(),
@@ -205,8 +204,8 @@ export async function logFileAccess(fileId, userId, requesterRole, action) {
             userId,
             requesterRole,
             action,
-            ip: 'N/A', // Bisa ditambahkan dari request
-            userAgent: 'N/A' // Bisa ditambahkan dari request
+            ip: req.ip || null, // Bisa ditambahkan dari request
+            userAgent: req.headers['user-agent'] || null // Bisa ditambahkan dari request
         };
         
         const logDir = path.join(SECURE_STORAGE_PATH, 'logs');
@@ -272,5 +271,5 @@ export function validateKTPFile(file) {
 
 export {
     SECURE_STORAGE_PATH,
-    ENCRYPTION_KEY_RAW as ENCRYPTION_KEY
+    ENCRYPTION_KEY
 };
