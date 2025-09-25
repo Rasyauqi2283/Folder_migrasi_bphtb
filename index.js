@@ -257,12 +257,6 @@ app.use(session({
 
 // Debug session middleware
 app.use((req, res, next) => {
-  console.log('🔍 Session Debug:', {
-    sessionID: req.sessionID,
-    hasSession: !!req.session,
-    cookies: req.headers.cookie,
-    userAgent: req.headers['user-agent']?.substring(0, 50)
-  });
   next();
 });
 app.get('/check-cookie', (req, res) => {
