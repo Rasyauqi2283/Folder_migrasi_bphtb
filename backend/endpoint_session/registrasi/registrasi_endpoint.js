@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import uploadKTP from '../../config/uploads/upload_ktp.js';
+import { secureUploadKTP, processKTPUpload } from '../../config/uploads/secure_upload_ktp.js';
 import { pool } from '../../../db.js';
 import { generateOTP, sendOTP, sendOTPWithRetry } from '../../services/emailservice.js';
 
@@ -8,12 +8,12 @@ import { generateOTP, sendOTP, sendOTPWithRetry } from '../../services/emailserv
 const router = express.Router();
 
 // Endpoint Registrasi
-router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
+router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, async (req, res) => {
         const { nama, nik, telepon, email, password } = req.body;
-    const foto = req.file ? req.file.path : null;  // Dapatkan path foto yang diupload
+    const secureFile = req.secureFile;  // File yang sudah dienkripsi
   
     // Validasi input
-    if (!nama || !nik || !telepon || !email || !password || !foto) {
+    if (!nama || !nik || !telepon || !email || !password || !secureFile) {
       return res.status(400).json({ message: 'Semua data harus diisi dengan benar' });
     }
   
@@ -53,7 +53,7 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
             RETURNING *;
             `;
             const updateValues = [
-            nama, nik, telepon, email, hashedPassword, foto, otp, 'unverified', '', email
+            nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', '', email
             ];
 
             // Update data pengguna yang ada di unverified_users
@@ -73,7 +73,7 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
             `;
             const insertValues = [
-            nama, nik, telepon, email, hashedPassword, foto, otp, 'unverified', ''
+            nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', ''
             ];
 
             // Insert data pengguna baru
@@ -96,7 +96,7 @@ router.post('/register', uploadKTP.single('fotoktp'), async (req, res) => {
 
 // Endpoint Verifikasi OTP
 router.post('/verify-otp', async (req, res) => {
-const { email, otp } = req.body;
+    const { email, otp } = req.body;
 
     // Validasi input
     if (!email || !otp) {

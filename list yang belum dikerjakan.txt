@@ -294,3 +294,6 @@ ConnectError: [aborted] Error
     at we.fire (vscode-file://vscode-app/c:/Users/USER/AppData/Local/Programs/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:49:3283)
     at Jot.fire (vscode-file://vscode-app/c:/Users/USER/AppData/Local/Programs/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:4903:12154)
     at MessagePort.<anonymous> (vscode-file://vscode-app/c:/Users/USER/AppData/Local/Programs/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js:7037:18292)
+
+
+tester besok {email nodemailer, test kesesuaian (check), atur design}
