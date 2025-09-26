@@ -112,6 +112,17 @@ export function decryptFile(encryptedData, iv, authTag) {
  */
 export async function saveSecureFile(file, userId) {
     try {
+        // Validasi parameter
+        if (!userId || typeof userId !== 'string') {
+            throw new Error(`Invalid userId: ${userId}. Must be a non-empty string.`);
+        }
+        
+        if (!file || !file.path) {
+            throw new Error('Invalid file object. File path is required.');
+        }
+        
+        console.log('🔒 [SECURE] Saving file for userId:', userId);
+        
         // Baca file asli
         const originalData = fs.readFileSync(file.path);
         

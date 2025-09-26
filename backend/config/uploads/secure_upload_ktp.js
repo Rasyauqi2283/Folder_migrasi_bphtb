@@ -89,7 +89,19 @@ export const processKTPUpload = async (req, res, next) => {
         }
         
         // Simpan file dengan enkripsi
-        const userId = req.session?.user?.userid ;
+        // Untuk registrasi, gunakan email dari form data karena session belum ada
+        const userId = req.session?.user?.userid || req.body?.email || 'anonymous';
+        
+        // Debug session data dan form data
+        console.log('🔍 [DEBUG] Upload context:', {
+            hasSession: !!req.session,
+            hasUser: !!req.session?.user,
+            sessionUserId: req.session?.user?.userid,
+            formEmail: req.body?.email,
+            finalUserId: userId,
+            requestType: req.session?.user ? 'logged-in' : 'registration'
+        });
+        
         const secureFile = await saveSecureFile(req.file, userId);
         
         // Tambahkan informasi file yang sudah dienkripsi ke request
