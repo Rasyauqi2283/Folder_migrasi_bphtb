@@ -184,41 +184,159 @@ const logger = winston.createLogger({
   ]
 });
 
-// Initialize email transporter (optional)
-let transporter = null;
+// Initialize SendGrid email service (primary) with SMTP fallback
+import sgMail from '@sendgrid/mail';
+
+let emailService = null;
+let smtpTransporter = null;
+
 try {
-  if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
+  // SendGrid configuration (primary)
+  if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    emailService = 'sendgrid';
+    logger.info('✅ SendGrid email service initialized');
+  } 
+  // SMTP fallback
+  else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    smtpTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
       secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      }
+      },
+      connectionTimeout: 5000,
+      greetingTimeout: 3000,
+      socketTimeout: 10000
     });
+    emailService = 'smtp';
+    logger.info('✅ SMTP email service initialized (fallback)');
   } else {
-    logger.warn('Email credentials not set; email notifications disabled');
+    logger.warn('⚠️ No email credentials found; email notifications disabled');
   }
 } catch (e) {
-  logger.warn('Failed to initialize email transporter:', e);
+  logger.error('❌ Failed to initialize email service:', e);
 }
 
 // Central email helpers
-function getEmailTransporter() {
-  return transporter;
+function getEmailService() {
+  return emailService;
+}
+
+// SendGrid email function
+async function sendEmailViaSendGrid(to, subject, text, html = null) {
+  try {
+    const msg = {
+      to: to,
+      from: process.env.EMAIL_USER || 'noreply@bappenda.com',
+      subject: subject,
+      text: text,
+      html: html || text
+    };
+
+    const response = await Promise.race([
+      sgMail.send(msg),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SendGrid timeout after 15 seconds')), 15000)
+      )
+    ]);
+
+    logger.info(`✅ Email sent via SendGrid to ${to}: ${response[0].statusCode}`);
+    return response;
+  } catch (error) {
+    logger.error(`❌ SendGrid email failed to ${to}:`, error.message);
+    throw error;
+  }
+}
+
+// SMTP email function (fallback)
+async function sendEmailViaSMTP(to, subject, text, html = null) {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: subject,
+      text: text,
+      html: html || text
+    };
+
+    const info = await Promise.race([
+      smtpTransporter.sendMail(mailOptions),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP timeout after 20 seconds')), 20000)
+      )
+    ]);
+
+    logger.info(`✅ Email sent via SMTP to ${to}: ${info.response}`);
+    return info;
+  } catch (error) {
+    logger.error(`❌ SMTP email failed to ${to}:`, error.message);
+    throw error;
+  }
+}
+
+// Universal email function with fallback
+async function sendEmail(to, subject, text, html = null, maxRetries = 2) {
+  if (!emailService) {
+    throw new Error('No email service available');
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logger.info(`📧 Email attempt ${attempt}/${maxRetries} to ${to}`);
+
+      if (emailService === 'sendgrid') {
+        return await sendEmailViaSendGrid(to, subject, text, html);
+      } else if (emailService === 'smtp') {
+        return await sendEmailViaSMTP(to, subject, text, html);
+      }
+    } catch (error) {
+      logger.error(`❌ Email attempt ${attempt} failed:`, error.message);
+
+      if (attempt === maxRetries) {
+        // Try fallback service if primary fails
+        if (emailService === 'sendgrid' && smtpTransporter) {
+          logger.info('🔄 Trying SMTP fallback...');
+          try {
+            return await sendEmailViaSMTP(to, subject, text, html);
+          } catch (fallbackError) {
+            logger.error('❌ Both email services failed:', fallbackError.message);
+          }
+        }
+        throw new Error(`Email delivery failed after ${maxRetries} attempts`);
+      }
+
+      // Wait before retry
+      const waitTime = attempt * 2000; // 2s, 4s
+      logger.info(`⏳ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
 }
 
 async function sendEmailSafe(mailOptions) {
   try {
-    const tx = getEmailTransporter();
-    if (!tx) {
-      logger.warn('Email transporter not configured; skipping email send', { to: mailOptions?.to, subject: mailOptions?.subject });
+    if (!emailService) {
+      logger.warn('⚠️ No email service available; skipping email send', { to: mailOptions?.to, subject: mailOptions?.subject });
       return { skipped: true };
     }
-    const info = await tx.sendMail(mailOptions);
-    logger.info('Email sent', { to: mailOptions?.to, subject: mailOptions?.subject, messageId: info?.messageId, accepted: info?.accepted, rejected: info?.rejected });
-    return { success: true, info };
+
+    // Extract email data from mailOptions
+    const { to, subject, text, html } = mailOptions;
+    
+    // Use universal email function with SendGrid
+    const result = await sendEmail(to, subject, text, html);
+    
+    logger.info('✅ Email sent successfully', { 
+      to: mailOptions?.to, 
+      subject: mailOptions?.subject,
+      service: emailService,
+      messageId: result?.[0]?.headers?.['x-message-id'] || 'N/A'
+    });
+    
+    return { success: true, info: result };
   } catch (err) {
     logger.warn('Email send failed', { error: err?.message, to: mailOptions?.to, subject: mailOptions?.subject });
     return { success: false, error: err };
@@ -506,11 +624,11 @@ async function sendUserUpdateNotificationEmail(userEmail, userName, userid, oldD
     };
     
     // Send email using existing email configuration
-    if (transporter) {
-    await transporter.sendMail(mailOptions);
-    console.log(`Email notification sent to ${userEmail} for user ${userid}`);
+    if (emailService) {
+      await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+      console.log(`✅ Email notification sent to ${userEmail} for user ${userid} via ${emailService}`);
     } else {
-      console.log('Email disabled: transporter not configured');
+      console.log('⚠️ Email disabled: no email service configured');
     }
     
   } catch (error) {
@@ -522,8 +640,8 @@ async function sendUserUpdateNotificationEmail(userEmail, userName, userid, oldD
 // Send dedicated email for status_ppat changes (skip for 'meninggal')
 async function sendUserStatusChangeEmail(userEmail, userName, userid, newStatus) {
   try {
-    if (!transporter) {
-      console.log('Email disabled: transporter not configured');
+    if (!emailService) {
+      console.log('⚠️ Email disabled: no email service configured');
       return;
     }
     // Skip sending for 'meninggal'
@@ -566,7 +684,13 @@ async function sendUserStatusChangeEmail(userEmail, userName, userid, newStatus)
         </div>
       `
     };
-    await transporter.sendMail(mailOptions);
+    
+    if (emailService) {
+      await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+      console.log(`✅ Status change email sent to ${userEmail} via ${emailService}`);
+    } else {
+      console.log('⚠️ Email disabled: no email service configured');
+    }
   } catch (e) {
     console.error('Error sending status change email:', e);
   }
@@ -1582,7 +1706,7 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
 // Fungsi email yang disempurnakan
 async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobooking, status, trackstatus, keterangan) {
     try {
-        // Use centralized transporter with guards
+        // Use centralized SendGrid email service
 
         const mailOptions = {
             from: `"PPATK Notifikasi" <${process.env.EMAIL_USER}>`,
@@ -1619,9 +1743,14 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
             text: `Halo ${creatorName},\n\nStatus berkas Anda dengan No. Booking ${nobooking} telah diperbarui:\n\nStatus: ${status}\nTrack Status: ${trackstatus}\nKeterangan: ${keterangan || '-'}\n\nBerkas ini telah diberikan ke tim peneliti.`
         };
 
-        const info = await sendEmailSafe(mailOptions);
-        console.log('[MAIL] to:', mailOptions.to, 'status:', info?.success ? 'sent' : (info?.skipped ? 'skipped' : 'failed'));
-        return true;
+        if (emailService) {
+          await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+          console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${emailService}`);
+          return true;
+        } else {
+          console.log('⚠️ [MAIL] Email disabled: no email service configured');
+          return false;
+        }
     } catch (error) {
         console.error('Gagal mengirim email:', error);
         throw error; // Biarkan error ditangani oleh caller
@@ -2670,14 +2799,11 @@ app.post('/api/peneliti_send-to-ParafValidate', async (req, res) => {
 // Fungsi untuk mengirimkan email pemberitahuan ke pembuat dokumen
 async function sendParafVEmail(creatorEmail, creatorName, nobooking, status, trackstatus) {
     try {
-        // Menyiapkan transporter untuk mengirimkan email
-        const transporter = nodemailer.createTransport({
-            service: 'gmail', // Gunakan layanan email yang Anda pilih (misalnya Gmail)
-            auth: {
-                user: process.env.EMAIL_USER, // Pengguna email dari environment variables (pastikan sudah diatur)
-                pass: process.env.EMAIL_PASS  // Password email (pastikan sudah diatur di environment variables)
-            }
-        });
+        // Menggunakan email service yang sudah dikonfigurasi (SendGrid primary, SMTP fallback)
+        if (!emailService) {
+            console.log('⚠️ Email disabled: no email service configured');
+            return;
+        }
 
         // Menyiapkan isi email
         const mailOptions = {
@@ -2687,9 +2813,9 @@ async function sendParafVEmail(creatorEmail, creatorName, nobooking, status, tra
             text: `Hallo ${creatorName},\n\nData Anda dengan No. Booking ${nobooking} telah dipindahkan ke peneliti dan statusnya telah diperbarui menjadi "${status}".\n\nTrack status saat ini: ${trackstatus}.\n\nTerima kasih atas perhatian Anda.`
         };
 
-        // Mengirimkan email
-        await transporter.sendMail(mailOptions);
-        console.log('Email pemberitahuan berhasil dikirim.');
+        // Mengirimkan email via SendGrid
+        await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+        console.log(`✅ Email pemberitahuan berhasil dikirim via ${emailService}`);
 
     } catch (error) {
         console.error('Gagal mengirim email pemberitahuan:', error);
