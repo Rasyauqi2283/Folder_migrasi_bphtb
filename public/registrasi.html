@@ -39,6 +39,20 @@
 <body>
   <div class="container">
     <h1>Pendaftaran Akun BPHTB Online</h1>
+    <div class="form-group">
+        <div class="file-input">
+            <label for="fotoktp">KTP</label>
+            <input type="file" id="fotoktp" name="fotoktp" accept="image/png, image/jpeg, image/jpg, image/gif" required>
+        </div>
+
+        <div id="autoFillSuggestion" class="auto-fill-suggestion">
+            <p>Kami menemukan data dari KTP Anda:</p>
+            <p>Nama: <span id="detectedNama"></span></p>
+            <p>NIK: <span id="detectedNIK"></span></p>
+            <button type="button" class="auto-fill-btn" onclick="applyAutoFill()">Gunakan Data Ini</button>
+        </div>
+        <small onclick="openModal()">panduan foto KTP!</small>
+    </div>
     <form id="registration-form">
         <div class="form-row">
             <div class="form-column">
@@ -82,20 +96,7 @@
                 </div>            
             </div>
         </div>
-        <div class="form-group">
-            <div class="file-input">
-                <label for="fotoktp">KTP</label>
-                <input type="file" id="fotoktp" name="fotoktp" accept="image/png, image/jpeg, image/jpg, image/gif" required>
-            </div>
 
-            <div id="autoFillSuggestion" class="auto-fill-suggestion">
-                <p>Kami menemukan data dari KTP Anda:</p>
-                <p>Nama: <span id="detectedNama"></span></p>
-                <p>NIK: <span id="detectedNIK"></span></p>
-                <button type="button" class="auto-fill-btn" onclick="applyAutoFill()">Gunakan Data Ini</button>
-            </div>
-            <small onclick="openModal()">panduan foto KTP!</small>
-        </div>
         <div class="form-group buttons">
             <button type="button" class="cancel" onclick="window.location.href='login.html'">Kembali</button>
             <button type="submit" class="submit" id="submitBtn">Submit</button>
