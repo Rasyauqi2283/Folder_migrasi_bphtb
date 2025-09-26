@@ -2,3 +2,9 @@ node_modules/
 .env
 .DS_Store
 *.log
+
+# Security: Never commit API keys or secrets
+*api*key*
+*secret*
+*sendgrid*
+*encryption*

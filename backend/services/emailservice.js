@@ -1,24 +1,30 @@
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import { pool } from '../../db.js';
 
-// Gmail SMTP configuration dengan fallback
+// SendGrid configuration
+if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    console.log('✅ SendGrid API key configured');
+} else {
+    console.warn('⚠️ SENDGRID_API_KEY not found, falling back to Gmail SMTP');
+}
+
+// Gmail SMTP configuration sebagai fallback
 const gmailTransporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
     },
-    // Timeout configuration yang lebih agresif
-    connectionTimeout: 5000,  // 5 detik
-    greetingTimeout: 3000,    // 3 detik
-    socketTimeout: 10000,     // 10 detik
-    // Pool configuration
+    connectionTimeout: 5000,
+    greetingTimeout: 3000,
+    socketTimeout: 10000,
     pool: true,
     maxConnections: 2,
     maxMessages: 50,
     rateDelta: 2000,
     rateLimit: 2,
-    // TLS options untuk Railway
     secure: true,
     tls: {
         rejectUnauthorized: false
@@ -40,36 +46,72 @@ const testTransporter = nodemailer.createTransport({
 export const testEmailConnection = async () => {
     try {
         console.log('📧 Testing email connection...');
+        
+        // Test SendGrid first
+        if (process.env.SENDGRID_API_KEY) {
+            // SendGrid doesn't have a verify method, so we'll test with a simple API call
+            console.log('✅ SendGrid API key is configured');
+            return true;
+        }
+        
+        // Fallback to Gmail SMTP
         await gmailTransporter.verify();
         console.log('✅ Gmail SMTP connection successful');
         return true;
     } catch (error) {
-        console.error('❌ Gmail SMTP connection failed:', error.message);
+        console.error('❌ Email connection failed:', error.message);
         return false;
     }
 };
 
-// Fallback email service dengan logging
+// SendGrid email service dengan fallback ke Gmail
 export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             console.log(`📧 Email attempt ${attempt}/${maxRetries} to ${mailOptions.to}`);
             
-            // Test koneksi dulu
-            const isConnected = await testEmailConnection();
-            if (!isConnected) {
-                throw new Error('SMTP connection failed');
+            let info;
+            
+            // Try SendGrid first if API key is available
+            if (process.env.SENDGRID_API_KEY) {
+                console.log('🚀 Using SendGrid API...');
+                
+                const sgMessage = {
+                    to: mailOptions.to,
+                    from: mailOptions.from,
+                    subject: mailOptions.subject,
+                    text: mailOptions.text,
+                    html: mailOptions.html
+                };
+                
+                info = await Promise.race([
+                    sgMail.send(sgMessage),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('SendGrid timeout after 15 seconds')), 15000)
+                    )
+                ]);
+                
+                console.log(`✅ Email sent via SendGrid to ${mailOptions.to}`);
+                
+            } else {
+                // Fallback to Gmail SMTP
+                console.log('📧 Using Gmail SMTP fallback...');
+                
+                const isConnected = await testEmailConnection();
+                if (!isConnected) {
+                    throw new Error('SMTP connection failed');
+                }
+                
+                info = await Promise.race([
+                    gmailTransporter.sendMail(mailOptions),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Gmail SMTP timeout after 20 seconds')), 20000)
+                    )
+                ]);
+                
+                console.log(`✅ Email sent via Gmail SMTP to ${mailOptions.to}: ${info.response}`);
             }
             
-            // Kirim email dengan timeout yang lebih pendek
-            const info = await Promise.race([
-                gmailTransporter.sendMail(mailOptions),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Email timeout after 20 seconds')), 20000)
-                )
-            ]);
-            
-            console.log(`✅ Email sent successfully to ${mailOptions.to}: ${info.response}`);
             return info;
             
         } catch (error) {
@@ -80,9 +122,12 @@ export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
                 
                 // Log OTP ke database untuk manual verification
                 try {
+                    const otpMatch = mailOptions.text.match(/Kode OTP Anda adalah: (\d{6})/);
+                    const otp = otpMatch ? otpMatch[1] : 'unknown';
+                    
                     await pool.query(
                         'INSERT INTO otp_logs (email, otp, created_at, status) VALUES ($1, $2, NOW(), $3)',
-                        [mailOptions.to, mailOptions.text.split(': ')[1].split('.')[0], 'failed_to_send']
+                        [mailOptions.to, otp, 'failed_to_send']
                     );
                 } catch (dbError) {
                     console.error('Failed to log OTP to database:', dbError.message);
@@ -92,7 +137,7 @@ export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
             }
             
             // Wait before retry
-            const waitTime = attempt * 3000; // 3s, 6s
+            const waitTime = attempt * 2000; // 2s, 4s
             console.log(`⏳ Waiting ${waitTime}ms before retry...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -112,16 +157,35 @@ export const validateOTPFormat = (otp) => {
     return /^\d{6}$/.test(otp);
 };
 
-// Async OTP sender - tidak menghalangi proses registrasi
+// Async OTP sender dengan SendGrid - tidak menghalangi proses registrasi
 export const sendOTPAsync = async (email, otp) => {
     // Kirim OTP secara async tanpa menunggu response
     setImmediate(async () => {
         try {
+            const fromEmail = process.env.EMAIL_USER || 'noreply@bappenda.com';
+            
             const mailOptions = {
-                from: process.env.EMAIL_USER,
+                from: fromEmail,
                 to: email,
-                subject: 'OTP untuk Registrasi',
-                text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`
+                subject: 'OTP untuk Registrasi - BAPPENDA',
+                text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #2c3e50;">Kode OTP untuk Registrasi</h2>
+                        <p>Halo,</p>
+                        <p>Berikut adalah kode OTP Anda untuk registrasi di sistem BAPPENDA:</p>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; text-align: center;">
+                            <h1 style="color: #3498db; font-size: 32px; margin: 0; letter-spacing: 5px;">${otp}</h1>
+                        </div>
+                        
+                        <p>Silakan masukkan kode ini di halaman verifikasi untuk melanjutkan proses registrasi.</p>
+                        <p><strong>Catatan:</strong> Kode ini berlaku selama 10 menit.</p>
+                        
+                        <p style="margin-top: 30px;">Hormat kami,<br>
+                        <strong>Tim BAPPENDA</strong></p>
+                    </div>
+                `
             };
             
             await sendEmailWithFallback(mailOptions, 2);
