@@ -964,7 +964,7 @@ app.post('/api/bank/transaksi/:nobooking/approve', async (req, res) => {
     const catatan = (req.body && req.body.catatan) ? String(req.body.catatan) : null;
     if (!nobooking) return res.status(400).json({ success:false, message:'nobooking wajib' });
     await upsertBankVerification(nobooking, 'Disetujui', catatan, req.session.user.userid);
-    // Jika bank telah approve, cek apakah syarat ke Peneliti terpenuhi dan kirim notifikasi
+    // Jika bank telah approve, cek apakah KEDUA LTB dan BANK sudah approve, baru kirim email
     try {
       const chk = await pool.query(
         `SELECT p.bookingid
@@ -974,16 +974,46 @@ app.post('/api/bank/transaksi/:nobooking/approve', async (req, res) => {
          WHERE p.nobooking = $1
            AND COALESCE(bk.status_verifikasi,'Pending') = 'Disetujui'
            AND COALESCE(bk.status_dibank,'Dicheck') = 'Tercheck'
+           AND COALESCE(ltb.status, 'Diajukan') IN ('Dilanjutkan','Diterima')
            AND p.status = 'Diajukan'
            AND p.trackstatus = 'Dilanjutkan'`,
         [nobooking]
       );
-      const bookingId = chk.rows?.[0]?.bookingid;
-      if (bookingId) {
-        // Double-clear terpenuhi: kirim notifikasi processed_ltb ke Peneliti dan Administrator
+      
+      if (chk.rows.length > 0) {
+        // KEDUA LTB dan BANK sudah approve: kirim email notifikasi ke PPAT
+        console.log(`✅ [BANK] Both LTB and BANK approved for ${nobooking} - sending email notification`);
+        
+        // Dapatkan info creator untuk email
+        const creatorInfo = await pool.query(`
+          SELECT v.email, v.nama 
+          FROM pat_1_bookingsspd p
+          JOIN a_2_verified_users v ON p.userid = v.userid
+          WHERE p.nobooking = $1
+        `, [nobooking]);
+        
+        if (creatorInfo.rows.length > 0) {
+          const { email, nama } = creatorInfo.rows[0];
+          await sendPenelitiNotificationEmail(
+            email, 
+            nama, 
+            nobooking, 
+            'Diajukan', 
+            'Dilanjutkan', 
+            'Berkas telah disetujui oleh LTB dan BANK, dan diteruskan ke tim peneliti untuk verifikasi lebih lanjut.',
+            'approval'
+          );
+        }
+        
+        // Trigger notifikasi: ke Peneliti dan Administrator
+        const bookingId = chk.rows[0].bookingid;
         await triggerNotificationByStatus(bookingId, 'processed_ltb', req.session.user.userid);
+      } else {
+        console.log(`⚠️ [BANK] BANK approved for ${nobooking}, but LTB not yet approved - no email sent`);
       }
-    } catch (_) {}
+    } catch (error) {
+      console.error('Error checking approval status:', error);
+    }
     return res.json({ success:true });
   } catch (e) {
     console.error('bank approve error:', e);
@@ -1000,7 +1030,34 @@ app.post('/api/bank/transaksi/:nobooking/reject', async (req, res) => {
     const catatan = (req.body && req.body.catatan) ? String(req.body.catatan) : '';
     if (!nobooking) return res.status(400).json({ success:false, message:'nobooking wajib' });
     if (!catatan) return res.status(400).json({ success:false, message:'catatan wajib untuk penolakan' });
+    
     await upsertBankVerification(nobooking, 'Ditolak', catatan, req.session.user.userid);
+    
+    // Kirim email rejection ke PPAT
+    try {
+      const creatorInfo = await pool.query(`
+        SELECT v.email, v.nama 
+        FROM pat_1_bookingsspd p
+        JOIN a_2_verified_users v ON p.userid = v.userid
+        WHERE p.nobooking = $1
+      `, [nobooking]);
+      
+      if (creatorInfo.rows.length > 0) {
+        const { email, nama } = creatorInfo.rows[0];
+        await sendPenelitiNotificationEmail(
+          email, 
+          nama, 
+          nobooking, 
+          'Ditolak', 
+          'BANK', 
+          `Berkas ditolak oleh BANK dengan alasan: ${catatan}`,
+          'rejection'
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending rejection email:', emailError);
+    }
+    
     return res.json({ success:true });
   } catch (e) {
     console.error('bank reject error:', e);
@@ -1478,7 +1535,7 @@ app.post('/api/ltb_ltb-reject', async (req, res) => {
         res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses penolakan.' });
     }
 });
-// Fungsi untuk mengirimkan email pemberitahuan penolakan
+// Fungsi untuk mengirimkan email pemberitahuan penolakan LTB
 async function sendRejectionEmail(_userId, nobooking, userName, rejectionReason) {
     try {
         // Menarik userid pengguna dari divisi PPATK berdasarkan nobooking
@@ -1502,17 +1559,18 @@ async function sendRejectionEmail(_userId, nobooking, userName, rejectionReason)
         }
 
         const userEmail = emailResult.rows[0].email; // Ambil email dari hasil query
-        console.log(`Mengirim email pemberitahuan penolakan ke: ${userEmail}`);
+        console.log(`📧 [LTB REJECT] Mengirim email pemberitahuan penolakan ke: ${userEmail}`);
 
-        // Menyiapkan isi email
-        const mailOptions = {
-            from: process.env.EMAIL_USER,  // Gantilah dengan email pengirim yang sudah diatur di environment variables
-            to: userEmail,  // Gantilah dengan email yang diambil dari database
-            subject: 'Pemberitahuan Penolakan SSPP',
-            text: `Hallo ${userName},\n\nSSPD kamu kami tolak dikarenakan: "${rejectionReason}".\n\nTerima kasih atas perhatian Anda.`
-        };
-        const info = await sendEmailSafe(mailOptions);
-        console.log('Email pemberitahuan status:', info?.success ? 'sent' : (info?.skipped ? 'skipped' : 'failed'));
+        // Gunakan function yang sudah ada dengan format konsisten
+        await sendPenelitiNotificationEmail(
+            userEmail, 
+            userName, 
+            nobooking, 
+            'Ditolak', 
+            'LTB', 
+            `Berkas ditolak oleh LTB dengan alasan: ${rejectionReason}`,
+            'rejection'
+        );
 
     } catch (error) {
         console.error('Gagal mengirim email pemberitahuan:', error);
@@ -1635,16 +1693,13 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
         
         const creatorInfoResult = await client.query(creatorInfoQuery, [nobooking]);
         
+        // JANGAN kirim email langsung dari LTB endpoint
+        // Email akan dikirim dari BANK endpoint setelah KEDUA LTB dan BANK approve
+        console.log(`✅ [LTB] Data moved to peneliti for ${nobooking}, waiting for BANK approval before sending email`);
+        
         if (creatorInfoResult.rows.length > 0) {
             const { email, nama } = creatorInfoResult.rows[0];
-            await sendPenelitiNotificationEmail(
-                email, 
-                nama, 
-                nobooking, 
-                status, 
-                trackstatus, 
-                keterangan
-            );
+            console.log(`📧 [LTB] Creator info found: ${nama} (${email}) - email will be sent after BANK approval`);
         } else {
             console.warn(`Info creator tidak ditemukan untuk nobooking ${nobooking}`);
         }
@@ -1703,11 +1758,62 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
     }
 });
 
-// Fungsi email yang disempurnakan
-async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobooking, status, trackstatus, keterangan) {
+// Fungsi untuk cek apakah KEDUA LTB dan BANK sudah approve
+async function checkBothLTBAndBankApproved(nobooking) {
     try {
-        // Use centralized SendGrid email service
+        const result = await pool.query(`
+            SELECT 
+                COALESCE(ltb.status, 'Diajukan') as ltb_status,
+                COALESCE(bk.status_verifikasi, 'Pending') as bank_status,
+                COALESCE(bk.status_dibank, 'Dicheck') as bank_check_status
+            FROM pat_1_bookingsspd p
+            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON ltb.nobooking = p.nobooking
+            LEFT JOIN bank_1_cek_hasil_transaksi bk ON bk.nobooking = p.nobooking
+            WHERE p.nobooking = $1
+        `, [nobooking]);
 
+        if (result.rows.length === 0) {
+            return { approved: false, reason: 'Booking not found' };
+        }
+
+        const { ltb_status, bank_status, bank_check_status } = result.rows[0];
+        
+        // Cek apakah LTB sudah approve
+        const ltbApproved = ltb_status === 'Dilanjutkan' || ltb_status === 'Diterima';
+        
+        // Cek apakah BANK sudah approve
+        const bankApproved = bank_status === 'Disetujui' && bank_check_status === 'Tercheck';
+        
+        return {
+            approved: ltbApproved && bankApproved,
+            ltbApproved,
+            bankApproved,
+            ltb_status,
+            bank_status,
+            bank_check_status
+        };
+    } catch (error) {
+        console.error('Error checking LTB and Bank approval:', error);
+        return { approved: false, reason: 'Database error' };
+    }
+}
+
+// Fungsi email yang disempurnakan dengan validasi
+async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobooking, status, trackstatus, keterangan, emailType = 'approval') {
+    try {
+        // Validasi: Hanya kirim email "Dilanjutkan" jika KEDUA LTB dan BANK approve
+        if (emailType === 'approval' && status === 'Diajukan' && trackstatus === 'Dilanjutkan') {
+            const approvalCheck = await checkBothLTBAndBankApproved(nobooking);
+            
+            if (!approvalCheck.approved) {
+                console.log(`⚠️ [EMAIL] Skipping email for ${nobooking} - LTB: ${approvalCheck.ltbApproved}, BANK: ${approvalCheck.bankApproved}`);
+                return false; // Jangan kirim email jika belum approve semua
+            }
+            
+            console.log(`✅ [EMAIL] Both LTB and BANK approved for ${nobooking} - sending notification`);
+        }
+
+        // Use centralized SendGrid email service
         const mailOptions = {
             from: `"PPATK Notifikasi" <${process.env.EMAIL_USER}>`,
             to: creatorEmail,
@@ -1736,16 +1842,19 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
                         </tr>
                     </table>
                     
-                    <p>Berkas ini telah dipindahkan ke tim peneliti untuk verifikasi lebih lanjut.</p>
+                    ${emailType === 'approval' ? 
+                        '<p><strong>✅ Berkas telah disetujui oleh LTB dan BANK, dan diteruskan ke tim peneliti untuk verifikasi lebih lanjut.</strong></p>' :
+                        '<p>Berkas ini telah dipindahkan ke tim peneliti untuk verifikasi lebih lanjut.</p>'
+                    }
                     <p style="color: #7f8c8d; font-size: 0.9em;">Email ini dikirim secara otomatis, mohon tidak membalas.</p>
                 </div>
             `,
-            text: `Halo ${creatorName},\n\nStatus berkas Anda dengan No. Booking ${nobooking} telah diperbarui:\n\nStatus: ${status}\nTrack Status: ${trackstatus}\nKeterangan: ${keterangan || '-'}\n\nBerkas ini telah diberikan ke tim peneliti.`
+            text: `Halo ${creatorName},\n\nStatus berkas Anda dengan No. Booking ${nobooking} telah diperbarui:\n\nStatus: ${status}\nTrack Status: ${trackstatus}\nKeterangan: ${keterangan || '-'}\n\n${emailType === 'approval' ? 'Berkas telah disetujui oleh LTB dan BANK, dan diteruskan ke tim peneliti.' : 'Berkas ini telah diberikan ke tim peneliti.'}`
         };
 
         if (emailService) {
           await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
-          console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${emailService}`);
+          console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${emailService}, type: ${emailType}`);
           return true;
         } else {
           console.log('⚠️ [MAIL] Email disabled: no email service configured');

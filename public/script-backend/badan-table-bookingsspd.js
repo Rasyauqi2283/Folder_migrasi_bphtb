@@ -1679,16 +1679,16 @@ async function sendToLtb(nobooking) {
 
                 // Tampilkan overlay notifikasi 1-2 detik setelah pengiriman
                 try {
-                    const overlay = document.getElementById('ltb-overlay');
+                    const overlay_send = document.getElementById('ltb-overlay-send');
                     const messageEl = document.getElementById('ltb-overlay-message');
                     const closeBtn = document.getElementById('ltb-overlay-close');
                     const audioEl = document.getElementById('ltb-success-audio');
-                    if (overlay && messageEl) {
+                    if (overlay_send && messageEl) {
                         const nob = nobooking;
                         const noreg = result.no_registrasi || '-';
                         messageEl.textContent = `Nobooking anda ${nob} telah masuk ke dalam daftar antrian di Loket Terima Berkas dengan antrian ${noreg}, dan sedang di olah`;
                         setTimeout(() => {
-                            overlay.style.display = 'block';
+                            overlay_send.style.display = 'block';
                             // Coba play audio notifikasi (beberapa browser hanya mengizinkan setelah user interaction)
                             try { audioEl && audioEl.play && audioEl.play().catch(() => {}); } catch(_) {}
                         }, 1000);
