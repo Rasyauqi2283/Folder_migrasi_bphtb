@@ -1694,7 +1694,7 @@ async function sendToLtb(nobooking) {
                         }, 1000);
                         if (closeBtn) {
                             closeBtn.onclick = () => {
-                                overlay.style.display = 'none';
+                                overlay_send.style.display = 'none';
                                 location.reload();
                             };
                         }

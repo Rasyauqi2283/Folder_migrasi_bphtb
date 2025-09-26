@@ -458,6 +458,43 @@ header.member-hidden .profile-overlay {
     display: flex;  /* Menampilkan overlay dengan class 'active' */
 }
 
+/* Overlay background styling */
+#ltb-overlay.logout-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+
+    /* agar konten di tengah */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 1000;
+}
+
+/* Menampilkan overlay saat class 'active' ditambahkan */
+#ltb-overlay.logout-overlay.active {
+    display: flex;  /* Menampilkan overlay dengan class 'active' */
+}
+
+/* Confirmation box styling (child) */
+#ltb-overlay .logout-confirm {
+    width: 400px;
+    background: linear-gradient(0deg , #4E6872, #94C5D8);
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    color: #fff;
+    font-family: Arial, sans-serif;
+    animation: waveAnimation 10s infinite linear;
+}
+
+
 /* Confirmation box styling */
 .logout-confirm {
     width: 400px;
