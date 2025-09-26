@@ -116,7 +116,7 @@
             try {
                 console.log("🌐 Making login request to Railway...");
                 const API_URL = 'https://bphtb-bappenda.up.railway.app';
-                const res = await fetch(`${API_URL}/api/auth/login`, {
+                const res = await fetch(`${API_URL}/api/v1/auth/login`, {
                     method: "POST",
                     credentials: 'include',
                     headers: {

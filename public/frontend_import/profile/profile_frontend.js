@@ -10,7 +10,7 @@ import { initSignatureUpload } from './ttdverif_profile.js';
 class ProfileService {
   static async getProfile(abortSignal) {
     try {
-      const response = await api.get('/api/auth/profile', { signal: abortSignal });
+      const response = await api.get('/api/v1/auth/profile', { signal: abortSignal });
       
       // Log the response for debugging
       console.log('Raw API response:', response);
@@ -64,11 +64,11 @@ class ProfileService {
   }
 
   static async updatePassword({ oldPassword, newPassword }) {
-    return api.post('/api/auth/update-password', { oldPassword, newPassword });
+    return api.post('/api/v1/auth/update-password', { oldPassword, newPassword });
   }
 
   static async uploadSignature(formData) {
-    return api.post('/api/auth/update-profile-paraf', formData);
+    return api.post('/api/v1/auth/update-profile-paraf', formData);
   }
 }
 
@@ -200,7 +200,7 @@ export class ProfileController {
   async checkApiAvailability() {
     try {
       // Try to make a simple request to check if API is available
-      const response = await fetch('/api/auth/profile', { 
+      const response = await fetch('/api/v1/auth/profile', { 
         method: 'HEAD',
         signal: this.abortController.signal 
       });

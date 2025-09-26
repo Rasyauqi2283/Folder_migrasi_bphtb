@@ -105,7 +105,7 @@ const setupSignatureModal = () => {
     resetBtn.style.display = 'none';
     resetBtn.addEventListener('click', async () => {
       try {
-        const res = await fetch('/api/auth/update-profile-paraf', { method: 'DELETE', credentials: 'include' });
+        const res = await fetch('/api/v1/auth/update-profile-paraf', { method: 'DELETE', credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || data.success === false) throw new Error(data.message || 'Gagal reset');
 
@@ -196,7 +196,7 @@ const handleSignatureUpload = async (e) => {
     const formData = new FormData();
     formData.append('signature', fileInput.files[0]);
 
-    const response = await fetch('/api/auth/update-profile-paraf', {
+    const response = await fetch('/api/v1/auth/update-profile-paraf', {
       method: 'POST',
       body: formData,
       credentials: 'include'

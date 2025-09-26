@@ -43,7 +43,7 @@
     // ===== Current Signature Preview (PV) =====
     async function loadCurrentSignature(){
         try{
-            const resp = await fetch('/api/auth/profile', { credentials:'include' });
+            const resp = await fetch('/api/v1/auth/profile', { credentials:'include' });
             const json = await resp.json().catch(()=>null);
             const path = json && (json.tanda_tangan_path || (json.data && json.data.user && json.data.user.tanda_tangan_path));
             const el = document.getElementById('sigUsedPreview');
@@ -69,7 +69,7 @@
             const fd = new FormData();
             fd.append('signature', file);
 
-            const resp = await fetch('/api/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
+            const resp = await fetch('/api/v1/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
             const json = await resp.json().catch(()=>({success:false}));
             if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
             const path = (json.data && json.data.path) ? json.data.path : (json.path || '');
@@ -142,7 +142,7 @@
             const fd = new FormData();
             fd.append('signature', file);
 
-            const resp = await fetch('/api/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
+            const resp = await fetch('/api/v1/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
             const json = await resp.json().catch(()=>({success:false}));
             if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
             const path = (json.data && json.data.path) ? json.data.path : (json.path || '');

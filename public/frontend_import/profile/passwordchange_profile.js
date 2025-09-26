@@ -48,7 +48,7 @@ const validatePasswords = (newPassword, confirmPassword) => {
 };
 
 const updatePassword = async (oldPassword, newPassword) => {
-  const response = await fetch('/api/auth/update-password', {
+  const response = await fetch('/api/v1/auth/update-password', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

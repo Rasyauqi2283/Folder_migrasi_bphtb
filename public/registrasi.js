@@ -533,7 +533,7 @@ document.querySelector("form").addEventListener("submit", async (event) => {
 
     // Submit form ke backend
     try {
-        const response = await fetch('/api/auth/register', {
+        const response = await fetch('/api/v1/auth/register', {
             method: 'POST',
             body: formData
         });

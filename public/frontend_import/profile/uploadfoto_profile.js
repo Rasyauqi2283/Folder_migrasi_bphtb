@@ -24,7 +24,7 @@ export const initPhotoUpload = (() => {
     maxFileSize: 2 * 1024 * 1024, // 2MB
     minDimension: 200, // 200px
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-    endpoint: '/api/auth/profile/upload'
+    endpoint: '/api/v1/auth/profile/upload'
   };
 
   // Initialize the module

@@ -100,17 +100,18 @@ import { staticConfig } from './backend/config/static.js';
 import userRoutes from './backend/routesxcontroller/userRoutes.js';
 import faqRoutes from './backend/routesxcontroller/faqroutes.js';
 import noticeRoutes from './backend/routesxcontroller/noticeRoutes.js';
+//auth routes and controller
+import authRoutes from './backend/routesxcontroller/1_auth/authRoutes.js';
 
 //session endpoint
-import loginRouter from './backend/endpoint_session/login/login_endpoint.js';
-import regisRouter from './backend/endpoint_session/registrasi/registrasi_endpoint.js';
+// Import router lama sudah diganti dengan authRoutes
 import secureFileRoutes from './backend/endpoint_session/registrasi/secure_file_routes.js';
 import passwordResetRouter from './backend/endpoint_session/password_service.js';
-import profileRouter from './backend/endpoint_session/profile/profile_endpoint.js';
-import notificationRouter from './backend/endpoint_session/notification/notification_routes.js';
-import { triggerNotificationByStatus } from './backend/endpoint_session/notification/notification_service.js';
-import { sendNotificationToLtb } from './backend/endpoint_session/notification/notification_wrapper.js';
-import registerPPATKEndpoints from './backend/endpoint_session/PPAT_endpoint/endpoint_ppat.js';
+import profileRouter from './backend/routesxcontroller/2_profile/profile_endpoint.js';
+import notificationRouter from './backend/routesxcontroller/3_notification/notification_routes.js';
+import { triggerNotificationByStatus } from './backend/routesxcontroller/3_notification/notification_service.js';
+import { sendNotificationToLtb } from './backend/routesxcontroller/3_notification/notification_wrapper.js';
+import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
 import { getAccessToken, initiateSigning, authorizeSigning } from './backend/khusus_BSRE_jalur/bsreservice.js';
 import { saveQrToPublic } from './backend/utils/qrcode.js';
 import { buildValidasiPdf } from './backend/services/GeneratorPDF_withKEY/generatepdfvalidasi_key.js';
@@ -138,17 +139,7 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// Debug endpoint untuk check session
-app.get('/api/debug-session', (req, res) => {
-  ;
-  
-  res.json({
-    hasSession: !!req.session,
-    hasUser: !!req.session?.user,
-    sessionID: req.sessionID,
-    user: req.session?.user || null
-  });
-});
+// Debug endpoint sudah dihapus
 
 // Database monitoring endpoint
 app.get('/api/database-monitoring', async (req, res) => {
@@ -378,20 +369,9 @@ app.use(session({
 app.use((req, res, next) => {
   next();
 });
-app.get('/check-cookie', (req, res) => {
-  const userCookie = req.cookies['user'];
-  res.send(userCookie ? `Hello ${userCookie}` : 'No user cookie found');
-});
+// Debug endpoint check-cookie sudah dihapus
 
-// Test session endpoint
-app.get('/test-session', (req, res) => {
-  res.json({
-    sessionID: req.sessionID,
-    hasSession: !!req.session,
-    cookies: req.headers.cookie,
-    sessionData: req.session
-  });
-});
+// Debug endpoint test-session sudah dihapus
 
 // Middleware
 // TODO-CORE: Aktifkan CORS dengan credentials agar cookie session terkirim
@@ -410,6 +390,7 @@ console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 // Body parsers must come before API routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/faq', faqRoutes);
@@ -705,12 +686,10 @@ app.use('/asset', express.static(path.join(__dirname, 'asset')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 // Serve penting_F_simpan files - menggunakan path yang benar
 app.use('/penting_F_simpan', express.static(path.join(__dirname, 'public', 'penting_F_simpan')));
-app.use('/api/auth', loginRouter);
-app.use('/api/auth', regisRouter);
+// Router lama sudah diganti dengan authRoutes di /api/v1/auth
 app.use('/api/secure-files', secureFileRoutes);
-app.use('/api/auth', passwordResetRouter);
-app.use('/api/auth', profileRouter);
-app.use('/api', profileRouter);
+app.use('/api/v1/auth', passwordResetRouter);
+app.use('/api/v1/auth', profileRouter);
 app.use('/api/notifications', notificationRouter);
 registerGeneratePdfBooking(app, pool);
 registerGeneratePdfCheckPeneliti(app, pool);
@@ -1714,7 +1693,7 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
                 // Notifikasi "processed" akan dikirim saat BANK approve (double-clear).
                 // Mark-read otomatis: bersihkan notifikasi lama untuk Administrator & LTB atas booking ini
                 try {
-                    const notificationModel = await import('./backend/endpoint_session/notification/notification_model.js');
+                    const notificationModel = await import('./backend/routesxcontroller/3_notification/notification_model.js');
                     if (notificationModel?.markAsReadByDivisiAndBooking) {
                         await notificationModel.markAsReadByDivisiAndBooking('Administrator', bookingId);
                         await notificationModel.markAsReadByDivisiAndBooking('LTB', bookingId);
@@ -2285,7 +2264,7 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
         try {
             const bookingId = updateResultPAT?.rows?.[0]?.bookingid;
             if (bookingId) {
-                const notificationModel = await import('./backend/endpoint_session/notification/notification_model.js');
+                const notificationModel = await import('./backend/routesxcontroller/3_notification/notification_model.js');
                 if (notificationModel?.markAsReadByDivisiAndBooking) {
                     await notificationModel.markAsReadByDivisiAndBooking('Peneliti', bookingId);
                 }
@@ -2297,7 +2276,7 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
             const bookingSel = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1 LIMIT 1', [nobooking]);
             const bookingId = bookingSel?.rows?.[0]?.bookingid;
             if (bookingId) {
-                const { triggerNotificationByStatus } = await import('./backend/endpoint_session/notification/notification_service.js');
+                const { triggerNotificationByStatus } = await import('./backend/routesxcontroller/3_notification/notification_service.js');
                 await triggerNotificationByStatus(bookingId, 'to_paraf_kasie', sessionUserid);
             }
         } catch (_) {}
@@ -4061,7 +4040,7 @@ app.post('/api/pv/send-to-lsb', async (req, res) => {
         const bookingSel = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1 LIMIT 1', [nobooking]);
         const bookingId = bookingSel?.rows?.[0]?.bookingid;
         if (bookingId) {
-          const { triggerNotificationByStatus } = await import('./backend/endpoint_session/notification/notification_service.js');
+          const { triggerNotificationByStatus } = await import('./backend/routesxcontroller/3_notification/notification_service.js');
           await triggerNotificationByStatus(bookingId, 'verified_final', req.session.user.userid);
         }
       } catch (_) {}
@@ -4167,7 +4146,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
             const bookingSel = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1 LIMIT 1', [nobooking]);
             const bookingId = bookingSel?.rows?.[0]?.bookingid;
             if (bookingId) {
-                const notificationModel = await import('./backend/endpoint_session/notification/notification_model.js');
+                const notificationModel = await import('./backend/routesxcontroller/3_notification/notification_model.js');
                 if (notificationModel?.markAsReadByDivisiAndBooking) {
                     await notificationModel.markAsReadByDivisiAndBooking('Peneliti Validasi', bookingId);
                 }
@@ -4282,42 +4261,7 @@ app.post('/api/LSB_upload-filestempel', uploadStempelFile.fields([
 // END LSB (Loket Serah Berkas) Endpoint //
 
 ///
-// Logout manual: klik tombol logout
-app.post('/logout', async (req, res) => {
-  const { userid } = req.body;
-
-  try {
-    await pool.query(
-      `UPDATE a_2_verified_users 
-       SET statuspengguna = 'offline', last_active = NULL 
-       WHERE userid = $1`,
-      [userid]
-    );
-
-    res.status(200).json({ message: 'Logout berhasil' });
-  } catch (error) {
-    console.error('Error saat logout:', error.message);
-    res.status(500).json({ message: 'Terjadi kesalahan saat logout.' });
-  }
-});
-/////////////////
-app.post('/ping', async (req, res) => {
-  const { userid } = req.body;
-
-  try {
-    await pool.query(
-      `UPDATE a_2_verified_users 
-       SET last_active = NOW(), statuspengguna = 'online' 
-       WHERE userid = $1`,
-      [userid]
-    );
-
-    res.sendStatus(200);
-  } catch (error) {
-    console.error('Error saat ping:', error.message);
-    res.status(500).json({ message: 'Ping error' });
-  }
-});
+// Endpoint logout dan ping sudah dipindah ke authRoutes (/api/v1/auth/logout)
 ////////////////
 cron.schedule('*/10 * * * *', async () => {
   try {

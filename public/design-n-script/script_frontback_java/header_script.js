@@ -2,7 +2,7 @@ const userId = localStorage.getItem('userid'); // Ambil dari session/local stora
 
 window.addEventListener('unload', function () {
 if (userId) {
-    navigator.sendBeacon('/logout', JSON.stringify({ userid: userId }));
+    navigator.sendBeacon('/api/v1/auth/logout', JSON.stringify({ userid: userId }));
 }
 });
 ///////////////

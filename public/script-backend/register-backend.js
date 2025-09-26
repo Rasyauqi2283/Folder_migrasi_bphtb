@@ -30,7 +30,7 @@
         formData.append("fotoktp", fotoktp);
         try {
           // Mengirimkan data ke backend menggunakan fetch
-          const response = await fetch(`/api/auth/register`, {
+          const response = await fetch(`/api/v1/auth/register`, {
             method: "POST",
             credentials: 'include',
             body: formData,

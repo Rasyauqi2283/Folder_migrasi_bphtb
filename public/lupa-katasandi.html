@@ -149,7 +149,7 @@ fetch('/api/profile')
         alert('Data siap dikirim!');
 
         // Kirim data ke backend untuk memulai proses reset password
-        fetch('/api/auth/reset-password-request', {
+        fetch('/api/v1/auth/reset-password-request', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

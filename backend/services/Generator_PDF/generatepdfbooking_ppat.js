@@ -36,7 +36,7 @@ export default function registerGeneratePdfBooking(app, pool) {
                 bp.nilaiperolehanobjekpajaktidakkenapajak, bp.bphtb_yangtelah_dibayar, 
                 o.harga_transaksi, o.letaktanahdanbangunan, o.rt_rwobjekpajak, o.status_kepemilikan, o.keterangan, 
                 o.nomor_sertifikat, o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran, o.kelurahandesalp, o.kecamatanlp, o.jenis_perolehan,
-                vb.nama, vb.special_field,
+                vb.nama, vb.special_field, vb.tanda_tangan_path,
                 pp.luas_tanah, pp.njop_tanah, pp.luas_bangunan, pp.njop_bangunan, pp.luasxnjop_tanah, pp.luasxnjop_bangunan, pp.total_njoppbb,
                 ps.path_ttd_ppatk, ps.path_ttd_wp,
                 substring(ps.path_ttd_wp from '\\.([^\\.]*)$') as wp_ext,
@@ -335,16 +335,27 @@ export default function registerGeneratePdfBooking(app, pool) {
                     return path.resolve(process.cwd(), 'public', normalized);
                 };
 
-                const ppatAbs = toAbsolutePublicPath(data.path_ttd_wp);
-                if (ppatAbs && fs.existsSync(ppatAbs)) {
-                    doc.image(ppatAbs, col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 15, { width: signatureWidth });
+                const wpSignaturePath = data.path_ttd_wp;
+                const wpAbs = toAbsolutePublicPath(wpSignaturePath);
+                
+                console.log('🔍 [PDF] WP Signature debug:', {
+                    userid: userid,
+                    path_ttd_wp: wpSignaturePath,
+                    absolutePath: wpAbs,
+                    fileExists: wpAbs ? fs.existsSync(wpAbs) : false
+                });
+                
+                if (wpAbs && fs.existsSync(wpAbs)) {
+                    doc.image(wpAbs, col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 15, { width: signatureWidth });
+                    console.log('✅ [PDF] WP Signature rendered successfully');
                 } else {
+                    console.warn('⚠️ [PDF] WP Signature file not found, drawing line instead');
                     doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
                         .lineTo(col1X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
                         .stroke();
                 }
             } catch (err) {
-                console.warn('Failed to render WP signature:', err?.message || err);
+                console.warn('❌ [PDF] Failed to render WP signature:', err?.message || err);
                 doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
                     .lineTo(col1X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
                     .stroke();
@@ -369,7 +380,18 @@ export default function registerGeneratePdfBooking(app, pool) {
                     return path.resolve(process.cwd(), 'public', normalized);
                 };
             
-                const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+                // Prioritas: gunakan tanda_tangan_path dari user profile, fallback ke pat_6_sign
+                const signaturePath = data.tanda_tangan_path || data.path_ttd_ppatk;
+                const ppatAbs = toAbsolutePublicPath(signaturePath);
+                
+                console.log('🔍 [PDF] Signature debug:', {
+                    userid: userid,
+                    tanda_tangan_path: data.tanda_tangan_path,
+                    path_ttd_ppatk: data.path_ttd_ppatk,
+                    finalPath: signaturePath,
+                    absolutePath: ppatAbs,
+                    fileExists: ppatAbs ? fs.existsSync(ppatAbs) : false
+                });
                 
                 if (ppatAbs && fs.existsSync(ppatAbs)) {
                     // Pre-process gambar dengan sharp
@@ -380,9 +402,12 @@ export default function registerGeneratePdfBooking(app, pool) {
                     doc.image(processedImage, col2X + (columnWidth - signatureWidth)/2, signatureYPosition + 10, { 
                         width: signatureWidth
                     });
+                    console.log('✅ [PDF] Signature rendered successfully for user:', userid);
+                } else {
+                    console.warn('⚠️ [PDF] Signature file not found for user:', userid, 'Path:', signaturePath);
                 }
             } catch (err) {
-                console.warn('Failed to render PPAT signature:', err?.message || err);
+                console.warn('❌ [PDF] Failed to render PPAT signature for user:', userid, 'Error:', err?.message || err);
             }
 
             drawCenteredText(doc, `${data.nama || '........................'}`, col2X, signatureYPosition + 10, columnWidth);
