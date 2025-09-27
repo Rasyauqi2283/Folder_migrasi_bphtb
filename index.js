@@ -3937,8 +3937,33 @@ app.get('/test-email', async (req, res) => {
 });
 
 
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+// Healthcheck endpoint untuk Railway
+app.get('/health', async (req, res) => {
+  try {
+    // Quick database check with timeout
+    const dbCheck = Promise.race([
+      pool.query('SELECT 1'),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database timeout')), 3000)
+      )
+    ]);
+    
+    await dbCheck;
+    
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    console.error('Healthcheck failed:', error.message);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
 });
 // Endpoint untuk menampilkan login.html
 app.get('/', (_req, res) => {
@@ -3947,11 +3972,12 @@ app.get('/', (_req, res) => {
 const targetPath = path.join(__dirname, 'public', 'halaman_awal.html');
 console.log('Resolved path:', targetPath);
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', async () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  
+  // Run database check asynchronously without blocking server start
   checkDatabaseAndSession().catch(err => {
-    console.error("DB/session check failed:", err);
+    console.error("❌ DB/session check failed:", err);
   });
-  await checkDatabaseAndSession();
 });
