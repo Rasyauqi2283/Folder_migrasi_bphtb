@@ -1,7 +1,7 @@
 // BSRE Certificate Routes - Sertifikat Lokal untuk Peneliti Validasi
 import express from 'express';
 import { pool } from '../../../db.js';
-import { ttdVerifMiddleware } from '../../config/uploads/secure_upload_ttd.js';
+import { ttdVerifMiddleware } from '../../config/uploads/upload_ttdverif.js';
 import { saveQrToPublic } from '../../utils/qrcode.js';
 
 const router = express.Router();
