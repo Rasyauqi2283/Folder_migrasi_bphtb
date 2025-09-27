@@ -293,8 +293,41 @@ export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
     }
 };
 
-// Pilih transporter berdasarkan environment
-const transporter = process.env.NODE_ENV === 'production' ? gmailTransporter : testTransporter;
+// Note: transporter lama sudah tidak digunakan, menggunakan sendEmailSafe() untuk semua pengiriman email
+
+// Test koneksi email service
+export const testEmailService = async () => {
+    try {
+        console.log('🔍 Testing email service connection...');
+        
+        if (!emailService) {
+            console.warn('⚠️ No email service available');
+            return { success: false, error: 'No email service configured' };
+        }
+        
+        console.log(`📧 Using email service: ${emailService}`);
+        
+        // Test dengan email sederhana
+        const testResult = await sendEmailSafe({
+            to: process.env.EMAIL_USER || 'test@example.com',
+            subject: 'Test Email Service',
+            text: 'This is a test email to verify email service functionality.',
+            html: '<p>This is a test email to verify email service functionality.</p>'
+        });
+        
+        if (testResult.success) {
+            console.log('✅ Email service test successful');
+            return { success: true, service: emailService };
+        } else {
+            console.error('❌ Email service test failed:', testResult.error);
+            return { success: false, error: testResult.error };
+        }
+        
+    } catch (error) {
+        console.error('❌ Email service test error:', error.message);
+        return { success: false, error: error.message };
+    }
+};
 
 // patch 1
 // pembuatan otp
@@ -342,16 +375,15 @@ export const sendOTP = async (email, otp) => {
     };
     
     try {
-        // Mengirim email OTP dengan timeout
-        const info = await Promise.race([
-            transporter.sendMail(mailOptions),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000)
-            )
-        ]);
+        // Menggunakan sendEmailSafe untuk error handling yang robust
+        const result = await sendEmailSafe(mailOptions);
         
-        console.log(`✅ OTP telah dikirim ke email ${email}: ${info.response}`);
-        return info;
+        if (result.success) {
+            console.log(`✅ OTP telah dikirim ke email ${email}`);
+            return result.info;
+        } else {
+            throw new Error(result.error?.message || 'Failed to send OTP email');
+        }
     } catch (error) {
         console.error('❌ Gagal mengirim OTP:', error.message);
         throw error;
@@ -443,47 +475,82 @@ export const sendOTPWithRetry = async (email, otp, retries = 3) => {
     }
 };
 
-// patch 2
-// mengirim notifikasi email ke pengguna yang sudah dibuatkan akun
+// Mengirim notifikasi email ke pengguna yang sudah dibuatkan akun
 export const sendEmailNotification = async (email, userID, ppatkNumber) => {
     try {
-            const userQuery = await pool.query(
-      'SELECT nama, divisi FROM a_2_verified_users WHERE email = $1', 
-      [email]
-    );
-    if (!userQuery.rows.length) {
-      console.warn(`User ${email} tidak ditemukan`);
-      return;
-    }
-    const user = userQuery.rows[0];
-    const mailOptions = {
-      from: `"Sistem Registrasi" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'UserID Anda Telah Aktif',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2c3e50;">Akun Anda Telah Aktif</h2>
-          <p>Halo <strong>${user.nama}</strong>,</p>
-          
-          <p>Berikut detail akun Anda:</p>
-          
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <p><strong>User ID:</strong> ${userID}</p>
-            ${ppatkNumber ? `<p><strong>Nomor PPAT:</strong> ${ppatkNumber}</p>` : ''}
-            <p><strong>Divisi:</strong> ${user.divisi}</p>
-          </div>
-          
-          <p>Anda sekarang dapat login ke sistem menggunakan email ini.</p>
-          
-          <p style="margin-top: 30px;">Hormat kami,<br>
-          <strong>Tim Sistem</strong></p>
-        </div>
-      `
-    };
-    await transporter.sendMail(mailOptions);
-    console.log(`Email terkirim ke ${email}`);
+        console.log(`📧 Sending user notification email to ${email} for userID: ${userID}`);
+        
+        const userQuery = await pool.query(
+            'SELECT nama, divisi FROM a_2_verified_users WHERE email = $1', 
+            [email]
+        );
+        
+        if (!userQuery.rows.length) {
+            console.warn(`⚠️ User ${email} tidak ditemukan`);
+            return { success: false, error: 'User not found' };
+        }
+        
+        const user = userQuery.rows[0];
+        
+        const mailOptions = {
+            to: email,
+            subject: 'UserID Anda Telah Aktif - Sistem BAPPENDA',
+            text: `Halo ${user.nama},\n\nAkun Anda telah aktif dengan detail:\nUser ID: ${userID}\n${ppatkNumber ? `Nomor PPAT: ${ppatkNumber}\n` : ''}Divisi: ${user.divisi}\n\nAnda sekarang dapat login ke sistem menggunakan email ini.\n\nHormat kami,\nTim Sistem`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">🎉 Akun Anda Telah Aktif</h1>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+                        <p style="font-size: 16px; color: #333;">Halo <strong style="color: #2c3e50;">${user.nama}</strong>,</p>
+                        
+                        <p style="color: #666; line-height: 1.6;">Selamat! Akun Anda telah berhasil dibuat dan aktif. Berikut adalah detail akun Anda:</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2c3e50; margin-top: 0;">📋 Detail Akun</h3>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">User ID:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${userID}</span></p>
+                            ${ppatkNumber ? `<p style="margin: 10px 0;"><strong style="color: #495057;">Nomor PPAT:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${ppatkNumber}</span></p>` : ''}
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Divisi:</strong> <span style="color: #28a745; font-weight: bold;">${user.divisi}</span></p>
+                        </div>
+                        
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0; font-weight: bold;">✅ Status: Akun Aktif</p>
+                            <p style="margin: 5px 0 0 0;">Anda sekarang dapat login ke sistem menggunakan email ini.</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app'}/login.html" 
+                               style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                🚀 Login ke Sistem
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #e9ecef; margin: 30px 0;">
+                        
+                        <p style="color: #666; font-size: 14px; margin: 0;">
+                            <strong>Hormat kami,</strong><br>
+                            <span style="color: #2c3e50;">Tim Sistem BAPPENDA</span>
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+        
+        // Menggunakan sendEmailSafe untuk error handling yang robust
+        const result = await sendEmailSafe(mailOptions);
+        
+        if (result.success) {
+            console.log(`✅ Email notification sent successfully to ${email} for userID: ${userID}`);
+            return { success: true, message: 'Email sent successfully' };
+        } else {
+            console.error(`❌ Failed to send email notification to ${email}:`, result.error);
+            return { success: false, error: result.error };
+        }
+        
     } catch (error) {
-        console.error('Gagal mengirim email:', error.message);
+        console.error(`❌ Error in sendEmailNotification for ${email}:`, error.message);
+        return { success: false, error: error.message };
     }
 };
 
@@ -513,9 +580,16 @@ export const sendResetEmail = async (to, link) => {
     };
 
     try {
-        await transporter.sendMail(mailOptions);
+        const result = await sendEmailSafe(mailOptions);
+        
+        if (result.success) {
+            console.log(`✅ Reset password email sent successfully to ${to}`);
+        } else {
+            console.error(`❌ Failed to send reset password email to ${to}:`, result.error);
+            throw new Error('Gagal mengirim email reset password');
+        }
     } catch (err) {
-        console.error('Email Error:', err);
+        console.error('❌ Email Error:', err.message);
         throw new Error('Gagal mengirim email');
     }
 };

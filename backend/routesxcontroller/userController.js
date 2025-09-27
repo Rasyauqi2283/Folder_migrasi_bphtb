@@ -122,9 +122,14 @@ export const assignUserIdHandler = async (req, res) => {
             
             // Send email notification
             try {
-                await sendEmailNotification(email, newUserID, ppatk_khusus);
+                const emailResult = await sendEmailNotification(email, newUserID, ppatk_khusus);
+                if (emailResult.success) {
+                    console.log(`✅ Email notification sent successfully to ${email}`);
+                } else {
+                    console.error(`❌ Email notification failed for ${email}:`, emailResult.error);
+                }
             } catch (emailError) {
-                console.error('Email error:', emailError);
+                console.error(`❌ Email notification error for ${email}:`, emailError.message);
             }
 
             return res.status(200).json({

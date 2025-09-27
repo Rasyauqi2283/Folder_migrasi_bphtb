@@ -4323,6 +4323,34 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Test email service endpoint
+app.get('/test-email', async (req, res) => {
+  try {
+    const { testEmailService } = await import('./backend/services/emailservice.js');
+    const result = await testEmailService();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: 'Email service is working',
+        service: result.service
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Email service test failed',
+        error: result.error
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Email service test error',
+      error: error.message
+    });
+  }
+});
+
 // Endpoint untuk menampilkan login.html
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname,'public', 'halaman_awal.html'));
