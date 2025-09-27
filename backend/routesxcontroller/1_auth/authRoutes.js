@@ -575,4 +575,41 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// 7. Ping endpoint (check ✔)
+router.post('/ping', async (req, res) => {
+  try {
+    // Test database connection
+    const dbTest = await pool.query('SELECT NOW() as current_time');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Pong! API is working',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: true,
+        current_time: dbTest.rows[0].current_time
+      },
+      server: {
+        node_version: process.version,
+        environment: process.env.NODE_ENV || 'development'
+      }
+    });
+  } catch (error) {
+    console.error('Error in ping endpoint:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Ping failed',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: false,
+        error: error.message
+      },
+      server: {
+        node_version: process.version,
+        environment: process.env.NODE_ENV || 'development'
+      }
+    });
+  }
+});
+
 export default router;

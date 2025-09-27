@@ -15,7 +15,7 @@ export async function initNotifications(options = {}) {
 
     try {
         // Ambil profil user
-        const res = await fetch('/api/profile');
+        const res = await fetch('/api/v1/auth/profile');
         if (!res.ok) throw new Error('Gagal memuat profil');
         const user = await res.json();
         const userId = user.id || user.userid;
@@ -110,7 +110,7 @@ export async function initNotifications(options = {}) {
                     return '/LTB/TerimaBerkas-SSPD/terima-berkas-sspd.html';
                 }
                 if (divisi === 'lsb' || divisi === 'loket serah berkas') {
-                    return '/admins_LSB/adminv_pelayananpenyerahansspd/adminv_Pelayanan_Penyerahan_SSPD/admin_pelayanan_penyerahansspd.html';
+                    return '/LSB/Pelayanan_Penyerahan_SSPD/pelayanan_penyerahansspd.html';
                 }
                 if (divisi === 'administrator' || divisi === 'admin') {
                     return '/admin-dashboard.html';
