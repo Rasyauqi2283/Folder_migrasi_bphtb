@@ -297,3 +297,5 @@ ConnectError: [aborted] Error
 
 
 tester besok {email nodemailer, test kesesuaian (check), atur design}
+
+task hari ini (kerapihan (folder dan file), ping admin to ltb (admin-datauser-ppat), perbaikan design,cek alur, view document not tab)

@@ -10,6 +10,109 @@
   <!---->
   <link rel="stylesheet" href="design-n-script/design_css/registrasi-design.css">
 
+  <style>
+/* ===== KTP Preview (Glass-Morphism) ===== */
+.ktp-preview {
+  margin-top: 15px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+  animation: slideDown 0.3s ease-out;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== HEADER ===== */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: rgba(0,200,255,0.25);
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+  backdrop-filter: blur(12px);
+}
+
+.preview-header h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Tombol hapus (X) */
+.remove-preview {
+  background: none;
+  border: none;
+  color: #f1f5f9;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+.remove-preview:hover {
+  background-color: rgba(255,255,255,0.2);
+}
+
+/* ===== CONTENT ===== */
+.preview-content {
+  padding: 16px;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.preview-content img {
+  max-width: 200px;
+  max-height: 120px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.preview-info {
+  flex: 1;
+}
+
+.preview-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #e2e8f0;      /* teks lembut putih-abu */
+}
+
+.preview-info strong {
+  color: #fff;         /* highlight info penting */
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .preview-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .preview-content img {
+    max-width: 100%;
+    max-height: 150px;
+  }
+}
+
+  </style>
+
   <script>
     function showError(inputId, message) {
         const input = document.getElementById(inputId);
@@ -34,6 +137,87 @@
     function closeModal(e) {
         document.getElementById('modalOverlay').classList.remove('show');
     }
+
+    // KTP Preview Functions
+    function showKTPPreview(file) {
+        const preview = document.getElementById('ktpPreview');
+        const previewImage = document.getElementById('ktpPreviewImage');
+        const fileName = document.getElementById('ktpFileName');
+        const fileSize = document.getElementById('ktpFileSize');
+        const fileType = document.getElementById('ktpFileType');
+
+        if (file && file.type.startsWith('image/')) {
+            // Show preview container
+            preview.style.display = 'block';
+
+            // Create file reader
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Update file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileType.textContent = file.type.toUpperCase();
+
+            // Scroll to preview
+            preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function removeKTPPreview() {
+        const preview = document.getElementById('ktpPreview');
+        const fileInput = document.getElementById('fotoktp');
+        
+        // Hide preview
+        preview.style.display = 'none';
+        
+        // Clear file input
+        fileInput.value = '';
+        
+        // Clear preview image
+        document.getElementById('ktpPreviewImage').src = '';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // File input change event
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('fotoktp');
+        
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file type
+                const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG, atau GIF.');
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Validate file size (max 5MB)
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    alert('Ukuran file terlalu besar. Maksimal 5MB.');
+                    fileInput.value = '';
+                    return;
+                }
+
+                showKTPPreview(file);
+            } else {
+                removeKTPPreview();
+            }
+        });
+    });
     </script>    
 </head>
 <body>
@@ -43,6 +227,22 @@
         <div class="file-input">
             <label for="fotoktp">KTP</label>
             <input type="file" id="fotoktp" name="fotoktp" accept="image/png, image/jpeg, image/jpg, image/gif" required>
+            
+            <!-- Preview Container -->
+            <div id="ktpPreview" class="ktp-preview" style="display: none;">
+                <div class="preview-header">
+                    <h4>Preview KTP</h4>
+                    <button type="button" class="remove-preview" onclick="removeKTPPreview()">×</button>
+                </div>
+                <div class="preview-content">
+                    <img id="ktpPreviewImage" src="" alt="Preview KTP">
+                    <div class="preview-info">
+                        <p><strong>File:</strong> <span id="ktpFileName"></span></p>
+                        <p><strong>Ukuran:</strong> <span id="ktpFileSize"></span></p>
+                        <p><strong>Format:</strong> <span id="ktpFileType"></span></p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="autoFillSuggestion" class="auto-fill-suggestion">
@@ -52,6 +252,7 @@
             <button type="button" class="auto-fill-btn" onclick="applyAutoFill()">Gunakan Data Ini</button>
         </div>
         <small onclick="openModal()">panduan foto KTP!</small>
+        <small>pastikan nik dan nama lengkap sesuai dengan ktp yang didaftarkan</small>
     </div>
     <form id="registration-form">
         <div class="form-row">
@@ -74,7 +275,6 @@
                     <div id="teleponError" class="error-message">Nomor telepon tidak valid</div>
                     <small id="teleponInfo" style="color: #666; font-size: 0.8em;">Contoh: 08123456789</small>
                 </div>
-                <small>pastikan nik dan nama lengkap sesuai dengan ktp yang didaftarkan</small>
             </div>
             <div class="form-column">
                 <div class="form-group">
