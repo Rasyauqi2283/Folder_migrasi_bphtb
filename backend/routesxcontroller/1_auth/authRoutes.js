@@ -137,30 +137,80 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   const { nama, nik, telepon, email, password } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
+  // 🔒 SECURITY: Validasi session - User yang sudah login tidak boleh registrasi
+  if (req.session.user) {
+    console.log('🚫 [REGISTER] User already logged in:', {
+      sessionUserId: req.session.user.userid,
+      sessionEmail: req.session.user.email,
+      formEmail: email,
+      action: 'BLOCKED'
+    });
+    return res.status(400).json({ 
+      success: false,
+      message: 'Anda sudah login. Silakan logout terlebih dahulu untuk registrasi akun baru.',
+      redirectTo: '/profile.html'
+    });
+  }
+
   // Validasi input
   if (!nama || !nik || !telepon || !email || !password || !secureFile) {
-    return res.status(400).json({ message: 'Semua data harus diisi dengan benar' });
+    return res.status(400).json({ 
+      success: false,
+      message: 'Semua data harus diisi dengan benar' 
+    });
+  }
+
+  // Validasi format email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Format email tidak valid' 
+    });
+  }
+
+  // Validasi panjang password
+  if (password.length < 6) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Password minimal 6 karakter' 
+    });
   }
 
   try {
+    console.log('🔍 [REGISTER] Starting registration process:', {
+      email: email,
+      nama: nama,
+      nik: nik,
+      hasSecureFile: !!secureFile,
+      timestamp: new Date().toISOString()
+    });
+
     // Cek apakah email sudah ada di verified_users dengan status selain "unverified"
     const checkEmailQueryVerified = 'SELECT * FROM a_2_verified_users WHERE email = $1';
     const resultEmailVerified = await pool.query(checkEmailQueryVerified, [email]);
 
     if (resultEmailVerified.rows.length > 0) {
-      return res.status(400).json({ message: 'Email ini sudah terdaftar dengan status yang valid. Anda tidak bisa mendaftar ulang.' });
+      console.log('🚫 [REGISTER] Email already verified:', email);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email ini sudah terdaftar dengan status yang valid. Anda tidak bisa mendaftar ulang.' 
+      });
     }
 
     // Hash password sebelum disimpan
     const hashedPassword = await bcrypt.hash(password, 10);
     
     const otp = generateOTP();
+    console.log('🔐 [REGISTER] Password hashed, OTP generated:', { otpLength: otp.length });
 
     // Cek apakah email sudah ada di unverified_users
     const checkEmailQuery = 'SELECT * FROM a_1_unverified_users WHERE email = $1';
     const resultEmail = await pool.query(checkEmailQuery, [email]);
 
     if (resultEmail.rows.length > 0) {
+      console.log('🔄 [REGISTER] Email exists in unverified, updating data:', email);
+      
       // Jika ada, update semua data pengguna termasuk OTP yang baru
       const updateQuery = `
       UPDATE a_1_unverified_users
@@ -173,7 +223,8 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
           foto = $6,
           otp = $7,
           verifiedstatus = $8,
-          fotoprofil = $9
+          fotoprofil = $9,
+          created_at = NOW()
       WHERE email = $10
       RETURNING *;
       `;
@@ -183,39 +234,80 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
 
       // Update data pengguna yang ada di unverified_users
       const updatedUser = await pool.query(updateQuery, updateValues);
+      console.log('✅ [REGISTER] User data updated successfully');
 
       // Kirim OTP baru secara async (tidak menghalangi response)
-      await sendOTPAsync(email, otp);
+      try {
+        await sendOTPAsync(email, otp);
+        console.log('📧 [REGISTER] OTP sent successfully to:', email);
+      } catch (emailError) {
+        console.error('❌ [REGISTER] Failed to send OTP:', emailError.message);
+        // Jangan gagalkan registrasi jika email gagal, user bisa request ulang
+      }
 
       res.status(200).json({
-      message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
-      redirectTo: '/verifikasi-otp.html'
+        success: true,
+        message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
+        redirectTo: '/verifikasi-otp.html'
       });
     } else {
+      console.log('🆕 [REGISTER] New email, creating new user:', email);
+      
       // Jika email tidak ada, insert data baru
       const insertQuery = `
-      INSERT INTO a_1_unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
+      INSERT INTO a_1_unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *;
       `;
       const insertValues = [
       nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', ''
       ];
 
       // Insert data pengguna baru
-      await pool.query(insertQuery, insertValues);
+      const newUser = await pool.query(insertQuery, insertValues);
+      console.log('✅ [REGISTER] New user created successfully:', newUser.rows[0].id);
 
       // Kirim OTP baru secara async (tidak menghalangi response)
-      await sendOTPAsync(email, otp);
+      try {
+        await sendOTPAsync(email, otp);
+        console.log('📧 [REGISTER] OTP sent successfully to:', email);
+      } catch (emailError) {
+        console.error('❌ [REGISTER] Failed to send OTP:', emailError.message);
+        // Jangan gagalkan registrasi jika email gagal, user bisa request ulang
+      }
 
       res.status(200).json({
-      message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
-      redirectTo: '/verifikasi-otp.html'
+        success: true,
+        message: 'Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.',
+        redirectTo: '/verifikasi-otp.html'
       });
     }
 
   } catch (err) {
-    console.error('Error saat registrasi:', err.message);
-    res.status(500).json({ message: 'Gagal melakukan registrasi.' });
+    console.error('❌ [REGISTER] Registration failed:', {
+      error: err.message,
+      stack: err.stack,
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Clean up secure file if registration fails
+    if (secureFile && secureFile.fileId) {
+      try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const secureFilePath = path.join(process.cwd(), 'secure_storage', 'ktp', `${secureFile.fileId}.bin`);
+        await fs.unlink(secureFilePath);
+        console.log('🧹 [REGISTER] Cleaned up secure file:', secureFile.fileId);
+      } catch (cleanupError) {
+        console.error('⚠️ [REGISTER] Failed to cleanup secure file:', cleanupError.message);
+      }
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Gagal melakukan registrasi. Silakan coba lagi atau hubungi administrator.',
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    });
   }
 });
 
