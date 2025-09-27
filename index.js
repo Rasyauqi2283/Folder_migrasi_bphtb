@@ -110,6 +110,7 @@ import notificationRouter from './backend/routesxcontroller/3_notification/notif
 import { triggerNotificationByStatus } from './backend/routesxcontroller/3_notification/notification_service.js';
 import { sendNotificationToLtb } from './backend/routesxcontroller/3_notification/notification_wrapper.js';
 import adminRouter from './backend/routesxcontroller/4_admin/adminRoutes.js';
+import notificationWarehouseRouter from './backend/routesxcontroller/4_admin/notification_warehouse_routes.js';
 import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
 // Import BSRE routes
 import bsreAuthRouter from './backend/routesxcontroller/8_bsre/bsre_auth_routes.js';
@@ -266,6 +267,7 @@ app.use('/api/v1/auth', passwordResetRouter);
 app.use('/api/v1/auth', profileRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/notification-warehouse', notificationWarehouseRouter);
 
 // Register BSRE routes
 app.use('/api/bsre', bsreAuthRouter);

@@ -256,10 +256,11 @@
       <select id="userStatusFilter">
         <option value="">Semua</option>
         <option value="aktif">Aktif</option>
-        <option value="nonaktif">Nonaktif</option>
+        <option value="non-aktif">Nonaktif</option>
         <option value="meninggal">Meninggal</option>
         <option value="suspend">Suspend</option>
       </select>
+      <input type="text" id="userSearch" placeholder="Cari nama, userid, email..." style="padding:4px 8px; border:1px solid #ccc; border-radius:4px; min-width:200px;">
       <button id="reloadUsers">Muat Ulang</button>
     </div>
     <div class="table-responsive">
@@ -282,25 +283,8 @@
 
 <script>
 /* ---------- sample data (ganti dengan fetch berdasar backend) ---------- */
-const notificationsData = {
-  ppat_ltb: [
-    { nobooking:'NB-001', userid:'USR21', special_field:'Field A', ppatk_khusus:'Ya', noppbb:'NP-1001', jenis_wajib_pajak:'PBB', updated:'2025-09-10' },
-    { nobooking:'NB-002', userid:'USR22', special_field:'Field C', ppatk_khusus:'Tidak', noppbb:'NP-1002', jenis_wajib_pajak:'Pajak Bumi', updated:'2025-09-12' },
-  ],
-  ltb_lsb: [
-    { nobooking:'NB-101', userid:'USR45', special_field:'Field L', ppatk_khusus:'Ya', noppbb:'NP-3008', jenis_wajib_pajak:'PBB', updated:'2025-09-14' },
-  ],
-  lsb_ppat: [
-    { nobooking:'NB-201', userid:'USR77', special_field:'Field Z', ppatk_khusus:'Tidak', noppbb:'NP-5577', jenis_wajib_pajak:'Pajak Bumi', updated:'2025-09-16' },
-  ]
-};
 
-const ppatUsers = [
-  { nama:'Teguh Susilo', special_field:'SpA', userid:'USR-12', divisi:'PPAT', status:'Aktif', ppatk_khusus:'Ya' },
-  { nama:'Nina Hart', special_field:'LB', userid:'USR-21', divisi:'PPAT', status:'Nonaktif', ppatk_khusus:'Tidak' },
-  { nama:'Budi Sant', special_field:'LA', userid:'USR-45', divisi:'PPAT', status:'Pindah Kerja', ppatk_khusus:'Ya' },
-  { nama:'Mawar', special_field:'SS', userid:'USR-70', divisi:'PPAT', status:'Meninggal', ppatk_khusus:'Tidak' }
-];
+// Sample data removed - now using real data from database via backend API
 
 /* ---------- state ---------- */
 let currentCategory = 'ppat_ltb'; // default
@@ -310,6 +294,13 @@ const notifSearch = document.getElementById('notifSearch');
 const clearSearch = document.getElementById('clearSearch');
 
 function renderNotifications(){
+  // For PPAT → LTB, use backend data loaded by loadNotifications()
+  if (currentCategory === 'ppat_ltb') {
+    // Data is already loaded by loadNotifications() function
+    return;
+  }
+  
+  // For other categories, use sample data
   const rows = [];
   const q = (notifSearch.value || '').trim().toLowerCase();
   const list = notificationsData[currentCategory] || [];
@@ -341,21 +332,257 @@ segButtons.forEach(btn=>{
     segButtons.forEach(b=> b.setAttribute('aria-pressed','false'));
     btn.setAttribute('aria-pressed','true');
     currentCategory = btn.dataset.cat;
-    renderNotifications();
+    
+    // Load notifications from backend for PPAT → LTB, use sample data for others
+    if (currentCategory === 'ppat_ltb') {
+      loadNotifications();
+    } else {
+      renderNotifications();
+    }
   });
 });
 
 /* search */
-notifSearch.addEventListener('input', ()=> renderNotifications());
-clearSearch.addEventListener('click', ()=>{ notifSearch.value=''; renderNotifications(); });
+notifSearch.addEventListener('input', ()=> {
+  if (currentCategory === 'ppat_ltb') {
+    loadNotifications();
+  } else {
+    renderNotifications();
+  }
+});
+clearSearch.addEventListener('click', ()=>{ 
+  notifSearch.value=''; 
+  if (currentCategory === 'ppat_ltb') {
+    loadNotifications();
+  } else {
+    renderNotifications();
+  }
+});
 
 /* Lihat button (delegation) */
-document.getElementById('notifTable').addEventListener('click', (e)=>{
+document.getElementById('notifTable').addEventListener('click', async (e)=>{
   const b = e.target.closest('button[data-nobook]');
   if(!b) return;
+  
   const nb = b.dataset.nobook;
-  alert('Open detail/preview untuk ' + nb + '  (integrasikan modal / viewPDF backend)');
+  const bookingId = b.dataset.bookingId;
+  
+  console.log('🔍 Opening detail for:', { nobooking: nb, bookingId });
+  
+  if (currentCategory === 'ppat_ltb' && bookingId) {
+    try {
+      // Fetch detail from backend
+      const js = await fetchJSON(`/api/admin/notification-warehouse/ppat-ltb/${bookingId}`);
+      const data = js.data;
+      
+      // Show detail modal
+      showNotificationDetail(data);
+    } catch (error) {
+      console.error('❌ Error fetching notification detail:', error);
+      alert('Gagal mengambil detail notifikasi: ' + error.message);
+    }
+  } else {
+    // Fallback for other categories or missing bookingId
+    alert('Open detail/preview untuk ' + nb + '  (integrasikan modal / viewPDF backend)');
+  }
 });
+
+// Function to show notification detail modal
+function showNotificationDetail(data) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3>Detail Notifikasi PPAT → LTB</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>No. Booking:</label>
+            <span>${data.nobooking || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>User ID:</label>
+            <span>${data.userid || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Nama PPAT:</label>
+            <span>${data.ppat_nama || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Divisi PPAT:</label>
+            <span>${data.ppat_divisi || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>PPATK Khusus:</label>
+            <span>${data.ppatk_khusus || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Nama Wajib Pajak:</label>
+            <span>${data.namawajibpajak || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Jenis Wajib Pajak:</label>
+            <span>${data.jenis_wajib_pajak || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>No. PPBB:</label>
+            <span>${data.noppbb || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Status LTB:</label>
+            <span class="status-badge status-${data.ltb_status?.toLowerCase() || 'unknown'}">${data.ltb_status || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Track Status:</label>
+            <span class="status-badge status-${data.ltb_trackstatus?.toLowerCase() || 'unknown'}">${data.ltb_trackstatus || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Pengirim LTB:</label>
+            <span>${data.ltb_pengirim || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Catatan LTB:</label>
+            <span>${data.ltb_catatan || '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Dibuat:</label>
+            <span>${data.created_at ? new Date(data.created_at).toLocaleString('id-ID') : '-'}</span>
+          </div>
+          <div class="detail-item">
+            <label>Diupdate:</label>
+            <span>${data.updated_at ? new Date(data.updated_at).toLocaleString('id-ID') : '-'}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
+        <button class="btn btn-primary" onclick="viewBookingDocuments('${data.bookingid}')">Lihat Dokumen</button>
+      </div>
+    </div>
+  `;
+  
+  // Add modal styles if not exists
+  if (!document.getElementById('modal-styles')) {
+    const style = document.createElement('style');
+    style.id = 'modal-styles';
+    style.textContent = `
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+      .modal-content {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        width: 90%;
+        max-width: 600px;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+      }
+      .modal-header h3 {
+        margin: 0;
+        color: #333;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+      }
+      .modal-body {
+        padding: 20px;
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+      .detail-item {
+        display: flex;
+        flex-direction: column;
+      }
+      .detail-item label {
+        font-weight: bold;
+        color: #666;
+        margin-bottom: 5px;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      .detail-item span {
+        color: #333;
+        font-size: 14px;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+      .status-diolah { background: #e3f2fd; color: #1976d2; }
+      .status-diterima { background: #e8f5e8; color: #2e7d32; }
+      .status-dilanjutkan { background: #fff3e0; color: #f57c00; }
+      .status-unknown { background: #f5f5f5; color: #666; }
+      .modal-footer {
+        padding: 20px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .btn-primary {
+        background: #007bff;
+        color: white;
+      }
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(modal);
+  
+  // Close on overlay click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+}
+
+// Function to view booking documents
+function viewBookingDocuments(bookingId) {
+  console.log('🔍 Viewing documents for booking:', bookingId);
+  // TODO: Implement document viewer
+  alert('Fitur lihat dokumen akan diimplementasikan untuk booking: ' + bookingId);
+}
 
 /* ---------- STATUS PANEL ---------- */
 const statusBody = document.getElementById('statusBody');
@@ -410,63 +637,307 @@ renderStatus();
 
     async function loadNotifications(){
       try{
-        const js = await fetchJSON('/api/admin/status-ppat/notifications?page=1&limit=50');
+        console.log('🔍 Loading notifications for category:', currentCategory);
+        
         const tbody = qs('#notifTable tbody');
-        tbody.innerHTML='';
-        const rows = js.rows||[];
-        if(!rows.length){
-          const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=8; td.textContent='Tidak ada Data masuk, 0 to 0 Data Pages'; return;
+        
+        // Show loading indicator
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
+        
+        let url = '';
+        if (currentCategory === 'ppat_ltb') {
+          const search = (notifSearch.value || '').trim();
+          url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+        } else {
+          // For other categories, use sample data for now
+          url = '/api/admin/status-ppat/notifications?page=1&limit=50';
         }
+        
+        console.log('🔍 Fetching from URL:', url);
+        const js = await fetchJSON(url);
+        tbody.innerHTML='';
+        
+        const rows = currentCategory === 'ppat_ltb' ? (js.data || []) : (js.rows || []);
+        
+        if(!rows.length){
+          const tr = tbody.insertRow(); 
+          const td = tr.insertCell(); 
+          td.colSpan=8; 
+          td.textContent = currentCategory === 'ppat_ltb' ? 
+            'Tidak ada notifikasi PPAT → LTB dengan status "Diolah"' : 
+            'Tidak ada Data masuk, 0 to 0 Data Pages'; 
+          return;
+        }
+        
         rows.forEach(r=>{
           const tr = tbody.insertRow();
           const vals = [
             r.nobooking||'-',
             r.userid||'-',
-            r.special_field||'-',
+            r.special_field||r.ppat_divisi||'-',
             r.ppatk_khusus||'-',
             r.noppbb||'-',
             r.jenis_wajib_pajak||'-',
-            (r.updated_at||'-'),
+            r.updated||r.updated_at||'-',
             'Detail'
           ];
-          vals.forEach((v,idx)=>{ const td = tr.insertCell(); td.textContent = v; if(idx===7){ td.innerHTML = '<button class="btn-sm" data-nobook="'+(r.nobooking||'')+'">Lihat</button>'; }});
+          vals.forEach((v,idx)=>{ 
+            const td = tr.insertCell(); 
+            td.textContent = v; 
+            if(idx===7){ 
+              td.innerHTML = `<button class="btn-sm" data-booking-id="${r.bookingid||r.nobooking||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
+            }
+          });
         });
+        
+        console.log(`✅ Loaded ${rows.length} notifications for ${currentCategory}`);
       }catch(e){
+        console.error('❌ Error loading notifications:', e);
         const tbody = qs('#notifTable tbody');
         tbody.innerHTML='';
-        const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=8; td.textContent='Gagal memuat data: '+e.message;
+        const tr = tbody.insertRow(); 
+        const td = tr.insertCell(); 
+        td.colSpan=8; 
+        td.textContent='Gagal memuat data: '+e.message;
       }
     }
 
     async function loadUsers(){
       try{
-        const status = (qs('#userStatusFilter').value||'').trim();
-        const url = status ? `/api/admin/status-ppat/users?page=1&limit=50&status=${encodeURIComponent(status)}` : '/api/admin/status-ppat/users?page=1&limit=50';
-        const js = await fetchJSON(url);
+        console.log('🔍 Loading PPAT/PPATS users from backend...');
+        
         const tbody = qs('#userTable tbody');
+        
+        // Show loading indicator
+        tbody.innerHTML = '<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
+        
+        const status = (qs('#userStatusFilter').value||'').trim();
+        const search = (qs('#userSearch').value||'').trim();
+        
+        let url = '/api/admin/notification-warehouse/ppat-users?page=1&limit=50';
+        if (status) url += `&status=${encodeURIComponent(status)}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        
+        console.log('🔍 Fetching PPAT users from URL:', url);
+        const js = await fetchJSON(url);
         tbody.innerHTML='';
-        const rows = js.rows||[];
+        
+        const rows = js.data || [];
+        
         if(!rows.length){
-          const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=6; td.textContent='Tidak ada Data masuk, 0 to 0 Data Pages'; return;
+          const tr = tbody.insertRow(); 
+          const td = tr.insertCell(); 
+          td.colSpan=6; 
+          td.textContent = 'Tidak ada data pengguna PPAT/PPATS ditemukan'; 
+          return;
         }
+        
         rows.forEach(r=>{
           const tr = tbody.insertRow();
           const vals = [r.nama||'-', r.userid||'-', r.divisi||'-', r.status||'-', r.ppatk_khusus||'-', r.special_field||'-'];
-          vals.forEach(v=>{ const td = tr.insertCell(); td.textContent = v; });
+          vals.forEach((v,idx)=>{ 
+            const td = tr.insertCell(); 
+            td.textContent = v; 
+            if(idx===5){ 
+              td.innerHTML = `<button class="btn-sm" data-userid="${r.userid||''}" data-user-id="${r.id||''}">Edit</button>`; 
+            }
+          });
         });
+        
+        console.log(`✅ Loaded ${rows.length} PPAT/PPATS users from backend`);
       }catch(e){
+        console.error('❌ Error loading PPAT users:', e);
         const tbody = qs('#userTable tbody');
         tbody.innerHTML='';
-        const tr = tbody.insertRow(); const td = tr.insertCell(); td.colSpan=6; td.textContent='Gagal memuat data: '+e.message;
+        const tr = tbody.insertRow(); 
+        const td = tr.insertCell(); 
+        td.colSpan=6; 
+        td.textContent='Gagal memuat data: '+e.message;
       }
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
       loadNotifications();
       loadUsers();
-      const reload = qs('#reloadUsers'); if (reload) reload.addEventListener('click', loadUsers);
-      const sel = qs('#userStatusFilter'); if (sel) sel.addEventListener('change', loadUsers);
+      
+      // Event handlers for users
+      const reload = qs('#reloadUsers'); 
+      if (reload) reload.addEventListener('click', loadUsers);
+      
+      const statusFilter = qs('#userStatusFilter'); 
+      if (statusFilter) statusFilter.addEventListener('change', loadUsers);
+      
+      const userSearch = qs('#userSearch');
+      if (userSearch) {
+        let searchTimeout;
+        userSearch.addEventListener('input', () => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            loadUsers();
+          }, 500); // Debounce search
+        });
+      }
     });
+
+    // Event handler for Edit button
+    document.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('btn-sm') && e.target.textContent === 'Edit') {
+        const userid = e.target.dataset.userid;
+        const userId = e.target.dataset.userId;
+        
+        console.log('🔍 Edit button clicked for user:', { userid, userId });
+        
+        try {
+          // Fetch user detail from backend
+          const js = await fetchJSON(`/api/admin/notification-warehouse/ppat-users/${userid}`);
+          const userData = js.data;
+          
+          // Show edit modal
+          showUserEditModal(userData);
+        } catch (error) {
+          console.error('❌ Error fetching user detail:', error);
+          alert('Gagal mengambil detail pengguna: ' + error.message);
+        }
+      }
+    });
+
+    // Function to show user edit modal
+    function showUserEditModal(userData) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 500px;">
+          <div class="modal-header">
+            <h3>Edit Pengguna PPAT/PPATS</h3>
+            <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editUserForm">
+              <div class="form-group">
+                <label>Nama:</label>
+                <input type="text" id="editNama" value="${userData.nama || ''}" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>User ID:</label>
+                <input type="text" id="editUserid" value="${userData.userid || ''}" class="form-control" readonly>
+              </div>
+              <div class="form-group">
+                <label>Divisi:</label>
+                <select id="editDivisi" class="form-control">
+                  <option value="PPAT" ${userData.divisi === 'PPAT' ? 'selected' : ''}>PPAT</option>
+                  <option value="PPATS" ${userData.divisi === 'PPATS' ? 'selected' : ''}>PPATS</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Status PPAT:</label>
+                <select id="editStatusPpat" class="form-control">
+                  <option value="aktif" ${userData.status_ppat === 'aktif' ? 'selected' : ''}>Aktif</option>
+                  <option value="non-aktif" ${userData.status_ppat === 'non-aktif' ? 'selected' : ''}>Nonaktif</option>
+                  <option value="meninggal" ${userData.status_ppat === 'meninggal' ? 'selected' : ''}>Meninggal</option>
+                  <option value="suspend" ${userData.status_ppat === 'suspend' ? 'selected' : ''}>Suspend</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>PPATK Khusus:</label>
+                <input type="text" id="editPpatkKhusus" value="${userData.ppatk_khusus || ''}" class="form-control">
+              </div>
+              <div class="form-group">
+                <label>Special Field:</label>
+                <textarea id="editSpecialField" class="form-control" rows="3">${userData.special_field || ''}</textarea>
+              </div>
+              <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="editEmail" value="${userData.email || ''}" class="form-control">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Batal</button>
+            <button class="btn btn-primary" onclick="saveUserEdit('${userData.id}')">Simpan</button>
+          </div>
+        </div>
+      `;
+      
+      // Add modal styles if not exists
+      if (!document.getElementById('user-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'user-modal-styles';
+        style.textContent = `
+          .form-group {
+            margin-bottom: 15px;
+          }
+          .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+          }
+          .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+          }
+          .form-control:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+          }
+          textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(modal);
+      
+      // Close on overlay click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+
+    // Function to save user edit
+    window.saveUserEdit = async function(userId) {
+      try {
+        const formData = {
+          nama: document.getElementById('editNama').value,
+          divisi: document.getElementById('editDivisi').value,
+          status_ppat: document.getElementById('editStatusPpat').value,
+          ppatk_khusus: document.getElementById('editPpatkKhusus').value,
+          special_field: document.getElementById('editSpecialField').value,
+          email: document.getElementById('editEmail').value
+        };
+
+        console.log('🔍 Saving user edit:', { userId, formData });
+
+        // TODO: Implement PUT endpoint for updating user
+        // const response = await fetch(`/api/admin/notification-warehouse/ppat-users/${userId}`, {
+        //   method: 'PUT',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(formData),
+        //   credentials: 'include'
+        // });
+
+        // For now, just show success message
+        alert('Fitur edit pengguna akan segera diimplementasikan!');
+        
+        // Close modal
+        document.querySelector('.modal-overlay').remove();
+        
+        // Reload users list
+        loadUsers();
+        
+      } catch (error) {
+        console.error('❌ Error saving user edit:', error);
+        alert('Gagal menyimpan perubahan: ' + error.message);
+      }
+    };
   })();
   </script>
   <script type="module">
