@@ -5,6 +5,102 @@ import { sendEmail, sendEmailSafe } from '../../services/emailservice.js';
 
 const router = express.Router();
 
+//== CASE URGENT ADMIN, PREVIEW KTP ==//
+import { getSecureFile } from '../../config/secure_storage.js';
+import { addWatermark } from '../../utils/watermark.js';
+
+// Middleware untuk verifikasi admin
+const verifyAdmin = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  
+  const userRole = req.session.user.divisi;
+  if (userRole !== 'Admin' && userRole !== 'Super Admin') {
+    return res.status(403).json({ success: false, message: 'Access denied. Admin role required.' });
+  }
+  
+  next();
+};
+
+// GET /api/admin/ktp-preview/:userId - Preview KTP dengan watermark dan audit log
+router.get('/ktp-preview/:userId', verifyAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const adminUser = req.session.user;
+
+    console.log(`🔍 [ADMIN] KTP preview request by ${adminUser.nama} (${adminUser.userid}) for user ${userId}`);
+
+    // 1. Ambil data KTP dari tabel unverified
+    const { rows } = await pool.query(
+      'SELECT foto, nama, email FROM a_1_unverified_users WHERE id = $1',
+      [userId]
+    );
+    
+    if (!rows.length || !rows[0].foto) {
+      return res.status(404).json({ success: false, message: 'KTP tidak ditemukan' });
+    }
+
+    const userData = rows[0];
+    console.log(`📄 [ADMIN] Found KTP for user: ${userData.nama} (${userData.email})`);
+
+    // 2. Ambil file KTP terenkripsi dan dekripsi
+    const secureFile = await getSecureFile(userData.foto, userId, 'admin', req);
+    const buffer = secureFile.data;
+
+    // 3. Tambahkan watermark dengan informasi admin
+    const timestamp = new Date().toLocaleString('id-ID', { 
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    
+    const wmText = `Akses Admin: ${adminUser.nama} | ${timestamp} | IP: ${req.ip}`;
+    const watermarked = await addWatermark(buffer, wmText);
+
+    // 4. Kirim image dengan header yang tepat
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Disposition': `inline; filename="ktp_${userData.nama}_preview.png"`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    res.send(watermarked);
+
+    // 5. Catat log akses untuk audit trail
+    try {
+      await pool.query(
+        'INSERT INTO log_file_access(admin_name, userid, ip, user_agent, access_time) VALUES($1, $2, $3, $4, NOW())',
+        [
+          adminUser.nama,
+          userId,
+          req.ip || req.connection.remoteAddress,
+          req.headers['user-agent'] || 'Unknown'
+        ]
+      );
+      console.log(`📝 [AUDIT] KTP access logged for admin ${adminUser.nama} viewing user ${userId}`);
+    } catch (logError) {
+      console.error('❌ [AUDIT] Failed to log KTP access:', logError);
+      // Jangan gagal request jika logging gagal
+    }
+
+  } catch (error) {
+    console.error('❌ [ADMIN] KTP preview error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Gagal menampilkan KTP',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+
+
 // Helper function untuk mengirim notifikasi email perubahan data user
 async function sendUserUpdateNotificationEmail(userEmail, userName, userid, oldData, newData) {
   try {

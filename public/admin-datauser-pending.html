@@ -44,6 +44,15 @@
         cursor: not-allowed;
       }
     </style>
+    <script>
+      document.addEventListener('click', e=>{
+  if(e.target.classList.contains('btn-preview')){
+     const id = e.target.dataset.id;
+     const url = `/api/admin/ktp-preview/${id}?t=${Date.now()}`; // cache-buster
+     openModal(url);
+  }
+});
+    </script>
 </head>
 <body>
   <!-- Header Section -->
@@ -348,6 +357,7 @@
   
     <!-- User Form Card -->
     <div class="card form-card">
+      <button class="btn btn-info btn-preview" data-id="{{id}}">Preview KTP</button>
       <div id="userForm" class="userForm">
         <div class="form-group">
           <label for="userIDDropdown">User ID Prefix:</label>

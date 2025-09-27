@@ -183,14 +183,17 @@ export async function saveSecureFile(file, userId) {
  * @param {string} fileId - ID file
  * @param {string} userId - ID pengguna yang meminta
  * @param {string} requesterRole - Role yang meminta file
- * @returns {Buffer} - Data file asli
+ * @param {Object} req - Request object untuk logging (optional)
+ * @returns {Object} - {data: Buffer, metadata: Object}
  */
-export async function getSecureFile(fileId, userId, requesterRole = 'user') {
+export async function getSecureFile(fileId, userId, requesterRole = 'user', req = null) {
     try {
         // Validasi akses berdasarkan role
         if (requesterRole !== 'admin' && requesterRole !== 'super_admin') {
             throw new Error('Akses ditolak: Role tidak memiliki izin');
         }
+        
+        console.log(`🔒 [SECURE] Admin access request for file ${fileId} by user ${userId}`);
         
         const userDir = path.join(SECURE_STORAGE_PATH, 'ktp', userId);
         const metadataPath = path.join(userDir, `${fileId}_metadata.json`);
@@ -212,8 +215,12 @@ export async function getSecureFile(fileId, userId, requesterRole = 'user') {
         const authTag = Buffer.from(metadata.authTag, 'hex');
         const decryptedData = decryptFile(encryptedData, iv, authTag);
         
-        // Log akses file
-        await logFileAccess(fileId, userId, requesterRole, 'READ', req);
+        // Log akses file jika req tersedia
+        if (req) {
+            await logFileAccess(fileId, userId, requesterRole, 'READ', req);
+        }
+        
+        console.log(`🔒 [SECURE] File ${fileId} successfully decrypted for admin access`);
         
         return {
             data: decryptedData,
@@ -232,6 +239,7 @@ export async function getSecureFile(fileId, userId, requesterRole = 'user') {
  * @param {string} userId - ID pengguna
  * @param {string} requesterRole - Role yang mengakses
  * @param {string} action - Aksi yang dilakukan
+ * @param {Object} req - Request object
  */
 export async function logFileAccess(fileId, userId, requesterRole, action, req) {
     try {
@@ -241,8 +249,8 @@ export async function logFileAccess(fileId, userId, requesterRole, action, req) 
             userId,
             requesterRole,
             action,
-            ip: req.ip || null, // Bisa ditambahkan dari request
-            userAgent: req.headers['user-agent'] || null // Bisa ditambahkan dari request
+            ip: req?.ip || req?.connection?.remoteAddress || null,
+            userAgent: req?.headers?.['user-agent'] || null
         };
         
         const logDir = path.join(SECURE_STORAGE_PATH, 'logs');
