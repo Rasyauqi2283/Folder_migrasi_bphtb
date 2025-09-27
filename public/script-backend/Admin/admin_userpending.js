@@ -52,14 +52,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Assign to global variables
     completeUsers = completeUsersData;
     pendingUsers = pendingUsersData;
+    
+    console.log('📊 Loaded pending users:', pendingUsers);
+    console.log('📊 Loaded complete users:', completeUsers);
 
     // Initialize Preview KTP button as disabled
     const previewButton = document.querySelector('.btn-preview');
+    console.log('🔍 Initial preview button check:', previewButton);
+    
     if (previewButton) {
       previewButton.disabled = true;
       previewButton.style.opacity = '0.5';
       previewButton.style.cursor = 'not-allowed';
       previewButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
+      console.log('✅ Preview button initialized as disabled');
+    } else {
+      console.error('❌ Preview button not found during initialization');
+      // Try again after a short delay
+      setTimeout(() => {
+        const retryButton = document.querySelector('.btn-preview');
+        if (retryButton) {
+          retryButton.disabled = true;
+          retryButton.style.opacity = '0.5';
+          retryButton.style.cursor = 'not-allowed';
+          retryButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
+          console.log('✅ Preview button initialized on retry');
+        } else {
+          console.error('❌ Preview button still not found after retry');
+        }
+      }, 100);
     }
 
     // Pagination state
@@ -134,7 +155,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const divisiInput = document.getElementById("divisiInput");
     const ppatSpecialContainer = document.getElementById("ppatSpecialContainer");
     const urutKhusus = document.getElementById("urutKhusus");
-    let currentEmail = '';
 
     // Isi dropdown divisi
     userIDDropdown.innerHTML = `
@@ -148,20 +168,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('showFormButton')) {
         currentEmail = e.target.getAttribute('data-email');
+        console.log('🔍 Assign ID clicked for email:', currentEmail);
         
         // Aktifkan button Preview KTP dan set data-id
-        const previewButton = document.querySelector('.btn-preview');
-        if (previewButton) {
-          // Ambil user ID dari data yang sedang diproses
-          const currentUser = pendingUsers.find(user => user.email === currentEmail);
-          if (currentUser && currentUser.id) {
-            previewButton.setAttribute('data-id', currentUser.id);
-            previewButton.disabled = false;
-            previewButton.style.opacity = '1';
-            previewButton.style.cursor = 'pointer';
-            previewButton.textContent = 'Preview KTP';
-          }
-        }
+        activatePreviewButton(currentEmail);
         
         document.getElementById("userForm").classList.add("show");
         document.getElementById("userForm").scrollIntoView({ 
@@ -176,6 +186,62 @@ document.addEventListener("DOMContentLoaded", async () => {
         resetPreviewButton();
       }
     });
+
+    // Function to activate Preview KTP button
+    function activatePreviewButton(email) {
+      console.log('🔍 Activating preview button for email:', email);
+      
+      // Try multiple selectors to find the button
+      let previewButton = document.querySelector('.btn-preview');
+      if (!previewButton) {
+        previewButton = document.querySelector('button.btn-preview');
+      }
+      if (!previewButton) {
+        previewButton = document.querySelector('button[class*="btn-preview"]');
+      }
+      
+      console.log('🔍 Preview button found:', previewButton);
+      
+      if (previewButton) {
+        // Ambil user ID dari data yang sedang diproses
+        const currentUser = pendingUsers.find(user => user.email === email);
+        console.log('🔍 Current user found:', currentUser);
+        
+        if (currentUser && currentUser.id) {
+          console.log('🔍 Setting preview button for user ID:', currentUser.id);
+          
+          // Set attributes
+          previewButton.setAttribute('data-id', currentUser.id);
+          previewButton.disabled = false;
+          previewButton.removeAttribute('disabled'); // Double check
+          
+          // Set styles
+          previewButton.style.opacity = '1';
+          previewButton.style.cursor = 'pointer';
+          previewButton.style.pointerEvents = 'auto';
+          
+          // Set text
+          previewButton.textContent = 'Preview KTP';
+          
+          // Force re-render
+          previewButton.style.display = 'none';
+          previewButton.offsetHeight; // Trigger reflow
+          previewButton.style.display = 'inline-block';
+          
+          console.log('✅ Preview button activated successfully');
+          console.log('🔍 Final button state:', {
+            disabled: previewButton.disabled,
+            dataId: previewButton.dataset.id,
+            text: previewButton.textContent,
+            opacity: previewButton.style.opacity
+          });
+        } else {
+          console.error('❌ User not found or missing ID:', currentUser);
+        }
+      } else {
+        console.error('❌ Preview button not found with any selector');
+      }
+    }
 
     // Function to reset Preview KTP button
     function resetPreviewButton() {

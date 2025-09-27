@@ -59,22 +59,47 @@
     <script>
       document.addEventListener('click', e=>{
         if(e.target.classList.contains('btn-preview')){
+          console.log('🔍 Preview button clicked in HTML event listener');
+          console.log('🔍 Button disabled state:', e.target.disabled);
+          console.log('🔍 Button data-id:', e.target.dataset.id);
+          
           // Cek apakah button disabled
           if(e.target.disabled) {
+            console.log('❌ Button is disabled, showing alert');
             alert('Silakan pilih user terlebih dahulu dengan mengklik tombol "Assign ID"');
             return;
           }
           
           const id = e.target.dataset.id;
           if(!id) {
+            console.log('❌ No data-id found, showing alert');
             alert('ID user tidak ditemukan. Silakan pilih user terlebih dahulu.');
             return;
           }
           
+          console.log('✅ Opening KTP preview for ID:', id);
           const url = `/api/admin/ktp-preview/${id}?t=${Date.now()}`; // cache-buster
           openModal(url);
         }
       });
+      
+      // Test function untuk debugging
+      function testPreviewButton() {
+        console.log('🧪 Testing preview button activation...');
+        const previewButton = document.querySelector('.btn-preview');
+        console.log('🧪 Button found:', previewButton);
+        
+        if (previewButton) {
+          previewButton.setAttribute('data-id', 'test123');
+          previewButton.disabled = false;
+          previewButton.style.opacity = '1';
+          previewButton.style.cursor = 'pointer';
+          previewButton.textContent = 'Preview KTP (TEST)';
+          console.log('🧪 Button activated for testing');
+        } else {
+          console.error('🧪 Button not found for testing');
+        }
+      }
     </script>
 </head>
 <body>
@@ -381,6 +406,7 @@
     <!-- User Form Card -->
     <div class="card form-card">
       <button class="btn btn-info btn-preview" disabled>Preview KTP (Pilih user terlebih dahulu)</button>
+      <button class="btn btn-warning" onclick="testPreviewButton()" style="margin-left: 10px;">Test Activate Preview</button>
       <div id="userForm" class="userForm">
         <div class="form-group">
           <label for="userIDDropdown">User ID Prefix:</label>
