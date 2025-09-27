@@ -29,27 +29,26 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
         console.log(`🔍 [ADMIN] Fetching PPAT → LTB notifications, page: ${page}, limit: ${limit}, search: "${search}"`);
 
         // Query untuk mendapatkan data PPAT → LTB dengan trackstatus 'Diolah'
+        // Menggunakan struktur yang sama dengan terima_berkas_sspd.html
         let query = `
-            SELECT 
-                b.bookingid,
-                b.nobooking,
-                b.userid,
-                b.namawajibpajak,
-                b.jenis_wajib_pajak,
+            SELECT DISTINCT ON (t.no_registrasi)
+                t.no_registrasi,
+                t.nobooking,
+                t.updated_at,
+                vu.special_field,
+                vu.ppatk_khusus,
                 b.noppbb,
-                b.created_at,
-                b.updated_at,
-                u.nama as ppat_nama,
-                u.divisi as ppat_divisi,
-                u.ppatk_khusus,
-                ltb.status as ltb_status,
-                ltb.trackstatus as ltb_trackstatus,
-                ltb.updated_at as ltb_updated_at,
-                ltb.nama_pengirim as ltb_pengirim
-            FROM pat_1_bookingsspd b
-            JOIN a_2_verified_users u ON b.userid = u.userid
-            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON b.nobooking = ltb.nobooking
-            WHERE ltb.trackstatus = 'Diolah'
+                b.jenis_wajib_pajak,
+                vu.userid,
+                vu.nama as ppat_nama,
+                vu.divisi as ppat_divisi,
+                t.status as ltb_status,
+                t.trackstatus as ltb_trackstatus,
+                t.nama_pengirim as ltb_pengirim
+            FROM ltb_1_terima_berkas_sspd t
+            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE t.trackstatus = 'Diolah' AND t.status = 'Diterima'
         `;
 
         const queryParams = [];
@@ -59,17 +58,18 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
         if (search.trim()) {
             paramCount++;
             query += ` AND (
-                b.nobooking ILIKE $${paramCount} OR 
-                b.userid ILIKE $${paramCount} OR 
-                u.nama ILIKE $${paramCount} OR 
-                b.namawajibpajak ILIKE $${paramCount} OR
-                b.noppbb ILIKE $${paramCount}
+                t.no_registrasi ILIKE $${paramCount} OR 
+                t.nobooking ILIKE $${paramCount} OR 
+                vu.userid ILIKE $${paramCount} OR 
+                vu.nama ILIKE $${paramCount} OR
+                b.noppbb ILIKE $${paramCount} OR
+                b.jenis_wajib_pajak ILIKE $${paramCount}
             )`;
             queryParams.push(`%${search}%`);
         }
 
         // Add ordering and pagination
-        query += ` ORDER BY ltb.updated_at DESC, b.created_at DESC`;
+        query += ` ORDER BY t.no_registrasi ASC, t.updated_at DESC`;
         
         paramCount++;
         query += ` LIMIT $${paramCount}`;
@@ -87,21 +87,22 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
 
         // Get total count for pagination
         let countQuery = `
-            SELECT COUNT(*) as total
-            FROM pat_1_bookingsspd b
-            JOIN a_2_verified_users u ON b.userid = u.userid
-            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON b.nobooking = ltb.nobooking
-            WHERE ltb.trackstatus = 'Diolah'
+            SELECT COUNT(DISTINCT t.no_registrasi) as total
+            FROM ltb_1_terima_berkas_sspd t
+            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE t.trackstatus = 'Diolah' AND t.status = 'Diterima'
         `;
 
         const countParams = [];
         if (search.trim()) {
             countQuery += ` AND (
-                b.nobooking ILIKE $1 OR 
-                b.userid ILIKE $1 OR 
-                u.nama ILIKE $1 OR 
-                b.namawajibpajak ILIKE $1 OR
-                b.noppbb ILIKE $1
+                t.no_registrasi ILIKE $1 OR 
+                t.nobooking ILIKE $1 OR 
+                vu.userid ILIKE $1 OR 
+                vu.nama ILIKE $1 OR
+                b.noppbb ILIKE $1 OR
+                b.jenis_wajib_pajak ILIKE $1
             )`;
             countParams.push(`%${search}%`);
         }
@@ -111,25 +112,23 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
 
         // Format response
         const formattedNotifications = notifications.map(notif => ({
-            bookingid: notif.bookingid,
+            no_registrasi: notif.no_registrasi,
             nobooking: notif.nobooking,
             userid: notif.userid,
             ppat_nama: notif.ppat_nama,
             ppat_divisi: notif.ppat_divisi,
             ppatk_khusus: notif.ppatk_khusus,
-            namawajibpajak: notif.namawajibpajak,
             jenis_wajib_pajak: notif.jenis_wajib_pajak,
             noppbb: notif.noppbb,
             ltb_status: notif.ltb_status,
             ltb_trackstatus: notif.ltb_trackstatus,
             ltb_pengirim: notif.ltb_pengirim,
-            created_at: notif.created_at,
-            updated_at: notif.ltb_updated_at || notif.updated_at,
+            updated_at: notif.updated_at,
             // Additional fields for display
-            special_field: notif.ppat_divisi || '-',
-            updated: notif.ltb_updated_at ? 
-                new Date(notif.ltb_updated_at).toLocaleDateString('id-ID') : 
-                new Date(notif.updated_at).toLocaleDateString('id-ID')
+            special_field: notif.special_field || '-',
+            updated: notif.updated_at ? 
+                new Date(notif.updated_at).toLocaleDateString('id-ID') : 
+                '-'
         }));
 
         console.log(`✅ [ADMIN] Found ${formattedNotifications.length} PPAT → LTB notifications (total: ${total})`);
@@ -164,20 +163,25 @@ router.get('/ppat-ltb/:bookingId', verifyAdmin, async (req, res) => {
         console.log(`🔍 [ADMIN] Fetching detail for PPAT → LTB notification: ${bookingId}`);
 
         const query = `
-            SELECT 
-                b.*,
-                u.nama as ppat_nama,
-                u.divisi as ppat_divisi,
-                u.ppatk_khusus,
-                ltb.status as ltb_status,
-                ltb.trackstatus as ltb_trackstatus,
-                ltb.updated_at as ltb_updated_at,
-                ltb.nama_pengirim as ltb_pengirim,
-                ltb.catatan as ltb_catatan
-            FROM pat_1_bookingsspd b
-            JOIN a_2_verified_users u ON b.userid = u.userid
-            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON b.nobooking = ltb.nobooking
-            WHERE b.bookingid = $1 AND ltb.trackstatus = 'Diolah'
+            SELECT DISTINCT ON (t.no_registrasi)
+                t.no_registrasi,
+                t.nobooking,
+                t.updated_at,
+                vu.special_field,
+                vu.ppatk_khusus,
+                b.noppbb,
+                b.jenis_wajib_pajak,
+                vu.userid,
+                vu.nama as ppat_nama,
+                vu.divisi as ppat_divisi,
+                t.status as ltb_status,
+                t.trackstatus as ltb_trackstatus,
+                t.nama_pengirim as ltb_pengirim,
+                t.catatan as ltb_catatan
+            FROM ltb_1_terima_berkas_sspd t
+            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE t.no_registrasi = $1 AND t.trackstatus = 'Diolah' AND t.status = 'Diterima'
         `;
 
         const result = await pool.query(query, [bookingId]);
@@ -196,21 +200,20 @@ router.get('/ppat-ltb/:bookingId', verifyAdmin, async (req, res) => {
         res.json({
             success: true,
             data: {
-                bookingid: notification.bookingid,
+                no_registrasi: notification.no_registrasi,
                 nobooking: notification.nobooking,
                 userid: notification.userid,
                 ppat_nama: notification.ppat_nama,
                 ppat_divisi: notification.ppat_divisi,
                 ppatk_khusus: notification.ppatk_khusus,
-                namawajibpajak: notification.namawajibpajak,
+                special_field: notification.special_field,
                 jenis_wajib_pajak: notification.jenis_wajib_pajak,
                 noppbb: notification.noppbb,
                 ltb_status: notification.ltb_status,
                 ltb_trackstatus: notification.ltb_trackstatus,
                 ltb_pengirim: notification.ltb_pengirim,
                 ltb_catatan: notification.ltb_catatan,
-                created_at: notification.created_at,
-                updated_at: notification.ltb_updated_at || notification.updated_at
+                updated_at: notification.updated_at
             }
         });
 

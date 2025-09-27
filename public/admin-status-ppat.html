@@ -203,6 +203,7 @@
       <table class="data-table" id="notifTable" role="table" aria-label="Tabel Notifikasi">
         <thead>
           <tr>
+            <th>No. Registrasi</th>
             <th>NoBooking</th>
             <th>UserID</th>
             <th>Special Field</th>
@@ -365,14 +366,14 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
   if(!b) return;
   
   const nb = b.dataset.nobook;
-  const bookingId = b.dataset.bookingId;
+  const noRegistrasi = b.dataset.noRegistrasi;
   
-  console.log('🔍 Opening detail for:', { nobooking: nb, bookingId });
+  console.log('🔍 Opening detail for:', { nobooking: nb, noRegistrasi });
   
-  if (currentCategory === 'ppat_ltb' && bookingId) {
+  if (currentCategory === 'ppat_ltb' && noRegistrasi) {
     try {
       // Fetch detail from backend
-      const js = await fetchJSON(`/api/admin/notification-warehouse/ppat-ltb/${bookingId}`);
+      const js = await fetchJSON(`/api/admin/notification-warehouse/ppat-ltb/${noRegistrasi}`);
       const data = js.data;
       
       // Show detail modal
@@ -382,7 +383,7 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
       alert('Gagal mengambil detail notifikasi: ' + error.message);
     }
   } else {
-    // Fallback for other categories or missing bookingId
+    // Fallback for other categories or missing noRegistrasi
     alert('Open detail/preview untuk ' + nb + '  (integrasikan modal / viewPDF backend)');
   }
 });
@@ -399,6 +400,10 @@ function showNotificationDetail(data) {
       </div>
       <div class="modal-body">
         <div class="detail-grid">
+          <div class="detail-item">
+            <label>No. Registrasi:</label>
+            <span>${data.no_registrasi || '-'}</span>
+          </div>
           <div class="detail-item">
             <label>No. Booking:</label>
             <span>${data.nobooking || '-'}</span>
@@ -420,8 +425,8 @@ function showNotificationDetail(data) {
             <span>${data.ppatk_khusus || '-'}</span>
           </div>
           <div class="detail-item">
-            <label>Nama Wajib Pajak:</label>
-            <span>${data.namawajibpajak || '-'}</span>
+            <label>Special Field:</label>
+            <span>${data.special_field || '-'}</span>
           </div>
           <div class="detail-item">
             <label>Jenis Wajib Pajak:</label>
@@ -448,10 +453,6 @@ function showNotificationDetail(data) {
             <span>${data.ltb_catatan || '-'}</span>
           </div>
           <div class="detail-item">
-            <label>Dibuat:</label>
-            <span>${data.created_at ? new Date(data.created_at).toLocaleString('id-ID') : '-'}</span>
-          </div>
-          <div class="detail-item">
             <label>Diupdate:</label>
             <span>${data.updated_at ? new Date(data.updated_at).toLocaleString('id-ID') : '-'}</span>
           </div>
@@ -459,7 +460,7 @@ function showNotificationDetail(data) {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Tutup</button>
-        <button class="btn btn-primary" onclick="viewBookingDocuments('${data.bookingid}')">Lihat Dokumen</button>
+        <button class="btn btn-primary" onclick="viewBookingDocuments('${data.no_registrasi}')">Lihat Dokumen</button>
       </div>
     </div>
   `;
@@ -578,10 +579,10 @@ function showNotificationDetail(data) {
 }
 
 // Function to view booking documents
-function viewBookingDocuments(bookingId) {
-  console.log('🔍 Viewing documents for booking:', bookingId);
+function viewBookingDocuments(noRegistrasi) {
+  console.log('🔍 Viewing documents for no_registrasi:', noRegistrasi);
   // TODO: Implement document viewer
-  alert('Fitur lihat dokumen akan diimplementasikan untuk booking: ' + bookingId);
+  alert('Fitur lihat dokumen akan diimplementasikan untuk no_registrasi: ' + noRegistrasi);
 }
 
 /* ---------- STATUS PANEL ---------- */
@@ -672,9 +673,10 @@ renderStatus();
         rows.forEach(r=>{
           const tr = tbody.insertRow();
           const vals = [
+            r.no_registrasi||'-',
             r.nobooking||'-',
             r.userid||'-',
-            r.special_field||r.ppat_divisi||'-',
+            r.special_field||'-',
             r.ppatk_khusus||'-',
             r.noppbb||'-',
             r.jenis_wajib_pajak||'-',
@@ -684,8 +686,8 @@ renderStatus();
           vals.forEach((v,idx)=>{ 
             const td = tr.insertCell(); 
             td.textContent = v; 
-            if(idx===7){ 
-              td.innerHTML = `<button class="btn-sm" data-booking-id="${r.bookingid||r.nobooking||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
+            if(idx===8){ 
+              td.innerHTML = `<button class="btn-sm" data-no-registrasi="${r.no_registrasi||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
             }
           });
         });
