@@ -9,15 +9,7 @@ const __dirname = dirname(__filename);
 
 // Contoh penggunaan:
 const TTD_STORAGE_PATH = path.join(__dirname, '..', 'storage', 'ttd');
-// Konfigurasi penyimpanan KTP
-export const uploadKTPStorage = multer.diskStorage({
-    destination: (__req, __file, cb) => {
-        cb(null, 'public/uploads');
-    },
-    filename: (__req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
+// KTP storage removed - using secure storage instead
 
 // Konfigurasi penyimpanan Profil
 export const uploadProfileStorage = multer.diskStorage({
@@ -111,7 +103,6 @@ export const uploadTTDVerif = multer({
 });
 
 // Konfigurasi upload untuk masing-masing jenis file
-export const uploadKTP = multer({ storage: uploadKTPStorage });
 export const uploadProfile = multer({ storage: uploadProfileStorage });
 export const uploadSSPD = multer({ storage: uploadSSPDStorage });
 export const uploadTTD = multer({ 

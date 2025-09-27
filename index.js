@@ -80,13 +80,11 @@ import { pool } from './db.js';
 import { runFullDatabaseMonitoring } from './database_monitoring.js';
 import pgSession from 'connect-pg-simple';
 //cek upload file
-import uploadKTP from './backend/config/uploads/upload_ktp.js';
 import { uploadProfile } from './backend/config/uploads/upload_profpicture.js';
 import { pdfDUpload, imgDUpload, mixedDUpload } from './backend/config/uploads/upload_document.js';
 import { ttdVerifMiddleware, uploadTTD } from './backend/config/uploads/upload_ttdverif.js';
 import { uploadDocumentMiddleware } from './backend/config/multer.js';
 export {
-  uploadKTP,
   uploadProfile,
   pdfDUpload,
   imgDUpload,
