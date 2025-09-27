@@ -40,6 +40,13 @@ NODE_ENV=production
 3. Klik "Variables" tab
 4. Add semua environment variables di atas
 
+### **1.1. Fix NPM Warning (Railway):**
+Railway akan menggunakan konfigurasi yang sudah diperbaiki:
+- ✅ `railway.json` - Konfigurasi Railway
+- ✅ `.npmrc` - NPM configuration dengan `omit=dev`
+- ✅ `Dockerfile` - Custom build process
+- ✅ `package.json` - Updated scripts
+
 ### **2. Generate Encryption Key:**
 ```bash
 node generate_encryption_key.js
