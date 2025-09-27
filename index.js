@@ -3976,12 +3976,7 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 /////////////////           ////////////////////////////
-// Endpoint untuk menampilkan login.html
-app.get('/', (_req, res) => {
-    res.sendFile(path.join(__dirname,'public', 'login.html'));
-});
-const targetPath = path.join(__dirname, 'public', 'login.html');
-console.log('Resolved path:', targetPath);
+
 
 // Menjalankan server (listener utama didefinisikan di bagian akhir file)
 
@@ -4474,6 +4469,12 @@ const checkDatabaseAndSession = async () => {
   }
 };
 
+// Endpoint untuk menampilkan login.html
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname,'public', 'login.html'));
+});
+const targetPath = path.join(__dirname, 'public', 'login.html');
+console.log('Resolved path:', targetPath);
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`);
