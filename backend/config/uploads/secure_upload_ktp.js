@@ -67,11 +67,15 @@ export const secureUploadKTP = multer({
 export const processKTPUpload = async (req, res, next) => {
     try {
         if (!req.file) {
-            return res.status(400).json({
+            console.warn('⚠️ File belum terisi saat pertama dicek, retry sekali...');
+            await new Promise(resolve => setTimeout(resolve, 100)); // tunggu 100ms
+            if (!req.file) {
+              return res.status(400).json({
                 success: false,
                 message: 'File KTP harus diupload'
-            });
-        }
+              });
+            }
+          }
         
         // Validasi file yang lebih ketat
         const validation = validateKTPFile(req.file);
