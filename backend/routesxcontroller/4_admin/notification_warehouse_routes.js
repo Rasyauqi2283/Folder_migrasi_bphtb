@@ -43,8 +43,7 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
                 vu.nama as ppat_nama,
                 vu.divisi as ppat_divisi,
                 t.status as ltb_status,
-                t.trackstatus as ltb_trackstatus,
-                t.nama_pengirim as ltb_pengirim
+                t.trackstatus as ltb_trackstatus
             FROM ltb_1_terima_berkas_sspd t
             LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
@@ -179,7 +178,6 @@ router.get('/ppat-ltb/:bookingId', verifyAdmin, async (req, res) => {
                 vu.divisi as ppat_divisi,
                 t.status as ltb_status,
                 t.trackstatus as ltb_trackstatus,
-                t.nama_pengirim as ltb_pengirim,
                 t.catatan as ltb_catatan
             FROM ltb_1_terima_berkas_sspd t
             LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
