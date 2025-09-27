@@ -92,6 +92,25 @@ export const processKTPUpload = async (req, res, next) => {
         // Untuk registrasi, gunakan email dari form data karena session belum ada
         const userId = req.session?.user?.userid || req.body?.email || 'anonymous';
         
+        // 🔒 SECURITY: Validasi email consistency untuk user yang sudah login
+        if (req.session?.user && req.body?.email) {
+            const sessionEmail = req.session.user.email;
+            const formEmail = req.body.email;
+            
+            if (sessionEmail !== formEmail) {
+                console.log('🚫 [SECURE_UPLOAD] Email mismatch detected:', {
+                    sessionEmail: sessionEmail,
+                    formEmail: formEmail,
+                    sessionUserId: req.session.user.userid,
+                    action: 'BLOCKED'
+                });
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email tidak sesuai dengan akun yang sedang login. Silakan gunakan email yang sama dengan akun Anda.'
+                });
+            }
+        }
+        
         // Debug session data dan form data
         console.log('🔍 [DEBUG] Upload context:', {
             hasSession: !!req.session,
@@ -99,7 +118,8 @@ export const processKTPUpload = async (req, res, next) => {
             sessionUserId: req.session?.user?.userid,
             formEmail: req.body?.email,
             finalUserId: userId,
-            requestType: req.session?.user ? 'logged-in' : 'registration'
+            requestType: req.session?.user ? 'logged-in' : 'registration',
+            emailConsistent: req.session?.user ? req.session.user.email === req.body?.email : 'N/A'
         });
         
         const secureFile = await saveSecureFile(req.file, userId);
