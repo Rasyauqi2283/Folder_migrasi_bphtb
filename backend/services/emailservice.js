@@ -162,36 +162,11 @@ export const sendOTPAsync = async (email, otp) => {
     // Kirim OTP secara async tanpa menunggu response
     setImmediate(async () => {
         try {
-            const fromEmail = process.env.EMAIL_USER || 'noreply@bappenda.com';
-            
-            const mailOptions = {
-                from: fromEmail,
-                to: email,
-                subject: 'OTP untuk Registrasi - BAPPENDA',
-                text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`,
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #2c3e50;">Kode OTP untuk Registrasi</h2>
-                        <p>Halo,</p>
-                        <p>Berikut adalah kode OTP Anda untuk registrasi di sistem BAPPENDA:</p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; text-align: center;">
-                            <h1 style="color: #3498db; font-size: 32px; margin: 0; letter-spacing: 5px;">${otp}</h1>
-                        </div>
-                        
-                        <p>Silakan masukkan kode ini di halaman verifikasi untuk melanjutkan proses registrasi.</p>
-                        <p><strong>Catatan:</strong> Kode ini berlaku selama 10 menit.</p>
-                        
-                        <p style="margin-top: 30px;">Hormat kami,<br>
-                        <strong>Tim BAPPENDA</strong></p>
-                    </div>
-                `
-            };
-            
-            await sendEmailWithFallback(mailOptions, 2);
-            console.log(`✅ Async OTP sent successfully to ${email}`);
+            console.log(`📧 [ASYNC] Sending OTP to ${email}`);
+            await sendOTPWithRetry(email, otp, 2); // Gunakan retry dengan 2 attempts
+            console.log(`✅ [ASYNC] OTP sent successfully to ${email}`);
         } catch (error) {
-            console.error(`❌ Async OTP failed for ${email}:`, error.message);
+            console.error(`❌ [ASYNC] OTP failed for ${email}:`, error.message);
             
             // Fallback: Simpan OTP di database untuk admin bisa cek
             try {
@@ -199,7 +174,7 @@ export const sendOTPAsync = async (email, otp) => {
                     'INSERT INTO otp_logs (email, otp, created_at, status) VALUES ($1, $2, NOW(), $3)',
                     [email, otp, 'failed_to_send']
                 );
-                console.log(`📝 OTP logged to database for ${email}: ${otp}`);
+                console.log(`📝 [ASYNC] OTP logged to database for ${email}: ${otp}`);
             } catch (dbError) {
                 console.error('Failed to log OTP to database:', dbError.message);
             }
@@ -235,33 +210,79 @@ export const sendOTP = async (email, otp) => {
 };
 
 export const sendOTPWithRetry = async (email, otp, retries = 3) => {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'OTP untuk Registrasi',
-        text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`
-    };
-    
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
             console.log(`📧 Attempt ${attempt}/${retries}: Sending OTP to ${email}`);
             
-            // Mengirim email OTP dengan timeout
+            // Try SendGrid first
+            if (process.env.SENDGRID_API_KEY) {
+                console.log('🚀 Using SendGrid API...');
+                const msg = {
+                    to: email,
+                    from: process.env.EMAIL_USER || 'noreply@bappenda.com',
+                    subject: 'OTP untuk Registrasi - BAPPENDA BPHTB',
+                    text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <h2 style="color: #2c3e50;">Kode OTP untuk Registrasi</h2>
+                            <p>Halo,</p>
+                            <p>Berikut adalah kode OTP Anda untuk melanjutkan proses registrasi:</p>
+                            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin: 20px 0;">
+                                <h1 style="color: #e74c3c; font-size: 32px; margin: 0;">${otp}</h1>
+                            </div>
+                            <p>Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapapun.</p>
+                            <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
+                        </div>
+                    `
+                };
+                
+                const response = await Promise.race([
+                    sgMail.send(msg),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('SendGrid timeout after 15 seconds')), 15000)
+                    )
+                ]);
+                
+                console.log(`✅ Email sent via SendGrid to ${email}`);
+                return response;
+            }
+            
+            // Fallback to Gmail SMTP
+            console.log('📧 Using Gmail SMTP fallback...');
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'OTP untuk Registrasi - BAPPENDA BPHTB',
+                text: `Kode OTP Anda adalah: ${otp}. Silakan masukkan kode ini untuk melanjutkan proses verifikasi.`,
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #2c3e50;">Kode OTP untuk Registrasi</h2>
+                        <p>Halo,</p>
+                        <p>Berikut adalah kode OTP Anda untuk melanjutkan proses registrasi:</p>
+                        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; margin: 20px 0;">
+                            <h1 style="color: #e74c3c; font-size: 32px; margin: 0;">${otp}</h1>
+                        </div>
+                        <p>Kode ini berlaku selama 10 menit. Jangan bagikan kode ini kepada siapapun.</p>
+                        <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
+                    </div>
+                `
+            };
+            
             const info = await Promise.race([
-                transporter.sendMail(mailOptions),
+                gmailTransporter.sendMail(mailOptions),
                 new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Email timeout after 30 seconds')), 30000)
+                    setTimeout(() => reject(new Error('Gmail SMTP timeout after 15 seconds')), 15000)
                 )
             ]);
             
-            console.log(`✅ OTP berhasil dikirim ke email ${email} (attempt ${attempt}): ${info.response}`);
+            console.log(`✅ Email sent via Gmail SMTP to ${email}`);
             return info;
             
         } catch (error) {
-            console.error(`❌ Attempt ${attempt}/${retries} failed:`, error.message);
+            console.error(`❌ Attempt ${attempt}/${retries} failed: ${error.message}`);
             
             if (attempt === retries) {
-                console.error('❌ Semua percobaan gagal untuk mengirim OTP ke:', email);
+                console.error(`❌ Semua percobaan gagal untuk mengirim OTP ke: ${email}`);
                 throw new Error(`Failed to send OTP after ${retries} attempts: ${error.message}`);
             }
             

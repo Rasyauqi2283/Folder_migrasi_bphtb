@@ -132,7 +132,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 2. Register endpoint
+// 2. Register endpoint (check ✔)
 router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, async (req, res) => {
   const { nama, nik, telepon, email, password } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
@@ -311,7 +311,7 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   }
 });
 
-// 3. Verify OTP endpoint
+// 3. Verify OTP endpoint (check ✔)
 router.post('/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
 
@@ -413,7 +413,7 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// 4. Resend OTP endpoint
+// 4. Resend OTP endpoint (check ✔)
 router.post('/resend-otp', async (req, res) => {
   const { email } = req.body;
 
@@ -449,7 +449,7 @@ router.post('/resend-otp', async (req, res) => {
   }
 });
 
-// 5. Complete profile endpoint
+// 5. Complete profile endpoint (check ✔)
 router.post('/complete-profile', async (req, res) => {
   const { userid, nip, username, special_field, special_parafv, pejabat_umum } = req.body;
   const client = await pool.connect();
@@ -556,7 +556,7 @@ router.post('/complete-profile', async (req, res) => {
   }
 });
 
-// 6. Logout endpoint
+// 6. Logout endpoint (check ✔)
 router.post('/logout', async (req, res) => {
   const { userid } = req.body;
 
