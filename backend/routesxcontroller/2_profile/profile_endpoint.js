@@ -8,7 +8,7 @@ import { uploadProfile, processImage } from '../../config/uploads/upload_profpic
 
 const router = express.Router();
 
-// Patch 1
+// Patch 1 (check  ✔️)
 // Endpoint untuk mendapatkan data profil pengguna
 router.get('/profile', async (req, res) => {
     console.log('🔍 Profile API called:', {
@@ -90,7 +90,7 @@ router.get('/profile', async (req, res) => {
     }
 });
 
-// Patch 2
+// Patch 2 (check  ✔️)
 // Endpoint untuk update tanda tangan
 router.post('/update-profile-paraf', 
   ttdVerifMiddleware,
@@ -201,7 +201,7 @@ router.delete('/update-profile-paraf', async (req, res) => {
   }
 });
 
-// Patch 3
+// Patch 3 (check  ✔️)
 // Endpoint untuk mendapatkan file tanda tangan
 router.get('/tanda-tangan/:userid', async (req, res) => {
   try {
@@ -239,6 +239,7 @@ router.get('/tanda-tangan/:userid', async (req, res) => {
 });
 //
 
+// Patch 4 (check  ✔️)
 // Tambahan: cek tanda tangan peneliti (digunakan di frontend)
 router.get('/peneliti/check-signature', async (req, res) => {
   if (!req.session.user) {
@@ -289,7 +290,7 @@ router.get('/get-tanda-tangan', async (req, res) => {
   }
 });
 
-// Patch 4
+// Patch 5 (check  ✔️)
 // Endpoint untuk upload foto profil
 router.post('/profile/upload', 
   uploadProfile.single('fotoprofil'),
@@ -349,7 +350,7 @@ router.post('/profile/upload',
   }
 );
 
-// Patch 5
+// Patch 6 (check  ✔️)
 // Endpoint untuk update password
 import rateLimit from 'express-rate-limit';
 

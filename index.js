@@ -3908,10 +3908,6 @@ const checkDatabaseAndSession = async () => {
   }
 };
 
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
 // Test email service endpoint
 app.get('/test-email', async (req, res) => {
   try {
@@ -3940,6 +3936,7 @@ app.get('/test-email', async (req, res) => {
   }
 });
 
+
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
@@ -3953,5 +3950,8 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  checkDatabaseAndSession().catch(err => {
+    console.error("DB/session check failed:", err);
+  });
   await checkDatabaseAndSession();
 });
