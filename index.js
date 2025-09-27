@@ -3940,6 +3940,9 @@ app.get('/test-email', async (req, res) => {
   }
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 // Endpoint untuk menampilkan login.html
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname,'public', 'halaman_awal.html'));
