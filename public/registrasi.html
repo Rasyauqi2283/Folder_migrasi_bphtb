@@ -192,32 +192,36 @@
     // File input change event
     document.addEventListener('DOMContentLoaded', function() {
         const fileInput = document.getElementById('fotoktp');
-        
+        const autoFill = document.getElementById("autoFillSuggestion");
+
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
+
             if (file) {
-                // Validate file type
+                // Validasi tipe
                 const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
                 if (!allowedTypes.includes(file.type)) {
-                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG.');
-                    document.getElementById("autoFillSuggestion").style.display = "none";
+                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG, atau GIF.');
                     fileInput.value = '';
+                    autoFill.style.display = "none";
                     return;
                 }
 
-                // Validate file size (max 5MB)
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                // Validasi ukuran (max 5MB)
+                const maxSize = 5 * 1024 * 1024;
                 if (file.size > maxSize) {
                     alert('Ukuran file terlalu besar. Maksimal 5MB.');
-                    document.getElementById("autoFillSuggestion").style.display = "none";
                     fileInput.value = '';
+                    autoFill.style.display = "none";
                     return;
                 }
-                document.getElementById("autoFillSuggestion").style.display = "block";
+
+                // Tampilkan preview & auto fill suggestion
                 showKTPPreview(file);
+                autoFill.style.display = "block";
             } else {
                 removeKTPPreview();
-                document.getElementById("autoFillSuggestion").style.display = "none";
+                autoFill.style.display = "none";
             }
         });
     });

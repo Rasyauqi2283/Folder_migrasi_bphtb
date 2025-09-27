@@ -467,5 +467,32 @@ router.post('/reset-password-debug', async (req, res) => {
     });
   }
 });
+// Start Member endpoint //
+router.get('/members-header', async (req, res) => {
+  // Pastikan user sudah login dan session ada
+  if (!req.session.user) {
+      return res.status(401).json({ message: 'User not logged in' });
+  }
+
+  try {
+      const { divisi } = req.session.user; // Ambil divisi dari session user
+
+      const query = 'SELECT fotoprofil, nama, statuspengguna, username FROM a_2_verified_users WHERE divisi = $1';
+      const result = await pool.query(query, [divisi]);
+
+      const usersm = result.rows.map(row => ({
+          fotoprofil: row.fotoprofil,
+          nama: row.nama,
+          statuspengguna: row.statuspengguna,
+          username: row.username
+      }));
+
+      res.json({ usersm });
+  } catch (error) {
+      console.error('Error fetching members:', error);
+      res.status(500).json({ message: 'Failed to fetch members' });
+  }
+});
+// End Member endpoint //
 
 export default router;

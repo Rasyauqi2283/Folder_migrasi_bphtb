@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function fetchMemberList() {
         try {
             const API_URL = 'https://bphtb-bappenda.up.railway.app';
-            const response = await fetch(`${API_URL}/api/members-header`, { credentials: 'include' });
+            const response = await fetch(`${API_URL}/api/v1/auth/members-header`, { credentials: 'include' });
             const data = await response.json();
 
             if (data && data.usersm) {
@@ -84,7 +84,7 @@ console.log('🔍 Starting profile data fetch...');
 console.log("🍪 Document cookies before profile fetch:", document.cookie);
 
 // Load profile data
-fetch(`${API_URL}/api/profile`, {credentials: 'include'})
+fetch(`${API_URL}/api/v1/auth/profile`, {credentials: 'include'})
 .then(response => {
     console.log('📊 Profile API Response Status:', response.status);
     console.log('📋 Profile API Response Headers:', response.headers);
