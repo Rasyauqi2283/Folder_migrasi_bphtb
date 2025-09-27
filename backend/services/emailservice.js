@@ -2,12 +2,161 @@ import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import { pool } from '../../db.js';
 
-// SendGrid configuration
-if (process.env.SENDGRID_API_KEY) {
+// Email service configuration and initialization
+let emailService = null;
+let smtpTransporter = null;
+
+try {
+  // SendGrid configuration (primary)
+  if (process.env.SENDGRID_API_KEY) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    console.log('✅ SendGrid API key configured');
-} else {
-    console.warn('⚠️ SENDGRID_API_KEY not found, falling back to Gmail SMTP');
+    emailService = 'sendgrid';
+    console.log('✅ SendGrid email service initialized');
+  } 
+  // SMTP fallback
+  else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      connectionTimeout: 5000,
+      greetingTimeout: 3000,
+      socketTimeout: 10000
+    });
+    emailService = 'smtp';
+    console.log('✅ SMTP email service initialized (fallback)');
+  } else {
+    console.warn('⚠️ No email credentials found; email notifications disabled');
+  }
+} catch (e) {
+  console.error('❌ Failed to initialize email service:', e);
+}
+
+// Central email helpers
+export function getEmailService() {
+  return emailService;
+}
+
+// SendGrid email function
+export async function sendEmailViaSendGrid(to, subject, text, html = null) {
+  try {
+    const msg = {
+      to: to,
+      from: process.env.EMAIL_USER || 'noreply@bappenda.com',
+      subject: subject,
+      text: text,
+      html: html || text
+    };
+
+    const response = await Promise.race([
+      sgMail.send(msg),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SendGrid timeout after 15 seconds')), 15000)
+      )
+    ]);
+
+    console.log(`✅ Email sent via SendGrid to ${to}: ${response[0].statusCode}`);
+    return response;
+  } catch (error) {
+    console.error(`❌ SendGrid email failed to ${to}:`, error.message);
+    throw error;
+  }
+}
+
+// SMTP email function (fallback)
+export async function sendEmailViaSMTP(to, subject, text, html = null) {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: to,
+      subject: subject,
+      text: text,
+      html: html || text
+    };
+
+    const info = await Promise.race([
+      smtpTransporter.sendMail(mailOptions),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SMTP timeout after 20 seconds')), 20000)
+      )
+    ]);
+
+    console.log(`✅ Email sent via SMTP to ${to}: ${info.response}`);
+    return info;
+  } catch (error) {
+    console.error(`❌ SMTP email failed to ${to}:`, error.message);
+    throw error;
+  }
+}
+
+// Universal email function with fallback
+export async function sendEmail(to, subject, text, html = null, maxRetries = 2) {
+  if (!emailService) {
+    throw new Error('No email service available');
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📧 Email attempt ${attempt}/${maxRetries} to ${to}`);
+
+      if (emailService === 'sendgrid') {
+        return await sendEmailViaSendGrid(to, subject, text, html);
+      } else if (emailService === 'smtp') {
+        return await sendEmailViaSMTP(to, subject, text, html);
+      }
+    } catch (error) {
+      console.error(`❌ Email attempt ${attempt} failed:`, error.message);
+
+      if (attempt === maxRetries) {
+        // Try fallback service if primary fails
+        if (emailService === 'sendgrid' && smtpTransporter) {
+          console.log('🔄 Trying SMTP fallback...');
+          try {
+            return await sendEmailViaSMTP(to, subject, text, html);
+          } catch (fallbackError) {
+            console.error('❌ Both email services failed:', fallbackError.message);
+          }
+        }
+        throw new Error(`Email delivery failed after ${maxRetries} attempts`);
+      }
+
+      // Wait before retry
+      const waitTime = attempt * 2000; // 2s, 4s
+      console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+  }
+}
+
+export async function sendEmailSafe(mailOptions) {
+  try {
+    if (!emailService) {
+      console.warn('⚠️ No email service available; skipping email send', { to: mailOptions?.to, subject: mailOptions?.subject });
+      return { skipped: true };
+    }
+
+    // Extract email data from mailOptions
+    const { to, subject, text, html } = mailOptions;
+    
+    // Use universal email function with SendGrid
+    const result = await sendEmail(to, subject, text, html);
+    
+    console.log('✅ Email sent successfully', { 
+      to: mailOptions?.to, 
+      subject: mailOptions?.subject,
+      service: emailService,
+      messageId: result?.[0]?.headers?.['x-message-id'] || 'N/A'
+    });
+    
+    return { success: true, info: result };
+  } catch (err) {
+    console.warn('Email send failed', { error: err?.message, to: mailOptions?.to, subject: mailOptions?.subject });
+    return { success: false, error: err };
+  }
 }
 
 // Gmail SMTP configuration sebagai fallback

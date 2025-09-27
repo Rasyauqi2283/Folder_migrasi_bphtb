@@ -1,7 +1,7 @@
 // backend/routesxcontroller/4_admin/adminRoutes.js
 import express from 'express';
 import { pool } from '../../../db.js';
-import { sendEmail } from '../../services/emailservice.js';
+import { sendEmail, sendEmailSafe } from '../../services/emailservice.js';
 
 const router = express.Router();
 
@@ -53,7 +53,7 @@ async function sendUserUpdateNotificationEmail(userEmail, userName, userid, oldD
     };
     
     // Send email using existing email configuration
-    await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+    await sendEmailSafe(mailOptions);
     console.log(`✅ Email notification sent to ${userEmail} for user ${userid}`);
     
   } catch (error) {
@@ -109,7 +109,7 @@ async function sendUserStatusChangeEmail(userEmail, userName, userid, newStatus)
       `
     };
     
-    await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+    await sendEmailSafe(mailOptions);
     console.log(`✅ Status change email sent to ${userEmail}`);
     
   } catch (e) {
