@@ -6,15 +6,7 @@ if (userId) {
 }
 });
 ///////////////
-setInterval(() => {
-if (userId) {
-    fetch('/ping', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userid: userId }),
-    });
-}
-}, 120000); // Setiap 2 menit
+
 ////////////////            //////////////////////////          ////////////////
 
 // Profile and Member Overlays
@@ -174,4 +166,3 @@ async function checkProcessedData() {
 }
 
 // Cek setiap 5 detik apakah ada data yang telah diproses oleh LTB
-setInterval(checkProcessedData, 5000);
