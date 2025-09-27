@@ -4325,9 +4325,9 @@ app.get('/health', (req, res) => {
 
 // Endpoint untuk menampilkan login.html
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname,'public', 'login.html'));
+  res.sendFile(path.join(__dirname,'public', 'halaman_awal.html'));
 });
-const targetPath = path.join(__dirname, 'public', 'login.html');
+const targetPath = path.join(__dirname, 'public', 'halaman_awal.html');
 console.log('Resolved path:', targetPath);
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, '0.0.0.0', async () => {
