@@ -199,7 +199,8 @@
                 // Validate file type
                 const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
                 if (!allowedTypes.includes(file.type)) {
-                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG, atau GIF.');
+                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG.');
+                    document.getElementById("autoFillSuggestion").style.display = "none";
                     fileInput.value = '';
                     return;
                 }
@@ -208,13 +209,15 @@
                 const maxSize = 5 * 1024 * 1024; // 5MB
                 if (file.size > maxSize) {
                     alert('Ukuran file terlalu besar. Maksimal 5MB.');
+                    document.getElementById("autoFillSuggestion").style.display = "none";
                     fileInput.value = '';
                     return;
                 }
-
+                document.getElementById("autoFillSuggestion").style.display = "block";
                 showKTPPreview(file);
             } else {
                 removeKTPPreview();
+                document.getElementById("autoFillSuggestion").style.display = "none";
             }
         });
     });
@@ -245,7 +248,7 @@
             </div>
         </div>
 
-        <div id="autoFillSuggestion" class="auto-fill-suggestion">
+        <div id="autoFillSuggestion" class="auto-fill-suggestion" style="display: none;">
             <p>Kami menemukan data dari KTP Anda:</p>
             <p>Nama: <span id="detectedNama"></span></p>
             <p>NIK: <span id="detectedNIK"></span></p>
