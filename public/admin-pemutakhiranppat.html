@@ -320,8 +320,6 @@
       <div class="rekapandata">
         <label for="jangkawaktu">Rekap</label>
         <select id="jangkawaktu" name="Jangka Waktu" class="time-select">
-          <option value="1">1 Bulan</option>
-          <option value="3">3 Bulan</option>
           <option value="6">6 Bulan</option>
           <option value="12">1 Tahun</option>
         </select>
@@ -538,6 +536,295 @@ document.addEventListener('DOMContentLoaded', async () => {
     panelOptions: { width: '360px', top: '130px', right: '24px', maxItems: 200 },
     historyLimit: 50
   });
+});
+
+// Global variables for PPAT renewal data
+let currentPage = 1;
+let currentLimit = 10;
+let currentSearch = '';
+let currentJangkaWaktu = '6';
+let currentTahun = new Date().getFullYear();
+
+// Function to load PPAT renewal data with filters
+async function loadPPATRenewalData() {
+  try {
+    console.log('🔍 Loading PPAT renewal data with filters...');
+    
+    const tbody = document.getElementById('bookingBody');
+    const paginationInfo = document.querySelector('.pagination-info');
+    const transactionAmount = document.querySelector('.transaction-amount');
+    
+    // Show loading
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Memuat data...</td></tr>';
+    
+    // Build URL with filters
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: currentLimit,
+      search: currentSearch,
+      jangka_waktu: currentJangkaWaktu,
+      tahun: currentTahun
+    });
+    
+    const url = `/api/admin/notification-warehouse/ppat-renewal?${params}`;
+    console.log('🔍 Fetching from URL:', url);
+    
+    const response = await fetch(url, { credentials: 'include' });
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load data');
+    }
+    
+    // Update transaction amount
+    if (transactionAmount && data.summary) {
+      transactionAmount.textContent = data.summary.total_bphtb_formatted || 'Rp 0';
+    }
+    
+    // Update table data
+    tbody.innerHTML = '';
+    const bookings = data.data || [];
+    
+    if (bookings.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Tidak ada data ditemukan</td></tr>';
+    } else {
+      bookings.forEach(booking => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+          <td>${booking.nama_ppat}</td>
+          <td>${booking.userid}</td>
+          <td>${booking.ppatk_khusus}</td>
+          <td>${booking.nilai_formatted}</td>
+          <td>${booking.nobooking}</td>
+          <td>
+            <button class="btn-sm view-btn" data-booking="${booking.nobooking}">Lihat</button>
+          </td>
+        `;
+      });
+    }
+    
+    // Update pagination info
+    if (paginationInfo && data.pagination) {
+      const { page, limit, total } = data.pagination;
+      const start = (page - 1) * limit + 1;
+      const end = Math.min(page * limit, total);
+      paginationInfo.textContent = `Showing ${start} to ${end} of ${total} entries`;
+    }
+    
+    // Update pagination controls
+    updatePagination(data.pagination);
+    
+    console.log(`✅ Loaded ${bookings.length} PPAT renewal records`);
+    
+  } catch (error) {
+    console.error('❌ Error loading PPAT renewal data:', error);
+    const tbody = document.getElementById('bookingBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Gagal memuat data: ' + error.message + '</td></tr>';
+  }
+}
+
+// Function to update pagination controls
+function updatePagination(pagination) {
+  const paginationContainer = document.querySelector('.pagination');
+  if (!paginationContainer || !pagination) return;
+  
+  const { page, totalPages } = pagination;
+  
+  // Clear existing pagination
+  paginationContainer.innerHTML = '';
+  
+  // Previous button
+  const prevBtn = document.createElement('button');
+  prevBtn.className = `page-nav ${page <= 1 ? 'disabled' : ''}`;
+  prevBtn.innerHTML = '&lt;';
+  prevBtn.disabled = page <= 1;
+  prevBtn.addEventListener('click', () => {
+    if (page > 1) {
+      currentPage = page - 1;
+      loadPPATRenewalData();
+    }
+  });
+  paginationContainer.appendChild(prevBtn);
+  
+  // Page numbers
+  const startPage = Math.max(1, page - 2);
+  const endPage = Math.min(totalPages, page + 2);
+  
+  if (startPage > 1) {
+    const firstBtn = document.createElement('button');
+    firstBtn.className = 'page-number';
+    firstBtn.textContent = '1';
+    firstBtn.addEventListener('click', () => {
+      currentPage = 1;
+      loadPPATRenewalData();
+    });
+    paginationContainer.appendChild(firstBtn);
+    
+    if (startPage > 2) {
+      const ellipsis = document.createElement('span');
+      ellipsis.className = 'page-ellipsis';
+      ellipsis.textContent = '...';
+      paginationContainer.appendChild(ellipsis);
+    }
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    const pageBtn = document.createElement('button');
+    pageBtn.className = `page-number ${i === page ? 'active' : ''}`;
+    pageBtn.textContent = i;
+    pageBtn.addEventListener('click', () => {
+      currentPage = i;
+      loadPPATRenewalData();
+    });
+    paginationContainer.appendChild(pageBtn);
+  }
+  
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      const ellipsis = document.createElement('span');
+      ellipsis.className = 'page-ellipsis';
+      ellipsis.textContent = '...';
+      paginationContainer.appendChild(ellipsis);
+    }
+    
+    const lastBtn = document.createElement('button');
+    lastBtn.className = 'page-number';
+    lastBtn.textContent = totalPages;
+    lastBtn.addEventListener('click', () => {
+      currentPage = totalPages;
+      loadPPATRenewalData();
+    });
+    paginationContainer.appendChild(lastBtn);
+  }
+  
+  // Next button
+  const nextBtn = document.createElement('button');
+  nextBtn.className = `page-nav ${page >= totalPages ? 'disabled' : ''}`;
+  nextBtn.innerHTML = '&gt;';
+  nextBtn.disabled = page >= totalPages;
+  nextBtn.addEventListener('click', () => {
+    if (page < totalPages) {
+      currentPage = page + 1;
+      loadPPATRenewalData();
+    }
+  });
+  paginationContainer.appendChild(nextBtn);
+}
+
+// Initialize event listeners for filters
+function initializeFilters() {
+  // Jangka waktu filter
+  const jangkaWaktuSelect = document.getElementById('jangkawaktu');
+  if (jangkaWaktuSelect) {
+    jangkaWaktuSelect.addEventListener('change', (e) => {
+      currentJangkaWaktu = e.target.value;
+      currentPage = 1; // Reset to first page
+      loadPPATRenewalData();
+    });
+  }
+  
+  // Tahun filter
+  const tahunSelect = document.getElementById('tahuns');
+  if (tahunSelect) {
+    tahunSelect.addEventListener('change', (e) => {
+      currentTahun = parseInt(e.target.value);
+      currentPage = 1; // Reset to first page
+      loadPPATRenewalData();
+    });
+  }
+  
+  // Search input
+  const searchInput = document.querySelector('.search-input');
+  if (searchInput) {
+    let searchTimeout;
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        currentSearch = e.target.value.trim();
+        currentPage = 1; // Reset to first page
+        loadPPATRenewalData();
+      }, 500); // Debounce search
+    });
+  }
+  
+  // Entries per page
+  const entriesSelect = document.querySelector('.entries-select');
+  if (entriesSelect) {
+    entriesSelect.addEventListener('change', (e) => {
+      currentLimit = parseInt(e.target.value);
+      currentPage = 1; // Reset to first page
+      loadPPATRenewalData();
+    });
+  }
+  
+  // Export button
+  const exportBtn = document.querySelector('.export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', () => {
+      exportPPATData();
+    });
+  }
+}
+
+// Function to export PPAT data
+async function exportPPATData() {
+  try {
+    console.log('🔍 Exporting PPAT renewal data...');
+    
+    const params = new URLSearchParams({
+      page: 1,
+      limit: 10000, // Export all data
+      search: currentSearch,
+      jangka_waktu: currentJangkaWaktu,
+      tahun: currentTahun
+    });
+    
+    const exportUrl = `/api/admin/notification-warehouse/ppat-renewal?${params}`;
+    const response = await fetch(exportUrl, { credentials: 'include' });
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to export data');
+    }
+    
+    // Create CSV content
+    const headers = ['Nama PPAT', 'UserID', 'PPATK Khusus', 'Nilai Pajak', 'Booking', 'Tanggal Booking', 'Status'];
+    const csvContent = [
+      headers.join(','),
+      ...data.data.map(booking => [
+        `"${booking.nama_ppat}"`,
+        `"${booking.userid}"`,
+        `"${booking.ppatk_khusus}"`,
+        booking.nilai_bphtb || 0,
+        `"${booking.nobooking}"`,
+        `"${booking.tanggal_formatted}"`,
+        `"${booking.status}"`
+      ].join(','))
+    ].join('\n');
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const downloadUrl = URL.createObjectURL(blob);
+    link.setAttribute('href', downloadUrl);
+    link.setAttribute('download', `ppat_renewal_${currentTahun}_${currentJangkaWaktu}bulan.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log('✅ PPAT data exported successfully');
+    
+  } catch (error) {
+    console.error('❌ Error exporting PPAT data:', error);
+    alert('Gagal mengekspor data: ' + error.message);
+  }
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', () => {
+  initializeFilters();
+  loadPPATRenewalData(); // Load initial data
 });
 
 // Fetch total nilai bphtb dan tampilkan di .transaction-amount

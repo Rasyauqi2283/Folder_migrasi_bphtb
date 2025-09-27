@@ -555,6 +555,505 @@ router.get('/ppat-users-stats', verifyAdmin, async (req, res) => {
     }
 });
 
+// GET /api/admin/notification-warehouse/ltb-lsb - Get LTB → LSB notifications
+router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const search = req.query.search || '';
+        const offset = (page - 1) * limit;
+
+        console.log(`🔍 [ADMIN] Fetching LTB → LSB notifications, page: ${page}, limit: ${limit}, search: "${search}"`);
+
+        // Query untuk mendapatkan data LTB → LSB dengan alur ke peneliti
+        // LTB mengirim ke peneliti (verifikasi) → peneliti (paraf) → peneliti validasi → LSB
+        let query = `
+            SELECT DISTINCT ON (t.no_registrasi)
+                t.no_registrasi,
+                t.nobooking,
+                t.updated_at,
+                vu.special_field,
+                vu.ppatk_khusus,
+                b.noppbb,
+                b.jenis_wajib_pajak,
+                vu.userid,
+                vu.nama as ppat_nama,
+                vu.divisi as ppat_divisi,
+                t.status as ltb_status,
+                t.trackstatus as ltb_trackstatus,
+                -- Peneliti verifikasi status
+                pv.status as peneliti_verifikasi_status,
+                pv.updated_at as peneliti_verifikasi_updated,
+                -- Peneliti paraf status  
+                pp.status as peneliti_paraf_status,
+                pp.updated_at as peneliti_paraf_updated,
+                -- Peneliti validasi status
+                pval.status as peneliti_validasi_status,
+                pval.updated_at as peneliti_validasi_updated,
+                -- LSB status
+                lsb.status as lsb_status,
+                lsb.updated_at as lsb_updated
+            FROM ltb_1_terima_berkas_sspd t
+            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN peneliti_1_verifikasi pv ON t.nobooking = pv.nobooking
+            LEFT JOIN peneliti_2_paraf pp ON t.nobooking = pp.nobooking
+            LEFT JOIN peneliti_3_validasi pval ON t.nobooking = pval.nobooking
+            LEFT JOIN lsb_1_serah_berkas lsb ON t.nobooking = lsb.nobooking
+            WHERE t.trackstatus = 'Diterima' AND t.status = 'Dilanjutkan'
+        `;
+
+        const queryParams = [];
+        let paramCount = 0;
+
+        // Add search filter if provided
+        if (search.trim()) {
+            paramCount++;
+            query += ` AND (
+                t.no_registrasi ILIKE $${paramCount} OR 
+                t.nobooking ILIKE $${paramCount} OR 
+                vu.userid ILIKE $${paramCount} OR 
+                vu.nama ILIKE $${paramCount} OR
+                b.noppbb ILIKE $${paramCount} OR
+                b.jenis_wajib_pajak ILIKE $${paramCount}
+            )`;
+            queryParams.push(`%${search}%`);
+        }
+
+        // Add ordering and pagination
+        query += ` ORDER BY t.no_registrasi ASC, t.updated_at DESC`;
+        
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        queryParams.push(limit);
+        
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        queryParams.push(offset);
+
+        console.log('🔍 [ADMIN] Executing LTB-LSB query:', query);
+        console.log('🔍 [ADMIN] Query params:', queryParams);
+
+        const result = await pool.query(query, queryParams);
+        console.log('🔍 [ADMIN] LTB-LSB query result rows:', result.rows.length);
+        const notifications = result.rows;
+
+        // Get total count for pagination
+        let countQuery = `
+            SELECT COUNT(DISTINCT t.no_registrasi) as total
+            FROM ltb_1_terima_berkas_sspd t
+            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN peneliti_1_verifikasi pv ON t.nobooking = pv.nobooking
+            LEFT JOIN peneliti_2_paraf pp ON t.nobooking = pp.nobooking
+            LEFT JOIN peneliti_3_validasi pval ON t.nobooking = pval.nobooking
+            LEFT JOIN lsb_1_serah_berkas lsb ON t.nobooking = lsb.nobooking
+            WHERE t.trackstatus = 'Diterima' AND t.status = 'Dilanjutkan'
+        `;
+
+        const countParams = [];
+        if (search.trim()) {
+            countQuery += ` AND (
+                t.no_registrasi ILIKE $1 OR 
+                t.nobooking ILIKE $1 OR 
+                vu.userid ILIKE $1 OR 
+                vu.nama ILIKE $1 OR
+                b.noppbb ILIKE $1 OR
+                b.jenis_wajib_pajak ILIKE $1
+            )`;
+            countParams.push(`%${search}%`);
+        }
+
+        const countResult = await pool.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].total);
+
+        // Format response
+        const formattedNotifications = notifications.map(notif => ({
+            no_registrasi: notif.no_registrasi,
+            nobooking: notif.nobooking,
+            userid: notif.userid,
+            ppat_nama: notif.ppat_nama,
+            ppat_divisi: notif.ppat_divisi,
+            ppatk_khusus: notif.ppatk_khusus,
+            jenis_wajib_pajak: notif.jenis_wajib_pajak,
+            noppbb: notif.noppbb,
+            ltb_status: notif.ltb_status,
+            ltb_trackstatus: notif.ltb_trackstatus,
+            // Peneliti workflow status
+            peneliti_verifikasi_status: notif.peneliti_verifikasi_status,
+            peneliti_paraf_status: notif.peneliti_paraf_status,
+            peneliti_validasi_status: notif.peneliti_validasi_status,
+            lsb_status: notif.lsb_status,
+            updated_at: notif.updated_at,
+            // Additional fields for display
+            special_field: notif.special_field || '-',
+            updated: notif.updated_at ? 
+                new Date(notif.updated_at).toLocaleDateString('id-ID') : 
+                '-'
+        }));
+
+        console.log(`✅ [ADMIN] Found ${formattedNotifications.length} LTB → LSB notifications (total: ${total})`);
+
+        res.json({
+            success: true,
+            data: formattedNotifications,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            },
+            search: search
+        });
+
+    } catch (error) {
+        console.error('❌ [ADMIN] Error fetching LTB → LSB notifications:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data notifikasi LTB → LSB',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// GET /api/admin/notification-warehouse/lsb-ppat - Get LSB → PPAT notifications
+router.get('/lsb-ppat', verifyAdmin, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const search = req.query.search || '';
+        const offset = (page - 1) * limit;
+
+        console.log(`🔍 [ADMIN] Fetching LSB → PPAT notifications, page: ${page}, limit: ${limit}, search: "${search}"`);
+
+        // Query untuk mendapatkan data LSB → PPAT dengan status terselesaikan
+        let query = `
+            SELECT DISTINCT ON (lsb.no_registrasi)
+                lsb.no_registrasi,
+                lsb.nobooking,
+                lsb.updated_at,
+                vu.special_field,
+                vu.ppatk_khusus,
+                b.noppbb,
+                b.jenis_wajib_pajak,
+                vu.userid,
+                vu.nama as ppat_nama,
+                vu.divisi as ppat_divisi,
+                lsb.status as lsb_status,
+                lsb.trackstatus as lsb_trackstatus,
+                lsb.nama_penerima as lsb_penerima,
+                lsb.tanggal_serah as lsb_tanggal_serah
+            FROM lsb_1_serah_berkas lsb
+            LEFT JOIN pat_1_bookingsspd b ON lsb.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE lsb.status = 'Terselesaikan'
+        `;
+
+        const queryParams = [];
+        let paramCount = 0;
+
+        // Add search filter if provided
+        if (search.trim()) {
+            paramCount++;
+            query += ` AND (
+                lsb.no_registrasi ILIKE $${paramCount} OR 
+                lsb.nobooking ILIKE $${paramCount} OR 
+                vu.userid ILIKE $${paramCount} OR 
+                vu.nama ILIKE $${paramCount} OR
+                b.noppbb ILIKE $${paramCount} OR
+                b.jenis_wajib_pajak ILIKE $${paramCount}
+            )`;
+            queryParams.push(`%${search}%`);
+        }
+
+        // Add ordering and pagination
+        query += ` ORDER BY lsb.no_registrasi ASC, lsb.updated_at DESC`;
+        
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        queryParams.push(limit);
+        
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        queryParams.push(offset);
+
+        console.log('🔍 [ADMIN] Executing LSB-PPAT query:', query);
+        console.log('🔍 [ADMIN] Query params:', queryParams);
+
+        const result = await pool.query(query, queryParams);
+        console.log('🔍 [ADMIN] LSB-PPAT query result rows:', result.rows.length);
+        const notifications = result.rows;
+
+        // Get total count for pagination
+        let countQuery = `
+            SELECT COUNT(DISTINCT lsb.no_registrasi) as total
+            FROM lsb_1_serah_berkas lsb
+            LEFT JOIN pat_1_bookingsspd b ON lsb.nobooking = b.nobooking
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE lsb.status = 'Terselesaikan'
+        `;
+
+        const countParams = [];
+        if (search.trim()) {
+            countQuery += ` AND (
+                lsb.no_registrasi ILIKE $1 OR 
+                lsb.nobooking ILIKE $1 OR 
+                vu.userid ILIKE $1 OR 
+                vu.nama ILIKE $1 OR
+                b.noppbb ILIKE $1 OR
+                b.jenis_wajib_pajak ILIKE $1
+            )`;
+            countParams.push(`%${search}%`);
+        }
+
+        const countResult = await pool.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].total);
+
+        // Format response
+        const formattedNotifications = notifications.map(notif => ({
+            no_registrasi: notif.no_registrasi,
+            nobooking: notif.nobooking,
+            userid: notif.userid,
+            ppat_nama: notif.ppat_nama,
+            ppat_divisi: notif.ppat_divisi,
+            ppatk_khusus: notif.ppatk_khusus,
+            jenis_wajib_pajak: notif.jenis_wajib_pajak,
+            noppbb: notif.noppbb,
+            lsb_status: notif.lsb_status,
+            lsb_trackstatus: notif.lsb_trackstatus,
+            lsb_penerima: notif.lsb_penerima,
+            lsb_tanggal_serah: notif.lsb_tanggal_serah,
+            updated_at: notif.updated_at,
+            // Additional fields for display
+            special_field: notif.special_field || '-',
+            updated: notif.updated_at ? 
+                new Date(notif.updated_at).toLocaleDateString('id-ID') : 
+                '-'
+        }));
+
+        console.log(`✅ [ADMIN] Found ${formattedNotifications.length} LSB → PPAT notifications (total: ${total})`);
+
+        res.json({
+            success: true,
+            data: formattedNotifications,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            },
+            search: search
+        });
+
+    } catch (error) {
+        console.error('❌ [ADMIN] Error fetching LSB → PPAT notifications:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data notifikasi LSB → PPAT',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// GET /api/admin/notification-warehouse/ppat-renewal - Get PPAT renewal data with filters
+router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const search = req.query.search || '';
+        const jangkaWaktu = req.query.jangka_waktu || '6'; // 6 or 12 months
+        const tahun = req.query.tahun || new Date().getFullYear();
+        const offset = (page - 1) * limit;
+
+        console.log(`🔍 [ADMIN] Fetching PPAT renewal data, page: ${page}, limit: ${limit}, search: "${search}", jangka_waktu: ${jangkaWaktu}, tahun: ${tahun}`);
+
+        // Calculate date range based on jangka_waktu
+        const startDate = new Date(tahun, 0, 1); // January 1st of selected year
+        const endDate = new Date(tahun, 11, 31); // December 31st of selected year
+        
+        if (jangkaWaktu === '6') {
+            // Last 6 months from current date or last 6 months of selected year
+            const currentDate = new Date();
+            if (tahun == currentDate.getFullYear()) {
+                startDate.setMonth(currentDate.getMonth() - 5);
+                startDate.setDate(1);
+            } else {
+                startDate.setMonth(6); // July 1st
+            }
+        }
+
+        console.log(`🔍 [ADMIN] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+        // Query untuk mendapatkan data PPAT renewal dengan filter
+        let query = `
+            SELECT DISTINCT ON (b.nobooking)
+                b.nobooking,
+                b.userid,
+                b.nama_ppat as nama_ppat,
+                b.ppatk_khusus,
+                b.nilai_bphtb,
+                b.tanggal_booking,
+                b.status,
+                b.trackstatus,
+                vu.nama as user_nama,
+                vu.divisi,
+                vu.special_field
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.status = 'Diserahkan'
+            AND b.tanggal_booking >= $1
+            AND b.tanggal_booking <= $2
+        `;
+
+        const queryParams = [startDate.toISOString(), endDate.toISOString()];
+        let paramCount = 2;
+
+        // Add search filter if provided
+        if (search.trim()) {
+            paramCount++;
+            query += ` AND (
+                b.nobooking ILIKE $${paramCount} OR 
+                b.userid ILIKE $${paramCount} OR 
+                b.nama_ppat ILIKE $${paramCount} OR
+                b.ppatk_khusus ILIKE $${paramCount} OR
+                vu.nama ILIKE $${paramCount} OR
+                vu.special_field ILIKE $${paramCount}
+            )`;
+            queryParams.push(`%${search}%`);
+        }
+
+        // Add ordering and pagination
+        query += ` ORDER BY b.nobooking ASC, b.tanggal_booking DESC`;
+        
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        queryParams.push(limit);
+        
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        queryParams.push(offset);
+
+        console.log('🔍 [ADMIN] Executing PPAT renewal query:', query);
+        console.log('🔍 [ADMIN] Query params:', queryParams);
+
+        const result = await pool.query(query, queryParams);
+        console.log('🔍 [ADMIN] PPAT renewal query result rows:', result.rows.length);
+        const bookings = result.rows;
+
+        // Get total count for pagination
+        let countQuery = `
+            SELECT COUNT(DISTINCT b.nobooking) as total
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.status = 'Diserahkan'
+            AND b.tanggal_booking >= $1
+            AND b.tanggal_booking <= $2
+        `;
+
+        const countParams = [startDate.toISOString(), endDate.toISOString()];
+        if (search.trim()) {
+            countQuery += ` AND (
+                b.nobooking ILIKE $3 OR 
+                b.userid ILIKE $3 OR 
+                b.nama_ppat ILIKE $3 OR
+                b.ppatk_khusus ILIKE $3 OR
+                vu.nama ILIKE $3 OR
+                vu.special_field ILIKE $3
+            )`;
+            countParams.push(`%${search}%`);
+        }
+
+        const countResult = await pool.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].total);
+
+        // Calculate total nilai bphtb for the filtered data
+        let sumQuery = `
+            SELECT COALESCE(SUM(b.nilai_bphtb), 0) as total_bphtb
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.status = 'Diserahkan'
+            AND b.tanggal_booking >= $1
+            AND b.tanggal_booking <= $2
+        `;
+
+        const sumParams = [startDate.toISOString(), endDate.toISOString()];
+        if (search.trim()) {
+            sumQuery += ` AND (
+                b.nobooking ILIKE $3 OR 
+                b.userid ILIKE $3 OR 
+                b.nama_ppat ILIKE $3 OR
+                b.ppatk_khusus ILIKE $3 OR
+                vu.nama ILIKE $3 OR
+                vu.special_field ILIKE $3
+            )`;
+            sumParams.push(`%${search}%`);
+        }
+
+        const sumResult = await pool.query(sumQuery, sumParams);
+        const totalBphtb = parseFloat(sumResult.rows[0].total_bphtb || 0);
+
+        // Format response
+        const formattedBookings = bookings.map(booking => ({
+            nobooking: booking.nobooking,
+            userid: booking.userid,
+            nama_ppat: booking.nama_ppat || booking.user_nama || '-',
+            ppatk_khusus: booking.ppatk_khusus || '-',
+            nilai_bphtb: booking.nilai_bphtb || 0,
+            tanggal_booking: booking.tanggal_booking,
+            status: booking.status,
+            trackstatus: booking.trackstatus,
+            user_nama: booking.user_nama || '-',
+            divisi: booking.divisi || '-',
+            special_field: booking.special_field || '-',
+            // Formatted values for display
+            nilai_formatted: booking.nilai_bphtb ? 
+                `Rp ${Number(booking.nilai_bphtb).toLocaleString('id-ID')}` : 
+                'Rp 0',
+            tanggal_formatted: booking.tanggal_booking ? 
+                new Date(booking.tanggal_booking).toLocaleDateString('id-ID') : 
+                '-'
+        }));
+
+        console.log(`✅ [ADMIN] Found ${formattedBookings.length} PPAT renewal bookings (total: ${total})`);
+
+        res.json({
+            success: true,
+            data: formattedBookings,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            },
+            summary: {
+                total_bphtb: totalBphtb,
+                total_bphtb_formatted: `Rp ${totalBphtb.toLocaleString('id-ID')}`,
+                jangka_waktu: jangkaWaktu,
+                tahun: tahun,
+                date_range: {
+                    start: startDate.toISOString(),
+                    end: endDate.toISOString()
+                }
+            },
+            search: search
+        });
+
+    } catch (error) {
+        console.error('❌ [ADMIN] Error fetching PPAT renewal data:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data pemutakhiran PPAT',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
 // GET /api/admin/notification-warehouse/test - Test endpoint untuk debugging
 router.get('/test', verifyAdmin, async (req, res) => {
     try {

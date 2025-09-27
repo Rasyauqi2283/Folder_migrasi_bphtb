@@ -202,7 +202,7 @@
     <div class="table-wrap" aria-live="polite">
       <table class="data-table" id="notifTable" role="table" aria-label="Tabel Notifikasi">
         <thead>
-          <tr>
+          <tr id="tableHeaders">
             <th>No. Registrasi</th>
             <th>NoBooking</th>
             <th>UserID</th>
@@ -291,6 +291,43 @@
 let currentCategory = 'ppat_ltb'; // default
 const segButtons = document.querySelectorAll('.segmented .seg-btn');
 const notifBody = document.getElementById('notifBody');
+
+// Function to update table headers based on category
+function updateTableHeaders(category) {
+  const tableHeaders = document.getElementById('tableHeaders');
+  if (!tableHeaders) return;
+  
+  let headers = [];
+  
+  if (category === 'ppat_ltb') {
+    headers = [
+      'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
+      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
+    ];
+  } else if (category === 'ltb_lsb') {
+    headers = [
+      'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
+      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Status Peneliti', 'Updated', 'Aksi'
+    ];
+  } else if (category === 'lsb_ppat') {
+    headers = [
+      'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
+      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
+    ];
+  }
+  
+  // Clear existing headers
+  tableHeaders.innerHTML = '';
+  
+  // Add new headers
+  headers.forEach(headerText => {
+    const th = document.createElement('th');
+    th.textContent = headerText;
+    tableHeaders.appendChild(th);
+  });
+  
+  console.log(`✅ Updated table headers for category: ${category}`);
+}
 const notifSearch = document.getElementById('notifSearch');
 const clearSearch = document.getElementById('clearSearch');
 
@@ -334,30 +371,21 @@ segButtons.forEach(btn=>{
     btn.setAttribute('aria-pressed','true');
     currentCategory = btn.dataset.cat;
     
-    // Load notifications from backend for PPAT → LTB, use sample data for others
-    if (currentCategory === 'ppat_ltb') {
-      loadNotifications();
-    } else {
-    renderNotifications();
-    }
+    // Update table headers based on category
+    updateTableHeaders(currentCategory);
+    
+    // Load notifications from backend for all categories
+    loadNotifications();
   });
 });
 
 /* search */
 notifSearch.addEventListener('input', ()=> {
-  if (currentCategory === 'ppat_ltb') {
-    loadNotifications();
-  } else {
-    renderNotifications();
-  }
+  loadNotifications();
 });
 clearSearch.addEventListener('click', ()=>{ 
   notifSearch.value=''; 
-  if (currentCategory === 'ppat_ltb') {
-    loadNotifications();
-  } else {
-    renderNotifications();
-  }
+  loadNotifications();
 });
 
 /* Lihat button (delegation) */
@@ -661,6 +689,7 @@ statusSelect.addEventListener('change', () => renderStatus());
 statusSearch.addEventListener('input', () => renderStatus());
 
 /* init */
+updateTableHeaders(currentCategory); // Initialize table headers
 renderNotifications();
 renderStatus();
 </script>
@@ -687,9 +716,19 @@ renderStatus();
         tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
         
         let url = '';
+        let expectedCols = 9;
+        
         if (currentCategory === 'ppat_ltb') {
           const search = (notifSearch.value || '').trim();
           url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+        } else if (currentCategory === 'ltb_lsb') {
+          const search = (notifSearch.value || '').trim();
+          url = `/api/admin/notification-warehouse/ltb-lsb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          expectedCols = 10; // Additional column for peneliti workflow
+        } else if (currentCategory === 'lsb_ppat') {
+          const search = (notifSearch.value || '').trim();
+          url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          expectedCols = 9;
         } else {
           // For other categories, use sample data for now
           url = '/api/admin/status-ppat/notifications?page=1&limit=50';
@@ -699,35 +738,75 @@ renderStatus();
         const js = await fetchJSON(url);
         tbody.innerHTML='';
         
-        const rows = currentCategory === 'ppat_ltb' ? (js.data || []) : (js.rows || []);
+        const rows = js.data || [];
         
         if(!rows.length){
           const tr = tbody.insertRow(); 
           const td = tr.insertCell(); 
-          td.colSpan=8; 
-          td.textContent = currentCategory === 'ppat_ltb' ? 
-            'Tidak ada notifikasi PPAT → LTB dengan status "Diolah"' : 
-            'Tidak ada Data masuk, 0 to 0 Data Pages'; 
+          td.colSpan = expectedCols;
+          let message = '';
+          if (currentCategory === 'ppat_ltb') {
+            message = 'Tidak ada notifikasi PPAT → LTB dengan status "Diolah"';
+          } else if (currentCategory === 'ltb_lsb') {
+            message = 'Tidak ada notifikasi LTB → LSB dengan alur peneliti';
+          } else if (currentCategory === 'lsb_ppat') {
+            message = 'Tidak ada notifikasi LSB → PPAT dengan status "Terselesaikan"';
+          } else {
+            message = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+          }
+          td.textContent = message;
           return;
         }
         
         rows.forEach(r=>{
           const tr = tbody.insertRow();
-          const vals = [
-            r.no_registrasi||'-',
-            r.nobooking||'-',
-            r.userid||'-',
-            r.special_field||'-',
-            r.ppatk_khusus||'-',
-            r.noppbb||'-',
-            r.jenis_wajib_pajak||'-',
-            r.updated||r.updated_at||'-',
-            'Detail'
-          ];
+          let vals = [];
+          
+          if (currentCategory === 'ppat_ltb') {
+            vals = [
+              r.no_registrasi||'-',
+              r.nobooking||'-',
+              r.userid||'-',
+              r.special_field||'-',
+              r.ppatk_khusus||'-',
+              r.noppbb||'-',
+              r.jenis_wajib_pajak||'-',
+              r.updated||r.updated_at||'-',
+              'Detail'
+            ];
+          } else if (currentCategory === 'ltb_lsb') {
+            // Show peneliti workflow status
+            const penelitiStatus = r.peneliti_verifikasi_status || r.peneliti_paraf_status || r.peneliti_validasi_status || 'Belum diproses';
+            vals = [
+              r.no_registrasi||'-',
+              r.nobooking||'-',
+              r.userid||'-',
+              r.special_field||'-',
+              r.ppatk_khusus||'-',
+              r.noppbb||'-',
+              r.jenis_wajib_pajak||'-',
+              penelitiStatus,
+              r.updated||r.updated_at||'-',
+              'Detail'
+            ];
+          } else if (currentCategory === 'lsb_ppat') {
+            vals = [
+              r.no_registrasi||'-',
+              r.nobooking||'-',
+              r.userid||'-',
+              r.special_field||'-',
+              r.ppatk_khusus||'-',
+              r.noppbb||'-',
+              r.jenis_wajib_pajak||'-',
+              r.updated||r.updated_at||'-',
+              'Detail'
+            ];
+          }
+          
           vals.forEach((v,idx)=>{ 
             const td = tr.insertCell(); 
             td.textContent = v; 
-            if(idx===8){ 
+            if(idx === vals.length - 1){ // Last column is action button
               td.innerHTML = `<button class="btn-sm" data-no-registrasi="${r.no_registrasi||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
             }
           });
@@ -740,7 +819,7 @@ renderStatus();
         tbody.innerHTML='';
         const tr = tbody.insertRow(); 
         const td = tr.insertCell(); 
-        td.colSpan=8; 
+        td.colSpan = expectedCols || 9; 
         td.textContent='Gagal memuat data: '+e.message;
       }
     }
