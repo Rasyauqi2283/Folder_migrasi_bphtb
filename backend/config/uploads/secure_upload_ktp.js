@@ -105,7 +105,6 @@ export const processKTPUpload = async (req, res, next) => {
         console.log('🔍 [DEBUG] Upload context:', {
             hasSession: !!req.session,
             hasUser: !!req.session?.user,
-            sessionUserId: req.session?.user?.userid,
             formEmail: req.body?.email,
             finalUserId: userId,
             requestType: 'registration-only',
