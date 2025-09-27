@@ -83,6 +83,7 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
         console.log('🔍 [ADMIN] Query params:', queryParams);
 
         const result = await pool.query(query, queryParams);
+        console.log('🔍 [ADMIN] PPAT-LTB query result rows:', result.rows.length);
         const notifications = result.rows;
 
         // Get total count for pagination
@@ -147,10 +148,12 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
 
     } catch (error) {
         console.error('❌ [ADMIN] Error fetching PPAT → LTB notifications:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Gagal mengambil data notifikasi PPAT → LTB',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -346,6 +349,7 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
         console.log('🔍 [ADMIN] Query params:', queryParams);
 
         const result = await pool.query(query, queryParams);
+        console.log('🔍 [ADMIN] Query result rows:', result.rows.length);
         const users = result.rows;
 
         // Get total count for pagination
@@ -410,10 +414,12 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
 
     } catch (error) {
         console.error('❌ [ADMIN] Error fetching PPAT/PPATS users:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Gagal mengambil data pengguna PPAT/PPATS',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -547,6 +553,49 @@ router.get('/ppat-users-stats', verifyAdmin, async (req, res) => {
             success: false,
             message: 'Gagal mengambil statistik pengguna PPAT/PPATS',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// GET /api/admin/notification-warehouse/test - Test endpoint untuk debugging
+router.get('/test', verifyAdmin, async (req, res) => {
+    try {
+        console.log('🔍 [ADMIN] Testing database connection...');
+        
+        // Test basic connection
+        const testQuery = await pool.query('SELECT NOW() as current_time');
+        console.log('✅ [ADMIN] Database connection OK:', testQuery.rows[0]);
+        
+        // Test table existence
+        const tableCheck = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('ltb_1_terima_berkas_sspd', 'pat_1_bookingsspd', 'a_2_verified_users')
+        `);
+        console.log('🔍 [ADMIN] Available tables:', tableCheck.rows);
+        
+        // Test simple query
+        const simpleQuery = await pool.query('SELECT COUNT(*) as count FROM a_2_verified_users WHERE divisi IN (\'PPAT\', \'PPATS\')');
+        console.log('🔍 [ADMIN] PPAT/PPATS users count:', simpleQuery.rows[0]);
+        
+        res.json({
+            success: true,
+            message: 'Database test successful',
+            data: {
+                current_time: testQuery.rows[0].current_time,
+                available_tables: tableCheck.rows,
+                ppat_users_count: simpleQuery.rows[0].count
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ [ADMIN] Database test failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database test failed',
+            error: error.message,
+            stack: error.stack
         });
     }
 });

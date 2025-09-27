@@ -591,29 +591,8 @@ const statusSelect = document.getElementById('statusSelect');
 const statusSearch = document.getElementById('statusSearch');
 
 function renderStatus(){
-  const q = (statusSearch.value || '').trim().toLowerCase();
-  const filter = statusSelect.value;
-  const rows=[];
-  const list = ppatUsers.filter(u => (u.divisi||'').toLowerCase() === 'ppat');
-  for(const u of list){
-    if(filter && u.status !== filter) continue;
-    if(q){
-      if(!(`${u.nama} ${u.userid} ${u.special_field}`.toLowerCase().includes(q))) continue;
-    }
-    const badgeClass = u.status === 'Aktif' ? 'active' : (u.status === 'Nonaktif' ? 'nonaktif' : (u.status === 'Pindah Kerja' ? 'pindah' : 'meninggal'));
-    rows.push(`
-      <tr>
-        <td>
-          <div style="font-weight:700">${u.nama}</div>
-          <div style="font-size:13px;color:var(--muted)">${u.userid} • ${u.special_field}</div>
-        </td>
-        <td style="text-align:right">
-          <span class="status-badge ${badgeClass}">${u.status}</span>
-        </td>
-      </tr>
-    `);
-  }
-  statusBody.innerHTML = rows.length ? rows.join('') : `<tr><td colspan="2" style="padding:18px;text-align:center;color:var(--muted)">Tidak ada user.</td></tr>`;
+  // Function disabled - using real data from backend instead
+  statusBody.innerHTML = `<tr><td colspan="2" style="padding:18px;text-align:center;color:var(--muted)">Status data sekarang menggunakan data real dari backend.</td></tr>`;
 }
 
 statusSelect.addEventListener('change', renderStatus);
