@@ -4,11 +4,12 @@
 import NotificationPoller from '/script-backend/notification-poller.js';
 import NotificationUI from '/script-backend/notification-ui.js';
 import NotificationPanel from '/script-backend/notification-panel.js';
+import { isAdminDivisi, isPollerOnlyDivisi, logNotificationSetup } from '/script-backend/notification-config.js';
 
 export async function initNotifications(options = {}) {
     const {
         containerId = 'notificationContainer',
-        createPanel = true,
+        createPanel = null, // null = auto-detect based on divisi
         panelOptions = { width: '360px', top: '130px', right: '24px', maxItems: 200 },
         historyLimit = 50
     } = options;
@@ -21,14 +22,23 @@ export async function initNotifications(options = {}) {
         const userId = user.id || user.userid;
         const divisi = user.divisi || '';
 
+        // Determine if user should have notification panel
+        const shouldCreatePanel = createPanel !== null ? createPanel : isAdminDivisi(divisi);
+        
+        // Log notification setup for debugging
+        logNotificationSetup(divisi, userId);
+
         // UI pop card (muncul kanan atas, auto-create jika container tidak ada)
         NotificationUI.init(containerId);
 
-        // Panel persisten (kanan)
+        // Panel persisten (kanan) - HANYA untuk admin
         let panel = null;
-        if (createPanel) {
+        if (shouldCreatePanel) {
             panel = NotificationPanel.init(panelOptions);
             await panel.loadHistory(userId, historyLimit);
+            console.log('✅ Notification panel created for admin user');
+        } else {
+            console.log('ℹ️ Notification panel disabled for non-admin divisi');
         }
 
         // Poller (long polling)
@@ -36,6 +46,9 @@ export async function initNotifications(options = {}) {
 
         // Cache untuk dedup per booking
         const seenBookings = new Set();
+        
+        // Store divisi in global scope for notification handling
+        window.notificationBootstrap = { user: { divisi, userId } };
 
         // Override agar push masuk ke UI card + Panel persisten + dedup/auto-hide
         const originalShow = poller.showNotification.bind(poller);
@@ -49,19 +62,38 @@ export async function initNotifications(options = {}) {
                 if (bookingId) seenBookings.add(key);
             } catch (_) {}
 
-            if (window.notificationUI) {
-                window.notificationUI.showNotification({
-                    id: notif.id,
-                    title: notif.title,
-                    message: notif.message,
-                    type: 'info',
-                    booking_id: notif.booking_id
-                });
+            // Different behavior based on divisi
+            if (isAdminDivisi(divisi)) {
+                // Admin: Show in UI card + Panel
+                if (window.notificationUI) {
+                    window.notificationUI.showNotification({
+                        id: notif.id,
+                        title: notif.title,
+                        message: notif.message,
+                        type: 'info',
+                        booking_id: notif.booking_id
+                    });
+                }
                 if (window.notificationPanel) {
                     window.notificationPanel.addNotification(notif);
                 }
+                console.log('🔔 Admin notification: UI card + Panel');
+            } else if (isPollerOnlyDivisi(divisi)) {
+                // Poller-only divisi: Show in UI card only (no panel)
+                if (window.notificationUI) {
+                    window.notificationUI.showNotification({
+                        id: notif.id,
+                        title: notif.title,
+                        message: notif.message,
+                        type: 'info',
+                        booking_id: notif.booking_id
+                    });
+                }
+                console.log('🔔 Poller-only notification: UI card only');
             } else {
+                // Other divisi: Use original behavior
                 originalShow(notif);
+                console.log('🔔 Other divisi notification: Original behavior');
             }
         };
 
@@ -162,6 +194,9 @@ export async function initNotifications(options = {}) {
         return null;
     }
 }
+
+// Re-export helper functions for backward compatibility
+export { isAdminDivisi, isPollerOnlyDivisi, logNotificationSetup };
 
 export default { initNotifications };
 
