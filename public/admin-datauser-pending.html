@@ -43,15 +43,38 @@
         opacity: .5;
         cursor: not-allowed;
       }
+      
+      .btn-preview:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+        background-color: #6c757d;
+        border-color: #6c757d;
+      }
+      
+      .btn-preview:not(:disabled) {
+        opacity: 1;
+        cursor: pointer;
+      }
     </style>
     <script>
       document.addEventListener('click', e=>{
-  if(e.target.classList.contains('btn-preview')){
-     const id = e.target.dataset.id;
-     const url = `/api/admin/ktp-preview/${id}?t=${Date.now()}`; // cache-buster
-     openModal(url);
-  }
-});
+        if(e.target.classList.contains('btn-preview')){
+          // Cek apakah button disabled
+          if(e.target.disabled) {
+            alert('Silakan pilih user terlebih dahulu dengan mengklik tombol "Assign ID"');
+            return;
+          }
+          
+          const id = e.target.dataset.id;
+          if(!id) {
+            alert('ID user tidak ditemukan. Silakan pilih user terlebih dahulu.');
+            return;
+          }
+          
+          const url = `/api/admin/ktp-preview/${id}?t=${Date.now()}`; // cache-buster
+          openModal(url);
+        }
+      });
     </script>
 </head>
 <body>
@@ -357,7 +380,7 @@
   
     <!-- User Form Card -->
     <div class="card form-card">
-      <button class="btn btn-info btn-preview" data-id="{{id}}">Preview KTP</button>
+      <button class="btn btn-info btn-preview" disabled>Preview KTP (Pilih user terlebih dahulu)</button>
       <div id="userForm" class="userForm">
         <div class="form-group">
           <label for="userIDDropdown">User ID Prefix:</label>

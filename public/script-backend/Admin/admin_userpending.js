@@ -26,6 +26,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     "WP": "Wajib Pajak"
   };
 
+  // Global variables untuk data users
+  let pendingUsers = [];
+  let completeUsers = [];
+  let currentEmail = '';
+
   // 3. Load Initial Data
   try {
     setLoading(true);
@@ -39,10 +44,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       throw new Error('Gagal memuat data pengguna');
     }
 
-    const [completeUsers, pendingUsers] = await Promise.all([
+    const [completeUsersData, pendingUsersData] = await Promise.all([
       completeUsersResponse.json(),
       pendingUsersResponse.json()
     ]);
+    
+    // Assign to global variables
+    completeUsers = completeUsersData;
+    pendingUsers = pendingUsersData;
+
+    // Initialize Preview KTP button as disabled
+    const previewButton = document.querySelector('.btn-preview');
+    if (previewButton) {
+      previewButton.disabled = true;
+      previewButton.style.opacity = '0.5';
+      previewButton.style.cursor = 'not-allowed';
+      previewButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
+    }
 
     // Pagination state
     let PENDING_PAGE_SIZE = 20;
@@ -130,12 +148,47 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('showFormButton')) {
         currentEmail = e.target.getAttribute('data-email');
+        
+        // Aktifkan button Preview KTP dan set data-id
+        const previewButton = document.querySelector('.btn-preview');
+        if (previewButton) {
+          // Ambil user ID dari data yang sedang diproses
+          const currentUser = pendingUsers.find(user => user.email === currentEmail);
+          if (currentUser && currentUser.id) {
+            previewButton.setAttribute('data-id', currentUser.id);
+            previewButton.disabled = false;
+            previewButton.style.opacity = '1';
+            previewButton.style.cursor = 'pointer';
+            previewButton.textContent = 'Preview KTP';
+          }
+        }
+        
         document.getElementById("userForm").classList.add("show");
         document.getElementById("userForm").scrollIntoView({ 
           behavior: 'smooth' 
         });
       }
     });
+
+    // Reset Preview KTP button when form is cancelled or completed
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('cancel-button') || e.target.id === 'cancelButton') {
+        resetPreviewButton();
+      }
+    });
+
+    // Function to reset Preview KTP button
+    function resetPreviewButton() {
+      const previewButton = document.querySelector('.btn-preview');
+      if (previewButton) {
+        previewButton.disabled = true;
+        previewButton.style.opacity = '0.5';
+        previewButton.style.cursor = 'not-allowed';
+        previewButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
+        previewButton.removeAttribute('data-id');
+        currentEmail = '';
+      }
+    }
 
     // Handle perubahan divisi
     userIDDropdown.addEventListener('change', async function() {
@@ -216,6 +269,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // [PERBAIKAN 3] Tampilkan notifikasi sukses
         showSuccessNotification(data.message || 'Data berhasil disimpan');
+
+        // Reset Preview KTP button
+        resetPreviewButton();
 
         updateUserTable(currentEmail, {
           userid: data.user.userid,
