@@ -82,6 +82,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }, 100);
     }
+    
+    // Initialize preview image as hidden
+    const previewImg = document.getElementById('PreviewKTP');
+    if (previewImg) {
+      previewImg.style.display = 'none';
+      previewImg.src = '';
+      previewImg.alt = 'Preview KTP';
+      console.log('✅ Preview image initialized as hidden');
+    } else {
+      console.error('❌ Preview image element not found');
+    }
 
     // Pagination state
     let PENDING_PAGE_SIZE = 20;
@@ -253,6 +264,26 @@ document.addEventListener("DOMContentLoaded", async () => {
         previewButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
         previewButton.removeAttribute('data-id');
         currentEmail = '';
+      }
+      
+      // Reset preview image
+      const previewImg = document.getElementById('PreviewKTP');
+      if (previewImg) {
+        previewImg.src = '';
+        previewImg.alt = 'Preview KTP';
+        previewImg.style.display = 'none';
+        previewImg.style.border = '';
+        previewImg.style.background = '';
+        previewImg.style.color = '';
+        previewImg.style.padding = '';
+        previewImg.style.textAlign = '';
+        previewImg.innerHTML = '';
+      }
+      
+      // Hide loading indicator
+      const loadingDiv = document.querySelector('.ktp-loading');
+      if (loadingDiv) {
+        loadingDiv.style.display = 'none';
       }
     }
 

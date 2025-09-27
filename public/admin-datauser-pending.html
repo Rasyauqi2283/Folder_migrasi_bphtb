@@ -55,6 +55,46 @@
         opacity: 1;
         cursor: pointer;
       }
+      
+      /* KTP Preview Styling */
+      #PreviewKTP {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: #fff;
+        transition: all 0.3s ease;
+      }
+      
+      #PreviewKTP:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        transform: scale(1.02);
+      }
+      
+      .ktp-loading {
+        text-align: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin: 10px 0;
+      }
+      
+      .ktp-loading .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
     </style>
     <script>
       document.addEventListener('click', e=>{
@@ -77,11 +117,138 @@
             return;
           }
           
-          console.log('✅ Opening KTP preview for ID:', id);
-          const url = `/api/admin/ktp-preview/${id}?t=${Date.now()}`; // cache-buster
-          openModal(url);
+          console.log('✅ Loading KTP preview for ID:', id);
+          loadKTPPreview(id);
         }
       });
+      
+      // Function to load KTP preview securely
+      async function loadKTPPreview(userId) {
+        try {
+          console.log('🔍 Loading KTP preview for user ID:', userId);
+          
+          // Show loading state
+          const previewImg = document.getElementById('PreviewKTP');
+          const previewContainer = previewImg.parentElement;
+          
+          if (!previewImg) {
+            console.error('❌ Preview image element not found');
+            alert('Elemen preview tidak ditemukan');
+            return;
+          }
+          
+          // Show loading indicator
+          previewImg.style.display = 'none';
+          previewImg.alt = 'Loading KTP preview...';
+          
+          // Create loading indicator
+          let loadingDiv = previewContainer.querySelector('.ktp-loading');
+          if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.className = 'ktp-loading';
+            loadingDiv.innerHTML = `
+              <div style="text-align: center; padding: 20px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px;">
+                <div class="spinner" style="margin: 0 auto 10px;"></div>
+                <p style="margin: 0; color: #6c757d;">Loading KTP preview...</p>
+              </div>
+            `;
+            previewContainer.appendChild(loadingDiv);
+          }
+          loadingDiv.style.display = 'block';
+          
+          // Fetch KTP preview with security headers
+          const url = `/api/admin/ktp-preview/${userId}?t=${Date.now()}`;
+          console.log('🔍 Fetching KTP from:', url);
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Accept': 'image/*',
+              'Cache-Control': 'no-cache'
+            },
+            credentials: 'include' // Include session cookies for authentication
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          // Check if response is actually an image
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.startsWith('image/')) {
+            throw new Error('Response is not an image');
+          }
+          
+          // Convert response to blob URL for security
+          const blob = await response.blob();
+          const imageUrl = URL.createObjectURL(blob);
+          
+          // Track blob URL for cleanup
+          window.ktpBlobUrls.push(imageUrl);
+          
+          // Clean up previous blob URL if exists
+          if (previewImg.src && previewImg.src.startsWith('blob:')) {
+            URL.revokeObjectURL(previewImg.src);
+            const index = window.ktpBlobUrls.indexOf(previewImg.src);
+            if (index > -1) {
+              window.ktpBlobUrls.splice(index, 1);
+            }
+          }
+          
+          // Update image source
+          previewImg.src = imageUrl;
+          previewImg.alt = `KTP Preview - User ID: ${userId}`;
+          previewImg.style.display = 'block';
+          previewImg.style.maxWidth = '100%';
+          previewImg.style.height = 'auto';
+          previewImg.style.border = '1px solid #dee2e6';
+          previewImg.style.borderRadius = '8px';
+          previewImg.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          
+          // Hide loading indicator
+          loadingDiv.style.display = 'none';
+          
+          // Scroll to preview
+          previewImg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          console.log('✅ KTP preview loaded successfully');
+          
+          // Clean up blob URL after 5 minutes to prevent memory leaks
+          setTimeout(() => {
+            URL.revokeObjectURL(imageUrl);
+            console.log('🧹 Cleaned up KTP preview blob URL');
+          }, 5 * 60 * 1000);
+          
+        } catch (error) {
+          console.error('❌ Error loading KTP preview:', error);
+          
+          // Hide loading indicator
+          const loadingDiv = previewContainer.querySelector('.ktp-loading');
+          if (loadingDiv) {
+            loadingDiv.style.display = 'none';
+          }
+          
+          // Show error state
+          const previewImg = document.getElementById('PreviewKTP');
+          previewImg.style.display = 'block';
+          previewImg.src = '';
+          previewImg.alt = 'Error loading KTP preview';
+          previewImg.style.border = '2px dashed #dc3545';
+          previewImg.style.background = '#f8d7da';
+          previewImg.style.color = '#721c24';
+          previewImg.style.padding = '20px';
+          previewImg.style.textAlign = 'center';
+          previewImg.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px;">
+              <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+              <p style="margin: 0; font-weight: bold;">Gagal memuat preview KTP</p>
+              <p style="margin: 5px 0 0 0; font-size: 14px;">${error.message}</p>
+            </div>
+          `;
+          
+          alert(`Gagal memuat preview KTP: ${error.message}`);
+        }
+      }
       
       // Test function untuk debugging
       function testPreviewButton() {
@@ -100,6 +267,21 @@
           console.error('🧪 Button not found for testing');
         }
       }
+      
+      // Clean up blob URLs when page is unloaded
+      window.addEventListener('beforeunload', function() {
+        // Clean up all tracked blob URLs
+        if (window.ktpBlobUrls && window.ktpBlobUrls.length > 0) {
+          window.ktpBlobUrls.forEach(url => {
+            URL.revokeObjectURL(url);
+          });
+          console.log(`🧹 Cleaned up ${window.ktpBlobUrls.length} blob URLs on page unload`);
+          window.ktpBlobUrls = [];
+        }
+      });
+      
+      // Global variable to track blob URLs for cleanup
+      window.ktpBlobUrls = window.ktpBlobUrls || [];
     </script>
 </head>
 <body>
@@ -408,6 +590,10 @@
       <button class="btn btn-info btn-preview" disabled>Preview KTP (Pilih user terlebih dahulu)</button>
       <button class="btn btn-warning" onclick="testPreviewButton()" style="margin-left: 10px;">Test Activate Preview</button>
       <div id="userForm" class="userForm">
+        <div class="form-group">
+          <label for="PreviewKTP">Preview KTP:</label>
+          <img src="" alt="Preview KTP" id="PreviewKTP" class="form-control"/>
+        </div>
         <div class="form-group">
           <label for="userIDDropdown">User ID Prefix:</label>
           <select name="userIDDropdown" id="userIDDropdown" class="form-control">
