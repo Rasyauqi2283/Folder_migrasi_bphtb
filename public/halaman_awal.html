@@ -74,9 +74,36 @@
       transform: translateY(-2px);
     }
 
+        /* Banner / Notice */
+        .banner {
+          margin-top: 60px;
+      width: 90%;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 40px;
+      text-align: center;
+      background: rgba(255,255,255,0.08);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      animation: fadeInUp 0.7s ease forwards;
+    }
+
+    .banner h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+
+    .banner p {
+      font-size: 1rem;
+      color: #e2e8f0;
+    }
+
     /* Hero Section */
     .hero {
-      margin-top: 120px; /* supaya tidak ketutup navbar */
+      margin-top: 20px; /* supaya tidak ketutup navbar */
       width: 90%;
       max-width: 1200px;
       margin-left: auto;
@@ -125,33 +152,6 @@
       height: auto;
     }
 
-    /* Banner / Notice */
-    .banner {
-      margin-top: 60px;
-      width: 90%;
-      max-width: 1000px;
-      margin-left: auto;
-      margin-right: auto;
-      padding: 40px;
-      text-align: center;
-      background: rgba(255,255,255,0.08);
-      border-radius: 20px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      animation: fadeInUp 0.7s ease forwards;
-    }
-
-    .banner h2 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin-bottom: 15px;
-    }
-
-    .banner p {
-      font-size: 1rem;
-      color: #e2e8f0;
-    }
-
     /* Footer */
     footer {
       margin-top: auto;
@@ -197,8 +197,8 @@
   <header>
     <div class="logo">E-BPHTB</div>
     <div class="nav-buttons">
-      <button class="login">Masuk</button>
-      <button class="register">Registrasi</button>
+      <button class="login" onclick="window.location.href='login.html'">Masuk</button>
+      <button class="register" onclick="window.location.href='registrasi.html'">Registrasi</button>
     </div>
   </header>
     <!-- Banner / Notice -->
@@ -209,19 +209,19 @@
 
   <!-- Hero Section -->
   <section class="hero">
+    <img src="asset/Tax-amico.png" alt="Ilustrasi Pajak" />
     <div class="hero-text">
       <h1>Selamat Datang di E-BPHTB Kabupaten Bogor</h1>
       <p>Layanan resmi Bea Perolehan Hak atas Tanah dan Bangunan secara digital, cepat, dan transparan.</p>
       <button class="cta">Pelajari Lebih Lanjut</button>
     </div>
-    <img src="asset/Tax-amico.png" alt="Ilustrasi Pajak" />
   </section>
 
 
 
   <!-- Footer -->
   <footer>
-    © 2025 Pemerintah Kabupaten Bogor – Dinas Pendapatan Daerah
+    © 2025 Pemerintah Kabupaten Bogor – BAPPENDA
   </footer>
 </body>
 </html>
