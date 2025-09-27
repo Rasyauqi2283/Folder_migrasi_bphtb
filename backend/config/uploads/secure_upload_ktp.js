@@ -89,26 +89,16 @@ export const processKTPUpload = async (req, res, next) => {
         }
         
         // Simpan file dengan enkripsi
-        // Untuk registrasi, gunakan email dari form data karena session belum ada
-        const userId = req.session?.user?.userid || req.body?.email || 'anonymous';
+        // SELALU gunakan email dari form data untuk konsistensi dengan database
+        const userId = req.body?.email || 'anonymous';
         
-        // 🔒 SECURITY: Validasi email consistency untuk user yang sudah login
-        if (req.session?.user && req.body?.email) {
-            const sessionEmail = req.session.user.email;
-            const formEmail = req.body.email;
-            
-            if (sessionEmail !== formEmail) {
-                console.log('🚫 [SECURE_UPLOAD] Email mismatch detected:', {
-                    sessionEmail: sessionEmail,
-                    formEmail: formEmail,
-                    sessionUserId: req.session.user.userid,
-                    action: 'BLOCKED'
-                });
-                return res.status(400).json({
-                    success: false,
-                    message: 'Email tidak sesuai dengan akun yang sedang login. Silakan gunakan email yang sama dengan akun Anda.'
-                });
-            }
+        // Validasi email harus ada
+        if (!req.body?.email) {
+            console.log('🚫 [SECURE_UPLOAD] No email provided in form data');
+            return res.status(400).json({
+                success: false,
+                message: 'Email harus disediakan untuk registrasi.'
+            });
         }
         
         // Debug session data dan form data
@@ -118,8 +108,8 @@ export const processKTPUpload = async (req, res, next) => {
             sessionUserId: req.session?.user?.userid,
             formEmail: req.body?.email,
             finalUserId: userId,
-            requestType: req.session?.user ? 'logged-in' : 'registration',
-            emailConsistent: req.session?.user ? req.session.user.email === req.body?.email : 'N/A'
+            requestType: 'registration-only',
+            logic: 'email-based-identifier'
         });
         
         const secureFile = await saveSecureFile(req.file, userId);

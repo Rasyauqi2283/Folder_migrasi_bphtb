@@ -137,21 +137,6 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   const { nama, nik, telepon, email, password } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
-  // 🔒 SECURITY: Validasi session - User yang sudah login tidak boleh registrasi
-  if (req.session.user) {
-    console.log('🚫 [REGISTER] User already logged in:', {
-      sessionUserId: req.session.user.userid,
-      sessionEmail: req.session.user.email,
-      formEmail: email,
-      action: 'BLOCKED'
-    });
-    return res.status(400).json({ 
-      success: false,
-      message: 'Anda sudah login. Silakan logout terlebih dahulu untuk registrasi akun baru.',
-      redirectTo: '/profile.html'
-    });
-  }
-
   // Validasi input
   if (!nama || !nik || !telepon || !email || !password || !secureFile) {
     return res.status(400).json({ 
@@ -186,17 +171,32 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
       timestamp: new Date().toISOString()
     });
 
-    // Cek apakah email sudah ada di verified_users dengan status selain "unverified"
-    const checkEmailQueryVerified = 'SELECT * FROM a_2_verified_users WHERE email = $1';
+    // 🔒 DATABASE CHECK: Cek apakah email sudah ada di verified_users
+    console.log('🔍 [REGISTER] Checking email in verified_users table:', email);
+    const checkEmailQueryVerified = 'SELECT userid, email, nama, divisi FROM a_2_verified_users WHERE email = $1';
     const resultEmailVerified = await pool.query(checkEmailQueryVerified, [email]);
 
     if (resultEmailVerified.rows.length > 0) {
-      console.log('🚫 [REGISTER] Email already verified:', email);
+      const existingUser = resultEmailVerified.rows[0];
+      console.log('🚫 [REGISTER] Email already exists in verified_users:', {
+        email: email,
+        existingUserid: existingUser.userid,
+        existingNama: existingUser.nama,
+        existingDivisi: existingUser.divisi,
+        action: 'BLOCKED'
+      });
       return res.status(400).json({ 
         success: false,
-        message: 'Email ini sudah terdaftar dengan status yang valid. Anda tidak bisa mendaftar ulang.' 
+        message: 'Email ini sudah terdaftar dengan status yang valid. Anda tidak bisa mendaftar ulang.',
+        existingUser: {
+          userid: existingUser.userid,
+          nama: existingUser.nama,
+          divisi: existingUser.divisi
+        }
       });
     }
+
+    console.log('✅ [REGISTER] Email is available for registration:', email);
 
     // Hash password sebelum disimpan
     const hashedPassword = await bcrypt.hash(password, 10);
