@@ -15,6 +15,8 @@ const TEMP_UPLOAD_PATH = path.join(__dirname, '..', '..', 'temp_uploads');
 if (!fs.existsSync(TEMP_UPLOAD_PATH)) {
     fs.mkdirSync(TEMP_UPLOAD_PATH, { recursive: true });
     console.log('📁 [SECURE] Temp upload directory created:', TEMP_UPLOAD_PATH);
+} else {
+    console.log('📁 [SECURE] Temp upload directory already exists:', TEMP_UPLOAD_PATH);
 }
 
 // Konfigurasi multer untuk temporary storage
