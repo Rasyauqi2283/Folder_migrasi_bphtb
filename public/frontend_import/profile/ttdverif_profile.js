@@ -1,4 +1,4 @@
-import { photoLoading } from '../../script-backend/utils/loading_utils.js';
+import { photoLoading } from '../../design-n-script/script-backend/utils/loading_utils.js';
 
 let previewUrl = null;
 let grayscaleUrl = null;

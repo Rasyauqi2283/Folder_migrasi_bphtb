@@ -1,7 +1,7 @@
 // catatan (belum beres pada bagian ini)
 // ==== 1. Imports and Dependencies ====
-import { api } from '../../script-backend/utils/api_utils.js';
-import { photoLoading  } from '../../script-backend/utils/loading_utils.js';
+import { api } from '../../design-n-script/script-backend/utils/api_utils.js';
+import { photoLoading  } from '../../design-n-script/script-backend/utils/loading_utils.js';
 import { initPhotoUpload } from './uploadfoto_profile.js';
 import { initPasswordChange } from './passwordchange_profile.js';
 import { initSignatureUpload } from './ttdverif_profile.js';

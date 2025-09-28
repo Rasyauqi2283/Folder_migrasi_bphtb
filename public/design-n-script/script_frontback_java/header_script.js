@@ -119,6 +119,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const divisiDropdown = document.getElementById('jumlahKaryawan'); // Dropdown untuk divisi
     const memberValue = document.getElementById('memberValue'); // Elemen untuk menampilkan jumlah anggota
 
+    // Hanya jalankan jika elemen ada (untuk halaman yang memiliki dropdown divisi)
+    if (!divisiDropdown || !memberValue) {
+        console.log('Header script: Divisi dropdown atau member value tidak ditemukan, skip event listener');
+        return;
+    }
+
     // Event listener ketika divisi dipilih
     divisiDropdown.addEventListener('change', async (event) => {
         const selectedDivisi = event.target.value; // Mendapatkan divisi yang dipilih
