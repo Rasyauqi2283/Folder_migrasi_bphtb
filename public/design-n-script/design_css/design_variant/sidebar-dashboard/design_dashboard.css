@@ -16,14 +16,15 @@
 }
 
 .welcome-banner {
-    background:linear-gradient(45deg, #4a90e2, #455a64);
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
     display: flex;
     align-items: center;
     background-position: 0 0;
     background-size: 300% 300%;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 13px 18px 17px rgba(0, 0, 0, 0.7), -3px -3px 10px rgba(67, 78, 138, 0.7);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 5px 15px rgba(65, 90, 119, 0.3);
+    border: 1px solid rgba(65, 90, 119, 0.3);
     width: calc(100% - 60px);
     height: 200px;
     max-width: 1550px;
@@ -78,20 +79,23 @@
 .calendar-container {
     position: relative;
     margin-left: auto;
-    background-color: #d9e3f0;
-    padding: 10px;
-    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(65, 90, 119, 0.2));
+    padding: 15px;
+    border-radius: 15px;
     width: 180px;
     text-align: center;
+    border: 1px solid rgba(65, 90, 119, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 .calendar-month {
-    background-color: #333;
+    background: linear-gradient(135deg, #0d1b2a, #1b263b);
     color: #fff;
-    padding: 3px 7px;
-    border-radius: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
     font-weight: bold;
     margin-bottom: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .calendar-grid {
@@ -113,7 +117,7 @@
 
 .day {
     font-weight: bold;
-    color: #4a90e2;
+    color: #415a77;
 }
 
 .weekend {
@@ -129,9 +133,10 @@
 }
 
 .date.current-day {
-    background-color: #4a90e2;
+    background: linear-gradient(135deg, #415a77, #1b263b);
     color: #fff;
     font-weight: bold;
+    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.4);
 }
 
 .date:hover {
@@ -179,16 +184,19 @@
 
 /* Card Styles */
 .card {
-    background-color: #455a64; /* Soft Blue */
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: linear-gradient(135deg, rgba(27, 38, 59, 0.9), rgba(65, 90, 119, 0.8));
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(65, 90, 119, 0.3);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border-color: rgba(65, 90, 119, 0.5);
 }
 
 .card h3 {

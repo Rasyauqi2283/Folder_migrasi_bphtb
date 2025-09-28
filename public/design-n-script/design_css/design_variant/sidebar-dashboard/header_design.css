@@ -4,7 +4,7 @@
 
 /* Main header styling */
 header {
-    background: linear-gradient(to left, #6F8F9C, #466572, #6A8D9B);
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
     animation: waveAnimation 10s infinite linear;
     background-size: 300% 300%;
     height: 80px;
@@ -16,7 +16,8 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(65, 90, 119, 0.3);
     z-index: 100;
     color: white;
 }
@@ -142,13 +143,13 @@ header.member-hidden .profile-overlay {
     height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #001f3f;
+    border: 2px solid #415a77;
     transition: all 0.3s ease;
 }
 
 .profile-pic-container:hover .profile-pic {
     transform: scale(1.1);
-    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5);
+    box-shadow: 0 0 0 3px rgba(65, 90, 119, 0.5);
 }
 
 /* Overlay Styles */
@@ -160,14 +161,15 @@ header.member-hidden .profile-overlay {
     right: 50px;
     width: 300px;
     height: 210px;
-    background: rgba(0, 29, 61, 0.98);
-    backdrop-filter: blur(5px);
+    background: linear-gradient(135deg, rgba(13, 27, 42, 0.98), rgba(27, 38, 59, 0.95));
+    backdrop-filter: blur(15px);
     color: white;
     transform: translateX(100%);
     transition: transform 0.3s ease;
     z-index: 1000;
     padding: 20px 40px 10px 10px;
-    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(65, 90, 119, 0.3);
     border-bottom-left-radius: 20px;
     border-top-left-radius: 20px;
     display: none;
@@ -190,7 +192,7 @@ header.member-hidden .profile-overlay {
     height: 60px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #4a90e2;
+    border: 2px solid #415a77;
 }
 .profile-info h4 {
     margin: 0;
@@ -233,12 +235,15 @@ header.member-hidden .profile-overlay {
 }
 
 .profile-btn {
-    background: #4a90e2;
+    background: linear-gradient(135deg, #415a77, #1b263b);
     color: white;
+    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.3);
 }
 
 .profile-btn:hover {
-    background: #3a7bc8;
+    background: linear-gradient(135deg, #1b263b, #0d1b2a);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(65, 90, 119, 0.4);
 }
 
 .logout-button {

@@ -14,7 +14,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    background-color: #4A6C82;
+    background: linear-gradient(180deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
     color: white;
     transition: width 0.5s ease, background-color 0.3s ease;
     z-index: 10;
@@ -22,12 +22,14 @@
     flex-direction: column;
     padding-top: 20px;
     max-height: calc(100vh - 70px);
+    border-right: 1px solid rgba(65, 90, 119, 0.3);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
 }
 
 /* Sidebar when expanded */
 .sidebar.expand {
     width: 250px;
-    background-color: #3B5973;
+    background: linear-gradient(180deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
 }
 
 /* Transisi geser mainContent dan footerContent */
@@ -102,23 +104,25 @@
 }
 
 .menu-item:hover {
-    background-color: #5A7D95;
-    color: #12435f;
+    background: linear-gradient(135deg, rgba(65, 90, 119, 0.8), rgba(27, 38, 59, 0.9));
+    color: #fff;
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
+    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.3);
 }
 .menu-item:hover .sidebar-icon, .menu-item:hover .sidebar-text {
-    color: #12435f;
+    color: #fff;
     transition: color 0.3s ease;
 }
 
 .menu-item.active {
-    background-color: #5A7D95;
-    color: #12435f;
-    border-bottom: 3px solid #0f2748;
+    background: linear-gradient(135deg, #415a77, #1b263b);
+    color: #fff;
+    border-bottom: 3px solid #0d1b2a;
+    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.4);
 }
 .menu-item.active .sidebar-icon, .menu-item.active .sidebar-text {
-    color: #12435f;
+    color: #fff;
 }
 
 /* Styling untuk menu-item utama */
@@ -183,7 +187,7 @@
 }
 
 .dropdown-content a {
-    background-color: #3B5973;
+    background: linear-gradient(135deg, rgba(27, 38, 59, 0.8), rgba(13, 27, 42, 0.9));
     font-size: 14px;
     color: white;
     text-align: start;
@@ -197,13 +201,14 @@
 }
 
 .dropdown-content a:hover {
-    background-color: #6C8FA7; /* Warna saat hover */
-    color: #12435f;
-    border-right: 4px solid #12435f;
-    border-left: 2px solid black;
+    background: linear-gradient(135deg, rgba(65, 90, 119, 0.9), rgba(27, 38, 59, 0.95));
+    color: #fff;
+    border-right: 4px solid #415a77;
+    border-left: 2px solid #0d1b2a;
     border-top-right-radius: 20px;
     border-bottom-right-radius: 20px;
     font-weight: 600;
+    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.3);
 }
 
 

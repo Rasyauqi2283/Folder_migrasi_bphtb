@@ -14,7 +14,8 @@
 
     body {
       font-family: "Poppins", sans-serif;
-      background: linear-gradient(135deg, #0d1b2a, #1b263b, #415a77);
+      background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+      background-attachment: fixed;
       color: #fff;
       min-height: 100vh;
       display: flex;
@@ -28,12 +29,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
+      background: rgba(13, 27, 42, 0.95);
+      backdrop-filter: blur(15px);
+      border-bottom: 1px solid rgba(65, 90, 119, 0.3);
       position: fixed;
       top: 0;
       left: 0;
       z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
 
     .logo {
@@ -57,36 +60,41 @@
     }
 
     .nav-buttons .register {
-      background: #00b4d8;
+      background: linear-gradient(135deg, #415a77, #1b263b);
       color: #fff;
+      box-shadow: 0 4px 15px rgba(65, 90, 119, 0.3);
     }
     .nav-buttons .register:hover {
-      background: #0096c7;
+      background: linear-gradient(135deg, #1b263b, #0d1b2a);
       transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(65, 90, 119, 0.4);
     }
 
     .nav-buttons .login {
-      background: #fff;
-      color: #1b263b;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
     .nav-buttons .login:hover {
-      background: #e2e8f0;
+      background: rgba(255, 255, 255, 0.2);
       transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.3);
     }
 
         /* Banner / Notice */
         .banner {
-          margin-top: 60px;
+          margin-top: 80px;
       width: 90%;
       max-width: 1000px;
       margin-left: auto;
       margin-right: auto;
       padding: 40px;
       text-align: center;
-      background: rgba(255,255,255,0.08);
+      background: linear-gradient(135deg, rgba(27, 38, 59, 0.8), rgba(65, 90, 119, 0.6));
       border-radius: 20px;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
       animation: fadeInUp 0.7s ease forwards;
     }
 
@@ -131,18 +139,21 @@
       margin-bottom: 25px;
     }
     .hero-text .cta {
-      padding: 12px 25px;
-      background: #00b4d8;
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #415a77, #1b263b);
       color: #fff;
       font-weight: 600;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 20px rgba(65, 90, 119, 0.3);
+      font-size: 1rem;
     }
     .hero-text .cta:hover {
-      background: #0096c7;
-      transform: translateY(-2px);
+      background: linear-gradient(135deg, #1b263b, #0d1b2a);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(65, 90, 119, 0.4);
     }
 
     .hero img {
@@ -155,10 +166,12 @@
     /* Footer */
     footer {
       margin-top: auto;
-      padding: 20px;
+      padding: 25px;
       text-align: center;
       font-size: 0.9rem;
-      background: rgba(255,255,255,0.05);
+      background: rgba(13, 27, 42, 0.8);
+      border-top: 1px solid rgba(65, 90, 119, 0.3);
+      backdrop-filter: blur(10px);
     }
 
     /* Animasi */
