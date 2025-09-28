@@ -313,6 +313,37 @@ function validateNama(input) {
     showSuccess('nama', '✓ Nama valid');
 }
 
+// Validasi Gender real-time
+function validateGender(select) {
+    const gender = select.value;
+    const genderError = document.getElementById('genderError');
+    
+    if (!gender || gender === '') {
+        if (genderError) {
+            genderError.textContent = 'Pilih jenis kelamin Anda';
+            genderError.style.display = 'block';
+            genderError.className = 'error-message';
+        }
+        select.classList.add('error');
+        return;
+    }
+    
+    if (!['Perempuan', 'Laki-laki'].includes(gender)) {
+        if (genderError) {
+            genderError.textContent = 'Pilihan gender tidak valid';
+            genderError.style.display = 'block';
+            genderError.className = 'error-message';
+        }
+        select.classList.add('error');
+        return;
+    }
+    
+    if (genderError) {
+        genderError.style.display = 'none';
+    }
+    select.classList.remove('error');
+}
+
 // Event listener untuk input real-time validation
 document.addEventListener('DOMContentLoaded', function() {
     // Setup toggle password functionality
@@ -441,6 +472,7 @@ function validateForm() {
     const telepon = document.getElementById('telepon').value;
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('repeatpassword').value;
+    const gender = document.getElementById('gender').value;
     const fotoktp = document.getElementById('fotoktp').files[0];
 
     let isValid = true;
@@ -485,6 +517,15 @@ function validateForm() {
     // Validasi Konfirmasi Password
     if (password !== confirmPassword) {
         showError('repeatpassword', 'Konfirmasi password tidak cocok');
+        isValid = false;
+    }
+
+    // Validasi Gender
+    if (!gender || gender === '') {
+        alert('Pilih jenis kelamin Anda!');
+        isValid = false;
+    } else if (!['Perempuan', 'Laki-laki'].includes(gender)) {
+        alert('Pilihan gender tidak valid!');
         isValid = false;
     }
 

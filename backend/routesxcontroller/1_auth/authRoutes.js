@@ -21,7 +21,7 @@ router.post('/login', async (req, res) => {
             userid, password, nama, email, divisi, 
             fotoprofil, statuspengguna, verifiedstatus,
             username, nip, special_field, special_parafv, pejabat_umum,
-            tanda_tangan_mime, tanda_tangan_path, telepon
+            tanda_tangan_mime, tanda_tangan_path, telepon, gender
         FROM a_2_verified_users 
         WHERE (email = $1 OR userid = $1 OR username = $1)
         AND verifiedstatus = 'complete'
@@ -83,7 +83,8 @@ router.post('/login', async (req, res) => {
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,
-      tanda_tangan_path: user.tanda_tangan_path
+      tanda_tangan_path: user.tanda_tangan_path,
+      gender: user.gender
     };
 
     console.log('🍪 Session saved:', {
@@ -117,7 +118,8 @@ router.post('/login', async (req, res) => {
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,
-      tanda_tangan_path: user.tanda_tangan_path
+      tanda_tangan_path: user.tanda_tangan_path,
+      gender: user.gender
     });
 
   } catch (error) {
@@ -134,7 +136,7 @@ router.post('/login', async (req, res) => {
 
 // 2. Register endpoint (check ✔)
 router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, async (req, res) => {
-  const { nama, nik, telepon, email, password } = req.body;
+  const { nama, nik, telepon, email, password, gender } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
   console.log(`📧 [REGISTER] Processing registration for: ${email}`);
@@ -145,10 +147,19 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   });
 
   // Validasi input
-  if (!nama || !nik || !telepon || !email || !password || !secureFile) {
+  if (!nama || !nik || !telepon || !email || !password || !gender || !secureFile) {
     return res.status(400).json({ 
       success: false,
       message: 'Semua data harus diisi dengan benar' 
+    });
+  }
+
+  // Validasi gender
+  const validGenders = ['Perempuan', 'Laki-laki'];
+  if (!validGenders.includes(gender)) {
+    return res.status(400).json({ 
+      success: false,
+      message: 'Pilihan gender tidak valid' 
     });
   }
 
@@ -174,6 +185,7 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
       email: email,
       nama: nama,
       nik: nik,
+      gender: gender,
       hasSecureFile: !!secureFile,
       timestamp: new Date().toISOString()
     });
@@ -231,12 +243,13 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
           otp = $7,
           verifiedstatus = $8,
           fotoprofil = $9,
+          gender = $10,
           created_at = NOW()
-      WHERE email = $10
+      WHERE email = $11
       RETURNING *;
       `;
       const updateValues = [
-      nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', '', email
+      nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', '', gender, email
       ];
 
       // Update data pengguna yang ada di unverified_users
@@ -262,11 +275,11 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
       
       // Jika email tidak ada, insert data baru
       const insertQuery = `
-      INSERT INTO a_1_unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *;
+      INSERT INTO a_1_unverified_users (nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, gender, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) RETURNING *;
       `;
       const insertValues = [
-      nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', ''
+      nama, nik, telepon, email, hashedPassword, secureFile.fileId, otp, 'unverified', '', gender
       ];
 
       // Insert data pengguna baru
@@ -378,15 +391,15 @@ router.post('/verify-otp', async (req, res) => {
         INSERT INTO a_2_verified_users (
             nama, nik, telepon, email, password, foto, 
             otp, verifiedstatus, fotoprofil, userid, divisi, 
-            statuspengguna, ppatk_khusus
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+            statuspengguna, ppatk_khusus, gender
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
         RETURNING *;
     `;
     
     const insertValues = [
         user.nama, user.nik, user.telepon, user.email, 
         user.password, user.foto, otp.trim(), 'verified_pending', 
-        '', '', '', 'offline', ''
+        '', '', '', 'offline', '', user.gender
     ];
 
     // Gunakan transaction untuk operasi move-delete
