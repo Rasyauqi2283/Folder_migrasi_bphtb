@@ -173,37 +173,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const customScrollbar = document.querySelector('.custom-scrollbar');
     const scrollbarThumb = document.querySelector('.custom-scrollbar-thumb');
     
-    
-    // Drag Scroll pada Thumb
-    let isDragging = false;
-    let startY, startThumbTop;
-    
-    scrollbarThumb.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        startY = e.clientY;
-        startThumbTop = parseInt(scrollbarThumb.style.top) || 0;
-        document.body.classList.add('no-select');
-    });
-    
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const deltaY = e.clientY - startY;
-        const thumbTop = Math.min(
-            Math.max(startThumbTop + deltaY, 0),
-            customScrollbar.clientHeight - scrollbarThumb.clientHeight
-        );
-        const scrollRatio = thumbTop / (customScrollbar.clientHeight - scrollbarThumb.clientHeight);
-        sidebar.scrollTop = scrollRatio * (sidebar.scrollHeight - sidebar.clientHeight);
-    });
-    
-    document.addEventListener('mouseup', () => {
-        isDragging = false;
-        document.body.classList.remove('no-select');
-    });
-    
-    // Update scrollbar saat ukuran window berubah
-    window.addEventListener('resize', function() {
-        updateScrollbar();
-    });
+    // Hanya jalankan custom scrollbar jika elemen ada
+    if (customScrollbar && scrollbarThumb) {
+        // Drag Scroll pada Thumb
+        let isDragging = false;
+        let startY, startThumbTop;
+        
+        scrollbarThumb.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startThumbTop = parseInt(scrollbarThumb.style.top) || 0;
+            document.body.classList.add('no-select');
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaY = e.clientY - startY;
+            const thumbTop = Math.min(
+                Math.max(startThumbTop + deltaY, 0),
+                customScrollbar.clientHeight - scrollbarThumb.clientHeight
+            );
+            const scrollRatio = thumbTop / (customScrollbar.clientHeight - scrollbarThumb.clientHeight);
+            sidebar.scrollTop = scrollRatio * (sidebar.scrollHeight - sidebar.clientHeight);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            document.body.classList.remove('no-select');
+        });
+        
+        // Update scrollbar saat ukuran window berubah
+        window.addEventListener('resize', function() {
+            // updateScrollbar(); // Fungsi tidak didefinisikan, di-comment untuk menghindari error
+        });
+    }
     
     });
