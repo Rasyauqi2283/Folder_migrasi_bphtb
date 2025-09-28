@@ -27,10 +27,10 @@ export async function generateQrBuffer(text, size = 256) {
 export async function saveQrToPublic({ filename, text, size = 256 }) {
   const buf = await generateQrBuffer(text, size);
   const publicDir = path.resolve(process.cwd(), 'public');
-  const outDir = path.join(publicDir, 'qrcode');
+  const outDir = path.join(publicDir, 'penting_F_simpan', 'qr_code_place');
   await fs.promises.mkdir(outDir, { recursive: true });
   const safe = (String(filename || 'qr').replace(/[^A-Za-z0-9_\-\.]/g, '_')) + '.png';
   const outPath = path.join(outDir, safe);
   await fs.promises.writeFile(outPath, buf);
-  return { path: `/qrcode/${safe}`, abs: outPath };
+  return { path: `/penting_F_simpan/qr_code_place/${safe}`, abs: outPath };
 }

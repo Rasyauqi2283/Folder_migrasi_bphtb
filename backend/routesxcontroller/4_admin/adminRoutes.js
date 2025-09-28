@@ -452,4 +452,132 @@ router.get('/users/:userid', async (req, res) => {
   }
 });
 
+// Admin: status PPAT - daftar notifikasi pengiriman LTB->Peneliti dan LSB->PPAT/PPATS
+router.get('/status-ppat/notifications', verifyAdmin, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status } = req.query;
+        const lim = Math.min(parseInt(limit) || 20, 100);
+        const off = (parseInt(page) - 1) * lim;
+        // Ambil dari ltb_1_terima_berkas_sspd (ke Peneliti) dan lsb_1_serah_berkas (ke PPAT)
+        // Diperkaya dengan data user dan booking
+        const ltb = await pool.query(
+            `SELECT l.nobooking, b.noppbb, b.namawajibpajak, b.namapemilikobjekpajak, b.jenis_wajib_pajak,
+                    l.userid, u.special_field, u.ppatk_khusus,
+                    l.status, l.trackstatus, l.updated_at,
+                    'LTB' AS source
+             FROM ltb_1_terima_berkas_sspd l
+             LEFT JOIN pat_1_bookingsspd b ON b.nobooking = l.nobooking
+             LEFT JOIN a_2_verified_users u ON u.userid = b.userid
+             WHERE l.status = 'Diolah' AND l.trackstatus = 'Diterima' AND u.divisi IN ('PPAT', 'PPATS')
+             ORDER BY l.updated_at DESC NULLS LAST
+             LIMIT $1 OFFSET $2`,
+            [lim, off]
+        );
+        const lsb = await pool.query(
+            `SELECT s.nobooking, b.noppbb, b.namawajibpajak, b.namapemilikobjekpajak, b.jenis_wajib_pajak,
+                    s.userid, u.special_field, u.ppatk_khusus,
+                    s.status, s.trackstatus, s.updated_at,
+                    'LSB' AS source
+             FROM lsb_1_serah_berkas s
+             LEFT JOIN pat_1_bookingsspd b ON b.nobooking = s.nobooking
+             LEFT JOIN a_2_verified_users u ON u.userid = s.userid
+             WHERE s.status = 'Terselesaikan' AND s.trackstatus = 'Siap Diserahkan' AND u.divisi IN ('PPAT', 'PPATS')
+             ORDER BY s.updated_at DESC NULLS LAST
+             LIMIT $1 OFFSET $2`,
+            [lim, off]
+        );
+        let rows = [...ltb.rows, ...lsb.rows];
+        if (typeof status === 'string' && status.length) {
+            const s = status.toLowerCase();
+            rows = rows.filter(r => String(r.status||'').toLowerCase() === s);
+        }
+        return res.json({ success:true, page: parseInt(page), limit: lim, rows });
+    } catch (e) {
+        console.error('admin status-ppat notifications error:', e);
+        return res.status(500).json({ success:false, message:'Internal server error' });
+    }
+});
+
+// Admin: daftar PPAT/PPATS by status (aktif/nonaktif/meninggal/dll)
+router.get('/status-ppat/users', verifyAdmin, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, status, q: search } = req.query;
+        const lim = Math.min(parseInt(limit) || 20, 100);
+        const off = (parseInt(page) - 1) * lim;
+        const statuses = Array.isArray(status) ? status : (status ? [status] : []);
+        const where = ["lower(divisi) IN ('ppat','ppats')"]; 
+        const params = [];
+        if (statuses.length) {
+            where.push(`lower(COALESCE(status_ppat, verifiedstatus, 'aktif')) = ANY($${params.length+1}::text[])`);
+            params.push(statuses.map(s=>String(s).toLowerCase()));
+        }
+        if (search && String(search).trim().length) {
+            params.push(`%${String(search).trim().toLowerCase()}%`);
+            where.push(`(lower(userid) LIKE $${params.length} OR lower(nama) LIKE $${params.length})`);
+        }
+        params.push(lim, off);
+        const sql = `
+            SELECT id, userid, nama, divisi, COALESCE(status_ppat, verifiedstatus, 'aktif') AS status,
+                   ppatk_khusus, special_field
+            FROM a_2_verified_users
+            WHERE ${where.join(' AND ')}
+            ORDER BY nama ASC
+            LIMIT $${params.length-1} OFFSET $${params.length}
+        `;
+        const rows = await pool.query(sql, params);
+        return res.json({ success:true, page: parseInt(page), limit: lim, rows: rows.rows });
+    } catch (e) {
+        console.error('admin status-ppat users error:', e);
+        return res.status(500).json({ success:false, message:'Internal server error' });
+    }
+});
+
+// Admin: detail user PPAT + daftar nobooking Diserahkan (dipakai oleh admin-datauser-pemutakhiranppat.html)
+router.get('/ppat/user/:userid/diserahkan', verifyAdmin, async (req, res) => {
+    try {
+      const userid = String(req.params.userid || '').trim();
+      if (!userid) return res.status(400).json({ success:false, message:'userid wajib' });
+  
+      // Ambil data user
+      const userRes = await pool.query(
+        `SELECT id, userid, nama, divisi, ppatk_khusus, special_field, pejabat_umum, fotoprofil
+         FROM a_2_verified_users
+         WHERE userid = $1 LIMIT 1`, [userid]
+      );
+      if (userRes.rowCount === 0) {
+        return res.status(404).json({ success:false, message:'User tidak ditemukan' });
+      }
+  
+      // Ambil daftar booking
+      const bookings = await pool.query(
+        `SELECT b.bookingid, b.nobooking, b.noppbb, b.tanggal, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak,
+                b.npwpwp, b.trackstatus, b.file_withstempel_path, b.jenis_wajib_pajak, p2.bphtb_yangtelah_dibayar,
+                u.nama as nama_ppat, u.ppatk_khusus, u.special_field, u.pejabat_umum, u.fotoprofil, u.userid
+         FROM pat_1_bookingsspd b
+         LEFT JOIN a_2_verified_users u ON u.userid = b.userid
+         LEFT JOIN pat_2_bphtb_perhitungan p2 ON b.nobooking = p2.nobooking
+         WHERE b.userid = $1 AND b.trackstatus = 'Diserahkan'`, [userid]
+      );
+  
+      // Ambil summary count + sum
+      const summaryRes = await pool.query(
+        `SELECT COUNT(*)::int as total_booking,
+                COALESCE(SUM(p2.bphtb_yangtelah_dibayar),0)::bigint as total_nilai
+         FROM pat_1_bookingsspd b
+         LEFT JOIN pat_2_bphtb_perhitungan p2 ON b.nobooking = p2.nobooking
+         WHERE b.userid = $1 AND b.trackstatus = 'Diserahkan'`, [userid]
+      );
+  
+      return res.json({
+        success: true,
+        user: userRes.rows[0],
+        rows: bookings.rows,
+        summary: summaryRes.rows[0]   // <-- tambahkan summary
+      });
+    } catch (e) {
+      console.error('admin ppat user diserahkan error:', e);
+      return res.status(500).json({ success:false, message:'Internal server error' });
+    }
+});
+
 export default router;
