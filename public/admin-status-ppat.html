@@ -792,15 +792,15 @@ renderStatus();
           } else if (currentCategory === 'lsb_ppat') {
             vals = [
               r.no_registrasi||'-',
-              r.nobooking||'-',
-              r.userid||'-',
-              r.special_field||'-',
-              r.ppatk_khusus||'-',
-              r.noppbb||'-',
-              r.jenis_wajib_pajak||'-',
+            r.nobooking||'-',
+            r.userid||'-',
+            r.special_field||'-',
+            r.ppatk_khusus||'-',
+            r.noppbb||'-',
+            r.jenis_wajib_pajak||'-',
               r.updated||r.updated_at||'-',
-              'Detail'
-            ];
+            'Detail'
+          ];
           }
           
           vals.forEach((v,idx)=>{ 

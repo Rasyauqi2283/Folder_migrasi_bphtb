@@ -144,6 +144,9 @@ export async function saveSecureFile(file, userId) {
         const userDir = path.join(SECURE_STORAGE_PATH, 'ktp', userId);
         if (!fs.existsSync(userDir)) {
             fs.mkdirSync(userDir, { recursive: true });
+            console.log(`📁 [SECURE] Created user directory: ${userDir}`);
+        } else {
+            console.log(`📁 [SECURE] User directory already exists: ${userDir}`);
         }
         
         // Path file terenkripsi

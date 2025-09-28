@@ -108,6 +108,9 @@ export const processKTPUpload = async (req, res, next) => {
             });
         }
         
+        console.log(`📧 [SECURE_UPLOAD] Processing KTP for user: ${userId}`);
+        console.log(`📁 [SECURE_UPLOAD] Will create/use directory: secure_storage/ktp/${userId}/`);
+        
         // Debug session data dan form data
         console.log('🔍 [DEBUG] Upload context:', {
             hasSession: !!req.session,

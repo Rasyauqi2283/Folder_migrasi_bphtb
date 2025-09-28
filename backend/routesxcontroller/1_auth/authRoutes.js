@@ -137,6 +137,13 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   const { nama, nik, telepon, email, password } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
+  console.log(`📧 [REGISTER] Processing registration for: ${email}`);
+  console.log(`📁 [REGISTER] Secure file info:`, {
+    hasSecureFile: !!secureFile,
+    fileId: secureFile?.fileId,
+    userId: email
+  });
+
   // Validasi input
   if (!nama || !nik || !telepon || !email || !password || !secureFile) {
     return res.status(400).json({ 
@@ -295,9 +302,15 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
       try {
         const fs = await import('fs/promises');
         const path = await import('path');
-        const secureFilePath = path.join(process.cwd(), 'secure_storage', 'ktp', `${secureFile.fileId}.bin`);
-        await fs.unlink(secureFilePath);
-        console.log('🧹 [REGISTER] Cleaned up secure file:', secureFile.fileId);
+        // Gunakan email sebagai userId untuk path yang benar
+        const userDir = path.join(process.cwd(), 'secure_storage', 'ktp', email);
+        const encryptedFilePath = path.join(userDir, `${secureFile.fileId}_encrypted.bin`);
+        const metadataPath = path.join(userDir, `${secureFile.fileId}_metadata.json`);
+        
+        // Hapus file terenkripsi dan metadata
+        await fs.unlink(encryptedFilePath);
+        await fs.unlink(metadataPath);
+        console.log('🧹 [REGISTER] Cleaned up secure files for user:', email);
       } catch (cleanupError) {
         console.error('⚠️ [REGISTER] Failed to cleanup secure file:', cleanupError.message);
       }
