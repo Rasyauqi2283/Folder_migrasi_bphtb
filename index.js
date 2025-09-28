@@ -571,7 +571,7 @@ app.post('/api/bank/transaksi/:nobooking/approve', async (req, res) => {
         const bookingQuery = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1', [nobooking]);
         if (bookingQuery.rows.length > 0) {
           const bookingId = bookingQuery.rows[0].bookingid;
-          await triggerNotificationByStatus(bookingId, 'processed_ltb', req.session.user.userid);
+        await triggerNotificationByStatus(bookingId, 'processed_ltb', req.session.user.userid);
         }
       } else {
         console.log(`⚠️ [BANK] BANK approved for ${nobooking}, but LTB not yet approved - no email sent`);
@@ -1394,9 +1394,9 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
         const currentEmailService = getEmailService();
         if (currentEmailService) {
           try {
-            await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+          await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
             console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${currentEmailService}, type: ${emailType}`);
-            return true;
+          return true;
           } catch (emailError) {
             console.error(`❌ [MAIL] Email failed to ${mailOptions.to}:`, emailError.message);
             if (emailError.message.includes('timeout')) {

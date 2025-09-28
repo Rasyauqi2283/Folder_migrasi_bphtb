@@ -51,6 +51,13 @@ if (!fs.existsSync(SECURE_STORAGE_PATH)) {
     console.log('🔒 [SECURE] Secure storage directory created:', SECURE_STORAGE_PATH);
 }
 
+// Pastikan direktori logs ada
+const LOGS_PATH = path.join(SECURE_STORAGE_PATH, 'logs');
+if (!fs.existsSync(LOGS_PATH)) {
+    fs.mkdirSync(LOGS_PATH, { recursive: true });
+    console.log('🔒 [SECURE] Logs directory created:', LOGS_PATH);
+}
+
 /**
  * Enkripsi file dengan AES-256-GCM
  * @param {Buffer} data - Data file yang akan dienkripsi
