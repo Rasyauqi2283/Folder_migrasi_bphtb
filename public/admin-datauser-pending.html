@@ -304,8 +304,31 @@
             `;
           }
           
-          // Show user-friendly alert
-          alert(`Gagal memuat preview KTP untuk user "${userId}":\n\n${error.message}\n\nSaran:\n1. Pastikan user ID valid dan ada di database\n2. Pastikan Anda login sebagai Administrator\n3. Pastikan file KTP tersedia untuk user tersebut\n4. Coba refresh halaman jika masalah berlanjut`);
+          // Show user-friendly alert with specific guidance
+          let errorMessage = `Gagal memuat preview KTP untuk user "${userId}":\n\n${error.message}\n\n`;
+          
+          if (error.message.includes('Invalid user ID')) {
+            errorMessage += `🔍 DIAGNOSIS: User ID "${userId}" tidak valid\n\n`;
+            errorMessage += `💡 SOLUSI:\n`;
+            errorMessage += `1. Pastikan user sudah terdaftar di sistem\n`;
+            errorMessage += `2. Pastikan user sudah verify OTP (status: verified_pending)\n`;
+            errorMessage += `3. Pastikan user belum di-assign divisi oleh admin\n`;
+          } else if (error.message.includes('KTP tidak ditemukan')) {
+            errorMessage += `🔍 DIAGNOSIS: File KTP tidak ditemukan di penyimpanan aman\n\n`;
+            errorMessage += `💡 SOLUSI:\n`;
+            errorMessage += `1. Cek apakah file KTP ada di secure_storage/ktp/[email]/[fileId]_encrypted.bin\n`;
+            errorMessage += `2. Cek apakah metadata file ada di secure_storage/ktp/[email]/[fileId]_metadata.json\n`;
+            errorMessage += `3. Pastikan field 'foto' di database berisi fileId yang benar\n`;
+            errorMessage += `4. User mungkin perlu re-registrasi jika file hilang\n`;
+          } else {
+            errorMessage += `💡 SOLUSI UMUM:\n`;
+            errorMessage += `1. Pastikan Anda login sebagai Administrator\n`;
+            errorMessage += `2. Pastikan user ID valid dan ada di database\n`;
+            errorMessage += `3. Pastikan file KTP tersedia untuk user tersebut\n`;
+            errorMessage += `4. Coba refresh halaman jika masalah berlanjut\n`;
+          }
+          
+          alert(errorMessage);
         }
       }
       

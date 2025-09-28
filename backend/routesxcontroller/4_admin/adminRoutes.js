@@ -39,10 +39,47 @@ router.get('/test-pending-users', verifyAdmin, async (req, res) => {
     
     console.log(`✅ [TEST] Found ${rows.length} pending users:`, rows);
     
+    // Test secure storage untuk setiap user
+    const testResults = [];
+    for (const user of rows) {
+      if (user.foto) {
+        try {
+          // Test apakah file secure storage ada
+          const { SECURE_STORAGE_PATH } = await import('../../config/secure_storage.js');
+          const path = (await import('path')).default;
+          const fs = (await import('fs')).default;
+          
+          const userDir = path.join(SECURE_STORAGE_PATH, 'ktp', user.email);
+          const metadataPath = path.join(userDir, `${user.foto}_metadata.json`);
+          const encryptedFilePath = path.join(userDir, `${user.foto}_encrypted.bin`);
+          
+          const hasMetadata = fs.existsSync(metadataPath);
+          const hasEncryptedFile = fs.existsSync(encryptedFilePath);
+          
+          testResults.push({
+            user: user.nama,
+            email: user.email,
+            fileId: user.foto,
+            hasMetadata,
+            hasEncryptedFile,
+            secureStoragePath: userDir
+          });
+        } catch (error) {
+          testResults.push({
+            user: user.nama,
+            email: user.email,
+            fileId: user.foto,
+            error: error.message
+          });
+        }
+      }
+    }
+    
     return res.json({
       success: true,
       message: `Found ${rows.length} pending users`,
       data: rows,
+      secureStorageTest: testResults,
       debug: {
         table: 'a_2_verified_users',
         status: 'verified_pending',
@@ -82,7 +119,8 @@ router.get('/ktp-preview/:userId', verifyAdmin, async (req, res) => {
     console.log(`📄 [ADMIN] Found KTP for user: ${userData.nama} (${userData.email})`);
 
     // 2. Ambil file KTP terenkripsi dan dekripsi
-    const secureFile = await getSecureFile(userData.foto, userId, 'admin', req);
+    // userData.foto berisi fileId (UUID), userId adalah email dari form saat registrasi
+    const secureFile = await getSecureFile(userData.foto, userData.email, 'admin', req);
     const buffer = secureFile.data;
 
     // 3. Tambahkan watermark dengan informasi admin

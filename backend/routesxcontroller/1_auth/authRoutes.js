@@ -364,8 +364,8 @@ router.post('/verify-otp', async (req, res) => {
     const insertQuery = `
         INSERT INTO a_2_verified_users (
             nama, nik, telepon, email, password, foto, 
-            otp, verifiedstatus, userid, divisi, 
-            fotoprofil, ppatk_khusus, statuspengguna
+            otp, verifiedstatus, fotoprofil, userid, divisi, 
+            statuspengguna, ppatk_khusus
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
         RETURNING *;
     `;
@@ -373,7 +373,7 @@ router.post('/verify-otp', async (req, res) => {
     const insertValues = [
         user.nama, user.nik, user.telepon, user.email, 
         user.password, user.foto, otp.trim(), 'verified_pending', 
-        '', '', '', '', 'offline'
+        '', '', '', 'offline', ''
     ];
 
     // Gunakan transaction untuk operasi move-delete
