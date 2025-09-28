@@ -482,16 +482,16 @@ try {
                     const processedImage = await sharp(bphtbAbs).trim().toBuffer();
                     // Letakkan tepat di bawah teks "Telah Diverifikasi / BPD" di dalam kotak
                     const sigYInBox = signatureYPosition + 40;
-                    doc.image(processedImage, col4X + (columnWidth - signatureWidth)/2, sigYInBox, { width: signatureWidth });
+                    doc.image(processedImage, col4X + (columnWidth - signatureWidth)/2, sigYInBox - 40, { width: signatureWidth });
                 } else {
-                    doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
-                        .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
+                    doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40 - 40)
+                        .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40 - 40)
                         .stroke();
                 }
             } catch (err) {
                 console.warn('Failed to render BPHTB signature:', err?.message || err);
-                doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
-                    .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
+                doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40 - 40)
+                    .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40 - 40)
                     .stroke();
             }
 
