@@ -691,7 +691,6 @@ statusSearch.addEventListener('input', () => renderStatus());
 /* init */
 updateTableHeaders(currentCategory); // Initialize table headers
 renderNotifications();
-renderStatus();
 </script>
 
 <script>
@@ -1060,6 +1059,9 @@ renderStatus();
         alert('Gagal menyimpan perubahan: ' + error.message);
       }
     };
+    
+    // Initialize renderStatus after all functions are defined
+    renderStatus();
   })();
   </script>
   <script type="module">
