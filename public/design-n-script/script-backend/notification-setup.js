@@ -1,10 +1,10 @@
 // frontend/js/notification-setup.js
 // Satu pintu untuk inisialisasi Notification UI + Poller + Panel (untuk dipakai di banyak halaman)
 
-import NotificationPoller from '/script-backend/notification-poller.js';
-import NotificationUI from '/script-backend/notification-ui.js';
-import NotificationPanel from '/script-backend/notification-panel.js';
-import { isAdminDivisi, isPollerOnlyDivisi, logNotificationSetup } from '/script-backend/notification-config.js';
+import NotificationPoller from './notification-poller.js';
+import NotificationUI from './notification-ui.js';
+import NotificationPanel from './notification-panel.js';
+import { isAdminDivisi, isPollerOnlyDivisi, logNotificationSetup } from './notification-config.js';
 
 export async function initNotifications(options = {}) {
     const {
