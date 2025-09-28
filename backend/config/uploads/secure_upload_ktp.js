@@ -69,16 +69,42 @@ export const secureUploadKTP = multer({
 // Middleware untuk memproses file KTP setelah upload
 export const processKTPUpload = async (req, res, next) => {
     try {
-        if (!req.file) {
-            console.warn('⚠️ File belum terisi saat pertama dicek, retry sekali...');
-            await new Promise(resolve => setTimeout(resolve, 100)); // tunggu 100ms
-            if (!req.file) {
-              return res.status(400).json({
+        // Validasi email terlebih dahulu
+        if (!req.body?.email) {
+            console.log('🚫 [SECURE_UPLOAD] No email provided in form data');
+            return res.status(400).json({
                 success: false,
-                message: 'File KTP harus diupload'
-              });
+                message: 'Email harus disediakan untuk registrasi.'
+            });
+        }
+
+        // Retry logic yang lebih robust untuk file upload
+        let retryCount = 0;
+        const maxRetries = 3;
+        const retryDelay = 500; // 500ms delay
+
+        while (!req.file && retryCount < maxRetries) {
+            if (retryCount > 0) {
+                console.warn(`⚠️ [SECURE_UPLOAD] File belum terisi, retry ke-${retryCount}/${maxRetries}...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
-          }
+            retryCount++;
+        }
+
+        if (!req.file) {
+            console.error('❌ [SECURE_UPLOAD] File upload failed after all retries');
+            return res.status(400).json({
+                success: false,
+                message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.'
+            });
+        }
+
+        console.log('✅ [SECURE_UPLOAD] File upload successful:', {
+            filename: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            retries: retryCount - 1
+        });
         
         // Validasi file yang lebih ketat
         const validation = validateKTPFile(req.file);
@@ -97,16 +123,7 @@ export const processKTPUpload = async (req, res, next) => {
         
         // Simpan file dengan enkripsi
         // SELALU gunakan email dari form data untuk konsistensi dengan database
-        const userId = req.body?.email || 'anonymous';
-        
-        // Validasi email harus ada
-        if (!req.body?.email) {
-            console.log('🚫 [SECURE_UPLOAD] No email provided in form data');
-            return res.status(400).json({
-                success: false,
-                message: 'Email harus disediakan untuk registrasi.'
-            });
-        }
+        const userId = req.body.email; // Email sudah divalidasi di atas
         
         console.log(`📧 [SECURE_UPLOAD] Processing KTP for user: ${userId}`);
         console.log(`📁 [SECURE_UPLOAD] Will create/use directory: secure_storage/ktp/${userId}/`);

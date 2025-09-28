@@ -533,16 +533,28 @@ document.querySelector("form").addEventListener("submit", async (event) => {
 
     // Submit form ke backend
     try {
+        console.log('📤 [FRONTEND] Sending registration data...');
         const response = await fetch('/api/v1/auth/register', {
             method: 'POST',
             body: formData
         });
 
-        const data = await response.json();
-        messageDiv.textContent = data.message;
+        console.log('📥 [FRONTEND] Response status:', response.status);
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            console.error('❌ [FRONTEND] Failed to parse response:', parseError);
+            throw new Error('Server response tidak valid');
+        }
+
+        console.log('📋 [FRONTEND] Response data:', data);
+        messageDiv.textContent = data.message || 'Terjadi kesalahan tidak diketahui';
 
         if (response.ok) {
             messageDiv.style.color = "green";
+            console.log('✅ [FRONTEND] Registration successful');
             // Simpan email di localStorage setelah registrasi berhasil
             localStorage.setItem("email", formData.get("email"));
             setTimeout(() => {
@@ -551,13 +563,19 @@ document.querySelector("form").addEventListener("submit", async (event) => {
             }, 2000);
         } else {
             messageDiv.style.color = "red";
+            console.error('❌ [FRONTEND] Registration failed:', {
+                status: response.status,
+                message: data.message,
+                success: data.success
+            });
+            
             // Re-enable submit button jika ada error
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
         }
     } catch (error) {
-        console.error("Error:", error);
-        messageDiv.textContent = "Terjadi kesalahan saat mengirim data.";
+        console.error("❌ [FRONTEND] Network or parsing error:", error);
+        messageDiv.textContent = "Terjadi kesalahan koneksi. Periksa koneksi internet Anda dan coba lagi.";
         messageDiv.style.color = "red";
         // Re-enable submit button jika ada error
         submitBtn.disabled = false;
