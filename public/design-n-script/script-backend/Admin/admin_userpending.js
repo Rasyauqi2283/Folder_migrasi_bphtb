@@ -30,6 +30,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let pendingUsers = [];
   let completeUsers = [];
   let currentEmail = '';
+  let currentUserName = '';
+  let currentUserEmail = '';
 
   // 3. Load Initial Data
   try {
@@ -112,7 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>${user.ppatk_khusus || '-'}</td>
           <td>
             ${isComplete ? 'Selesai' : `
-              <button class="showFormButton" data-email="${user.email}">
+              <button class="showFormButton" data-email="${user.email}" data-name="${user.nama || ''}">
                 Assign ID
               </button>`}
           </td>
@@ -179,7 +181,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('showFormButton')) {
         currentEmail = e.target.getAttribute('data-email');
+        currentUserName = e.target.getAttribute('data-name') || '';
+        currentUserEmail = e.target.getAttribute('data-email') || '';
+        
         console.log('🔍 Assign ID clicked for email:', currentEmail);
+        console.log('👤 User name:', currentUserName);
+        console.log('📧 User email:', currentUserEmail);
+        
+        // Isi input nama dan email
+        const namaInput = document.getElementById('namadipilih');
+        const emailInput = document.getElementById('emaildipilih');
+        
+        if (namaInput) namaInput.value = currentUserName;
+        if (emailInput) emailInput.value = currentUserEmail;
         
         // Aktifkan button Preview KTP dan set data-id
         activatePreviewButton(currentEmail);
@@ -264,7 +278,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         previewButton.textContent = 'Preview KTP (Pilih user terlebih dahulu)';
         previewButton.removeAttribute('data-id');
         currentEmail = '';
+        currentUserName = '';
+        currentUserEmail = '';
       }
+      
+      // Reset input nama dan email
+      const namaInput = document.getElementById('namadipilih');
+      const emailInput = document.getElementById('emaildipilih');
+      if (namaInput) namaInput.value = '';
+      if (emailInput) emailInput.value = '';
       
       // Reset preview image
       const previewImg = document.getElementById('PreviewKTP');
@@ -350,6 +372,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             email: currentEmail,
+            nama: currentUserName,
+            user_email: currentUserEmail,
             divisi: userIDDropdown.value // Kirim kode divisi (PAT, A, CS, dll)
           })
         });
