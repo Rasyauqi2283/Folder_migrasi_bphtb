@@ -23,6 +23,43 @@ const verifyAdmin = (req, res, next) => {
   next();
 };
 
+// GET /api/admin/test-pending-users - Test endpoint untuk debug
+router.get('/test-pending-users', verifyAdmin, async (req, res) => {
+  try {
+    console.log('🔍 [TEST] Testing pending users endpoint...');
+    
+    // Test query untuk pending users
+    const { rows } = await pool.query(`
+      SELECT id, nama, email, foto, verifiedstatus, created_at 
+      FROM a_2_verified_users 
+      WHERE verifiedstatus = 'verified_pending'
+      ORDER BY created_at DESC
+      LIMIT 5
+    `);
+    
+    console.log(`✅ [TEST] Found ${rows.length} pending users:`, rows);
+    
+    return res.json({
+      success: true,
+      message: `Found ${rows.length} pending users`,
+      data: rows,
+      debug: {
+        table: 'a_2_verified_users',
+        status: 'verified_pending',
+        count: rows.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ [TEST] Error testing pending users:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Test failed',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/admin/ktp-preview/:userId - Preview KTP dengan watermark dan audit log
 router.get('/ktp-preview/:userId', verifyAdmin, async (req, res) => {
   try {
@@ -31,10 +68,10 @@ router.get('/ktp-preview/:userId', verifyAdmin, async (req, res) => {
 
     console.log(`🔍 [ADMIN] KTP preview request by ${adminUser.nama} (${adminUser.userid}) for user ${userId}`);
 
-    // 1. Ambil data KTP dari tabel unverified
+    // 1. Ambil data KTP dari tabel verified_users dengan status verified_pending
     const { rows } = await pool.query(
-      'SELECT foto, nama, email FROM a_1_unverified_users WHERE id = $1',
-      [userId]
+      'SELECT foto, nama, email FROM a_2_verified_users WHERE id = $1 AND verifiedstatus = $2',
+      [userId, 'verified_pending']
     );
     
     if (!rows.length || !rows[0].foto) {

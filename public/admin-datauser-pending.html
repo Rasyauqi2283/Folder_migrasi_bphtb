@@ -309,25 +309,6 @@
         }
       }
       
-      // Test function untuk debugging
-      function testPreviewButton() {
-        console.log('🧪 Testing preview button activation...');
-        const previewButton = document.querySelector('.btn-preview');
-        console.log('🧪 Button found:', previewButton);
-        
-        if (previewButton) {
-          // Use a more realistic test ID format instead of 'test123'
-          previewButton.setAttribute('data-id', 'TEST001');
-          previewButton.disabled = false;
-          previewButton.style.opacity = '1';
-          previewButton.style.cursor = 'pointer';
-          previewButton.textContent = 'Preview KTP (TEST)';
-          console.log('🧪 Button activated for testing with ID: TEST001');
-          console.log('⚠️ Note: TEST001 is a test ID and will likely fail. Please select a real user from the list.');
-        } else {
-          console.error('🧪 Button not found for testing');
-        }
-      }
       
       // Clean up blob URLs when page is unloaded
       window.addEventListener('beforeunload', function() {
@@ -649,7 +630,6 @@
     <!-- User Form Card -->
     <div class="card form-card">
       <button class="btn btn-info btn-preview" disabled>Preview KTP (Pilih user terlebih dahulu)</button>
-      <button class="btn btn-warning" onclick="testPreviewButton()" style="margin-left: 10px;">Test Activate Preview</button>
       <div id="userForm" class="userForm">
         <div class="form-group">
           <label for="PreviewKTP">Preview KTP:</label>
