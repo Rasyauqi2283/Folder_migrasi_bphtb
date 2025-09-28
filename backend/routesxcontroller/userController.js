@@ -163,6 +163,7 @@ export const getCompleteUsersHandler = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
+        id,
         userid,
         divisi,
         nama,
@@ -187,6 +188,7 @@ export const getPendingUsersHandler = async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
+        id,
         nama,
         email,
         nik,
