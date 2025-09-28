@@ -514,7 +514,7 @@ async function simpanData(buttonElement) {
         let keterangandihitungSendiri = null;
         let isiketeranganlainnya = null;
 
-        const radioButtons = document.querySelectorAll(`input[name="pemilihan-${selectedNoBooking}"]`);
+        const radioButtons = document.querySelectorAll(`input[name="pemilihan-${nobooking}"]`);
         for (let radioButton of radioButtons) {
             if (radioButton.checked) {
                 pemilihan = radioButton.value;
@@ -528,24 +528,24 @@ async function simpanData(buttonElement) {
         }
 
         if (pemilihan === 'stpd_kurangbayar') {
-            nomorstpd = document.querySelector(`input[name="nomorstpd-${selectedNoBooking}"]`).value;
-            tanggalstpd = document.querySelector(`input[name="tanggalstpd-${selectedNoBooking}"]`).value;
+            nomorstpd = document.querySelector(`input[name="nomorstpd-${nobooking}"]`)?.value || document.querySelector(`input[name="nomorstpd"]`)?.value;
+            tanggalstpd = document.querySelector(`input[name="tanggalstpd-${nobooking}"]`)?.value || document.querySelector(`input[name="tanggalstpd"]`)?.value;
             if (!nomorstpd || !tanggalstpd) {
                 throw new Error("Harap isi nomor STPD dan tanggal STPD.");
             }
         } 
         else if (pemilihan === 'dihitungsendiri') {
-            angkapersen = parseFloat(document.querySelector(`input[name="angkapersen-${selectedNoBooking}"]`).value);
+            angkapersen = parseFloat(document.querySelector(`input[name="angkapersen-${nobooking}"]`)?.value || document.querySelector(`input[name="angkapersen"]`)?.value);
             if (isNaN(angkapersen) || angkapersen < 0 || angkapersen > 100) {
                 throw new Error("Persen harus antara 0-100");
             }
-            keterangandihitungSendiri = document.querySelector(`input[name="keteranganhitungsendiri-${selectedNoBooking}"]`).value;
+            keterangandihitungSendiri = document.querySelector(`input[name="keteranganhitungsendiri-${nobooking}"]`)?.value || document.querySelector(`input[name="keteranganhitungsendiri"]`)?.value;
             if (!keterangandihitungSendiri) {
                 throw new Error("Harap isi keterangan penghitungan");
             }
         } 
         else if (pemilihan === 'lainnyapenghitungwp') {
-            isiketeranganlainnya = document.querySelector(`input[name="isiketeranganlainnya-${selectedNoBooking}"]`).value;
+            isiketeranganlainnya = document.querySelector(`input[name="isiketeranganlainnya-${nobooking}"]`)?.value || document.querySelector(`input[name="isiketeranganlainnya"]`)?.value;
             if (!isiketeranganlainnya) {
                 throw new Error("Harap isi keterangan lainnya");
             }
@@ -554,7 +554,7 @@ async function simpanData(buttonElement) {
         // 7. Siapkan data untuk dikirim
         const data = {
             userid: userData.userid,
-            nobooking: selectedNoBooking,
+            nobooking: nobooking, // Gunakan variabel nobooking yang sudah didefinisikan
             pemilihan: pemilihan,
             nomorstpd: nomorstpd,
             tanggalstpd: tanggalstpd,
@@ -562,8 +562,16 @@ async function simpanData(buttonElement) {
             keterangandihitungSendiri: keterangandihitungSendiri,
             isiketeranganlainnya: isiketeranganlainnya,
             persetujuanVerif: persetujuanVerif,
+            pemberi_persetujuan: userData.userid, // Tambahkan pemberi persetujuan dari session user
             tanda_tangan_blob: base64TandaTangan
         };
+        
+        // Log data yang akan dikirim untuk debugging
+        console.log('📤 Data yang akan dikirim ke API:', {
+            ...data,
+            tanda_tangan_blob: '[BLOB_DATA]' // Jangan log blob data yang besar
+        });
+        console.log('👤 Pemberi Persetujuan (UserID):', userData.userid);
 
         // 8. Kirim data ke backend dengan timeout
         const controller = new AbortController();

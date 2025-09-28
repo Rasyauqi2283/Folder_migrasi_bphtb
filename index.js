@@ -1501,7 +1501,8 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
         angkapersen,
         keterangandihitungSendiri,
         isiketeranganlainnya,
-        persetujuanVerif
+        persetujuanVerif,
+        pemberi_persetujuan
     } = req.body.data;
 
      console.log('[4] Data yang diterima:', {
@@ -1513,7 +1514,8 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
         angkapersen,
         keterangandihitungSendiri,
         isiketeranganlainnya,
-        persetujuanVerif
+        persetujuanVerif,
+        pemberi_persetujuan
     });
     // Basic validation
     if (!userid || !nobooking || !pemilihan) {
@@ -1568,8 +1570,9 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
                 angkapersen = $4,
                 keterangandihitungSendiri = $5,
                 isiketeranganlainnya = $6,
-                persetujuan = TRUE
-            WHERE nobooking = $7
+                persetujuan = TRUE,
+                pemberi_persetujuan = $7
+            WHERE nobooking = $8
             RETURNING *;
         `;
 
@@ -1580,12 +1583,20 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
             angkapersen || null,
             keterangandihitungSendiri || null,
             isiketeranganlainnya || null,
+            pemberi_persetujuan || null,
             nobooking
         ]);
 
         if (result.rowCount === 0) {
             throw new Error('Data tidak ditemukan');
         }
+
+        console.log('[5] Data berhasil diupdate:', {
+            nobooking,
+            pemberi_persetujuan,
+            pemilihan,
+            rowCount: result.rowCount
+        });
 
         await client.query('COMMIT');
 
@@ -1595,6 +1606,7 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
             data: {
                 nobooking,
                 status: 'Disetujui',
+                pemberi_persetujuan,
                 updated_at: new Date().toISOString()
             }
         });
