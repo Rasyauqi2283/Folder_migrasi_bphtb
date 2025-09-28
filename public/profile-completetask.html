@@ -314,20 +314,41 @@
 
             // Fungsi redirect
             function redirectBasedOnDivision(divisi) {
-                const dashboards = {
-                    'Administrator': 'admin-dashboard.html',
-                    'Customer Service': 'cs-dashboard.html',
-                    'PPAT': 'ppatk-dashboard.html',
-                    'PPATS': 'ppatk-dashboard.html',
-                    'LTB': 'ltb-dashboard.html',
-                    'LSB': 'lsb-dashboard.html',
-                    'Peneliti': 'peneliti-dashboard.html',
-                    'Peneliti Validasi': 'penelitiValidasi-dashboard.html',
-                    'BANK': 'bank-dashboard.html',
-                    'Wajib Pajak': 'wp-dashboard.html'
-                };
+                console.log("🎯 Redirecting to dashboard for division:", divisi);
                 
-                window.location.href = dashboards[divisi] || 'login.html';
+                switch (divisi) {
+                    case "Administrator":
+                        console.log("➡️ Redirecting to admin-dashboard.html");
+                        window.location.href = "html_folder/Admin/admin-dashboard.html";
+                        break;
+                    case "Customer Service":
+                        window.location.href = "html_folder/CS/cs-dashboard.html";
+                        break;
+                    case "PPAT":
+                    case "PPATS":
+                        window.location.href = "html_folder/PPATK/ppatk-dashboard.html";
+                        break;
+                    case "LTB":
+                        window.location.href = "html_folder/LTB/ltb-dashboard.html";
+                        break;
+                    case "LSB":
+                        window.location.href = "html_folder/LSB/lsb-dashboard.html";
+                        break;
+                    case "Peneliti":
+                        window.location.href = "html_folder/Peneliti/peneliti-dashboard.html";
+                        break;
+                    case "Peneliti Validasi":
+                        window.location.href = "html_folder/ParafP/penelitiValidasi-dashboard.html";
+                        break;
+                    case "BANK":
+                        window.location.href = "html_folder/BANK/bank-dashboard.html";
+                        break;
+                    case "Wajib Pajak":
+                        window.location.href = "html_folder/WP/wp-dashboard.html";
+                        break;
+                    default:
+                        window.location.href = "login.html"; // Jika divisi tidak dikenali
+                }
             }
         });
     </script>
