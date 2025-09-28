@@ -528,7 +528,7 @@ app.post('/api/bank/transaksi/:nobooking/approve', async (req, res) => {
     // Jika bank telah approve, cek apakah KEDUA LTB dan BANK sudah approve, baru kirim email
     try {
       const chk = await pool.query(
-        `SELECT p.bookingid
+        `SELECT p.nobooking
          FROM p_1_verifikasi p
          LEFT JOIN bank_1_cek_hasil_transaksi bk ON bk.nobooking = p.nobooking
          LEFT JOIN ltb_1_terima_berkas_sspd ltb ON ltb.nobooking = p.nobooking
@@ -567,8 +567,12 @@ app.post('/api/bank/transaksi/:nobooking/approve', async (req, res) => {
         }
         
         // Trigger notifikasi: ke Peneliti dan Administrator
-        const bookingId = chk.rows[0].bookingid;
-        await triggerNotificationByStatus(bookingId, 'processed_ltb', req.session.user.userid);
+        // Get bookingid from pat_1_bookingsspd table using nobooking
+        const bookingQuery = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1', [nobooking]);
+        if (bookingQuery.rows.length > 0) {
+          const bookingId = bookingQuery.rows[0].bookingid;
+          await triggerNotificationByStatus(bookingId, 'processed_ltb', req.session.user.userid);
+        }
       } else {
         console.log(`⚠️ [BANK] BANK approved for ${nobooking}, but LTB not yet approved - no email sent`);
       }
@@ -1387,10 +1391,19 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
             text: `Halo ${creatorName},\n\nStatus berkas Anda dengan No. Booking ${nobooking} telah diperbarui:\n\nStatus: ${status}\nTrack Status: ${trackstatus}\nKeterangan: ${keterangan || '-'}\n\n${emailType === 'approval' ? 'Berkas telah disetujui oleh LTB dan BANK, dan diteruskan ke tim peneliti.' : 'Berkas ini telah diberikan ke tim peneliti.'}`
         };
 
-        if (emailService) {
-          await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
-          console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${emailService}, type: ${emailType}`);
-          return true;
+        const currentEmailService = getEmailService();
+        if (currentEmailService) {
+          try {
+            await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
+            console.log(`✅ [MAIL] to: ${mailOptions.to}, status: sent via ${currentEmailService}, type: ${emailType}`);
+            return true;
+          } catch (emailError) {
+            console.error(`❌ [MAIL] Email failed to ${mailOptions.to}:`, emailError.message);
+            if (emailError.message.includes('timeout')) {
+              console.error(`⚠️ [LTB-PROCESS] Gagal mengirim notifikasi LTB/Admin: Notification timeout`);
+            }
+            return false;
+          }
         } else {
           console.log('⚠️ [MAIL] Email disabled: no email service configured');
           return false;
@@ -2444,7 +2457,8 @@ app.post('/api/peneliti_send-to-ParafValidate', async (req, res) => {
 async function sendParafVEmail(creatorEmail, creatorName, nobooking, status, trackstatus) {
     try {
         // Menggunakan email service yang sudah dikonfigurasi (SendGrid primary, SMTP fallback)
-        if (!emailService) {
+        const currentEmailService = getEmailService();
+        if (!currentEmailService) {
             console.log('⚠️ Email disabled: no email service configured');
             return;
         }
@@ -2459,7 +2473,7 @@ async function sendParafVEmail(creatorEmail, creatorName, nobooking, status, tra
 
         // Mengirimkan email via SendGrid
         await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.text, mailOptions.html);
-        console.log(`✅ Email pemberitahuan berhasil dikirim via ${emailService}`);
+        console.log(`✅ Email pemberitahuan berhasil dikirim via ${currentEmailService}`);
 
     } catch (error) {
         console.error('Gagal mengirim email pemberitahuan:', error);

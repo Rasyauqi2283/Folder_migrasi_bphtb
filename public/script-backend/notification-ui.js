@@ -234,12 +234,12 @@ export class NotificationUI {
             audio.volume = 0.8;
 
             const srcOgg = document.createElement('source');
-            srcOgg.src = '/sound/notifikasi_fallback.ogg';
+            srcOgg.src = '/sound/notifikasi_kirimbooking.ogg';
             srcOgg.type = 'audio/ogg';
             audio.appendChild(srcOgg);
 
             const srcMp3 = document.createElement('source');
-            srcMp3.src = '/sound/notifikasi_fallback.mp3';
+            srcMp3.src = '/sound/notifikasi_kirimbooking.mp3';
             srcMp3.type = 'audio/mpeg';
             audio.appendChild(srcMp3);
 

@@ -103,11 +103,16 @@ export async function sendEmail(to, subject, text, html = null, maxRetries = 2) 
     try {
       console.log(`📧 Email attempt ${attempt}/${maxRetries} to ${to}`);
 
-      if (emailService === 'sendgrid') {
-        return await sendEmailViaSendGrid(to, subject, text, html);
-      } else if (emailService === 'smtp') {
-        return await sendEmailViaSMTP(to, subject, text, html);
-      }
+      // Add timeout wrapper for the entire email operation
+      const emailPromise = emailService === 'sendgrid' 
+        ? sendEmailViaSendGrid(to, subject, text, html)
+        : sendEmailViaSMTP(to, subject, text, html);
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email operation timeout after 30 seconds')), 30000)
+      );
+
+      return await Promise.race([emailPromise, timeoutPromise]);
     } catch (error) {
       console.error(`❌ Email attempt ${attempt} failed:`, error.message);
 
@@ -116,7 +121,11 @@ export async function sendEmail(to, subject, text, html = null, maxRetries = 2) 
         if (emailService === 'sendgrid' && smtpTransporter) {
           console.log('🔄 Trying SMTP fallback...');
           try {
-            return await sendEmailViaSMTP(to, subject, text, html);
+            const fallbackPromise = sendEmailViaSMTP(to, subject, text, html);
+            const fallbackTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Fallback email timeout after 30 seconds')), 30000)
+            );
+            return await Promise.race([fallbackPromise, fallbackTimeout]);
           } catch (fallbackError) {
             console.error('❌ Both email services failed:', fallbackError.message);
           }
