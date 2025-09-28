@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PPATK | Rekap Berkas Diserahkan</title>
-  <link rel="stylesheet" href="/design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
 </head>
 <body>
   <main class="main-content">
@@ -86,8 +86,8 @@
     }
 
     function buildDropdownContent(item){
-      const fileStempel = item.file_withstempel_path ? `<a href="/${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
-      const fileBooking = item.file_booking_path ? `<a href="/${item.file_booking_path}" target="_blank">Dokumen Booking</a>` : '<em>Tidak tersedia</em>';
+      const fileStempel = item.file_withstempel_path ? `<a href="../../../${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
+      const fileBooking = item.file_booking_path ? `<a href="../../../${item.file_booking_path}" target="_blank">Dokumen Booking</a>` : '<em>Tidak tersedia</em>';
       return `<div style="padding:12px;">
         <p><strong>No Booking:</strong> ${item.nobooking}</p>
         <p><strong>Unduhan:</strong> ${fileStempel} | ${fileBooking}</p>
@@ -96,8 +96,8 @@
 
     async function downloadValidatedFiles(item){
       try {
-        if (item.file_withstempel_path) window.open('/'+item.file_withstempel_path, '_blank');
-        else if (item.file_booking_path) window.open('/'+item.file_booking_path, '_blank');
+        if (item.file_withstempel_path) window.open('../../../'+item.file_withstempel_path, '_blank');
+        else if (item.file_booking_path) window.open('../../../'+item.file_booking_path, '_blank');
         else alert('Tidak ada berkas untuk diunduh');
       } catch(e){ alert('Gagal mengunduh: '+e.message); }
     }
@@ -139,7 +139,7 @@
   })();
   </script>
   <script type="module">
-    import { initNotifications } from '/script-backend/notification-setup.js';
+    import { initNotifications } from '../../../script-backend/notification-setup.js';
     initNotifications();
   </script>
 </body>
