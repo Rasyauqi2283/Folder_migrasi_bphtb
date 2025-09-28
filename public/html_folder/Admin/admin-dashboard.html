@@ -272,7 +272,7 @@
   </div>
   <div class="AUT logout-box">
       <div class="menu-item" id="logout_page">
-          <div href="../logout.html" class="icon-text-wrapper">
+          <div onclick="logout()" class="icon-text-wrapper" style="cursor: pointer;">
               <i class="fa fa-sign-out sidebar-icon"></i>
               <span class="sidebar-text">Log Out</span>
           </div>
@@ -419,6 +419,20 @@
   <script type="module">
     import { initNotifications } from '../../script-backend/notification-setup.js';
     initNotifications();
+  </script>
+  
+  <!-- Logout function -->
+  <script>
+    function logout() {
+      if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+        // Clear session/localStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        window.location.href = '../../login.html';
+      }
+    }
   </script>
 </body>
 </html>
