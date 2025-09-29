@@ -549,12 +549,20 @@ function validateForm() {
 
 // Event listener untuk submit form
 document.querySelector("form").addEventListener("submit", async (event) => {
+    console.log("🚀 [FRONTEND] Form submit event triggered");
     event.preventDefault();
 
     // Validasi form terlebih dahulu
-    if (!validateForm()) {
+    console.log("🔍 [FRONTEND] Starting form validation...");
+    const validationResult = validateForm();
+    console.log("🔍 [FRONTEND] Form validation result:", validationResult);
+    
+    if (!validationResult) {
+        console.log("❌ [FRONTEND] Form validation failed, stopping submission");
         return;
     }
+    
+    console.log("✅ [FRONTEND] Form validation passed, proceeding with submission");
 
     const form = event.target;
     const formData = new FormData(form);
@@ -570,6 +578,23 @@ document.querySelector("form").addEventListener("submit", async (event) => {
         fileName: fotoktpFile?.name,
         fileSize: fotoktpFile?.size,
         fileType: fotoktpFile?.type
+    });
+    
+    // Debug file input element
+    const fileInput = document.getElementById('fotoktp');
+    console.log("📁 [FRONTEND] File Input Element:", {
+        exists: !!fileInput,
+        files: fileInput?.files,
+        filesLength: fileInput?.files?.length,
+        firstFile: fileInput?.files?.[0],
+        value: fileInput?.value
+    });
+    
+    // Debug form element
+    console.log("📋 [FRONTEND] Form Element:", {
+        enctype: form?.enctype,
+        method: form?.method,
+        action: form?.action
     });
 
     // Disable submit button untuk mencegah double submission

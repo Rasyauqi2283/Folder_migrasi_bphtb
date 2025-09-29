@@ -196,21 +196,29 @@
 
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
+            
+            console.log("📁 [FILE_INPUT] File input changed:", {
+                hasFile: !!file,
+                fileName: file?.name,
+                fileSize: file?.size,
+                fileType: file?.type,
+                filesLength: e.target.files.length
+            });
 
             if (file) {
                 // Validasi tipe
-                const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+                const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
                 if (!allowedTypes.includes(file.type)) {
-                    alert('Format file tidak didukung. Gunakan PNG, JPEG, JPG, atau GIF.');
+                    alert('Format file tidak didukung. Gunakan PNG, JPEG, atau JPG.');
                     fileInput.value = '';
                     autoFill.style.display = "none";
                     return;
                 }
 
-                // Validasi ukuran (max 5MB)
-                const maxSize = 5 * 1024 * 1024;
+                // Validasi ukuran (max 3MB)
+                const maxSize = 3 * 1024 * 1024;
                 if (file.size > maxSize) {
-                    alert('Ukuran file terlalu besar. Maksimal 5MB.');
+                    alert('Ukuran file terlalu besar. Maksimal 3MB.');
                     fileInput.value = '';
                     autoFill.style.display = "none";
                     return;
