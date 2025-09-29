@@ -3860,6 +3860,7 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
         const offset = (page - 1) * limit;
 
         console.log(`🔍 [PPATK] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}"`);
+        console.log("Query running:", query);
 
         // Base query untuk mendapatkan data yang sudah diserahkan
         let query = `

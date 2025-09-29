@@ -6,7 +6,7 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
 // Start PPATK Endpoint // (belum selesai)
 // Cek apakah user (PPAT/PPATS/others) sudah memiliki tanda tangan
 // PPATK: daftar berkas yang sudah Diserahkan (untuk unduh berkas tervalidasi)
-app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
+app.get('/api/ppatk/lsb_send/rekap/diserahkan', async (req, res) => {
     try {
         const { page = 1, limit = 20, q } = req.query;
         const lim = Math.min(parseInt(limit) || 20, 100);
