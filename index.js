@@ -4022,7 +4022,7 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
                 -- Data Peneliti Validasi
                 pav.tanda_tangan_validasi_path,
                 avpv.nama AS pv_nama, avpv.special_parafv AS pv_special_parafv, 
-                avpv.nip AS pv_nip, pv_lc.subject_cn AS pv_cn
+                avpv.nip AS pv_nip, avpv.userid AS avpv_userid, pv_lc.subject_cn AS pv_cn
             FROM pat_1_bookingsspd pb
             LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
             LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
@@ -4031,10 +4031,11 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
             LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
             LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
-            LEFT JOIN pv_local_certs pv_lc ON pb.nobooking = pv_lc.nobooking
             -- Join dengan data Peneliti Validasi
             LEFT JOIN a_2_verified_users avpv 
                 ON avpv.tanda_tangan_path = pav.tanda_tangan_validasi_path
+            -- Join dengan pv_local_certs untuk mendapatkan CN dari userid pemberi validasi
+            LEFT JOIN pv_local_certs pv_lc ON avpv.userid = pv_lc.userid
             WHERE pb.nobooking = $1
             LIMIT 1
         `, [nobooking]);
@@ -4055,8 +4056,28 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             pv_nip: data.pv_nip,
             pv_cn: data.pv_cn,
             no_validasi: data.no_validasi,
-            tanda_tangan_validasi_path: data.tanda_tangan_validasi_path
+            tanda_tangan_validasi_path: data.tanda_tangan_validasi_path,
+            source: 'pv_local_certs via avpv.userid',
+            avpv_userid: data.avpv_userid || 'N/A'
         });
+        
+        // Additional query to get certificate details if CN is available
+        if (data.pv_cn) {
+            try {
+                const certDetails = await pool.query(`
+                    SELECT subject_cn, subject_email, subject_org, valid_from, valid_to, status
+                    FROM pv_local_certs 
+                    WHERE subject_cn = $1 AND status = 'active'
+                    ORDER BY created_at DESC LIMIT 1
+                `, [data.pv_cn]);
+                
+                if (certDetails.rows.length > 0) {
+                    console.log(`🔍 [PDF-VALIDASI] Certificate details:`, certDetails.rows[0]);
+                }
+            } catch (error) {
+                console.warn('⚠️ [PDF-VALIDASI] Failed to get certificate details:', error.message);
+            }
+        }
         
         // Generate unique filename
         const timestamp = Date.now();
@@ -4075,7 +4096,8 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
                     pv_nip: data.pv_nip || 'NIP Tidak Diketahui',
                     pv_cn: data.pv_cn || 'Kepala Bidang Masyarakat',
                     timestamp: new Date().toISOString(),
-                    status: 'Divalidasi'
+                    status: 'Divalidasi',
+                    source: 'pv_local_certs'
                 };
                 const qrResult = await saveQrToPublic({
                     filename: `validasi_${nobooking}_${data.no_validasi}`,
@@ -4113,7 +4135,8 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             pvTitle: pdfParams.pvTitle,
             pvCn: pdfParams.pvCn,
             hasQRCode: !!pdfParams.qrImageAbsPath,
-            noValidasi: pdfParams.noValidasi
+            noValidasi: pdfParams.noValidasi,
+            cnSource: 'pv_local_certs.subject_cn'
         });
         
         // Check if download is requested
