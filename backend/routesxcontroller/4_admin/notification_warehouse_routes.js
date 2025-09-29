@@ -619,8 +619,8 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
             queryParams.push(`%${search}%`);
         }
 
-        // Add ordering and pagination
-        query += ` ORDER BY pv1.no_registrasi ASC, COALESCE(pv1.updated_at, pv1.created_at) DESC`;
+        // Add ordering and pagination - ORDER BY harus match dengan DISTINCT ON
+        query += ` ORDER BY pv1.nobooking ASC, COALESCE(pv1.updated_at, pv1.created_at) DESC`;
         
         paramCount++;
         query += ` LIMIT $${paramCount}`;
