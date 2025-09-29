@@ -559,7 +559,18 @@ document.querySelector("form").addEventListener("submit", async (event) => {
     const form = event.target;
     const formData = new FormData(form);
 
-    console.log("Form Data:", Object.fromEntries(formData)); // Debugging
+    // Debug logging untuk form data
+    console.log("📋 [FRONTEND] Form Data Keys:", Array.from(formData.keys()));
+    console.log("📋 [FRONTEND] Form Data Values:", Object.fromEntries(formData));
+    
+    // Debug file khusus
+    const fotoktpFile = formData.get('fotoktp');
+    console.log("📁 [FRONTEND] KTP File Details:", {
+        hasFile: !!fotoktpFile,
+        fileName: fotoktpFile?.name,
+        fileSize: fotoktpFile?.size,
+        fileType: fotoktpFile?.type
+    });
 
     // Disable submit button untuk mencegah double submission
     const submitBtn = document.getElementById('submitBtn');

@@ -88,24 +88,27 @@ export const processKTPUpload = async (req, res, next) => {
             });
         }
 
-        // Retry logic yang lebih robust untuk file upload
-        let retryCount = 0;
-        const maxRetries = 3;
-        const retryDelay = 500; // 500ms delay
-
-        while (!req.file && retryCount < maxRetries) {
-            if (retryCount > 0) {
-                console.warn(`⚠️ [SECURE_UPLOAD] File belum terisi, retry ke-${retryCount}/${maxRetries}...`);
-                await new Promise(resolve => setTimeout(resolve, retryDelay));
-            }
-            retryCount++;
-        }
+        // Debug logging untuk file upload
+        console.log('🔍 [SECURE_UPLOAD] Processing upload request:', {
+            hasFile: !!req.file,
+            email: req.body?.email,
+            contentType: req.headers['content-type'],
+            contentLength: req.headers['content-length']
+        });
 
         if (!req.file) {
-            console.error('❌ [SECURE_UPLOAD] File upload failed after all retries');
+            console.error('❌ [SECURE_UPLOAD] No file detected in request');
+            console.error('🔍 [SECURE_UPLOAD] Request details:', {
+                body: req.body,
+                files: req.files,
+                headers: {
+                    'content-type': req.headers['content-type'],
+                    'content-length': req.headers['content-length']
+                }
+            });
             return res.status(400).json({
                 success: false,
-                message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.'
+                message: 'File KTP tidak terdeteksi. Pastikan file dipilih dan formatnya JPEG/PNG.'
             });
         }
 

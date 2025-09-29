@@ -137,6 +137,12 @@ router.post('/login', async (req, res) => {
 // Middleware untuk menangani multer errors
 const handleMulterError = (err, req, res, next) => {
   console.error('🔒 [MULTER_ERROR] Multer error occurred:', err);
+  console.error('🔒 [MULTER_ERROR] Error details:', {
+    code: err.code,
+    message: err.message,
+    field: err.field,
+    storageErrors: err.storageErrors
+  });
   
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({
@@ -181,7 +187,14 @@ const handleMulterError = (err, req, res, next) => {
 };
 
 // 2. Register endpoint (check ✔)
-router.post('/register', secureUploadKTP.single('fotoktp'), handleMulterError, processKTPUpload, async (req, res) => {
+router.post('/register', (req, res, next) => {
+  secureUploadKTP.single('fotoktp')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, processKTPUpload, async (req, res) => {
   const { nama, nik, telepon, email, password, gender } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
