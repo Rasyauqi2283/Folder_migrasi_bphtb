@@ -4022,7 +4022,7 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
                 -- Data Peneliti Validasi
                 pav.tanda_tangan_validasi_path,
                 avpv.nama AS pv_nama, avpv.special_parafv AS pv_special_parafv, 
-                avpv.nip AS pv_nip, avpv.cn AS pv_cn
+                avpv.nip AS pv_nip, pv_lc.subject_cn AS pv_cn
             FROM pat_1_bookingsspd pb
             LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
             LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
@@ -4031,6 +4031,7 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
             LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
             LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
+            LEFT JOIN pv_local_certs pv_lc ON pb.nobooking = pv_lc.nobooking
             -- Join dengan data Peneliti Validasi
             LEFT JOIN a_2_verified_users avpv 
                 ON avpv.tanda_tangan_path = pav.tanda_tangan_validasi_path
@@ -4099,7 +4100,7 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             pvTitle: data.pv_cn || 'Kepala Bidang Masyarakat',
             pvCn: data.pv_cn || 'Kepala Bidang Masyarakat',
             qrImageAbsPath: qrImageAbsPath,
-            passphrase: 'bappenda2024' // Default passphrase
+            passphrase: 'bappenda2025' // Default passphrase
         };
         
         // Generate PDF
