@@ -3851,6 +3851,146 @@ app.get('/test-email', async (req, res) => {
   }
 });
 
+// GET /api/ppatk/rekap/diserahkan - Get PPATK rekap data with trackstatus='Diserahkan'
+app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const search = req.query.q || '';
+        const offset = (page - 1) * limit;
+
+        console.log(`🔍 [PPATK] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}"`);
+
+        // Base query untuk mendapatkan data yang sudah diserahkan
+        let query = `
+            SELECT 
+                b.nobooking,
+                b.noppbb,
+                b.tanggal,
+                b.tahunajb,
+                b.namawajibpajak,
+                b.namapemilikobjekpajak,
+                b.npwpwp as npwpwajibpajak,
+                b.trackstatus,
+                b.created_at,
+                b.updated_at,
+                b.file_withstempel_path,
+                b.pdf_dokumen_path,
+                b.nomor_validasi,
+                vu.nama as user_nama,
+                vu.divisi
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.trackstatus = 'Diserahkan'
+        `;
+
+        const queryParams = [];
+        let paramCount = 0;
+
+        // Add search filter if provided
+        if (search.trim()) {
+            paramCount++;
+            query += ` AND (
+                b.nobooking ILIKE $${paramCount} OR 
+                b.noppbb ILIKE $${paramCount} OR 
+                b.namawajibpajak ILIKE $${paramCount} OR
+                b.namapemilikobjekpajak ILIKE $${paramCount} OR
+                b.npwpwp ILIKE $${paramCount} OR
+                vu.nama ILIKE $${paramCount}
+            )`;
+            queryParams.push(`%${search}%`);
+        }
+
+        // Add ordering and pagination
+        query += ` ORDER BY b.created_at DESC`;
+        
+        paramCount++;
+        query += ` LIMIT $${paramCount}`;
+        queryParams.push(limit);
+        
+        paramCount++;
+        query += ` OFFSET $${paramCount}`;
+        queryParams.push(offset);
+
+        console.log('🔍 [PPATK] Executing rekap query:', query);
+        console.log('🔍 [PPATK] Query params:', queryParams);
+
+        const result = await pool.query(query, queryParams);
+        console.log('🔍 [PPATK] Rekap query result rows:', result.rows.length);
+        const bookings = result.rows;
+
+        // Get total count for pagination
+        let countQuery = `
+            SELECT COUNT(b.nobooking) as total
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.trackstatus = 'Diserahkan'
+        `;
+
+        const countParams = [];
+        if (search.trim()) {
+            countParams.push(`%${search}%`);
+            countQuery += ` AND (
+                b.nobooking ILIKE $1 OR 
+                b.noppbb ILIKE $1 OR 
+                b.namawajibpajak ILIKE $1 OR
+                b.namapemilikobjekpajak ILIKE $1 OR
+                b.npwpwp ILIKE $1 OR
+                vu.nama ILIKE $1
+            )`;
+        }
+
+        const countResult = await pool.query(countQuery, countParams);
+        const total = parseInt(countResult.rows[0].total);
+
+        // Format response data
+        const formattedBookings = bookings.map(booking => ({
+            nobooking: booking.nobooking,
+            noppbb: booking.noppbb || '-',
+            tanggal: booking.tanggal || '-',
+            tahunajb: booking.tahunajb || '-',
+            namawajibpajak: booking.namawajibpajak || '-',
+            namapemilikobjekpajak: booking.namapemilikobjekpajak || '-',
+            npwpwajibpajak: booking.npwpwajibpajak || '-',
+            trackstatus: booking.trackstatus || '-',
+            created_at: booking.created_at,
+            updated_at: booking.updated_at,
+            file_withstempel_path: booking.file_withstempel_path,
+            pdf_dokumen_path: booking.pdf_dokumen_path,
+            nomor_validasi: booking.nomor_validasi,
+            user_nama: booking.user_nama || '-',
+            divisi: booking.divisi || '-',
+            // Formatted values for display
+            tanggal_formatted: booking.updated_at ? 
+                new Date(booking.updated_at).toLocaleDateString('id-ID') : 
+                (booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '-')
+        }));
+
+        console.log(`✅ [PPATK] Found ${formattedBookings.length} rekap diserahkan bookings (total: ${total})`);
+
+        res.json({
+            success: true,
+            rows: formattedBookings,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            },
+            search: search
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Error fetching rekap diserahkan data:', error);
+        console.error('❌ [PPATK] Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data rekap diserahkan',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
 
 // Healthcheck endpoint untuk Railway
 app.get('/health', async (req, res) => {

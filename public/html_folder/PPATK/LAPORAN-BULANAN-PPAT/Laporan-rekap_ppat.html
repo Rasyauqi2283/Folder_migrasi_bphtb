@@ -65,7 +65,16 @@
       }
       rows.forEach(item => {
         const tr = document.createElement('tr');
-        const vals = [item.nobooking, item.noppbb||'-', (item.updated_at||'').split('T')[0]||'-', item.tahunajb||'-', item.namawajibpajak||'-', item.namapemilikobjekpajak||'-', item.npwpwajibpajak||'-', item.trackstatus||'-'];
+        const vals = [
+          item.nobooking, 
+          item.noppbb, 
+          item.tanggal_formatted || item.tanggal, 
+          item.tahunajb, 
+          item.namawajibpajak, 
+          item.namapemilikobjekpajak, 
+          item.npwpwajibpajak, 
+          item.trackstatus
+        ];
         vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v||'-'; tr.appendChild(td); });
         const action = document.createElement('td');
         const btn = document.createElement('button');
@@ -86,20 +95,30 @@
     }
 
     function buildDropdownContent(item){
-      const fileStempel = item.file_withstempel_path ? `<a href="../../../${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
-      const fileBooking = item.file_booking_path ? `<a href="../../../${item.file_booking_path}" target="_blank">Dokumen Booking</a>` : '<em>Tidak tersedia</em>';
+      const fileStempel = item.file_withstempel_path ? `<a href="/${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
+      const filePDF = item.pdf_dokumen_path ? `<a href="/${item.pdf_dokumen_path}" target="_blank">Dokumen PDF</a>` : '<em>Tidak tersedia</em>';
+      const nomorValidasi = item.nomor_validasi ? `<p><strong>Nomor Validasi:</strong> ${item.nomor_validasi}</p>` : '';
       return `<div style="padding:12px;">
         <p><strong>No Booking:</strong> ${item.nobooking}</p>
-        <p><strong>Unduhan:</strong> ${fileStempel} | ${fileBooking}</p>
+        <p><strong>NOP PBB:</strong> ${item.noppbb}</p>
+        ${nomorValidasi}
+        <p><strong>Unduhan:</strong> ${fileStempel} | ${filePDF}</p>
       </div>`;
     }
 
     async function downloadValidatedFiles(item){
       try {
-        if (item.file_withstempel_path) window.open('../../../'+item.file_withstempel_path, '_blank');
-        else if (item.file_booking_path) window.open('../../../'+item.file_booking_path, '_blank');
-        else alert('Tidak ada berkas untuk diunduh');
-      } catch(e){ alert('Gagal mengunduh: '+e.message); }
+        if (item.file_withstempel_path) {
+          window.open('/'+item.file_withstempel_path, '_blank');
+        } else if (item.pdf_dokumen_path) {
+          window.open('/'+item.pdf_dokumen_path, '_blank');
+        } else {
+          alert('Tidak ada berkas untuk diunduh');
+        }
+      } catch(e){ 
+        console.error('Download error:', e);
+        alert('Gagal mengunduh: '+e.message); 
+      }
     }
 
     function renderPager(total){
@@ -121,12 +140,20 @@
       try{
         const q = (searchInput.value||'').trim();
         const url = q ? `/api/ppatk/rekap/diserahkan?page=1&limit=100&q=${encodeURIComponent(q)}` : '/api/ppatk/rekap/diserahkan?page=1&limit=100';
+        console.log('🔍 [FRONTEND] Loading data from:', url);
+        
         const res = await fetch(url, { credentials:'include' });
+        console.log('🔍 [FRONTEND] Response status:', res.status);
+        
         const js = await res.json();
+        console.log('🔍 [FRONTEND] Response data:', js);
+        
         if (!res.ok || !js.success) throw new Error(js.message||'Gagal memuat');
         allRows = Array.isArray(js.rows) ? js.rows : [];
+        console.log('🔍 [FRONTEND] Loaded rows:', allRows.length);
         go(1);
       }catch(e){
+        console.error('❌ [FRONTEND] Load data error:', e);
         tbody.innerHTML = `<tr><td colspan="9" class="empty-message">Gagal memuat data: ${e.message}</td></tr>`;
         pager.innerHTML = '';
       }
