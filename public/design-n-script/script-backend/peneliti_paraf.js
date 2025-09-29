@@ -601,7 +601,11 @@ async function simpanData(buttonElement) {
     try {
         console.log('Memproses No Booking:', nobooking);
         const signatureCheck = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
-        const { has_signature } = await signatureCheck.json();
+        if (!signatureCheck.ok) {
+            throw new Error(`Signature check failed: HTTP ${signatureCheck.status}`);
+        }
+        const signatureData = await signatureCheck.json().catch(() => ({ has_signature: false }));
+        const { has_signature } = signatureData;
         if (!has_signature) {
             throw new Error('Anda belum mengunggah tanda tangan!');
         }
@@ -632,12 +636,13 @@ async function simpanData(buttonElement) {
         if (userData.divisi !== 'Peneliti') {  // Ganti `divisi` -> `userData.divisi`
             throw new Error('Hanya divisi Peneliti yang dapat menyetujui');
         }
-        const tandaTanganResponse = await fetch(`/api/get-tanda-tangan?userid=${userData.userid}`, {
+        const tandaTanganResponse = await fetch(`/api/v1/auth/get-tanda-tangan?userid=${userData.userid}`, {
             credentials: 'include',
             cache: 'force-cache'
         });  // Ganti `userid` -> `userData.userid`
         if (!tandaTanganResponse.ok) {
-            throw new Error('Gagal mengambil tanda tangan');
+            const errorText = await tandaTanganResponse.text().catch(() => 'Unknown error');
+            throw new Error(`Gagal mengambil tanda tangan: HTTP ${tandaTanganResponse.status} - ${errorText}`);
         }
 
         const blob = await tandaTanganResponse.blob();
@@ -668,7 +673,9 @@ async function simpanData(buttonElement) {
         clearTimeout(timeout);
 
         if (!saveResponse.ok) {
-            throw new Error(await saveResponse.text());
+            const errorText = await saveResponse.text();
+            console.error('Save response error:', errorText);
+            throw new Error(`HTTP ${saveResponse.status}: ${errorText}`);
         }
         
         if (persetujuanParaf === 'ya') {

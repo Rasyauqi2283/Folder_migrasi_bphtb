@@ -484,7 +484,7 @@ async function simpanData(buttonElement) {
         if (userData.divisi !== 'Peneliti') {  // Ganti `divisi` -> `userData.divisi`
             throw new Error('Hanya divisi Peneliti yang dapat menyetujui');
         }
-        const tandaTanganResponse = await fetch(`/api/get-tanda-tangan?userid=${userData.userid}`, { credentials: 'include' });  // Ganti `userid` -> `userData.userid`
+        const tandaTanganResponse = await fetch(`/api/v1/auth/get-tanda-tangan?userid=${userData.userid}`, { credentials: 'include' });  // Ganti `userid` -> `userData.userid`
         if (!tandaTanganResponse.ok) {
             throw new Error('Gagal mengambil tanda tangan');
         }

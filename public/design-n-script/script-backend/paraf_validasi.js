@@ -206,7 +206,7 @@ function updateUIAfterSuccess(button, container, bookingId) {
         button.title = 'Sudah dikirim ke LSB';
         const info = document.createElement('div');
         info.className = 'validation-info';
-        info.textContent = `Nomor Booking: ${bookingId}`;
+        info.textContent = `Nomor Validasi: ${bookingId}`;
         container.appendChild(info);
         try { localStorage.setItem(`validation_${bookingId}`, bookingId); } catch(_) {}
     } catch(_) {}
