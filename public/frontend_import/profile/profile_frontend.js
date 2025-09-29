@@ -57,7 +57,7 @@ class ProfileService {
   static async uploadPhoto(formData, abortSignal) {
     // JANGAN set Content-Type header untuk multipart/form-data
     // Biarkan browser set otomatis dengan boundary yang tepat
-    return api.post('/api/profile/upload', formData, {
+    return api.post('/api/v1/auth/profile/upload', formData, {
       signal: abortSignal
       // Remove Content-Type header to let browser set it automatically
     });
@@ -785,7 +785,7 @@ export class ProfileController {
       }
       
       // Upload photo menggunakan endpoint yang benar sesuai backend
-      const response = await fetch('/api/profile/upload', {
+      const response = await fetch('/api/v1/auth/profile/upload', {
         method: 'POST',
         body: formData,
         signal: this.photoUploadState.uploadAbortController.signal,

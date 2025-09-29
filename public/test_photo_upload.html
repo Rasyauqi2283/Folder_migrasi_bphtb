@@ -135,7 +135,7 @@
 
     <div class="test-section">
         <h2>5. Test API Endpoint</h2>
-        <button onclick="testEndpoint()">Test /api/profile/upload Endpoint</button>
+        <button onclick="testEndpoint()">Test /api/v1/auth/profile/upload Endpoint</button>
         <div id="endpoint-result"></div>
     </div>
 
@@ -252,7 +252,7 @@
             
             try {
                 // Test with empty request to see if endpoint exists
-                const response = await fetch('/api/profile/upload', {
+                const response = await fetch('/api/v1/auth/profile/upload', {
                     method: 'POST',
                     credentials: 'include'
                 });
