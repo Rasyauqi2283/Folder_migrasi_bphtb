@@ -1482,6 +1482,22 @@ app.post('/api/peneliti/transfer-signature', async (req, res) => {
 });
 ///////////
 app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
+    // Validate session first
+    if (!req.session || !req.session.user || !req.session.user.userid) {
+        return res.status(401).json({
+            success: false,
+            message: 'Session tidak valid. Silakan login kembali.'
+        });
+    }
+
+    // Get pemberi_persetujuan from session
+    const pemberi_persetujuan = req.session.user.userid;
+    console.log('[SESSION] User yang login:', {
+        userid: req.session.user.userid,
+        nama: req.session.user.nama,
+        divisi: req.session.user.divisi
+    });
+
     // Validate request structure
     console.log('[1] Memulai proses update data peneliti');
     console.log('[2] Request body awal:', JSON.stringify(req.body, null, 2));
@@ -1501,8 +1517,7 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
         angkapersen,
         keterangandihitungSendiri,
         isiketeranganlainnya,
-        persetujuanVerif,
-        pemberi_persetujuan
+        persetujuanVerif
     } = req.body.data;
 
      console.log('[4] Data yang diterima:', {
@@ -1515,7 +1530,7 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
         keterangandihitungSendiri,
         isiketeranganlainnya,
         persetujuanVerif,
-        pemberi_persetujuan
+        pemberi_persetujuan: pemberi_persetujuan // From session
     });
     // Basic validation
     if (!userid || !nobooking || !pemilihan) {
@@ -1583,7 +1598,7 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
             angkapersen || null,
             keterangandihitungSendiri || null,
             isiketeranganlainnya || null,
-            pemberi_persetujuan || null,
+            pemberi_persetujuan, // From session - always present
             nobooking
         ]);
 

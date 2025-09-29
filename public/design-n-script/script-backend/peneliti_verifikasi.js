@@ -148,7 +148,6 @@ async function loadTableDataPenelitiV() {
                     
                     // Debug logging
                     console.log('🔍 [PENELITI-VERIF] Signature check for booking:', item.nobooking);
-                    console.log('🔍 [PENELITI-VERIF] - tanda_paraf_path:', item.tanda_paraf_path);
                     console.log('🔍 [PENELITI-VERIF] - peneliti_tanda_tangan_path:', item.peneliti_tanda_tangan_path);
                     console.log('🔍 [PENELITI-VERIF] - signer_userid:', item.signer_userid);
                     console.log('🔍 [PENELITI-VERIF] - hasSignature:', hasSignature);
