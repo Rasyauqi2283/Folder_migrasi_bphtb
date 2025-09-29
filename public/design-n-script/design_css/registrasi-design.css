@@ -228,6 +228,26 @@
   }
   .guide-image { max-width: 100%; height: auto; margin-top: 10px; }
   
+  /* umum untuk toggle password */
+.toggle-password {
+  position: absolute;
+  cursor: pointer;
+  color: #a0a0a0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+/* untuk password utama */
+#password + .toggle-password {
+  right: 40px; /* agak geser */
+}
+
+/* untuk repeat password */
+#repeatpassword + .toggle-password {
+  right: 10px; /* biarkan menempel kanan */
+}
+
   /* ===== RESPONSIVE ===== */
   @media (max-width: 768px) {
     form { padding: 24px; }

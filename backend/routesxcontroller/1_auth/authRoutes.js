@@ -258,9 +258,29 @@ router.post('/register', (req, res, next) => {
   console.log('🔍 [REGISTER] Content-Type:', contentType);
   
   if (contentType && contentType.includes('multipart/form-data')) {
-    // Use multer untuk parsing FormData
-    const upload = multer().none(); // Parse form fields only, no files
-    upload(req, res, next);
+    // Use multer untuk parsing FormData - allow all fields
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      fileFilter: (req, file, cb) => {
+        // Allow all fields, no file upload needed
+        cb(null, true);
+      },
+      limits: {
+        fieldSize: 10 * 1024 * 1024, // 10MB limit for fields
+        files: 0 // No files allowed
+      }
+    }).any(); // Allow any field names
+    
+    upload(req, res, (err) => {
+      if (err) {
+        console.error('❌ [REGISTER] Multer error:', err);
+        return res.status(400).json({
+          success: false,
+          message: 'Gagal memproses data form'
+        });
+      }
+      next();
+    });
   } else {
     // Use express built-in parsers for other content types
     next();

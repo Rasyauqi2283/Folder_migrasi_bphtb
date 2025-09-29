@@ -57,6 +57,41 @@ const resolveSignatureFolder = (req) => {
   return 'ppat_sign';
 };
 
+// Advanced preprocessing untuk tanda tangan
+const preprocessSignature = async (buffer) => {
+  try {
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
+    
+    // Deteksi apakah gambar perlu preprocessing khusus
+    const stats = await image.stats();
+    const isAlreadyGreyscale = stats.channels === 1;
+    
+    let processedImage = image;
+    
+    if (!isAlreadyGreyscale) {
+      // Konversi ke greyscale dengan contrast yang baik
+      processedImage = processedImage
+        .greyscale()
+        .modulate({
+          brightness: 1.1,  // Sedikit lebih terang
+          saturation: 0,    // Pastikan tidak ada warna
+          hue: 0
+        });
+    }
+    
+    // Enhance contrast untuk tanda tangan yang lebih jelas
+    processedImage = processedImage
+      .linear(1.2, -(128 * 0.2)) // Increase contrast
+      .normalize(); // Normalize brightness
+    
+    return processedImage;
+  } catch (error) {
+    console.error('❌ [TTD] Preprocessing error:', error);
+    return sharp(buffer); // Fallback ke original
+  }
+};
+
 const processTTDVerif = async (req, res, next) => {
   // Support both single('signature1') and fields(['signature','signature1'])
   const pickFile = () => {
@@ -72,6 +107,8 @@ const processTTDVerif = async (req, res, next) => {
   if (!uploaded) return next();
 
   try {
+    console.log('🔄 [TTD] Processing signature upload...');
+    
     const subfolder = resolveSignatureFolder(req);
     const targetDir = path.join(BASE_SIGNATURE_DIR, subfolder);
     await ensureDir(targetDir);
@@ -82,24 +119,98 @@ const processTTDVerif = async (req, res, next) => {
     const filePath = path.join(targetDir, filename);
     const publicUrl = `/penting_F_simpan/folderttd/${subfolder}/${filename}`;
 
-    // Process image
-    await sharp(uploaded.buffer)
-      .greyscale()
-      // Normalize canvas to square (1:1) and center the image
+    // Step 1: Advanced preprocessing
+    const preprocessedImage = await preprocessSignature(uploaded.buffer);
+    
+    // Step 2: Smart cropping dan resizing
+    await preprocessedImage
+      // Crop otomatis untuk menghilangkan area kosong di sekitar tanda tangan
+      .trim({
+        threshold: 15, // Threshold untuk mendeteksi background (ditingkatkan)
+        background: { r: 255, g: 255, b: 255, alpha: 1 } // Background putih untuk crop
+      })
+      // Resize ke ukuran standar dengan padding putih yang bersih
       .resize(800, 800, {
         fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 } // transparan
+        background: { r: 255, g: 255, b: 255, alpha: 1 }, // Background putih (sesuai PDF)
+        position: 'center' // Posisi di tengah
       })
-      .png({ compressionLevel: 9 }) // simpan ke PNG dengan transparansi
+      // Pastikan background benar-benar putih tanpa artefak
+      .flatten({ 
+        background: { r: 255, g: 255, b: 255, alpha: 1 } 
+      })
+      // Final cleanup untuk menghilangkan noise
+      .median(1) // Remove small noise/artifacts
+      .png({ 
+        compressionLevel: 9,
+        adaptiveFiltering: true,
+        palette: true, // Optimasi untuk hitam-putih
+        quality: 100   // Kualitas maksimal untuk tanda tangan
+      })
       .toFile(filePath);
+    
+    console.log('✅ [TTD] Signature processed successfully:', {
+      userid,
+      filename,
+      size: (await fs.stat(filePath)).size
+    });
 
-    // Attach processed file info to request
-    req.processedTTD = {
+    // Generate multiple sizes untuk berbagai kebutuhan PDF
+    const sizes = [
+      { name: 'small', size: 200, suffix: '_s' },
+      { name: 'medium', size: 400, suffix: '_m' },
+      { name: 'large', size: 800, suffix: '_l' }
+    ];
+
+    const processedFiles = {};
+
+    // Generate base file (large)
+    processedFiles.large = {
       path: filePath,
       url: publicUrl,
       size: (await fs.stat(filePath)).size,
       mimeType: 'image/png'
     };
+
+    // Generate smaller sizes untuk optimasi PDF
+    for (const { name, size, suffix } of sizes.slice(0, 2)) { // Skip large (already done)
+      const smallFilename = `ttd-${userid}${suffix}.png`;
+      const smallFilePath = path.join(targetDir, smallFilename);
+      const smallPublicUrl = `/penting_F_simpan/folderttd/${subfolder}/${smallFilename}`;
+
+      await preprocessedImage
+        .trim({
+          threshold: 15,
+          background: { r: 255, g: 255, b: 255, alpha: 1 }
+        })
+        .resize(size, size, {
+          fit: 'contain',
+          background: { r: 255, g: 255, b: 255, alpha: 1 },
+          position: 'center'
+        })
+        .flatten({ 
+          background: { r: 255, g: 255, b: 255, alpha: 1 } 
+        })
+        .median(1)
+        .png({ 
+          compressionLevel: 9,
+          adaptiveFiltering: true,
+          palette: true,
+          quality: 100
+        })
+        .toFile(smallFilePath);
+
+      processedFiles[name] = {
+        path: smallFilePath,
+        url: smallPublicUrl,
+        size: (await fs.stat(smallFilePath)).size,
+        mimeType: 'image/png'
+      };
+    }
+
+    // Attach processed file info to request
+    req.processedTTD = processedFiles;
+    req.processedTTD.main = processedFiles.large; // Backward compatibility
     
     next();
   } catch (err) {
