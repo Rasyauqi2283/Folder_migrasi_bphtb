@@ -346,8 +346,10 @@ export default function registerGeneratePdfBooking(app, pool) {
                 });
                 
                 if (wpAbs && fs.existsSync(wpAbs)) {
-                    doc.image(wpAbs, col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 15, { width: signatureWidth });
-                    console.log('✅ [PDF] WP Signature rendered successfully');
+                    // Use medium size (400x400) for WP signature
+                    const mediumSignatureWidth = 100; // Adjusted for PDF layout
+                    doc.image(wpAbs, col1X + (columnWidth - mediumSignatureWidth)/2, signatureYPosition + 15, { width: mediumSignatureWidth });
+                    console.log('✅ [PDF] WP Signature rendered successfully with medium size');
                 } else {
                     console.warn('⚠️ [PDF] WP Signature file not found, drawing line instead');
                     doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
@@ -394,15 +396,28 @@ export default function registerGeneratePdfBooking(app, pool) {
                 });
                 
                 if (ppatAbs && fs.existsSync(ppatAbs)) {
-                    // Pre-process gambar dengan sharp
+                    // Use medium size (400x400) for PPAT signature
+                    const mediumSignatureWidth = 100; // Adjusted for PDF layout
+                    
+                    // Pre-process gambar dengan sharp untuk medium size
                     const processedImage = await sharp(ppatAbs)
                         .trim() // Otomatis trim background transparan
+                        .resize(400, 400, {
+                            fit: 'contain',
+                            background: { r: 255, g: 255, b: 255, alpha: 1 }
+                        })
+                        .png({ 
+                            compressionLevel: 9,
+                            adaptiveFiltering: true,
+                            palette: true,
+                            quality: 100
+                        })
                         .toBuffer();
                         
-                    doc.image(processedImage, col2X + (columnWidth - signatureWidth)/2, signatureYPosition + 10, { 
-                        width: signatureWidth
+                    doc.image(processedImage, col2X + (columnWidth - mediumSignatureWidth)/2, signatureYPosition + 10, { 
+                        width: mediumSignatureWidth
                     });
-                    console.log('✅ [PDF] Signature rendered successfully for user:', userid);
+                    console.log('✅ [PDF] PPAT Signature rendered successfully with medium size (400x400) for user:', userid);
                 } else {
                     console.warn('⚠️ [PDF] Signature file not found for user:', userid, 'Path:', signaturePath);
                 }
@@ -675,12 +690,36 @@ try {
         if (normalized.startsWith('public/')) normalized = normalized.substring(7);
         return path.resolve(process.cwd(), 'public', normalized);
     };
-    const signatureWidth = 100;
-  const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
-  doc.image(ppatAbs, rightX + 40, baseY + 20, { width: signatureWidth });
+    
+    const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+    
+    if (ppatAbs && fs.existsSync(ppatAbs)) {
+        // Use medium size (400x400) for signature
+        const mediumSignatureWidth = 100; // Adjusted for PDF layout
+        
+        // Pre-process gambar dengan sharp untuk medium size
+        const processedImage = await sharp(ppatAbs)
+            .trim() // Otomatis trim background transparan
+            .resize(400, 400, {
+                fit: 'contain',
+                background: { r: 255, g: 255, b: 255, alpha: 1 }
+            })
+            .png({ 
+                compressionLevel: 9,
+                adaptiveFiltering: true,
+                palette: true,
+                quality: 100
+            })
+            .toBuffer();
+            
+        doc.image(processedImage, rightX + 40, baseY + 20, { width: mediumSignatureWidth });
+        console.log('✅ [PDF] Pemohon Signature rendered successfully with medium size (400x400)');
+    } else {
+        console.warn('⚠️ [PDF] Signature file not found for pemohon');
+    }
 
 } catch (err) {
-  console.warn('Failed to render PPAT signature:', err?.message || err);
+  console.warn('❌ [PDF] Failed to render PPAT signature:', err?.message || err);
 }
 
 // Naikkan posisi Y untuk nama di bawah garis tanda tangan
