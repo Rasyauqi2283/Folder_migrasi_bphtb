@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Pastikan user punya tanda tangan di profil
-                const sigResp = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
+                const sigResp = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
                 const sigJson = await sigResp.json().catch(() => ({}));
                 if (!sigResp.ok || !sigJson.has_signature) {
                     alert('Anda belum mengunggah tanda tangan di Profil. Silakan unggah terlebih dahulu.');
@@ -600,7 +600,7 @@ async function simpanData(buttonElement) {
 
     try {
         console.log('Memproses No Booking:', nobooking);
-        const signatureCheck = await fetch('/api/peneliti/check-signature', { credentials: 'include' });
+        const signatureCheck = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
         const { has_signature } = await signatureCheck.json();
         if (!has_signature) {
             throw new Error('Anda belum mengunggah tanda tangan!');
