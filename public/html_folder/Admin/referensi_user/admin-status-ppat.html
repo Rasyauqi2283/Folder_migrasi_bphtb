@@ -289,6 +289,8 @@
 
 /* ---------- state ---------- */
 let currentCategory = 'ppat_ltb'; // default
+// Make currentCategory globally accessible
+window.currentCategory = currentCategory;
 const segButtons = document.querySelectorAll('.segmented .seg-btn');
 const notifBody = document.getElementById('notifBody');
 
@@ -333,7 +335,7 @@ const clearSearch = document.getElementById('clearSearch');
 
 function renderNotifications(){
   // For PPAT → LTB, use backend data loaded by loadNotifications()
-  if (currentCategory === 'ppat_ltb') {
+  if (window.currentCategory === 'ppat_ltb') {
     // Data is already loaded by loadNotifications() function
     return;
   }
@@ -341,7 +343,7 @@ function renderNotifications(){
   // For other categories, use sample data
   const rows = [];
   const q = (notifSearch.value || '').trim().toLowerCase();
-  const list = notificationsData[currentCategory] || [];
+  const list = notificationsData[window.currentCategory] || [];
   for(const it of list){
     // simple search across a few fields
     if(q){
@@ -370,22 +372,31 @@ segButtons.forEach(btn=>{
     segButtons.forEach(b=> b.setAttribute('aria-pressed','false'));
     btn.setAttribute('aria-pressed','true');
     currentCategory = btn.dataset.cat;
+    // Update global variable
+    window.currentCategory = currentCategory;
     
     // Update table headers based on category
     updateTableHeaders(currentCategory);
     
     // Load notifications from backend for all categories
-    loadNotifications();
+    // Call loadNotifications from the IIFE scope
+    if (window.loadNotificationsFromScope) {
+      window.loadNotificationsFromScope();
+    }
   });
 });
 
 /* search */
 notifSearch.addEventListener('input', ()=> {
-  loadNotifications();
+  if (window.loadNotificationsFromScope) {
+    window.loadNotificationsFromScope();
+  }
 });
 clearSearch.addEventListener('click', ()=>{ 
   notifSearch.value=''; 
-  loadNotifications();
+  if (window.loadNotificationsFromScope) {
+    window.loadNotificationsFromScope();
+  }
 });
 
 /* Lihat button (delegation) */
@@ -398,7 +409,7 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
   
   console.log('🔍 Opening detail for:', { nobooking: nb, noRegistrasi });
   
-  if (currentCategory === 'ppat_ltb' && noRegistrasi) {
+  if (window.currentCategory === 'ppat_ltb' && noRegistrasi) {
     try {
       // Fetch detail from backend
       const js = await fetchJSON(`/api/admin/notification-warehouse/ppat-ltb/${noRegistrasi}`);
@@ -689,7 +700,7 @@ statusSelect.addEventListener('change', () => renderStatus());
 statusSearch.addEventListener('input', () => renderStatus());
 
 /* init */
-updateTableHeaders(currentCategory); // Initialize table headers
+updateTableHeaders(window.currentCategory); // Initialize table headers
 renderNotifications();
 </script>
 
@@ -707,7 +718,9 @@ renderNotifications();
 
     async function loadNotifications(){
       try{
-        console.log('🔍 Loading notifications for category:', currentCategory);
+        // Get current category from global scope
+        const currentCat = window.currentCategory || 'ppat_ltb';
+        console.log('🔍 Loading notifications for category:', currentCat);
         
         const tbody = qs('#notifTable tbody');
         
@@ -717,15 +730,16 @@ renderNotifications();
         let url = '';
         let expectedCols = 9;
         
-        if (currentCategory === 'ppat_ltb') {
-          const search = (notifSearch.value || '').trim();
+        // Get search value from global scope
+        const searchInput = qs('#notifSearch');
+        const search = (searchInput?.value || '').trim();
+        
+        if (currentCat === 'ppat_ltb') {
           url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
-        } else if (currentCategory === 'ltb_lsb') {
-          const search = (notifSearch.value || '').trim();
+        } else if (currentCat === 'ltb_lsb') {
           url = `/api/admin/notification-warehouse/ltb-lsb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
           expectedCols = 10; // Additional column for peneliti workflow
-        } else if (currentCategory === 'lsb_ppat') {
-          const search = (notifSearch.value || '').trim();
+        } else if (currentCat === 'lsb_ppat') {
           url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
           expectedCols = 9;
         } else {
@@ -744,11 +758,11 @@ renderNotifications();
           const td = tr.insertCell(); 
           td.colSpan = expectedCols;
           let message = '';
-          if (currentCategory === 'ppat_ltb') {
+          if (currentCat === 'ppat_ltb') {
             message = 'Tidak ada notifikasi PPAT → LTB dengan status "Diolah"';
-          } else if (currentCategory === 'ltb_lsb') {
+          } else if (currentCat === 'ltb_lsb') {
             message = 'Tidak ada notifikasi LTB → LSB dengan alur peneliti';
-          } else if (currentCategory === 'lsb_ppat') {
+          } else if (currentCat === 'lsb_ppat') {
             message = 'Tidak ada notifikasi LSB → PPAT dengan status "Terselesaikan"';
           } else {
             message = 'Tidak ada Data masuk, 0 to 0 Data Pages';
@@ -761,7 +775,7 @@ renderNotifications();
           const tr = tbody.insertRow();
           let vals = [];
           
-          if (currentCategory === 'ppat_ltb') {
+          if (currentCat === 'ppat_ltb') {
             vals = [
               r.no_registrasi||'-',
               r.nobooking||'-',
@@ -773,7 +787,7 @@ renderNotifications();
               r.updated||r.updated_at||'-',
               'Detail'
             ];
-          } else if (currentCategory === 'ltb_lsb') {
+          } else if (currentCat === 'ltb_lsb') {
             // Show peneliti workflow status
             const penelitiStatus = r.peneliti_verifikasi_status || r.peneliti_paraf_status || r.peneliti_validasi_status || 'Belum diproses';
             vals = [
@@ -788,7 +802,7 @@ renderNotifications();
               r.updated||r.updated_at||'-',
               'Detail'
             ];
-          } else if (currentCategory === 'lsb_ppat') {
+          } else if (currentCat === 'lsb_ppat') {
             vals = [
               r.no_registrasi||'-',
             r.nobooking||'-',
@@ -811,7 +825,7 @@ renderNotifications();
           });
         });
         
-        console.log(`✅ Loaded ${rows.length} notifications for ${currentCategory}`);
+        console.log(`✅ Loaded ${rows.length} notifications for ${currentCat}`);
       }catch(e){
         console.error('❌ Error loading notifications:', e);
         const tbody = qs('#notifTable tbody');
@@ -877,6 +891,9 @@ renderNotifications();
       }
     }
 
+    // Expose loadNotifications to global scope
+    window.loadNotificationsFromScope = loadNotifications;
+    
     document.addEventListener('DOMContentLoaded', ()=>{
       loadNotifications();
       loadUsers();
@@ -1061,6 +1078,8 @@ renderNotifications();
     };
     
     // Initialize renderStatus after all functions are defined
+    // Make sure currentCategory is available globally
+    window.currentCategory = window.currentCategory || 'ppat_ltb';
     renderStatus();
   })();
   </script>
