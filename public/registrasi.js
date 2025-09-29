@@ -550,8 +550,7 @@ function validateForm() {
 // Event listener untuk submit form
 document.querySelector("form").addEventListener("submit", async (event) => {
     console.log("🚀 [FRONTEND] Form submit event triggered");
-    event.preventDefault();
-
+    
     // Validasi form terlebih dahulu
     console.log("🔍 [FRONTEND] Starting form validation...");
     const validationResult = validateForm();
@@ -559,29 +558,31 @@ document.querySelector("form").addEventListener("submit", async (event) => {
     
     if (!validationResult) {
         console.log("❌ [FRONTEND] Form validation failed, stopping submission");
+        event.preventDefault();
         return;
     }
     
     console.log("✅ [FRONTEND] Form validation passed, proceeding with submission");
 
-    const form = event.target;
-    const formData = new FormData(form);
-
-    // Debug logging untuk form data
-    console.log("📋 [FRONTEND] Form Data Keys:", Array.from(formData.keys()));
-    console.log("📋 [FRONTEND] Form Data Values:", Object.fromEntries(formData));
+    // Prevent default form submission
+    event.preventDefault();
     
-    // Debug file khusus
-    const fotoktpFile = formData.get('fotoktp');
-    console.log("📁 [FRONTEND] KTP File Details:", {
-        hasFile: !!fotoktpFile,
-        fileName: fotoktpFile?.name,
-        fileSize: fotoktpFile?.size,
-        fileType: fotoktpFile?.type
-    });
+    // Create FormData manually to ensure all data is captured
+    const formData = new FormData();
     
-    // Debug file input element
+    // Add all form fields manually
+    formData.append('nama', document.getElementById('nama').value);
+    formData.append('nik', document.getElementById('nik').value);
+    formData.append('telepon', document.getElementById('telepon').value);
+    formData.append('email', document.getElementById('email').value);
+    formData.append('password', document.getElementById('password').value);
+    formData.append('repeatpassword', document.getElementById('repeatpassword').value);
+    formData.append('gender', document.getElementById('gender').value);
+    
+    // Add file manually
     const fileInput = document.getElementById('fotoktp');
+    const fotoktpFile = fileInput?.files?.[0];
+    
     console.log("📁 [FRONTEND] File Input Element:", {
         exists: !!fileInput,
         files: fileInput?.files,
@@ -590,11 +591,28 @@ document.querySelector("form").addEventListener("submit", async (event) => {
         value: fileInput?.value
     });
     
-    // Debug form element
-    console.log("📋 [FRONTEND] Form Element:", {
-        enctype: form?.enctype,
-        method: form?.method,
-        action: form?.action
+    if (fotoktpFile) {
+        console.log("🔧 [FRONTEND] Adding file to FormData:", {
+            fileName: fotoktpFile.name,
+            fileSize: fotoktpFile.size,
+            fileType: fotoktpFile.type
+        });
+        formData.append('fotoktp', fotoktpFile);
+    } else {
+        console.error("❌ [FRONTEND] No file found in input element");
+    }
+    
+    // Debug FormData contents
+    console.log("📋 [FRONTEND] Form Data Keys:", Array.from(formData.keys()));
+    console.log("📋 [FRONTEND] Form Data Values:", Object.fromEntries(formData));
+    
+    // Debug file khusus
+    const fotoktpFileAfter = formData.get('fotoktp');
+    console.log("📁 [FRONTEND] KTP File Details (after manual FormData creation):", {
+        hasFile: !!fotoktpFileAfter,
+        fileName: fotoktpFileAfter?.name,
+        fileSize: fotoktpFileAfter?.size,
+        fileType: fotoktpFileAfter?.type
     });
 
     // Disable submit button untuk mencegah double submission
