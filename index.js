@@ -4014,11 +4014,15 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
         
         const booking = bookingCheck.rows[0];
         
-        // Get validation data
+        // Get validation data with Peneliti Validasi information
         const validationData = await pool.query(`
             SELECT 
                 pb.*, bp.*, o.*, pp.*, vu.nama, vu.special_field,
-                pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path
+                pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path,
+                -- Data Peneliti Validasi
+                pav.tanda_tangan_validasi_path,
+                avpv.nama AS pv_nama, avpv.special_parafv AS pv_special_parafv, 
+                avpv.nip AS pv_nip, avpv.cn AS pv_cn
             FROM pat_1_bookingsspd pb
             LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
             LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
@@ -4027,6 +4031,9 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
             LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
             LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
+            -- Join dengan data Peneliti Validasi
+            LEFT JOIN a_2_verified_users avpv 
+                ON avpv.tanda_tangan_path = pav.tanda_tangan_validasi_path
             WHERE pb.nobooking = $1
             LIMIT 1
         `, [nobooking]);
@@ -4040,22 +4047,58 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
         
         const data = validationData.rows[0];
         
+        // Log Peneliti Validasi data for debugging
+        console.log(`🔍 [PDF-VALIDASI] Peneliti Validasi data:`, {
+            pv_nama: data.pv_nama,
+            pv_special_parafv: data.pv_special_parafv,
+            pv_nip: data.pv_nip,
+            pv_cn: data.pv_cn,
+            no_validasi: data.no_validasi,
+            tanda_tangan_validasi_path: data.tanda_tangan_validasi_path
+        });
+        
         // Generate unique filename
         const timestamp = Date.now();
         const filename = `validasi_${nobooking}_${timestamp}.pdf`;
         const outputPath = path.join(process.cwd(), 'temp_uploads', filename);
         
-        // PDF generation parameters
+        // Generate QR code for validation document
+        let qrImageAbsPath = null;
+        if (data.no_validasi) {
+            try {
+                const { saveQrToPublic } = await import('./backend/utils/qrcode.js');
+                const qrData = {
+                    nobooking: nobooking,
+                    no_validasi: data.no_validasi,
+                    pv_nama: data.pv_nama || data.pv_special_parafv || 'Peneliti Validasi',
+                    pv_nip: data.pv_nip || 'NIP Tidak Diketahui',
+                    pv_cn: data.pv_cn || 'Kepala Bidang Masyarakat',
+                    timestamp: new Date().toISOString(),
+                    status: 'Divalidasi'
+                };
+                const qrResult = await saveQrToPublic({
+                    filename: `validasi_${nobooking}_${data.no_validasi}`,
+                    text: JSON.stringify(qrData),
+                    size: 256
+                });
+                qrImageAbsPath = qrResult.abs;
+                console.log(`✅ [PDF-VALIDASI] QR code generated: ${qrResult.path}`);
+            } catch (error) {
+                console.warn('⚠️ [PDF-VALIDASI] Failed to generate QR code:', error.message);
+            }
+        }
+        
+        // PDF generation parameters with Peneliti Validasi data
         const pdfParams = {
             pool,
             nobooking,
             noValidasi: data.no_validasi,
             outputPath,
-            pvName: data.nama || 'Pejabat Validasi',
-            pvNip: data.special_field || 'NIP Tidak Diketahui',
-            pvTitle: 'Kepala Bidang Pelayanan dan Penetapan',
-            pvCn: 'Kepala Bidang Pelayanan dan Penetapan',
-            qrImageAbsPath: null, // Optional QR code
+            pvName: data.pv_special_parafv || data.pv_nama || 'Peneliti Validasi',
+            pvNip: data.pv_nip || data.special_field || 'NIP Tidak Diketahui',
+            pvTitle: data.pv_cn || 'Kepala Bidang Masyarakat',
+            pvCn: data.pv_cn || 'Kepala Bidang Masyarakat',
+            qrImageAbsPath: qrImageAbsPath,
             passphrase: 'bappenda2024' // Default passphrase
         };
         
@@ -4063,6 +4106,14 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
         await buildValidasiPdf(pdfParams);
         
         console.log(`✅ [PDF-VALIDASI] PDF generated successfully: ${filename}`);
+        console.log(`✅ [PDF-VALIDASI] PDF parameters used:`, {
+            pvName: pdfParams.pvName,
+            pvNip: pdfParams.pvNip,
+            pvTitle: pdfParams.pvTitle,
+            pvCn: pdfParams.pvCn,
+            hasQRCode: !!pdfParams.qrImageAbsPath,
+            noValidasi: pdfParams.noValidasi
+        });
         
         // Check if download is requested
         const isDownload = req.query.download === 'true';
