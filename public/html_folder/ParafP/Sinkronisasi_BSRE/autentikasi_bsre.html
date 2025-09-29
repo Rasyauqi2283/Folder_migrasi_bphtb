@@ -72,8 +72,24 @@
             const resp = await fetch('/api/v1/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
             const json = await resp.json().catch(()=>({success:false}));
             if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
-            const path = (json.data && json.data.path) ? json.data.path : (json.path || '');
-            if(!path) throw new Error('Path tanda tangan tidak ditemukan');
+            
+            // Debug logging
+            console.log('Upload response:', json);
+            
+            // Handle different response formats
+            let path = '';
+            if (json.data && json.data.path) {
+                path = json.data.path;
+            } else if (json.path) {
+                path = json.path;
+            } else if (json.tanda_tangan_path) {
+                path = json.tanda_tangan_path;
+            }
+            
+            if(!path) {
+                console.error('No path found in response:', json);
+                throw new Error('Path tanda tangan tidak ditemukan dalam response server');
+            }
             document.getElementById('sigPreview').src = path + '?t=' + Date.now();
             await loadCurrentSignature();
         }catch(e){ alert('Gagal upload: '+(e.message||e)); }
@@ -145,8 +161,24 @@
             const resp = await fetch('/api/v1/auth/update-profile-paraf', { method:'POST', body:fd, credentials:'include' });
             const json = await resp.json().catch(()=>({success:false}));
             if(!resp.ok || json.success===false) throw new Error(json.message||('HTTP '+resp.status));
-            const path = (json.data && json.data.path) ? json.data.path : (json.path || '');
-            if(!path) throw new Error('Path tanda tangan tidak ditemukan');
+            
+            // Debug logging
+            console.log('Canvas save response:', json);
+            
+            // Handle different response formats
+            let path = '';
+            if (json.data && json.data.path) {
+                path = json.data.path;
+            } else if (json.path) {
+                path = json.path;
+            } else if (json.tanda_tangan_path) {
+                path = json.tanda_tangan_path;
+            }
+            
+            if(!path) {
+                console.error('No path found in canvas response:', json);
+                throw new Error('Path tanda tangan tidak ditemukan dalam response server');
+            }
             document.getElementById('sigPreview').src = path + '?t=' + Date.now();
             await loadCurrentSignature();
         }catch(e){ alert('Gagal simpan dari canvas: '+(e.message||e)); }

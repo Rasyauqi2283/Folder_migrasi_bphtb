@@ -104,11 +104,16 @@ router.post('/update-profile-paraf',
         if (!req.session.user || !allowedDivisi.includes(userDivisi)) {
           return res.status(403).json({ 
             success: false, 
-            message: 'Hanya divisi Tertentu yang boleh upload tanda tangan' 
+            message: `Hanya divisi tertentu yang boleh upload tanda tangan. Divisi Anda: ${userDivisi}` 
           });
         }
 
         if (!req.processedTTD) {
+          console.error('[TTD UPLOAD] No processedTTD found:', {
+            hasProcessedTTD: !!req.processedTTD,
+            userDivisi: userDivisi,
+            userid: req.session.user.userid
+          });
           return res.status(400).json({ 
             success: false, 
             message: 'File tanda tangan wajib diupload' 
@@ -134,7 +139,8 @@ router.post('/update-profile-paraf',
         req.session.user.tanda_tangan_path = result.rows[0].tanda_tangan_path;
         req.session.user.tanda_tangan_mime = result.rows[0].tanda_tangan_mime;
         await client.query('COMMIT');
-        res.json({ 
+        
+        const responseData = { 
           success: true,
           message: 'Tanda tangan berhasil diupload',
           data: {
@@ -142,7 +148,10 @@ router.post('/update-profile-paraf',
             mimeType: req.processedTTD.mimeType,
             size_kb: Math.round(req.processedTTD.size / 1024)
           }
-        });
+        };
+        
+        console.log('[TTD UPLOAD] Success response:', responseData);
+        res.json(responseData);
     } catch (error) {
         await client.query('ROLLBACK');
       console.error('[TTD UPLOAD ERROR]', error);
