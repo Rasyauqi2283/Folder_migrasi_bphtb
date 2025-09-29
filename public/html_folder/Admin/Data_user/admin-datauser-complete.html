@@ -475,12 +475,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     try {
         // Get current user data first
-        const userResponse = await fetch("/api/profile", {
+        const userResponse = await fetch("/api/v1/auth/profile", {
             credentials: 'include'
         });
         if (userResponse.ok) {
             currentUser = await userResponse.json();
             console.log("Current user loaded:", currentUser.userid);
+            console.log("Current user divisi:", currentUser.divisi);
+            console.log("Full current user data:", currentUser);
+        } else {
+            console.error("Failed to load current user:", userResponse.status, userResponse.statusText);
         }
         
         // Load all users data
@@ -865,6 +869,13 @@ function setupActionDropdowns() {
             const row = this.closest('tr');
             const divisi = row.dataset.divisi;
             
+            console.log("🔍 [DROPDOWN] Dropdown clicked:", {
+                userid: userid,
+                divisi: divisi,
+                currentUser: currentUser,
+                rowData: row.dataset
+            });
+            
             // Kontrol akses edit
             const canEdit = checkEditPermission(userid, divisi);
             const editBtn = menu.querySelector('.edit-btn');
@@ -1151,34 +1162,78 @@ function showEditConfirmation(formData) {
 
 // Function to check edit permission
 function checkEditPermission(targetUserid, targetDivisi) {
+    console.log("🔍 [EDIT PERMISSION] Checking edit permission:", {
+        currentUser: currentUser,
+        currentUserDivisi: currentUser?.divisi,
+        currentUserID: currentUser?.userid,
+        targetUserid: targetUserid,
+        targetDivisi: targetDivisi
+    });
+    
     // If no user logged in, cannot edit
-    if (!currentUser || !currentUser.userid) return false;
+    if (!currentUser || !currentUser.userid) {
+        console.log("❌ [EDIT PERMISSION] No current user");
+        return false;
+    }
     
     // If target is administrator
     if (targetDivisi === "Administrator") {
         // Can only be edited by themselves
-        return targetUserid === currentUser.userid;
+        const canEdit = targetUserid === currentUser.userid;
+        console.log("🔍 [EDIT PERMISSION] Target is Administrator, can edit:", canEdit);
+        return canEdit;
     }
     
     // For other divisions, can be edited by admin or user with access rights
-    return currentUser.divisi === "Administrator" || 
-           currentUser.userid === targetUserid;
+    const isAdmin = currentUser.divisi === "Administrator";
+    const isSelf = currentUser.userid === targetUserid;
+    const canEdit = isAdmin || isSelf;
+    
+    console.log("🔍 [EDIT PERMISSION] Final result:", {
+        isAdmin: isAdmin,
+        isSelf: isSelf,
+        canEdit: canEdit
+    });
+    
+    return canEdit;
 }
 
 // Function to check delete permission
 function checkDeletePermission(targetUserid, targetDivisi) {
+    console.log("🔍 [DELETE PERMISSION] Checking delete permission:", {
+        currentUser: currentUser,
+        currentUserDivisi: currentUser?.divisi,
+        currentUserID: currentUser?.userid,
+        targetUserid: targetUserid,
+        targetDivisi: targetDivisi
+    });
+    
     // If no user logged in, cannot delete
-    if (!currentUser || !currentUser.userid) return false;
+    if (!currentUser || !currentUser.userid) {
+        console.log("❌ [DELETE PERMISSION] No current user");
+        return false;
+    }
     
     // If target is administrator
     if (targetDivisi === "Administrator") {
         // Can only be deleted by themselves
-        return targetUserid === currentUser.userid;
+        const canDelete = targetUserid === currentUser.userid;
+        console.log("🔍 [DELETE PERMISSION] Target is Administrator, can delete:", canDelete);
+        return canDelete;
     }
     
     // For other divisions, can be deleted by admin or user with access rights
-    return currentUser.divisi === "Administrator" || 
-           currentUser.userid === targetUserid;
+    const isAdmin = currentUser.divisi === "Administrator";
+    const isSelf = currentUser.userid === targetUserid;
+    const canDelete = isAdmin || isSelf;
+    
+    console.log("🔍 [DELETE PERMISSION] Final result:", {
+        isAdmin: isAdmin,
+        isSelf: isSelf,
+        canDelete: canDelete
+    });
+    
+    return canDelete;
 }
 
 // Setup edit overlay event listeners
