@@ -464,7 +464,7 @@ async function simpanData(buttonElement) {
         }
         let userData;
         try {
-            const userResponse = await fetch('/api/profile', { 
+            const userResponse = await fetch('/api/v1/auth/profile', { 
                 credentials: 'include',
                 headers: {
                     'Accept': 'application/json'
