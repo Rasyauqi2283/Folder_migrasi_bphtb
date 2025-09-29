@@ -438,26 +438,32 @@ export default function registerGeneratePdfCheckPeneliti(app, pool) {
                 .stroke();
             drawCenteredText(doc, '(................................)', col3X, signatureYPosition + 70, columnWidth);
 
+// Stempel BAPPENDA di sisi kiri kolom "TEMPAT PEMBAYARAN BPHTB" (lebih besar 1.5x dari sebelumnya, proporsi asli)
+try {
+    const stampAbs = toAbsolutePublicPath(data.stempel_booking_path || '/asset/Stempel_bappenda.png');
+    if (stampAbs && fs.existsSync(stampAbs)) {
+        const stampWidth = 90; // 1.5x lebih besar dari sebelumnya (60)
+        const stampX = col3X - 46;
+        const stampY = signatureYPosition + 21;
+
+        const processedStamp = await sharp(stampAbs).toBuffer(); // pertahankan rasio asli
+
+        // Rotasi 20 derajat, pusatkan rotasi di tengah stempel
+        doc.save();
+        doc.rotate(20, { origin: [stampX + stampWidth / 2, stampY + stampWidth / 2] });
+        doc.image(processedStamp, stampX, stampY, { width: stampWidth });
+        doc.restore();
+    }
+} catch (err) {
+    console.warn("Failed to render stamp:", err?.message || err);
+}
+
             const col4X = col3X + columnWidth + gapBetween + 20;
             drawCenteredText(doc, 'Telah Diverifikasi', col4X, signatureYPosition, columnWidth);
             drawCenteredText(doc, 'BADAN PENDAPATAN DAERAH', col4X, signatureYPosition + 10, columnWidth);
             const stampWidth = signatureWidth + 30;
-            // Render stempel (p_2_verif_sign.stempel_booking_path) jika ada, gunakan default bila tidak ada
-            try {
-                const stampRel = data.stempel_booking_path || '/asset/Stempel_bappenda.png';
-                const stampAbs = toAbsolutePublicPath(stampRel);
-                if (stampAbs && fs.existsSync(stampAbs)) {
-                    const stampX = col4X + (columnWidth - stampWidth)/2 + 3;
-                    const stampY = signatureYPosition + 32;
-                    const stampH = 46;
-                    doc.image(stampAbs, stampX, stampY, { width: stampWidth - 6, height: stampH, opacity: 0.85 });
-                } else {
-                    doc.rect(col4X + (columnWidth - stampWidth)/2, signatureYPosition + 30, stampWidth, 50).stroke();
-                }
-            } catch (err) {
-                console.warn('Failed to render stamp:', err?.message || err);
-                doc.rect(col4X + (columnWidth - stampWidth)/2, signatureYPosition + 30, stampWidth, 50).stroke();
-            }
+            // Kolom 4 di tahap peneliti check tidak perlu stempel, hanya kotak kosong
+            doc.rect(col4X + (columnWidth - stampWidth)/2, signatureYPosition + 30, stampWidth, 50).stroke();
             drawCenteredText(doc, '(................................)', col4X, signatureYPosition + 70, columnWidth);
 
             doc.moveTo(0, signatureYPosition + 85).lineTo(700, signatureYPosition + 85).stroke();
