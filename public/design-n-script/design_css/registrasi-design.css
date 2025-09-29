@@ -240,12 +240,12 @@
 
 /* untuk password utama */
 #password + .toggle-password {
-  right: 40px; /* agak geser */
+  left: 280px; /* agak geser */
 }
 
 /* untuk repeat password */
 #repeatpassword + .toggle-password {
-  right: 10px; /* biarkan menempel kanan */
+  left: 280px; /* biarkan menempel kanan */
 }
 
   /* ===== RESPONSIVE ===== */
