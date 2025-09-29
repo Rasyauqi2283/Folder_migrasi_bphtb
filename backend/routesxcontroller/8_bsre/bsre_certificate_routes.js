@@ -9,7 +9,7 @@ const router = express.Router();
 // ===== CERTIFICATE MANAGEMENT =====
 
 // GET /api/v1/sign/cert/:id - Get certificate
-router.get('/cert/:id', async (req, res) => {
+router.get('/api/v1/sign/cert/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { userid } = req.user;
@@ -25,7 +25,7 @@ router.get('/cert/:id', async (req, res) => {
 });
 
 // POST /api/v1/sign/cert/revoke - Revoke certificate
-router.post('/cert/revoke', async (req, res) => {
+router.post('/api/v1/sign/cert/revoke', async (req, res) => {
   try {
     const { id } = req.params;
     const { userid } = req.user;
@@ -41,7 +41,7 @@ router.post('/cert/revoke', async (req, res) => {
 });
 
 // GET /api/v1/sign/cert/download/:id - Download certificate
-router.get('/cert/download/:id', async (req, res) => {
+router.get('/api/v1/sign/cert/download/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { userid } = req.user;
@@ -57,7 +57,7 @@ router.get('/cert/download/:id', async (req, res) => {
 });
 
 // POST /api/v1/sign/cert-requests - Submit CSR
-router.post('/cert-requests', async (req, res) => {
+router.post('/api/v1/sign/cert-requests', async (req, res) => {
   try {
     const { csr } = req.body;
     const { userid } = req.user;
@@ -72,7 +72,7 @@ router.post('/cert-requests', async (req, res) => {
 });
 
 // GET /api/v1/sign/cert-requests/:id - Get CSR request
-router.get('/cert-requests/:id', async (req, res) => {
+router.get('/api/v1/sign/cert-requests/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { userid } = req.user;
@@ -90,7 +90,7 @@ router.get('/cert-requests/:id', async (req, res) => {
 // ===== PENELITI VALIDASI ENDPOINTS =====
 
 // PV: daftar dokumen untuk dashboard Peneliti Validasi
-router.get('/pv/docs', async (req, res) => {
+router.get('/api/pv/docs', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -148,7 +148,7 @@ router.get('/pv/docs', async (req, res) => {
 });
 
 // PV: auth-status untuk gating Prepare (tanda tangan profil, sertifikat lokal/BSrE)
-router.get('/pv/auth-status', async (req, res) => {
+router.get('/api/pv/auth-status', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -196,7 +196,7 @@ router.get('/pv/auth-status', async (req, res) => {
 });
 
 // PV Local Certificates: list
-router.get('/pv/cert/list', async (req, res) => {
+router.get('/api/pv/cert/list', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -240,7 +240,7 @@ router.get('/pv/cert/list', async (req, res) => {
 });
 
 // PV Local Certificates: issue (register public key)
-router.post('/pv/cert/issue', async (req, res) => {
+router.post('/api/pv/cert/issue', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -316,7 +316,7 @@ router.post('/pv/cert/issue', async (req, res) => {
 });
 
 // PV Local Certificates: revoke
-router.post('/pv/cert/:serial/revoke', async (req, res) => {
+router.post('/api/pv/cert/:serial/revoke', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -360,7 +360,7 @@ router.post('/pv/cert/:serial/revoke', async (req, res) => {
 });
 
 // PV Local Certificates: status (ringkas)
-router.get('/pv/cert/status', async (req, res) => {
+router.get('/api/pv/cert/status', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -402,7 +402,7 @@ router.get('/pv/cert/status', async (req, res) => {
 });
 
 // PV Local Certificates: check if passphrase already verified in this session
-router.get('/pv/cert/verified', async (req, res) => {
+router.get('/api/pv/cert/verified', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -423,7 +423,7 @@ router.get('/pv/cert/verified', async (req, res) => {
 });
 
 // PV Local Certificates: verify-local (cek passphrase)
-router.post('/pv/cert/verify-local', async (req, res) => {
+router.post('/api/pv/cert/verify-local', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
   }
@@ -458,7 +458,7 @@ router.post('/pv/cert/verify-local', async (req, res) => {
 });
 
 // Upload gambar tanda tangan dan paraf (profil Peneliti Validasi)
-router.post('/pv/upload-signature', ttdVerifMiddleware, async (req, res) => {
+router.post('/api/pv/upload-signature', ttdVerifMiddleware, async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak.' });
   }
@@ -476,7 +476,7 @@ router.post('/pv/upload-signature', ttdVerifMiddleware, async (req, res) => {
 });
 
 // Generate QR code sederhana untuk pengujian keamanan (non-resmi)
-router.post('/pv/generate-qr', async (req, res) => {
+router.post('/api/pv/generate-qr', async (req, res) => {
   if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
     return res.status(403).json({ success: false, message: 'Akses ditolak.' });
   }
@@ -488,6 +488,70 @@ router.post('/pv/generate-qr', async (req, res) => {
   } catch (e) {
     console.error('QR error:', e);
     return res.status(500).json({ success: false, message: 'Gagal membuat QR' });
+  }
+});
+
+// PV: Send to LSB endpoint (untuk mengirim dokumen yang sudah divalidasi ke LSB)
+router.post('/api/pv/send-to-lsb', async (req, res) => {
+  if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
+    return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
+  }
+  try {
+    const { no_validasi, nobooking } = req.body || {};
+    if (!no_validasi || !nobooking) {
+      return res.status(400).json({ success: false, message: 'no_validasi dan nobooking wajib diisi' });
+    }
+
+    // Update status di database
+    await pool.query(
+      `UPDATE pv_2_signing_requests 
+       SET status = 'APPROVED', approved_at = NOW(), approved_by = $1 
+       WHERE no_validasi = $2`,
+      [req.session.user.userid, no_validasi]
+    );
+
+    return res.json({ 
+      success: true, 
+      message: 'Dokumen berhasil dikirim ke LSB',
+      no_validasi 
+    });
+  } catch (e) {
+    console.error('PV send to LSB error:', e);
+    return res.status(500).json({ success: false, message: 'Gagal mengirim dokumen ke LSB' });
+  }
+});
+
+// PV: Reject with auto-delete endpoint
+router.post('/api/pv/reject-with-auto-delete', async (req, res) => {
+  if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
+    return res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Peneliti Validasi.' });
+  }
+  try {
+    const { nobooking, rejectionReason, userid } = req.body || {};
+    if (!nobooking || !rejectionReason) {
+      return res.status(400).json({ success: false, message: 'nobooking dan rejectionReason wajib diisi' });
+    }
+
+    // Update status menjadi rejected
+    await pool.query(
+      `UPDATE pv_2_signing_requests 
+       SET status = 'REJECTED', rejected_at = NOW(), rejected_by = $1, rejection_reason = $2 
+       WHERE nobooking = $3`,
+      [req.session.user.userid, rejectionReason, nobooking]
+    );
+
+    // Schedule auto-delete (10 hari dari sekarang)
+    const deleteAt = new Date();
+    deleteAt.setDate(deleteAt.getDate() + 10);
+
+    return res.json({ 
+      success: true, 
+      message: 'Dokumen ditolak dan akan dihapus otomatis',
+      scheduledDeleteAt: deleteAt.toISOString()
+    });
+  } catch (e) {
+    console.error('PV reject with auto-delete error:', e);
+    return res.status(500).json({ success: false, message: 'Gagal menolak dokumen' });
   }
 });
 

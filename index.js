@@ -271,7 +271,7 @@ app.use('/api/admin/notification-warehouse', notificationWarehouseRouter);
 
 // Register BSRE routes
 app.use('/api/bsre', bsreAuthRouter);
-app.use('/api/v1/sign', bsreCertRouter);
+app.use('/', bsreCertRouter);
 app.use('/api/v1/sign/validation', bsreValidationRouter);
 registerGeneratePdfBooking(app, pool);
 registerGeneratePdfCheckPeneliti(app, pool);

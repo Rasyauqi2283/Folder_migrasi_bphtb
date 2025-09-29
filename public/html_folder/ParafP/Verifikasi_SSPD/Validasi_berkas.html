@@ -381,7 +381,7 @@
   // Sertifikat dropdown behavior
   async function loadCertList(){
     try{
-      const res = await fetch('../../../api/pv/cert/list', { credentials:'include' });
+      const res = await fetch('/api/pv/cert/list', { credentials:'include' });
       const js = await res.json();
       const sel = el('sertif-select');
       if(!sel) return;
@@ -674,7 +674,7 @@ if(btnApprove){
         body:{ 
           nobooking: noVal(),
           rejectionReason: reason,
-          userid: getCurrentUserId() // Pastikan fungsi ini ada
+          userid: 'current_user' // Server akan menggunakan session dari cookie
         } 
       });
       
