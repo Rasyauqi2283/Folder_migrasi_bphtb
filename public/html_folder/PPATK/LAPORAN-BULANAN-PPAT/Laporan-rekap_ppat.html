@@ -5,6 +5,49 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PPATK | Rekap Berkas Diserahkan</title>
   <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+  <style>
+    .btn-pdf {
+      transition: all 0.3s ease;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-block;
+      margin: 2px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-pdf:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      opacity: 0.9;
+    }
+    
+    .btn-pdf:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .pdf-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+    
+    .pdf-section p {
+      margin: 0 0 8px 0;
+      font-weight: 600;
+      color: #495057;
+    }
+    
+    .pdf-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+  </style>
 </head>
 <body>
   <main class="main-content">
@@ -98,11 +141,38 @@
       const fileStempel = item.file_withstempel_path ? `<a href="/${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
       const filePDF = item.pdf_dokumen_path ? `<a href="/${item.pdf_dokumen_path}" target="_blank">Dokumen PDF</a>` : '<em>Tidak tersedia</em>';
       const nomorValidasi = item.nomor_validasi ? `<p><strong>Nomor Validasi:</strong> ${item.nomor_validasi}</p>` : '';
+      
+      // PDF Actions with improved styling
+      const pdfValidasiBtn = `<button onclick="viewPDF('validasi', '${item.nobooking}')" class="btn-pdf" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; cursor: pointer;">
+        📄 Lihat PDF Validasi
+      </button>`;
+      
+      const pdfVerifParafBtn = `<button onclick="viewPDF('verif-paraf', '${item.nobooking}')" class="btn-pdf" style="background: #2196F3; color: white; border: none; padding: 8px 12px; cursor: pointer;">
+        📋 Lihat PDF Verif Paraf
+      </button>`;
+      
+      const pdfValidasiDownloadBtn = `<button onclick="downloadPDF('validasi', '${item.nobooking}')" class="btn-pdf" style="background: #FF9800; color: white; border: none; padding: 8px 12px; cursor: pointer;">
+        💾 Unduh PDF Validasi
+      </button>`;
+      
+      const pdfVerifParafDownloadBtn = `<button onclick="downloadPDF('verif-paraf', '${item.nobooking}')" class="btn-pdf" style="background: #9C27B0; color: white; border: none; padding: 8px 12px; cursor: pointer;">
+        💾 Unduh PDF Verif Paraf
+      </button>`;
+      
       return `<div style="padding:12px;">
         <p><strong>No Booking:</strong> ${item.nobooking}</p>
         <p><strong>NOP PBB:</strong> ${item.noppbb}</p>
         ${nomorValidasi}
         <p><strong>Unduhan:</strong> ${fileStempel} | ${filePDF}</p>
+        <div class="pdf-section">
+          <p>📄 PDF Dokumen</p>
+          <div class="pdf-buttons">
+            ${pdfValidasiBtn}
+            ${pdfVerifParafBtn}
+            ${pdfValidasiDownloadBtn}
+            ${pdfVerifParafDownloadBtn}
+          </div>
+        </div>
       </div>`;
     }
 
@@ -120,6 +190,116 @@
         alert('Gagal mengunduh: '+e.message); 
       }
     }
+
+    // Global function for PDF viewing
+    window.viewPDF = function(type, nobooking) {
+      console.log(`🔍 [PDF-VIEWER] Opening PDF: ${type} for nobooking: ${nobooking}`);
+      
+      let pdfUrl = '';
+      let pdfName = '';
+      
+      if (type === 'validasi') {
+        pdfUrl = `/api/ppatk/generate-pdf-validasi/${nobooking}`;
+        pdfName = 'PDF Validasi';
+      } else if (type === 'verif-paraf') {
+        pdfUrl = `/api/ppatk/generate-pdf-verif-paraf/${nobooking}`;
+        pdfName = 'PDF Verif Paraf';
+      } else {
+        alert('Jenis PDF tidak valid');
+        return;
+      }
+      
+      // Show loading message
+      const loadingMsg = document.createElement('div');
+      loadingMsg.innerHTML = `
+        <div style="
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: rgba(0,0,0,0.8); color: white; padding: 20px;
+          border-radius: 8px; z-index: 10000; font-family: Arial, sans-serif;
+        ">
+          <div style="text-align: center;">
+            <div style="font-size: 18px; margin-bottom: 10px;">📄 Membuka ${pdfName}...</div>
+            <div style="font-size: 14px; opacity: 0.8;">Mohon tunggu sebentar</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(loadingMsg);
+      
+      try {
+        // Open PDF in new tab for viewing
+        const pdfWindow = window.open(pdfUrl, '_blank');
+        
+        if (!pdfWindow) {
+          document.body.removeChild(loadingMsg);
+          alert('Pop-up diblokir. Silakan izinkan pop-up untuk melihat PDF.');
+          return;
+        }
+        
+        // Remove loading message after a delay
+        setTimeout(() => {
+          if (document.body.contains(loadingMsg)) {
+            document.body.removeChild(loadingMsg);
+          }
+        }, 2000);
+        
+        console.log(`✅ [PDF-VIEWER] PDF opened successfully: ${pdfUrl}`);
+        
+        // Optional: Check if PDF loaded successfully
+        pdfWindow.addEventListener('load', () => {
+          console.log(`✅ [PDF-VIEWER] PDF window loaded successfully`);
+        });
+        
+        pdfWindow.addEventListener('error', (error) => {
+          console.error('❌ [PDF-VIEWER] PDF window error:', error);
+          alert('Gagal memuat PDF. Silakan coba lagi.');
+        });
+        
+      } catch (error) {
+        if (document.body.contains(loadingMsg)) {
+          document.body.removeChild(loadingMsg);
+        }
+        console.error('❌ [PDF-VIEWER] Error opening PDF:', error);
+        alert('Gagal membuka PDF: ' + error.message);
+      }
+    };
+
+    // Global function for PDF downloading
+    window.downloadPDF = function(type, nobooking) {
+      console.log(`🔍 [PDF-DOWNLOAD] Downloading PDF: ${type} for nobooking: ${nobooking}`);
+      
+      let pdfUrl = '';
+      let pdfName = '';
+      
+      if (type === 'validasi') {
+        pdfUrl = `/api/ppatk/generate-pdf-validasi/${nobooking}?download=true`;
+        pdfName = 'PDF_Validasi';
+      } else if (type === 'verif-paraf') {
+        pdfUrl = `/api/ppatk/generate-pdf-verif-paraf/${nobooking}?download=true`;
+        pdfName = 'PDF_Verif_Paraf';
+      } else {
+        alert('Jenis PDF tidak valid');
+        return;
+      }
+      
+      try {
+        // Create a temporary link element for download
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `${pdfName}_${nobooking}.pdf`;
+        link.target = '_blank';
+        
+        // Add to DOM, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log(`✅ [PDF-DOWNLOAD] PDF download initiated: ${pdfUrl}`);
+        
+      } catch (error) {
+        console.error('❌ [PDF-DOWNLOAD] Error downloading PDF:', error);
+        alert('Gagal mengunduh PDF: ' + error.message);
+      }
+    };
 
     function renderPager(total){
       pager.innerHTML = '';

@@ -3992,6 +3992,151 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
     }
 });
 
+// GET /api/ppatk/generate-pdf-validasi/:nobooking - Generate PDF Validasi
+app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
+    const { nobooking } = req.params;
+    
+    try {
+        console.log(`🔍 [PDF-VALIDASI] Generating PDF for nobooking: ${nobooking}`);
+        
+        // Check if booking exists
+        const bookingCheck = await pool.query(
+            'SELECT nobooking, nama FROM pat_1_bookingsspd WHERE nobooking = $1',
+            [nobooking]
+        );
+        
+        if (bookingCheck.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Data booking tidak ditemukan' 
+            });
+        }
+        
+        const booking = bookingCheck.rows[0];
+        
+        // Get validation data
+        const validationData = await pool.query(`
+            SELECT 
+                pb.*, bp.*, o.*, pp.*, vu.nama, vu.special_field,
+                pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path
+            FROM pat_1_bookingsspd pb
+            LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
+            LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
+            LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
+            LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid AND pb.nama = vu.nama
+            LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
+            LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
+            LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
+            WHERE pb.nobooking = $1
+            LIMIT 1
+        `, [nobooking]);
+        
+        if (validationData.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Data validasi tidak ditemukan' 
+            });
+        }
+        
+        const data = validationData.rows[0];
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const filename = `validasi_${nobooking}_${timestamp}.pdf`;
+        const outputPath = path.join(process.cwd(), 'temp_uploads', filename);
+        
+        // PDF generation parameters
+        const pdfParams = {
+            pool,
+            nobooking,
+            noValidasi: data.no_validasi,
+            outputPath,
+            pvName: data.nama || 'Pejabat Validasi',
+            pvNip: data.special_field || 'NIP Tidak Diketahui',
+            pvTitle: 'Kepala Bidang Pelayanan dan Penetapan',
+            pvCn: 'Kepala Bidang Pelayanan dan Penetapan',
+            qrImageAbsPath: null, // Optional QR code
+            passphrase: 'bappenda2024' // Default passphrase
+        };
+        
+        // Generate PDF
+        await buildValidasiPdf(pdfParams);
+        
+        console.log(`✅ [PDF-VALIDASI] PDF generated successfully: ${filename}`);
+        
+        // Check if download is requested
+        const isDownload = req.query.download === 'true';
+        
+        // Set headers for PDF response
+        res.setHeader('Content-Type', 'application/pdf');
+        
+        if (isDownload) {
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        } else {
+            res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+        }
+        
+        // Stream the PDF file
+        const fileStream = fs.createReadStream(outputPath);
+        fileStream.pipe(res);
+        
+        // Clean up file after streaming
+        fileStream.on('end', () => {
+            fs.unlink(outputPath, (err) => {
+                if (err) console.error('Error deleting temp PDF file:', err);
+            });
+        });
+        
+    } catch (error) {
+        console.error('❌ [PDF-VALIDASI] Error generating PDF:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal membuat PDF validasi',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// GET /api/ppatk/generate-pdf-verif-paraf/:nobooking - Generate PDF Verif Paraf
+app.get('/api/ppatk/generate-pdf-verif-paraf/:nobooking', async (req, res) => {
+    const { nobooking } = req.params;
+    
+    try {
+        console.log(`🔍 [PDF-VERIF-PARAF] Generating PDF for nobooking: ${nobooking}`);
+        
+        // Check if booking exists
+        const bookingCheck = await pool.query(
+            'SELECT userid, nama FROM pat_1_bookingsspd WHERE nobooking = $1',
+            [nobooking]
+        );
+        
+        if (bookingCheck.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Data booking tidak ditemukan' 
+            });
+        }
+        
+        const { userid, nama } = bookingCheck.rows[0];
+        
+        // Use the existing endpoint by redirecting to it
+        const existingEndpoint = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
+        
+        console.log(`✅ [PDF-VERIF-PARAF] Redirecting to existing endpoint: ${existingEndpoint}`);
+        
+        // Redirect to the existing endpoint which will handle the PDF generation
+        res.redirect(existingEndpoint);
+        
+    } catch (error) {
+        console.error('❌ [PDF-VERIF-PARAF] Error generating PDF:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal membuat PDF verif paraf',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
 // Healthcheck endpoint untuk Railway
 app.get('/health', async (req, res) => {
   try {
