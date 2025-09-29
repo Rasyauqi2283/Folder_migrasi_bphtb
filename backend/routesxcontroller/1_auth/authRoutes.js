@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { secureUploadKTP, processKTPUpload } from '../../config/uploads/secure_upload_ktp.js';
@@ -208,38 +209,73 @@ router.post('/upload-ktp', (req, res, next) => {
     console.log('📤 [UPLOAD_KTP] Processing KTP upload request');
     
     if (!req.file) {
+      console.log('❌ [UPLOAD_KTP] No file detected in request');
       return res.status(400).json({
         success: false,
         message: 'File KTP tidak terdeteksi. Pastikan file dipilih dan formatnya JPEG/PNG.'
       });
     }
 
+    console.log('📁 [UPLOAD_KTP] File details:', {
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      path: req.file.path
+    });
+
     // Generate temporary upload ID untuk tracking
     const uploadId = crypto.randomUUID();
     const timestamp = Date.now();
     
+    // Ensure temp_uploads directory exists
+    const tempUploadsDir = path.join(__dirname, '../../../temp_uploads');
+    try {
+      await fsPromises.mkdir(tempUploadsDir, { recursive: true });
+      console.log('✅ [UPLOAD_KTP] Temp directory ensured:', tempUploadsDir);
+    } catch (dirError) {
+      console.error('❌ [UPLOAD_KTP] Failed to create temp directory:', dirError);
+      throw new Error('Failed to create temporary directory');
+    }
+    
+    // Generate unique filename dengan upload ID
+    const fileExtension = path.extname(req.file.originalname);
+    const tempFileName = `ktp_${uploadId}_${timestamp}${fileExtension}`;
+    const tempFilePath = path.join(tempUploadsDir, tempFileName);
+    
+    console.log('📁 [UPLOAD_KTP] Saving to:', tempFilePath);
+    
     // Simpan file temporary dengan upload ID
-    const tempFilePath = path.join(__dirname, '../../temp_uploads', `temp_${uploadId}_${req.file.filename}`);
-    fs.copyFileSync(req.file.path, tempFilePath);
+    try {
+      await fsPromises.copyFile(req.file.path, tempFilePath);
+      console.log('✅ [UPLOAD_KTP] File copied successfully');
+    } catch (copyError) {
+      console.error('❌ [UPLOAD_KTP] Copy error:', copyError);
+      throw new Error('Failed to save temporary file');
+    }
     
-    // Hapus file temporary asli
-    fs.unlinkSync(req.file.path);
-    
-    // Update nama file dengan upload ID
-    req.file.path = tempFilePath;
-    req.file.filename = `temp_${uploadId}_${req.file.filename}`;
+    // Hapus file temporary asli (optional, bisa di-keep untuk debugging)
+    try {
+      await fsPromises.unlink(req.file.path);
+      console.log('🗑️ [UPLOAD_KTP] Original temp file removed');
+    } catch (unlinkError) {
+      console.warn('⚠️ [UPLOAD_KTP] Failed to remove original file:', unlinkError.message);
+      // Continue anyway, not critical
+    }
     
     console.log('✅ [UPLOAD_KTP] KTP uploaded successfully:', {
       uploadId,
-      fileName: req.file.filename,
-      size: req.file.size
+      fileName: tempFileName,
+      size: req.file.size,
+      tempPath: tempFilePath
     });
     
     res.json({
       success: true,
       message: 'KTP berhasil diupload',
       uploadId,
-      timestamp
+      timestamp,
+      fileName: tempFileName
     });
     
   } catch (error) {
