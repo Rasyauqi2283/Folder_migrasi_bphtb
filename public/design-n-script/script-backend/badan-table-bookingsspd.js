@@ -46,7 +46,7 @@ async function loadTableData(page = 1) {
 
                 // [1] PEMBUATAN TOMBOL SEDERHANA (dengan guard status)
                 const sendButton = document.createElement('button');
-                sendButton.textContent = 'Kirim ke LTB';
+                sendButton.textContent = 'Kirim ke Bappenda';
                 sendButton.classList.add('btn-send-to-ltb');
                 sendButton.dataset.nobooking = item.nobooking;
                 const isDraft = (item.trackstatus || '').toLowerCase() === 'draft';

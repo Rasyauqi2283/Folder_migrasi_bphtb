@@ -897,7 +897,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             SELECT 
                 b.nobooking,
                 b.userid,
-                b.ppatk_khusus,
+                vu.ppatk_khusus,
                 b.nilai_bphtb,
                 b.tanggal_booking,
                 b.status,
@@ -921,7 +921,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             query += ` AND (
                 b.nobooking ILIKE $${paramCount} OR 
                 b.userid ILIKE $${paramCount} OR 
-                b.ppatk_khusus ILIKE $${paramCount} OR
+                vu.ppatk_khusus ILIKE $${paramCount} OR
                 vu.nama ILIKE $${paramCount} OR
                 vu.special_field ILIKE $${paramCount}
             )`;
@@ -961,7 +961,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             countQuery += ` AND (
                 b.nobooking ILIKE $3 OR 
                 b.userid ILIKE $3 OR 
-                b.ppatk_khusus ILIKE $3 OR
+                vu.ppatk_khusus ILIKE $3 OR
                 vu.nama ILIKE $3 OR
                 vu.special_field ILIKE $3
             )`;
@@ -986,7 +986,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             sumQuery += ` AND (
                 b.nobooking ILIKE $3 OR 
                 b.userid ILIKE $3 OR 
-                b.ppatk_khusus ILIKE $3 OR
+                vu.ppatk_khusus ILIKE $3 OR
                 vu.nama ILIKE $3 OR
                 vu.special_field ILIKE $3
             )`;
