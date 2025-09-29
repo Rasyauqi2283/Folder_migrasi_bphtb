@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Peneliti Dashboard|BAPPENDA</title>
-  <link rel="icon" href="../asset/TitleE-bphtb.png" type="image/png">
+  <link rel="icon" href="../../asset/TitleE-bphtb.png" type="image/png">
     <!---->
-  <link rel="stylesheet" href="../design-n-script/design_css/asset_pelengkap.css">
+  <link rel="stylesheet" href="../../design-n-script/design_css/asset_pelengkap.css">
     <!---->
-    <link rel="stylesheet" href="../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
-    <link rel="stylesheet" href="../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
-    <link rel="stylesheet" href="../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
     <!---->
-    <link rel="stylesheet" href="../design-n-script/design_css/design_text/design_text.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_text/design_text.css">
 
 </head>
 <body>
@@ -20,7 +20,7 @@
 <header>
   <div class="header-left">
       <div class="logo-container">
-          <img src="../asset/Logo_image.svg" alt="Logo" class="logo">
+          <img src="../../asset/Logo_image.svg" alt="Logo" class="logo">
       </div>
       <div id="kabupaten-bogor">
           <div class="teks-container">
@@ -28,7 +28,7 @@
               <span class="small-text">Kabupaten Bogor</span>
           </div>
           <!-- Gambar dekorasi di sebelah kanan -->
-          <img src="../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+          <img src="../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
       </div>            
       <!-- Header Title -->
       <div class="header-title">Dashboard</div>
@@ -128,7 +128,7 @@
             </div>
             <div class="illustration-container">
                 <!-- Placeholder for the illustration image -->
-                <img src="../asset/men_dashboard-removebg-preview.png" alt="Illustration" class="illustration-image">
+                <img src="../../asset/men_dashboard-removebg-preview.png" alt="Illustration" class="illustration-image">
             </div>
             <div class="calendar-container">
                 <p id="calendar-month" class="calendar-month"></p>
@@ -159,60 +159,7 @@
             </div>
         </div>
     </section>
-    <section class="content_admin">
-        <div class="content-cards">
-            <div class="card">
-                <h3>User</h3>
-                <div class="user-dropdown">
-                    <label for="jumlahKaryawan">Jumlah Anggota</label>
-                    <select id="jumlahKaryawan" name="jumlahKaryawan">
-                        <option value="Administrator">Admin</option>
-                        <option id="PPAT">PPAT</option>
-                        <option value="PPATS">PPATS</option>
-                        <option value="LTB">Loket Terima Berkas</option>
-                        <option value="LSB">Loket Serah Berkas</option>
-                        <option value="Peneliti">Peneliti</option>
-                        <option value="BANK">Bank</option>
-                        <option value="Wajib Pajak">Wajib Pajak</option>
-                    </select>
-                    <p id="memberValue" class="slide-down"></p>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Permohonan Validasi</h3>
-                <span class="icon ini">&#x1F5C3;</span>
-                <a href="../Permohonan Validasi/Permohonan_validasi.html" class="view-all">View All</a>
-            </div>
-            <div class="card special-access">
-                <h3>Hak Akses Khusus</h3>
-                <ul id="accessList">
-                    <li><span class="user-icon"></span>Bapak Hendri Aji - <span class="status" id="status-hendri">Offline</span></li>
-                    <li><span class="user-icon"></span>Bapak Ilham - <span class="status" id="status-ilham">Offline</span></li>
-                </ul>
-            </div>
-            <div class="card">
-                <h3>Jumlah Penerimaan BPHTB</h3>
-                <img src="../asset/JumlahPenerimaanPajak_dekorasi.png" alt="gambar_dekorasi JMP BPHTB" class="img-dekor">
-                <a href="#" class="view-all">View All</a>
-            </div>
-            <div class="card chart">
-                <h3>Statistik Total Permohonan Validasi</h3>
-                <div class="chart-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="card chart">
-            <h3>Statistik Total Permohonan Validasi</h3>
-            <div class="chart-container">
-                <ul class="chart-legend">
-                    <li><span class="green"></span>Sudah Di Validasi 20%</li>
-                    <li><span class="blue"></span>Tinggal Verifikasi 30%</li>
-                    <li><span class="orange"></span>Masih Pending 15%</li>
-                    <li><span class="grey"></span>Belum Terurus 35%</li>
-                </ul>
-            </div>
-        </div>
+    <section class="content_peneliti">
     </section>
 </main>
 
@@ -235,13 +182,13 @@
     </div>
 </div>
 <!--script front-->
-<script src="../design-n-script/script_frontback_java/dashboard.js"></script>
-<script src="../design-n-script/script_frontback_java/header_script.js"></script>
-<script src="../design-n-script/script_frontback_java/fungsi.js"></script>
+<script src="../../design-n-script/script_frontback_java/dashboard.js"></script>
+<script src="../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
-  <script src="../design-n-script/script-backend/header-backend.js"></script>
+  <script src="../../design-n-script/script-backend/header-backend.js"></script>
   <script type="module">
-        import { initNotifications } from '../design-n-script/script-backend/notification-setup.js';
+        import { initNotifications } from '../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
   </script>
 </body>
