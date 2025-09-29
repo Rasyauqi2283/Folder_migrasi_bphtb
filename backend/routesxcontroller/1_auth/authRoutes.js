@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import multer from 'multer';
 import { fileURLToPath } from 'url';
 import { secureUploadKTP, processKTPUpload } from '../../config/uploads/secure_upload_ktp.js';
 import { pool } from '../../../db.js';
@@ -250,7 +251,25 @@ router.post('/upload-ktp', (req, res, next) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+// Middleware untuk parsing FormData
+router.post('/register', (req, res, next) => {
+  // Check if request is multipart/form-data
+  const contentType = req.headers['content-type'];
+  console.log('🔍 [REGISTER] Content-Type:', contentType);
+  
+  if (contentType && contentType.includes('multipart/form-data')) {
+    // Use multer untuk parsing FormData
+    const upload = multer().none(); // Parse form fields only, no files
+    upload(req, res, next);
+  } else {
+    // Use express built-in parsers for other content types
+    next();
+  }
+}, async (req, res) => {
+  // Debug: Log raw request body
+  console.log('🔍 [REGISTER] Raw request body:', req.body);
+  console.log('🔍 [REGISTER] Request headers:', req.headers);
+  
   const { nama, nik, telepon, email, password, gender, ktpUploadId } = req.body;
   let secureFile = null;  // Will be set if ktpUploadId is provided
 
