@@ -250,18 +250,58 @@ router.post('/upload-ktp', (req, res, next) => {
   }
 });
 
-router.post('/register', (req, res, next) => {
-  secureUploadKTP.single('fotoktp')(req, res, (err) => {
-    if (err) {
-      return handleMulterError(err, req, res, next);
-    }
-    next();
-  });
-}, async (req, res) => {
+router.post('/register', async (req, res) => {
   const { nama, nik, telepon, email, password, gender, ktpUploadId } = req.body;
-  const secureFile = req.secureFile;  // File yang sudah dienkripsi
+  let secureFile = null;  // Will be set if ktpUploadId is provided
 
   console.log(`📧 [REGISTER] Processing registration for: ${email}`);
+  console.log(`🔧 [REGISTER] KTP Upload ID:`, ktpUploadId);
+  
+  // Handle pre-uploaded KTP file
+  if (ktpUploadId && !req.file) {
+    try {
+      console.log(`🔍 [REGISTER] Looking for pre-uploaded KTP with ID: ${ktpUploadId}`);
+      
+      // Cari file temporary di temp_uploads
+      const tempUploadsDir = path.join(__dirname, '../../../temp_uploads');
+      const tempFiles = fs.readdirSync(tempUploadsDir)
+        .filter(file => file.startsWith(`ktp_${ktpUploadId}_`));
+      
+      if (tempFiles.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'File KTP tidak ditemukan. Silakan upload ulang KTP.'
+        });
+      }
+      
+      const tempFile = tempFiles[0];
+      const fullTempPath = path.join(tempUploadsDir, tempFile);
+      
+      console.log(`📁 [REGISTER] Found temp file: ${tempFile}`);
+      
+      // Reconstruct req.file object untuk kompatibilitas dengan middleware
+      req.file = {
+        fieldname: 'fotoktp',
+        originalname: tempFile.replace(`ktp_${ktpUploadId}_`, '').replace('.bin', ''),
+        encoding: '7bit',
+        mimetype: 'image/jpeg', // Default, akan diperbaiki oleh processKTPUpload
+        destination: path.dirname(fullTempPath),
+        filename: tempFile,
+        path: fullTempPath,
+        size: fs.statSync(fullTempPath).size
+      };
+      
+      console.log(`✅ [REGISTER] Reconstructed req.file for pre-uploaded KTP`);
+      
+    } catch (error) {
+      console.error(`❌ [REGISTER] Error handling pre-uploaded KTP:`, error);
+      return res.status(400).json({
+        success: false,
+        message: 'Gagal memproses file KTP yang sudah diupload. Silakan coba lagi.'
+      });
+    }
+  }
+  
   console.log(`📁 [REGISTER] Secure file info:`, {
     hasSecureFile: !!secureFile,
     fileId: secureFile?.fileId,
@@ -269,16 +309,47 @@ router.post('/register', (req, res, next) => {
     ktpUploadId: ktpUploadId
   });
 
-  // Jika menggunakan ktpUploadId, cari file temporary
+  // Process KTP file jika ada (baik dari upload langsung atau pre-uploaded)
+  if (req.file && !secureFile) {
+    try {
+      console.log(`🔧 [REGISTER] Processing KTP file...`);
+      
+      // Simulasi middleware processKTPUpload
+      await new Promise((resolve, reject) => {
+        processKTPUpload(req, res, (err) => {
+          if (err) {
+            console.error(`❌ [REGISTER] KTP processing error:`, err);
+            reject(err);
+          } else {
+            console.log(`✅ [REGISTER] KTP processed successfully`);
+            resolve();
+          }
+        });
+      });
+      
+      secureFile = req.secureFile;
+      console.log(`📁 [REGISTER] KTP secured:`, {
+        hasSecureFile: !!secureFile,
+        fileId: secureFile?.fileId
+      });
+      
+    } catch (error) {
+      console.error(`❌ [REGISTER] Error processing KTP:`, error);
+      return res.status(400).json({
+        success: false,
+        message: 'Gagal memproses file KTP. Silakan coba lagi.'
+      });
+    }
+  }
   if (ktpUploadId && !secureFile) {
     try {
-      const tempFilePath = path.join(__dirname, '../../temp_uploads', `temp_${ktpUploadId}_*`);
-      const files = fs.readdirSync(path.join(__dirname, '../../temp_uploads'))
-        .filter(file => file.startsWith(`temp_${ktpUploadId}_`));
+      const tempUploadsDir = path.join(__dirname, '../../../temp_uploads');
+      const files = fs.readdirSync(tempUploadsDir)
+        .filter(file => file.startsWith(`ktp_${ktpUploadId}_`));
       
       if (files.length > 0) {
         const tempFile = files[0];
-        const fullPath = path.join(__dirname, '../../temp_uploads', tempFile);
+        const fullPath = path.join(tempUploadsDir, tempFile);
         
         // Buat objek file temporary untuk diproses
         req.file = {
@@ -327,8 +398,13 @@ router.post('/register', (req, res, next) => {
     }
   }
 
+  // Set secureFile dari req.secureFile jika ada
+  if (req.secureFile) {
+    secureFile = req.secureFile;
+  }
+
   // Validasi input
-  if (!nama || !nik || !telepon || !email || !password || !gender || !req.secureFile) {
+  if (!nama || !nik || !telepon || !email || !password || !gender || !secureFile) {
     return res.status(400).json({ 
       success: false,
       message: 'Semua data harus diisi dengan benar dan KTP harus diupload' 
