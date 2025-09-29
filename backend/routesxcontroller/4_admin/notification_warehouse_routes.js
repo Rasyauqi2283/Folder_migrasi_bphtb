@@ -556,22 +556,22 @@ router.get('/ppat-users-stats', verifyAdmin, async (req, res) => {
 });
 
 // GET /api/admin/notification-warehouse/ltb-lsb - Get LTB → LSB notifications
-router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
+router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
-        console.log(`🔍 [ADMIN] Fetching LTB → LSB notifications, page: ${page}, limit: ${limit}, search: "${search}"`);
+        console.log(`🔍 [ADMIN] Fetching Peneliti → LSB notifications, page: ${page}, limit: ${limit}, search: "${search}"`);
 
-        // Query untuk mendapatkan data LTB → LSB dengan alur ke peneliti
-        // LTB mengirim ke peneliti (verifikasi) → peneliti (paraf) → peneliti validasi → LSB
+        // Query untuk mendapatkan data alur peneliti yang benar:
+        // p_1_verifikasi → p_3_clear_to_paraf → pv_1_paraf_validate
         let query = `
-            SELECT DISTINCT ON (t.no_registrasi)
-                t.no_registrasi,
-                t.nobooking,
-                t.updated_at,
+            SELECT DISTINCT ON (pv1.nobooking)
+                pv1.nobooking,
+                pv1.no_registrasi,
+                pv1.updated_at,
                 vu.special_field,
                 vu.ppatk_khusus,
                 b.noppbb,
@@ -579,28 +579,28 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
                 vu.userid,
                 vu.nama as ppat_nama,
                 vu.divisi as ppat_divisi,
-                t.status as ltb_status,
-                t.trackstatus as ltb_trackstatus,
-                -- Peneliti verifikasi status
-                pv.status as peneliti_verifikasi_status,
-                pv.updated_at as peneliti_verifikasi_updated,
-                -- Peneliti paraf status  
-                pp.status as peneliti_paraf_status,
-                pp.updated_at as peneliti_paraf_updated,
-                -- Peneliti validasi status
-                pval.status as peneliti_validasi_status,
-                pval.updated_at as peneliti_validasi_updated,
-                -- LSB status
-                lsb.status as lsb_status,
-                lsb.updated_at as lsb_updated
-            FROM ltb_1_terima_berkas_sspd t
-            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+                -- Status dari p_1_verifikasi
+                pv1.status as p_verifikasi_status,
+                pv1.trackstatus as p_verifikasi_trackstatus,
+                pv1.pemberi_persetujuan as p_verifikasi_pemberi,
+                pv1.updated_at as p_verifikasi_updated,
+                -- Status dari p_3_clear_to_paraf
+                p3.status as p_clear_status,
+                p3.trackstatus as p_clear_trackstatus,
+                p3.pemverifikasi as p_clear_pemverifikasi,
+                p3.updated_at as p_clear_updated,
+                -- Status dari pv_1_paraf_validate
+                pv1_val.status as pv_validasi_status,
+                pv1_val.trackstatus as pv_validasi_trackstatus,
+                pv1_val.pemverifikasi as pv_validasi_pemverifikasi,
+                pv1_val.pemparaf as pv_validasi_pemparaf,
+                pv1_val.updated_at as pv_validasi_updated
+            FROM p_1_verifikasi pv1
+            LEFT JOIN pat_1_bookingsspd b ON pv1.nobooking = b.nobooking
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-            LEFT JOIN peneliti_1_verifikasi pv ON t.nobooking = pv.nobooking
-            LEFT JOIN peneliti_2_paraf pp ON t.nobooking = pp.nobooking
-            LEFT JOIN peneliti_3_validasi pval ON t.nobooking = pval.nobooking
-            LEFT JOIN lsb_1_serah_berkas lsb ON t.nobooking = lsb.nobooking
-            WHERE t.trackstatus = 'Diterima' AND t.status = 'Dilanjutkan'
+            LEFT JOIN p_3_clear_to_paraf p3 ON pv1.nobooking = p3.nobooking
+            LEFT JOIN pv_1_paraf_validate pv1_val ON pv1.nobooking = pv1_val.nobooking
+            WHERE pv1.status IS NOT NULL
         `;
 
         const queryParams = [];
@@ -610,8 +610,8 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
         if (search.trim()) {
             paramCount++;
             query += ` AND (
-                t.no_registrasi ILIKE $${paramCount} OR 
-                t.nobooking ILIKE $${paramCount} OR 
+                pv1.no_registrasi ILIKE $${paramCount} OR 
+                pv1.nobooking ILIKE $${paramCount} OR 
                 vu.userid ILIKE $${paramCount} OR 
                 vu.nama ILIKE $${paramCount} OR
                 b.noppbb ILIKE $${paramCount} OR
@@ -621,7 +621,7 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
         }
 
         // Add ordering and pagination
-        query += ` ORDER BY t.no_registrasi ASC, t.updated_at DESC`;
+        query += ` ORDER BY pv1.no_registrasi ASC, pv1.updated_at DESC`;
         
         paramCount++;
         query += ` LIMIT $${paramCount}`;
@@ -631,31 +631,29 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
         query += ` OFFSET $${paramCount}`;
         queryParams.push(offset);
 
-        console.log('🔍 [ADMIN] Executing LTB-LSB query:', query);
+        console.log('🔍 [ADMIN] Executing Peneliti-LSB query:', query);
         console.log('🔍 [ADMIN] Query params:', queryParams);
 
         const result = await pool.query(query, queryParams);
-        console.log('🔍 [ADMIN] LTB-LSB query result rows:', result.rows.length);
+        console.log('🔍 [ADMIN] Peneliti-LSB query result rows:', result.rows.length);
         const notifications = result.rows;
 
         // Get total count for pagination
         let countQuery = `
-            SELECT COUNT(DISTINCT t.no_registrasi) as total
-            FROM ltb_1_terima_berkas_sspd t
-            LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+            SELECT COUNT(DISTINCT pv1.nobooking) as total
+            FROM p_1_verifikasi pv1
+            LEFT JOIN pat_1_bookingsspd b ON pv1.nobooking = b.nobooking
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-            LEFT JOIN peneliti_1_verifikasi pv ON t.nobooking = pv.nobooking
-            LEFT JOIN peneliti_2_paraf pp ON t.nobooking = pp.nobooking
-            LEFT JOIN peneliti_3_validasi pval ON t.nobooking = pval.nobooking
-            LEFT JOIN lsb_1_serah_berkas lsb ON t.nobooking = lsb.nobooking
-            WHERE t.trackstatus = 'Diterima' AND t.status = 'Dilanjutkan'
+            LEFT JOIN p_3_clear_to_paraf p3 ON pv1.nobooking = p3.nobooking
+            LEFT JOIN pv_1_paraf_validate pv1_val ON pv1.nobooking = pv1_val.nobooking
+            WHERE pv1.status IS NOT NULL
         `;
 
         const countParams = [];
         if (search.trim()) {
             countQuery += ` AND (
-                t.no_registrasi ILIKE $1 OR 
-                t.nobooking ILIKE $1 OR 
+                pv1.no_registrasi ILIKE $1 OR 
+                pv1.nobooking ILIKE $1 OR 
                 vu.userid ILIKE $1 OR 
                 vu.nama ILIKE $1 OR
                 b.noppbb ILIKE $1 OR
@@ -677,13 +675,22 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
             ppatk_khusus: notif.ppatk_khusus,
             jenis_wajib_pajak: notif.jenis_wajib_pajak,
             noppbb: notif.noppbb,
-            ltb_status: notif.ltb_status,
-            ltb_trackstatus: notif.ltb_trackstatus,
-            // Peneliti workflow status
-            peneliti_verifikasi_status: notif.peneliti_verifikasi_status,
-            peneliti_paraf_status: notif.peneliti_paraf_status,
-            peneliti_validasi_status: notif.peneliti_validasi_status,
-            lsb_status: notif.lsb_status,
+            // Status dari p_1_verifikasi
+            p_verifikasi_status: notif.p_verifikasi_status,
+            p_verifikasi_trackstatus: notif.p_verifikasi_trackstatus,
+            p_verifikasi_pemberi: notif.p_verifikasi_pemberi,
+            p_verifikasi_updated: notif.p_verifikasi_updated,
+            // Status dari p_3_clear_to_paraf
+            p_clear_status: notif.p_clear_status,
+            p_clear_trackstatus: notif.p_clear_trackstatus,
+            p_clear_pemverifikasi: notif.p_clear_pemverifikasi,
+            p_clear_updated: notif.p_clear_updated,
+            // Status dari pv_1_paraf_validate
+            pv_validasi_status: notif.pv_validasi_status,
+            pv_validasi_trackstatus: notif.pv_validasi_trackstatus,
+            pv_validasi_pemverifikasi: notif.pv_validasi_pemverifikasi,
+            pv_validasi_pemparaf: notif.pv_validasi_pemparaf,
+            pv_validasi_updated: notif.pv_validasi_updated,
             updated_at: notif.updated_at,
             // Additional fields for display
             special_field: notif.special_field || '-',
@@ -692,7 +699,7 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
                 '-'
         }));
 
-        console.log(`✅ [ADMIN] Found ${formattedNotifications.length} LTB → LSB notifications (total: ${total})`);
+        console.log(`✅ [ADMIN] Found ${formattedNotifications.length} Peneliti → LSB notifications (total: ${total})`);
 
         res.json({
             success: true,
@@ -707,11 +714,11 @@ router.get('/ltb-lsb', verifyAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [ADMIN] Error fetching LTB → LSB notifications:', error);
+        console.error('❌ [ADMIN] Error fetching Peneliti → LSB notifications:', error);
         console.error('❌ [ADMIN] Error stack:', error.stack);
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data notifikasi LTB → LSB',
+            message: 'Gagal mengambil data notifikasi Peneliti → LSB',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined,
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });

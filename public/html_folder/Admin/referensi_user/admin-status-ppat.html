@@ -166,6 +166,110 @@
   .status-badge.pindah{ background:#fff6e6; color:#b86b00; }
   .status-badge.meninggal{ background:#f4f5f7; color:#686b70; border:1px solid rgba(0,0,0,0.03); }
 
+  /* ========== MINIMALIST LIST DESIGN ========== */
+  .minimalist-list {
+    max-height: 520px;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  
+  .user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid rgba(20,30,50,0.06);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .user-item:hover {
+    background: #f8fafc;
+    border-color: rgba(74,144,226,0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  
+  .user-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .user-name {
+    font-weight: 600;
+    color: #1f3246;
+    font-size: 14px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .user-details {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  
+  .user-detail {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .user-detail::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    background: var(--muted);
+    border-radius: 50%;
+  }
+  
+  .user-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e5e7eb;
+  }
+  
+  .status-indicator.aktif { background: #10b981; }
+  .status-indicator.non-aktif { background: #ef4444; }
+  .status-indicator.meninggal { background: #6b7280; }
+  .status-indicator.suspend { background: #f59e0b; }
+  
+  .user-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  
+  .action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    border: 1px solid rgba(74,144,226,0.2);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .action-btn:hover {
+    background: var(--accent);
+    color: #fff;
+  }
+
   /* responsive */
   @media (max-width:1100px){
     .main-layout{ grid-template-columns: 1fr; }
@@ -224,37 +328,10 @@
   <!-- Status PPAT sidebar -->
   <aside class="card status-panel" aria-labelledby="statusTitle">
     <div class="header">
-      <h3 id="statusTitle">Status PPAT</h3>
-      <div style="font-size:13px;color:var(--muted)">Divisi: PPAT</div>
-    </div>
-
-    <div class="status-filter">
-      <select id="statusSelect" aria-label="Filter status">
-        <option value="">Semua status</option>
-        <option value="Aktif">Aktif</option>
-        <option value="Nonaktif">Nonaktif</option>
-        <option value="Pindah Kerja">Pindah Kerja</option>
-        <option value="Meninggal">Meninggal</option>
-      </select>
-      <input id="statusSearch" placeholder="Cari nama / userid" />
-    </div>
-
-    <div style="max-height:520px; overflow:auto;">
-      <table class="status-table" role="table" aria-label="Tabel Status PPAT" id="statusSidebarTable">
-        <thead>
-          <tr><th>Nama</th><th>Status</th></tr>
-        </thead>
-        <tbody id="statusBody">
-          <!-- diisi JS -->
-        </tbody>
-      </table>
-    </div>
-  </aside>
-  <section class="card">
-    <div class="header">
-      <h3>Status User PPAT/PPATS</h3>
+      <h3 id="statusTitle">Status PPAT/PPATS</h3>
       <div style="font-size:13px;color:var(--muted)">Divisi: PPAT/PPATS</div>
     </div>
+
     <div class="status-filter">
       <select id="userStatusFilter" aria-label="Filter status">
         <option value="">Semua status</option>
@@ -266,22 +343,11 @@
       <input id="userSearch" placeholder="Cari nama, userid, email..." />
       <button id="reloadUsers" class="btn-sm">Muat Ulang</button>
     </div>
-    <div style="max-height:520px; overflow:auto;">
-      <table class="status-table" id="statusTable">
-        <thead>
-          <tr>
-            <th>Nama</th>
-            <th>Userid</th>
-            <th>Divisi</th>
-            <th>Status</th>
-            <th>PPATK Khusus</th>
-            <th>Spesial</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+
+    <div class="minimalist-list" id="userList">
+      <!-- Data akan diisi oleh JavaScript dengan design minimalis -->
     </div>
-  </section>
+  </aside>
 </main>
 
 <script>
@@ -739,7 +805,7 @@ renderNotifications();
         if (currentCat === 'ppat_ltb') {
           url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
         } else if (currentCat === 'ltb_lsb') {
-          url = `/api/admin/notification-warehouse/ltb-lsb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          url = `/api/admin/notification-warehouse/peneliti-lsb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
           expectedCols = 10; // Additional column for peneliti workflow
         } else if (currentCat === 'lsb_ppat') {
           url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
@@ -824,8 +890,16 @@ renderNotifications();
               'Detail'
             ];
           } else if (currentCat === 'ltb_lsb') {
-            // Show peneliti workflow status
-            const penelitiStatus = r.peneliti_verifikasi_status || r.peneliti_paraf_status || r.peneliti_validasi_status || 'Belum diproses';
+            // Show peneliti workflow status berdasarkan alur yang benar
+            let penelitiStatus = 'Belum diproses';
+            if (r.pv_validasi_status) {
+              penelitiStatus = `Validasi: ${r.pv_validasi_status}`;
+            } else if (r.p_clear_status) {
+              penelitiStatus = `Clear: ${r.p_clear_status}`;
+            } else if (r.p_verifikasi_status) {
+              penelitiStatus = `Verifikasi: ${r.p_verifikasi_status}`;
+            }
+            
             vals = [
               r.no_registrasi||'-',
               r.nobooking||'-',
@@ -890,10 +964,10 @@ renderNotifications();
       try{
         console.log('🔍 Loading PPAT/PPATS users from backend...');
         
-        const tbody = qs('#statusTable tbody');
+        const userList = qs('#userList');
         
         // Show loading indicator
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
+        userList.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Loading...</div>';
         
         const status = (qs('#userStatusFilter').value||'').trim();
         const search = (qs('#userSearch').value||'').trim();
@@ -904,39 +978,57 @@ renderNotifications();
         
         console.log('🔍 Fetching PPAT users from URL:', url);
         const js = await fetchJSON(url);
-        tbody.innerHTML='';
+        userList.innerHTML='';
         
         const rows = js.data || [];
         
         if(!rows.length){
-          const tr = tbody.insertRow(); 
-          const td = tr.insertCell(); 
-          td.colSpan=6; 
-          td.textContent = 'Tidak ada data pengguna PPAT/PPATS ditemukan'; 
+          userList.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Tidak ada data pengguna PPAT/PPATS ditemukan</div>'; 
           return;
         }
         
         rows.forEach(r=>{
-          const tr = tbody.insertRow();
-          const vals = [r.nama||'-', r.userid||'-', r.divisi||'-', r.status||'-', r.ppatk_khusus||'-', r.special_field||'-'];
-          vals.forEach((v,idx)=>{ 
-            const td = tr.insertCell(); 
-            td.textContent = v; 
-            if(idx===5){ 
-              td.innerHTML = `<button class="btn-sm" data-userid="${r.userid||''}" data-user-id="${r.id||''}">Edit</button>`; 
-            }
+          const userItem = document.createElement('div');
+          userItem.className = 'user-item';
+          
+          // Status indicator class
+          const statusClass = (r.status || '').toLowerCase().replace(/\s+/g, '-');
+          
+          userItem.innerHTML = `
+            <div class="user-info">
+              <div class="user-name">${r.nama || '-'}</div>
+              <div class="user-details">
+                <div class="user-detail">${r.userid || '-'}</div>
+                <div class="user-detail">${r.divisi || '-'}</div>
+                <div class="user-detail">${r.ppatk_khusus || '-'}</div>
+              </div>
+            </div>
+            <div class="user-status">
+              <div class="status-indicator ${statusClass}"></div>
+              <div style="font-size:11px;color:var(--muted);text-align:right">${r.status || '-'}</div>
+              <div class="user-actions">
+                <button class="action-btn" data-userid="${r.userid||''}" data-user-id="${r.id||''}">Edit</button>
+              </div>
+            </div>
+          `;
+          
+          // Add click handler for user item
+          userItem.addEventListener('click', (e) => {
+            // Don't trigger if clicking on button
+            if (e.target.classList.contains('action-btn')) return;
+            
+            console.log('🔍 User item clicked:', r);
+            // You can add more functionality here, like showing user details
           });
+          
+          userList.appendChild(userItem);
         });
         
-        console.log(`✅ Loaded ${rows.length} PPAT/PPATS users from backend`);
+        console.log(`✅ Loaded ${rows.length} PPAT/PPATS users with minimalist design`);
       }catch(e){
         console.error('❌ Error loading PPAT users:', e);
-        const tbody = qs('#statusTable tbody');
-        tbody.innerHTML='';
-        const tr = tbody.insertRow(); 
-        const td = tr.insertCell(); 
-        td.colSpan=6; 
-        td.textContent='Gagal memuat data: '+e.message;
+        const userList = qs('#userList');
+        userList.innerHTML = '<div style="padding:40px;text-align:center;color:var(--danger)">Gagal memuat data: ' + e.message + '</div>';
       }
     }
 
@@ -968,7 +1060,7 @@ renderNotifications();
 
     // Event handler for Edit button
     document.addEventListener('click', async (e) => {
-      if (e.target.classList.contains('btn-sm') && e.target.textContent === 'Edit') {
+      if (e.target.classList.contains('action-btn') && e.target.textContent === 'Edit') {
         const userid = e.target.dataset.userid;
         const userId = e.target.dataset.userId;
         
