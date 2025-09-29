@@ -17,8 +17,11 @@
     <!---->
 
     <link rel="stylesheet" href="../../../design-n-script/design_css/form_design.css">
-    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <!-- Universal Alert System -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/universal-alert.css">
+    <!-- Modern Pagination Design -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/pagination-design.css">
     <!---->
     <link id="favicon" rel="icon" href="path/to/favicon.ico">
 
@@ -646,7 +649,7 @@
             <div class="list-button"></div>  <!-- Pagination buttons -->
         </div>
     </div>
-    </div>
+</div>
 </main>
 
 
@@ -824,6 +827,19 @@
     observer.observe(tbody, { childList: true });
   }
 })();
+</script>
+
+<!-- Universal Alert System -->
+<script src="../../../design-n-script/script_backend/universal-alert.js"></script>
+<script>
+  // Initialize Universal Alert System when DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.universalAlert) {
+      console.log('Universal Alert System initialized');
+    } else {
+      console.warn('Universal Alert System failed to load');
+    }
+  });
 </script>
 </body>
 </html>

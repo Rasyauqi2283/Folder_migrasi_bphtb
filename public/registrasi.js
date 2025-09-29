@@ -547,6 +547,98 @@ function validateForm() {
     return isValid;
 }
 
+// Variabel global untuk tracking upload status
+let ktpUploadStatus = {
+    isUploaded: false,
+    isUploading: false,
+    uploadId: null,
+    error: null
+};
+
+// Fungsi untuk upload KTP secara terpisah
+async function uploadKTPFile(file) {
+    if (ktpUploadStatus.isUploading) {
+        console.log("⏳ [KTP_UPLOAD] Upload already in progress");
+        return;
+    }
+
+    ktpUploadStatus.isUploading = true;
+    ktpUploadStatus.isUploaded = false;
+    ktpUploadStatus.error = null;
+
+    try {
+        console.log("📤 [KTP_UPLOAD] Starting KTP upload...");
+        
+        const formData = new FormData();
+        formData.append('fotoktp', file);
+        formData.append('uploadType', 'ktp_verification');
+
+        const response = await fetch('/api/v1/auth/upload-ktp', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        console.log("📥 [KTP_UPLOAD] Upload response:", result);
+
+        if (response.ok && result.success) {
+            ktpUploadStatus.isUploaded = true;
+            ktpUploadStatus.uploadId = result.uploadId;
+            ktpUploadStatus.error = null;
+            
+            // Update UI untuk menunjukkan upload berhasil
+            updateKTPUploadStatus('success', 'KTP berhasil diupload');
+            return { success: true, uploadId: result.uploadId };
+        } else {
+            throw new Error(result.message || 'Upload KTP gagal');
+        }
+    } catch (error) {
+        console.error("❌ [KTP_UPLOAD] Upload error:", error);
+        ktpUploadStatus.error = error.message;
+        ktpUploadStatus.isUploaded = false;
+        updateKTPUploadStatus('error', error.message);
+        throw error;
+    } finally {
+        ktpUploadStatus.isUploading = false;
+    }
+}
+
+// Make uploadKTPFile available globally
+window.uploadKTPFile = uploadKTPFile;
+
+// Fungsi untuk update status upload di UI
+function updateKTPUploadStatus(type, message) {
+    const fileInput = document.getElementById('fotoktp');
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'ktp-upload-status';
+    statusDiv.className = `upload-status ${type}`;
+    statusDiv.innerHTML = `
+        <div class="status-content">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'spinner fa-spin'}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+
+    // Hapus status lama jika ada
+    const existingStatus = document.getElementById('ktp-upload-status');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+
+    // Tambahkan status baru setelah file input
+    fileInput.parentNode.insertBefore(statusDiv, fileInput.nextSibling);
+
+    // Auto remove success message setelah 3 detik
+    if (type === 'success') {
+        setTimeout(() => {
+            const status = document.getElementById('ktp-upload-status');
+            if (status && status.classList.contains('success')) {
+                status.remove();
+            }
+        }, 3000);
+    }
+}
+
 // Event listener untuk submit form
 document.querySelector("form").addEventListener("submit", async (event) => {
     console.log("🚀 [FRONTEND] Form submit event triggered");
@@ -561,8 +653,41 @@ document.querySelector("form").addEventListener("submit", async (event) => {
         event.preventDefault();
         return;
     }
+
+    // Validasi upload KTP
+    const fileInput = document.getElementById('fotoktp');
+    const ktpFile = fileInput?.files?.[0];
     
-    console.log("✅ [FRONTEND] Form validation passed, proceeding with submission");
+    if (!ktpFile) {
+        console.log("❌ [FRONTEND] No KTP file selected");
+        event.preventDefault();
+        updateKTPUploadStatus('error', 'Pilih file KTP terlebih dahulu');
+        return;
+    }
+
+    // Jika KTP belum diupload, upload terlebih dahulu
+    if (!ktpUploadStatus.isUploaded) {
+        console.log("📤 [FRONTEND] KTP not uploaded yet, uploading first...");
+        event.preventDefault();
+        
+        try {
+            updateKTPUploadStatus('loading', 'Mengupload KTP...');
+            await uploadKTPFile(ktpFile);
+            
+            // Setelah upload berhasil, submit form
+            setTimeout(() => {
+                document.querySelector("form").dispatchEvent(new Event('submit'));
+            }, 1000);
+            
+            return;
+        } catch (error) {
+            console.error("❌ [FRONTEND] KTP upload failed:", error);
+            event.preventDefault();
+            return;
+        }
+    }
+    
+    console.log("✅ [FRONTEND] Form validation passed, KTP uploaded, proceeding with submission");
 
     // Prevent default form submission
     event.preventDefault();
@@ -579,27 +704,15 @@ document.querySelector("form").addEventListener("submit", async (event) => {
     formData.append('repeatpassword', document.getElementById('repeatpassword').value);
     formData.append('gender', document.getElementById('gender').value);
     
-    // Add file manually
-    const fileInput = document.getElementById('fotoktp');
-    const fotoktpFile = fileInput?.files?.[0];
-    
-    console.log("📁 [FRONTEND] File Input Element:", {
-        exists: !!fileInput,
-        files: fileInput?.files,
-        filesLength: fileInput?.files?.length,
-        firstFile: fileInput?.files?.[0],
-        value: fileInput?.value
-    });
-    
-    if (fotoktpFile) {
-        console.log("🔧 [FRONTEND] Adding file to FormData:", {
-            fileName: fotoktpFile.name,
-            fileSize: fotoktpFile.size,
-            fileType: fotoktpFile.type
-        });
-        formData.append('fotoktp', fotoktpFile);
+    // Add uploadId dari KTP yang sudah diupload
+    if (ktpUploadStatus.uploadId) {
+        formData.append('ktpUploadId', ktpUploadStatus.uploadId);
+        console.log("🔧 [FRONTEND] Adding KTP upload ID to FormData:", ktpUploadStatus.uploadId);
     } else {
-        console.error("❌ [FRONTEND] No file found in input element");
+        console.error("❌ [FRONTEND] No KTP upload ID available");
+        event.preventDefault();
+        updateKTPUploadStatus('error', 'KTP belum diupload dengan benar');
+        return;
     }
     
     // Debug FormData contents

@@ -65,17 +65,17 @@ async function loadTableDataLTB() {
                                 sendButton.disabled = true;
                                 sendButton.textContent = 'Data Terkirim';
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                                alert("Data berhasil dikirim ke peneliti!");
+                                showAlert('success', "Data berhasil dikirim ke peneliti!");
                             } else {
-                                alert("Gagal mengirim data ke peneliti.");
+                                showAlert('error', "Gagal mengirim data ke peneliti.");
                             }
                         } catch (error) {
                             console.error("terjadi kesalahan", error)
-                            alert("Terjadi kesalahan saat mengirim data.");
+                            showAlert('error', "Terjadi kesalahan saat mengirim data.");
                         }
                     } else {
                         // Jika pengguna mengklik "Batal", tampilkan notifikasi
-                        alert("Data tidak jadi dikirim.");
+                        showAlert('info', "Data tidak jadi dikirim.");
                     }
                 });
                 
@@ -88,43 +88,21 @@ async function loadTableDataLTB() {
                 dropdownContent.colSpan = 8;
                 dropdownContent.style.display = 'none'; // Dropdown akan disembunyikan pertama kali
                 dropdownContent.innerHTML = `
-                    <p>No. Booking: ${item.nobooking}</p>
-                    <p>Status: ${item.status}</p>
-                    <p>File Upload</p>
-                        <div id="file-info-${item.nobooking}">
-                        <!-- Akta Tanah -->
-                        ${item.akta_tanah_path ? 
-                            item.akta_tanah_path.endsWith('.pdf') ? 
-                            `<p>Akta: <a href="${item.akta_tanah_path}" target="_blank">
-                            <button class="btn-view">View PDF</button>
-                            </a></p>` : 
-                            `<p>Akta: <a href="${item.akta_tanah_path}" target="_blank">
-                            <img src="/${item.akta_tanah_path}" alt="Akta" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                            </a></p>`
-                        : ''}
-
-                        <!-- Sertifikat Tanah -->
-                        ${item.sertifikat_tanah_path ? 
-                            item.sertifikat_tanah_path.endsWith('.pdf') ? 
-                            `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
-                            <button class="btn-view">View PDF</button>
-                            </a></p>` : 
-                            `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
-                            <img src="/${item.sertifikat_tanah_path}" alt="Sertifikat Tanah" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                            </a></p>`
-                        : ''}
-
-                        <!-- File Pelengkap -->
-                        ${item.pelengkap_path ? 
-                            item.pelengkap_path.endsWith('.pdf') ? 
-                            `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
-                            <button class="btn-view">View PDF</button>
-                            </a></p>` : 
-                            `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
-                            <img src="/${item.pelengkap_path}" alt="Pelengkap Image" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                            </a></p>`
-                        : ''}
+                    <div class="dropdown-content-wrapper">
+                        <!-- Document Info Section -->
+                        <div class="document-info-section">
+                            <p><strong>No. Booking:</strong> ${item.nobooking || 'N/A'}</p>
+                            <p><strong>Status:</strong> ${item.status || 'N/A'}</p>
                         </div>
+
+                        <!-- Document Links Section -->
+                        <div class="document-links-section">
+                            <h6 class="document-links-title">Dokumen Terkait:</h6>
+                            <div class="document-links-list">
+                                ${generateDocumentLinks(item)}
+                            </div>
+                        </div>
+                    </div>
                 `;
                 
                 dropdownRow.appendChild(dropdownContent);
@@ -469,4 +447,49 @@ async function sendToPeneliti(item) {
         alert('Koneksi gagal. Coba lagi atau hubungi admin.');
     }
 }
+
+// Helper function untuk generate document links
+function generateDocumentLinks(item) {
+    const toHref = (p) => { if(!p) return ''; return p.startsWith('/') ? p : ('/' + p); };
+    const docs = [];
+    
+    if (item.akta_tanah_path) {
+        const p = item.akta_tanah_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Akta Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Akta Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    if (item.sertifikat_tanah_path) {
+        const p = item.sertifikat_tanah_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Sertifikat Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Sertifikat Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    if (item.pelengkap_path) {
+        const p = item.pelengkap_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Dokumen Pelengkap:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Pelengkap" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    return docs.join('');
+}
+
 window.onload = loadTableDataLTB;

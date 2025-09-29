@@ -295,30 +295,128 @@ function renderAddressField(item, field, label) {
 ////////////////////////                        /////////////////////////////////////////
 function displayPagination(currentPage, totalPages) {
     const paginationContainer = document.querySelector('.list-button');
+    if (!paginationContainer) return;
+    
     paginationContainer.innerHTML = '';  // Clear existing pagination buttons
+    
+    // Jika hanya ada 1 halaman, tidak perlu pagination
+    if (totalPages <= 1) return;
+
+    // First Page Button
+    const firstButton = createPaginationButton('first', '<<', currentPage === 1, () => loadTableData(1));
+    paginationContainer.appendChild(firstButton);
 
     // Previous Button
-    const prevButton = document.createElement('button');
-    prevButton.innerHTML = 'Prev';
-    prevButton.disabled = currentPage === 1;  // Disable if it's the first page
-    prevButton.onclick = () => loadTableData(currentPage - 1);
+    const prevButton = createPaginationButton('prev', '<', currentPage === 1, () => loadTableData(currentPage - 1));
     paginationContainer.appendChild(prevButton);
 
-    // Page Numbers
-    for (let i = 1; i <= totalPages; i++) {
-        const pageButton = document.createElement('button');
-        pageButton.innerHTML = i;
-        pageButton.disabled = i === currentPage;  // Disable current page button
-        pageButton.onclick = () => loadTableData(i);
-        paginationContainer.appendChild(pageButton);
-    }
+    // Page Numbers dengan smart pagination
+    const pageButtons = generatePageNumbers(currentPage, totalPages);
+    pageButtons.forEach(pageInfo => {
+        if (pageInfo.type === 'number') {
+            const pageButton = createPaginationButton(
+                'number',
+                pageInfo.number,
+                pageInfo.number === currentPage,
+                () => loadTableData(pageInfo.number),
+                pageInfo.number === currentPage ? 'active' : '',
+                pageInfo.hideOnMobile ? 'hide-mobile' : ''
+            );
+            paginationContainer.appendChild(pageButton);
+        } else if (pageInfo.type === 'ellipsis') {
+            const ellipsisButton = createPaginationButton('ellipsis', '...', false, null, 'ellipsis');
+            paginationContainer.appendChild(ellipsisButton);
+        }
+    });
 
     // Next Button
-    const nextButton = document.createElement('button');
-    nextButton.innerHTML = 'Next';
-    nextButton.disabled = currentPage === totalPages;  // Disable if it's the last page
-    nextButton.onclick = () => loadTableData(currentPage + 1);
+    const nextButton = createPaginationButton('next', '>', currentPage === totalPages, () => loadTableData(currentPage + 1));
     paginationContainer.appendChild(nextButton);
+
+    // Last Page Button
+    const lastButton = createPaginationButton('last', '>>', currentPage === totalPages, () => loadTableData(totalPages));
+    paginationContainer.appendChild(lastButton);
+
+    // Add page info
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'pagination-info';
+    pageInfo.innerHTML = `Halaman ${currentPage} dari ${totalPages}`;
+    paginationContainer.appendChild(pageInfo);
+}
+
+function createPaginationButton(type, text, disabled, onClick, extraClass = '', mobileClass = '') {
+    const button = document.createElement('button');
+    button.className = `pagination-btn ${type === 'first' || type === 'prev' || type === 'next' || type === 'last' ? 'nav-btn' : ''} ${type === 'number' ? 'page-number' : ''} ${extraClass} ${mobileClass}`.trim();
+    button.innerHTML = text;
+    button.disabled = disabled;
+    
+    if (onClick) {
+        button.onclick = onClick;
+    }
+    
+    // Add accessibility attributes
+    button.setAttribute('aria-label', getButtonLabel(type, text));
+    button.setAttribute('role', 'button');
+    
+    // Add ripple effect
+    button.classList.add('ripple');
+    
+    return button;
+}
+
+function getButtonLabel(type, text) {
+    const labels = {
+        'first': 'Halaman Pertama',
+        'prev': 'Halaman Sebelumnya',
+        'next': 'Halaman Berikutnya',
+        'last': 'Halaman Terakhir',
+        'number': `Halaman ${text}`,
+        'ellipsis': 'Halaman lainnya'
+    };
+    return labels[type] || text;
+}
+
+function generatePageNumbers(currentPage, totalPages) {
+    const pages = [];
+    const maxVisiblePages = 7; // Maximum number of page buttons to show
+    
+    if (totalPages <= maxVisiblePages) {
+        // Show all pages if total is small
+        for (let i = 1; i <= totalPages; i++) {
+            pages.push({ type: 'number', number: i });
+        }
+    } else {
+        // Smart pagination logic
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        // Always show first page
+        if (startPage > 1) {
+            pages.push({ type: 'number', number: 1 });
+            if (startPage > 2) {
+                pages.push({ type: 'ellipsis' });
+            }
+        }
+        
+        // Show pages around current page
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push({ 
+                type: 'number', 
+                number: i,
+                hideOnMobile: (i > startPage + 1 && i < endPage - 1)
+            });
+        }
+        
+        // Always show last page
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                pages.push({ type: 'ellipsis' });
+            }
+            pages.push({ type: 'number', number: totalPages });
+        }
+    }
+    
+    return pages;
 }
 ////////////////////                ////////////////////////////////
 function deleteSelectedRow() {
@@ -783,65 +881,22 @@ function toggleLoading(show) {
     }
 }
 
-function showAlert(type, message) {
-    // Buat alert element
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`;
-    alertDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 15px 20px;
-        border-radius: 8px;
-        color: white;
-        font-weight: 500;
-        z-index: 10000;
-        max-width: 400px;
-        word-wrap: break-word;
-        animation: slideIn 0.3s ease;
-    `;
-    
-    // Set background color berdasarkan type
-    const colors = {
-        success: '#28a745',
-        error: '#dc3545',
-        warning: '#ffc107',
-        info: '#17a2b8'
-    };
-    
-    alertDiv.style.backgroundColor = colors[type] || colors.info;
-    alertDiv.textContent = message;
-    
-    // Tambahkan ke body
-    document.body.appendChild(alertDiv);
-    
-    // Auto remove setelah 5 detik
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 300);
-        }
-    }, 5000);
-    
-    // Tambahkan CSS untuk animasi
-    if (!document.getElementById('alert-styles')) {
-        const style = document.createElement('style');
-        style.id = 'alert-styles';
-        style.textContent = `
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-        `;
-        document.head.appendChild(style);
+// Fungsi showAlert menggunakan Universal Alert System
+function showAlert(type, message, title = null) {
+    // Pastikan Universal Alert System sudah dimuat
+    if (window.universalAlert) {
+        return window.universalAlert.show({
+            type,
+            title: title || (type === 'success' ? 'Berhasil' : type === 'error' ? 'Error' : type === 'warning' ? 'Peringatan' : 'Informasi'),
+            message,
+            duration: 5000,
+            clickOutsideToClose: true,
+            showProgress: true
+        });
+    } else {
+        // Fallback ke alert biasa jika Universal Alert System belum dimuat
+        console.warn('Universal Alert System not loaded, using fallback alert');
+        alert(message);
     }
     
     // Add styles for selected file preview
@@ -857,19 +912,6 @@ function showAlert(type, message) {
             align-items: center;
             gap: 10px;
         }
-        
-
-        
-
-        
-
-        
-
-        
-
-        
-
-        
         .file-input-wrapper {
             transition: opacity 0.3s ease;
         }
@@ -1699,12 +1741,12 @@ async function sendToLtb(nobooking) {
                             };
                         }
                     } else {
-                        alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
-                        location.reload();
+                        showAlert('success', `Sukses! Data berhasil dikirim ke LTB. No Registrasi: ${result.no_registrasi}`);
+                        setTimeout(() => location.reload(), 2000);
                     }
                 } catch (_) {
-                    alert(`Sukses! No Registrasi: ${result.no_registrasi}`);
-                    location.reload();
+                    showAlert('success', `Sukses! Data berhasil dikirim ke LTB. No Registrasi: ${result.no_registrasi}`);
+                    setTimeout(() => location.reload(), 2000);
                 }
                 return; // Berhasil, keluar dari loop retry
             } else {
@@ -1723,9 +1765,9 @@ async function sendToLtb(nobooking) {
             if (attempt === maxRetries) {
                 // Semua percobaan gagal
                 if (error.name === 'AbortError') {
-                    alert('Request timeout - proses terlalu lama. Silakan coba lagi.');
+                    showAlert('error', 'Request timeout - proses terlalu lama. Silakan coba lagi.');
                 } else {
-                    alert(`Gagal mengirim data setelah ${maxRetries} percobaan. Error: ${error.message}`);
+                    showAlert('error', `Gagal mengirim data setelah ${maxRetries} percobaan. Error: ${error.message}`);
                 }
                 return;
             } else {
@@ -1737,6 +1779,116 @@ async function sendToLtb(nobooking) {
     }
 }
 ///////////////////         END             //////////////////////////////
+// Add keyboard navigation for pagination
+function addPaginationKeyboardSupport() {
+    document.addEventListener('keydown', function(e) {
+        const paginationContainer = document.querySelector('.list-button');
+        if (!paginationContainer) return;
+        
+        // Only handle keyboard navigation when pagination is visible
+        if (paginationContainer.children.length === 0) return;
+        
+        // Get current page info from pagination info
+        const pageInfo = document.querySelector('.pagination-info');
+        if (!pageInfo) return;
+        
+        const currentPageMatch = pageInfo.textContent.match(/Halaman (\d+)/);
+        const totalPagesMatch = pageInfo.textContent.match(/dari (\d+)/);
+        
+        if (!currentPageMatch || !totalPagesMatch) return;
+        
+        const currentPage = parseInt(currentPageMatch[1]);
+        const totalPages = parseInt(totalPagesMatch[1]);
+        
+        let shouldNavigate = false;
+        let newPage = currentPage;
+        
+        switch(e.key) {
+            case 'ArrowLeft':
+            case 'ArrowUp':
+                if (currentPage > 1) {
+                    newPage = currentPage - 1;
+                    shouldNavigate = true;
+                }
+                break;
+            case 'ArrowRight':
+            case 'ArrowDown':
+                if (currentPage < totalPages) {
+                    newPage = currentPage + 1;
+                    shouldNavigate = true;
+                }
+                break;
+            case 'Home':
+                if (currentPage > 1) {
+                    newPage = 1;
+                    shouldNavigate = true;
+                }
+                break;
+            case 'End':
+                if (currentPage < totalPages) {
+                    newPage = totalPages;
+                    shouldNavigate = true;
+                }
+                break;
+        }
+        
+        if (shouldNavigate) {
+            e.preventDefault();
+            loadTableData(newPage);
+        }
+    });
+}
+
+// Add loading state to pagination buttons
+function setPaginationLoading(isLoading) {
+    const paginationButtons = document.querySelectorAll('.pagination-btn');
+    paginationButtons.forEach(button => {
+        if (isLoading) {
+            button.classList.add('loading');
+            button.disabled = true;
+        } else {
+            button.classList.remove('loading');
+            // Re-enable buttons based on their original state
+            const currentPageMatch = document.querySelector('.pagination-info')?.textContent.match(/Halaman (\d+)/);
+            const totalPagesMatch = document.querySelector('.pagination-info')?.textContent.match(/dari (\d+)/);
+            
+            if (currentPageMatch && totalPagesMatch) {
+                const currentPage = parseInt(currentPageMatch[1]);
+                const totalPages = parseInt(totalPagesMatch[1]);
+                
+                if (button.innerHTML === '<<' || button.innerHTML === '<') {
+                    button.disabled = currentPage === 1;
+                } else if (button.innerHTML === '>>' || button.innerHTML === '>') {
+                    button.disabled = currentPage === totalPages;
+                } else if (!isNaN(parseInt(button.innerHTML))) {
+                    button.disabled = parseInt(button.innerHTML) === currentPage;
+                }
+            }
+        }
+    });
+}
+
+// Enhanced loadTableData with loading states
+const originalLoadTableData = loadTableData;
+loadTableData = async function(page = 1) {
+    try {
+        setPaginationLoading(true);
+        await originalLoadTableData(page);
+    } catch (error) {
+        console.error('Error loading table data:', error);
+        if (window.universalAlert) {
+            window.universalAlert.error('Gagal memuat data tabel');
+        }
+    } finally {
+        setPaginationLoading(false);
+    }
+};
+
+// Initialize keyboard support when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    addPaginationKeyboardSupport();
+});
+
 // Panggil fungsi saat halaman dimuat
 window.onload = loadTableData;
 //////////////////////////////////////                  //////////////////////////////////////////

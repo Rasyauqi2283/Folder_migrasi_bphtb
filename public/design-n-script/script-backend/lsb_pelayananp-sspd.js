@@ -256,26 +256,57 @@ async function loadTableLSB() {
 }
 function generateDropdownContent(item) {
     return `
-        <p>No. registrasi: ${item.nobooking}</p>
-        <br />
-        <!--File complete di unduh dan di upload-->
-        <p>Unduh dokumen ini (Dokumen Booking)</p>
-        <div id="file-info-${item.nobooking}">
-            ${generateFileLink(item.file_booking_path, 'Dokumen Booking')}
-        </div>
-        <p>Upload Files yang di unduh serta sudah diberikan stempel, letakkan disini</p>
-        ${item.file_withstempel_path ? 
-            `<p>File yang sudah di stempel: <a href="${item.file_withstempel_path}" target="_blank">${item.file_withstempel_path.split('/').pop()}</a></p>` : 
-            `<label for="FileStempel-${item.nobooking}">Upload File dengan stempel (PDF):</label>
-            <input type="file" id="FileStempel-${item.nobooking}" name="FileStempel" accept="application/pdf"><br>`}
-        <button onclick="uploadFilesStempel('${item.nobooking}')">Upload Files (with stempel)</button>
+        <div class="dropdown-content-wrapper">
+            <!-- Document Info Section -->
+            <div class="document-info-section">
+                <p><strong>No. Registrasi:</strong> ${item.nobooking || 'N/A'}</p>
+            </div>
 
+            <!-- Download Section -->
+            <div class="download-section">
+                <h6 class="section-title">Unduh Dokumen Booking:</h6>
+                <div class="document-links-list">
+                    ${generateFileLink(item.file_booking_path, 'Dokumen Booking')}
+                </div>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h6 class="section-title">Upload File dengan Stempel:</h6>
+                ${item.file_withstempel_path ? 
+                    `<div class="uploaded-file-info">
+                        <p><strong>File yang sudah di stempel:</strong></p>
+                        <a href="${item.file_withstempel_path}" target="_blank" class="btn-view">${item.file_withstempel_path.split('/').pop()}</a>
+                    </div>` : 
+                    `<div class="file-upload-area">
+                        <label for="FileStempel-${item.nobooking}">Upload File dengan stempel (PDF):</label>
+                        <input type="file" id="FileStempel-${item.nobooking}" name="FileStempel" accept="application/pdf">
+                    </div>`}
+                
+                <!-- Action Button -->
+                <div class="action-buttons">
+                    <button onclick="uploadFilesStempel('${item.nobooking}')" class="btn-upload-stempel">
+                        <i class="fas fa-upload"></i> Upload Files (with stempel)
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
 }
 function generateFileLink(path, label) {
-    return path ? 
-        `<p>${label}: <a href="${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
+    if (!path) return '';
+    
+    const toHref = (p) => { return p.startsWith('/') ? p : ('/' + p); };
+    const href = toHref(path);
+    const isPdf = /\.pdf($|\?)/i.test(path);
+    
+    return `
+        <div class="document-link-item">
+            <span class="document-label">${label}:</span>
+            ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                    : `<a href="${href}" target="_blank"><button class="btn-view">View</button></a>`}
+        </div>`;
 }
 document.querySelectorAll('#LSBTable tbody tr').forEach(row => {
     row.addEventListener('click', function() {

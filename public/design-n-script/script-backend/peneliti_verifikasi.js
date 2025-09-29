@@ -111,17 +111,17 @@ async function loadTableDataPenelitiV() {
                                 sendButton.disabled = true;
                                 sendButton.textContent = 'Data Terkirim';
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                                alert("Data berhasil dikirim ke peneliti paraf!");
+                                showAlert('success', "Data berhasil dikirim ke peneliti paraf!");
                             } else {
                                 const msg = (result && result.message) ? result.message : "Gagal mengirim data ke peneliti.";
                                 throw new Error(msg);
                             }
                         } else {
-                            alert("Data tidak jadi dikirim.");
+                            showAlert('info', "Data tidak jadi dikirim.");
                         }
                     } catch (buttonError) {
                         console.error('Button Action Error:', buttonError);
-                        alert(`Terjadi kesalahan: ${buttonError.message}`);
+                        showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
                     }
                 });
                 
@@ -156,34 +156,45 @@ async function loadTableDataPenelitiV() {
                     
                     const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
                     dropdownContent.innerHTML = `
-                        <p>No. registrasi: ${item.nobooking}</p>
-                        ${pesan1}
-                        ${pesan2}
-                        ${item.peneliti_tanda_tangan_path ? `
-                            <div class="form-group approval-section">
-                                <label>
-                                    <input type="radio" name="ParafVerif-${item.nobooking}" value="ya" required> Setujui Paraf
-                                </label>
-                                <div class="signature-preview">
-                                    <p>Tanda Tangan Saat Ini:</p>
-                                    <img src="${item.peneliti_tanda_tangan_path}"  // Langsung gunakan path dari API
-                                        alt="Tanda Tangan" 
-                                        class="signature-image"
-                                        onerror="this.style.display='none'">
-                                </div>
-                        ` : `
-                            <div class="alert alert-warning">
-                                Tidak dapat memberikan persetujuan - tanda tangan belum diunggah
+                        <div class="dropdown-content-wrapper">
+                            <!-- Document Info Section -->
+                            <div class="document-info-section">
+                                <p><strong>No. Registrasi:</strong> ${item.nobooking || 'N/A'}</p>
+                                ${pesan1}
+                                ${pesan2}
                             </div>
-                            <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
-                        `}
-                        <!---->
-                        ${item.pemilihan ? `
-                            <p>Jumlah setoran berdasarkan:</p>
-                            <div class="form-group">
-                                <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
-                                <label>Penghitungan wajib pajak</label>
-                            </div> <br>
+
+                            <!-- Signature Section -->
+                            ${item.peneliti_tanda_tangan_path ? `
+                                <div class="signature-section">
+                                    <div class="form-group approval-section">
+                                        <label>
+                                            <input type="radio" name="ParafVerif-${item.nobooking}" value="ya" required> Setujui Paraf
+                                        </label>
+                                        <div class="signature-preview">
+                                            <p>Tanda Tangan Saat Ini:</p>
+                                            <img src="${item.peneliti_tanda_tangan_path}"  // Langsung gunakan path dari API
+                                                alt="Tanda Tangan" 
+                                                class="signature-image"
+                                                onerror="this.style.display='none'">
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="alert alert-warning">
+                                    Tidak dapat memberikan persetujuan - tanda tangan belum diunggah
+                                </div>
+                                <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
+                            `}
+
+                        <!-- Calculation Form Section -->
+                        <div class="calculation-section">
+                            <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
+                            ${item.pemilihan ? `
+                                <div class="form-group">
+                                    <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
+                                    <label>Penghitungan wajib pajak</label>
+                                </div>
                             <div class="form-group">
                                 <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
                                 <label>STPD kurang bayar</label>
@@ -230,47 +241,26 @@ async function loadTableDataPenelitiV() {
                                 <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya-${item.nobooking}" placeholder="Isikan disini...">
                             </div>
                         `}
-                        <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
-                            <span class="btn-text">Simpan</span>
-                            <span class="spinner" hidden>
-                                <i class="fa fa-spinner fa-spin"></i>
-                            </span>
-                        </button>
-                        <p>File Upload</p>
-                            <div id="file-info-${item.nobooking}">
-                            <!-- Akta Tanah -->
-                            ${item.akta_tanah_path ? 
-                                item.akta_tanah_path.endsWith('.pdf') ? 
-                                `<p>Akta Tanah: <a href="${item.akta_tanah_path}" target="_blank">
-                                <button class="btn-view">View PDF</button>
-                                </a></p>` : 
-                                `<p>Akta Tanah: <a href="${item.akta_tanah_path}" target="_blank">
-                                <img src="/${item.akta_tanah_path}" alt="Akta Tanah" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                                </a></p>`
-                            : ''}
+                        </div>
 
-                            <!-- Sertifikat Tanah -->
-                            ${item.sertifikat_tanah_path ? 
-                                item.sertifikat_tanah_path.endsWith('.pdf') ? 
-                                `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
-                                <button class="btn-view">View PDF</button>
-                                </a></p>` : 
-                                `<p>Sertifikat Tanah: <a href="${item.sertifikat_tanah_path}" target="_blank">
-                                <img src="/${item.sertifikat_tanah_path}" alt="Sertifikat Tanah" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                                </a></p>`
-                            : ''}
+                        <!-- Action Button -->
+                        <div class="action-buttons">
+                            <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
+                                <span class="btn-text">Simpan</span>
+                                <span class="spinner" hidden>
+                                    <i class="fa fa-spinner fa-spin"></i>
+                                </span>
+                            </button>
+                        </div>
 
-                            <!-- File Pelengkap -->
-                            ${item.pelengkap_path ? 
-                                item.pelengkap_path.endsWith('.pdf') ? 
-                                `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
-                                <button class="btn-view">View PDF</button>
-                                </a></p>` : 
-                                `<p>File Pelengkap: <a href="${item.pelengkap_path}" target="_blank">
-                                <img src="/${item.pelengkap_path}" alt="Pelengkap Image" style="max-width: 100px; max-height: 100px;" onerror="this.onerror=null;this.src='/path-to-default-image.jpg'">
-                                </a></p>`
-                            : ''}
+                        <!-- Document Links Section -->
+                        <div class="document-links-section">
+                            <h6 class="document-links-title">Dokumen Terkait:</h6>
+                            <div class="document-links-list">
+                                ${generateDocumentLinks(item)}
                             </div>
+                        </div>
+                        </div>
                     `;
                     
                 } catch (dropdownError) {
@@ -734,6 +724,50 @@ async function sendToParafKasie(item) {
 
 
   ///
+// Helper function untuk generate document links
+function generateDocumentLinks(item) {
+    const toHref = (p) => { if(!p) return ''; return p.startsWith('/') ? p : ('/' + p); };
+    const docs = [];
+    
+    if (item.akta_tanah_path) {
+        const p = item.akta_tanah_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Akta Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Akta Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    if (item.sertifikat_tanah_path) {
+        const p = item.sertifikat_tanah_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Sertifikat Tanah:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Sertifikat Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    if (item.pelengkap_path) {
+        const p = item.pelengkap_path;
+        const href = toHref(p);
+        const isPdf = /\.pdf($|\?)/i.test(p);
+        docs.push(`
+            <div class="document-link-item">
+                <span class="document-label">Dokumen Pelengkap:</span>
+                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Pelengkap" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
+            </div>`);
+    }
+    
+    return docs.join('');
+}
+
 window.onload = loadTableDataPenelitiV;
 
 // ===== Refactor: Signature flow using stored profile signature =====

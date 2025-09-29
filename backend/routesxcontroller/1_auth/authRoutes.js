@@ -1,8 +1,15 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { secureUploadKTP, processKTPUpload } from '../../config/uploads/secure_upload_ktp.js';
 import { pool } from '../../../db.js';
 import { generateOTP, sendOTP, sendOTPWithRetry, sendOTPAsync } from '../../services/emailservice.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -187,6 +194,62 @@ const handleMulterError = (err, req, res, next) => {
 };
 
 // 2. Register endpoint (check ✔)
+// Endpoint untuk upload KTP terpisah (sebelum registrasi)
+router.post('/upload-ktp', (req, res, next) => {
+  secureUploadKTP.single('fotoktp')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    console.log('📤 [UPLOAD_KTP] Processing KTP upload request');
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'File KTP tidak terdeteksi. Pastikan file dipilih dan formatnya JPEG/PNG.'
+      });
+    }
+
+    // Generate temporary upload ID untuk tracking
+    const uploadId = crypto.randomUUID();
+    const timestamp = Date.now();
+    
+    // Simpan file temporary dengan upload ID
+    const tempFilePath = path.join(__dirname, '../../temp_uploads', `temp_${uploadId}_${req.file.filename}`);
+    fs.copyFileSync(req.file.path, tempFilePath);
+    
+    // Hapus file temporary asli
+    fs.unlinkSync(req.file.path);
+    
+    // Update nama file dengan upload ID
+    req.file.path = tempFilePath;
+    req.file.filename = `temp_${uploadId}_${req.file.filename}`;
+    
+    console.log('✅ [UPLOAD_KTP] KTP uploaded successfully:', {
+      uploadId,
+      fileName: req.file.filename,
+      size: req.file.size
+    });
+    
+    res.json({
+      success: true,
+      message: 'KTP berhasil diupload',
+      uploadId,
+      timestamp
+    });
+    
+  } catch (error) {
+    console.error('❌ [UPLOAD_KTP] Upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengupload KTP: ' + error.message
+    });
+  }
+});
+
 router.post('/register', (req, res, next) => {
   secureUploadKTP.single('fotoktp')(req, res, (err) => {
     if (err) {
@@ -194,22 +257,81 @@ router.post('/register', (req, res, next) => {
     }
     next();
   });
-}, processKTPUpload, async (req, res) => {
-  const { nama, nik, telepon, email, password, gender } = req.body;
+}, async (req, res) => {
+  const { nama, nik, telepon, email, password, gender, ktpUploadId } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 
   console.log(`📧 [REGISTER] Processing registration for: ${email}`);
   console.log(`📁 [REGISTER] Secure file info:`, {
     hasSecureFile: !!secureFile,
     fileId: secureFile?.fileId,
-    userEmail: email
+    userEmail: email,
+    ktpUploadId: ktpUploadId
   });
 
+  // Jika menggunakan ktpUploadId, cari file temporary
+  if (ktpUploadId && !secureFile) {
+    try {
+      const tempFilePath = path.join(__dirname, '../../temp_uploads', `temp_${ktpUploadId}_*`);
+      const files = fs.readdirSync(path.join(__dirname, '../../temp_uploads'))
+        .filter(file => file.startsWith(`temp_${ktpUploadId}_`));
+      
+      if (files.length > 0) {
+        const tempFile = files[0];
+        const fullPath = path.join(__dirname, '../../temp_uploads', tempFile);
+        
+        // Buat objek file temporary untuk diproses
+        req.file = {
+          path: fullPath,
+          filename: tempFile,
+          originalname: 'ktp_temp.jpg',
+          mimetype: 'image/jpeg',
+          size: fs.statSync(fullPath).size
+        };
+        
+        console.log('📁 [REGISTER] Found temporary KTP file:', tempFile);
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'File KTP tidak ditemukan. Silakan upload ulang KTP.'
+        });
+      }
+    } catch (error) {
+      console.error('❌ [REGISTER] Error finding temporary KTP file:', error);
+      return res.status(400).json({
+        success: false,
+        message: 'File KTP tidak ditemukan. Silakan upload ulang KTP.'
+      });
+    }
+  }
+
+  // Proses KTP upload jika belum diproses
+  if (req.file && !secureFile) {
+    try {
+      // Simpan userId sementara untuk proses upload
+      req.body.userId = email; // Gunakan email sebagai identifier sementara
+      
+      // Panggil processKTPUpload middleware secara manual
+      await new Promise((resolve, reject) => {
+        processKTPUpload(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } catch (error) {
+      console.error('❌ [REGISTER] Error processing KTP:', error);
+      return res.status(400).json({
+        success: false,
+        message: 'Gagal memproses file KTP: ' + error.message
+      });
+    }
+  }
+
   // Validasi input
-  if (!nama || !nik || !telepon || !email || !password || !gender || !secureFile) {
+  if (!nama || !nik || !telepon || !email || !password || !gender || !req.secureFile) {
     return res.status(400).json({ 
       success: false,
-      message: 'Semua data harus diisi dengan benar' 
+      message: 'Semua data harus diisi dengan benar dan KTP harus diupload' 
     });
   }
 

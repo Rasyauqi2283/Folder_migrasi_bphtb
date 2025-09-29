@@ -233,7 +233,7 @@ function updateUIAfterSuccess(button, container, validationNumber, bookingId) {
     container.appendChild(validationElement);
     
     localStorage.setItem(`validation_${bookingId}`, validationNumber);
-    showUserNotification('Berhasil', `Data terkirim. Nomor Validasi: ${validationNumber}`, 'success');
+                    showAlert('success', `Data terkirim. Nomor Validasi: ${validationNumber}`);
 }
 
 function clearTableBody(tbody) {
@@ -394,11 +394,16 @@ function generateDropdownContent(item) {
  const pemberi = item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
  const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${pemberi})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
     return `
-        <p>No. Booking: ${item.nobooking}</p>
-        <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
-        ${pesan1}
-        ${pesan2}
-            
+        <div class="dropdown-content-wrapper">
+            <!-- Document Info Section -->
+            <div class="document-info-section">
+                <p><strong>No. Booking:</strong> ${item.nobooking || 'N/A'}</p>
+                <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+                ${pesan1}
+                ${pesan2}
+            </div>
+
+            <!-- Signature Section -->
             ${hasSignature ? `
                 <div class="signature-section">
                     <div class="form-check">
@@ -426,26 +431,44 @@ function generateDropdownContent(item) {
                     Tidak dapat menyetujui - tanda tangan belum diunggah
                 </div>
             `}
-        <br />
-        <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
-            <span class="btn-text">Simpan</span>
-            <span class="spinner" hidden>
-                <i class="fa fa-spinner fa-spin"></i>
-            </span>
-        </button>
-        <p>File Upload</p>
-        <div id="file-info-${item.nobooking}">
-            ${generateFileLink(item.akta_tanah_path, 'Akta Tanah')}
-            ${generateFileLink(item.sertifikat_tanah_path, 'Sertifikat Tanah')}
-            ${generateFileLink(item.pelengkap_path, 'File Pelengkap')}
-            ${generateFileLink(item.file_withstempel_path, 'Unduh file stempel')}
+
+            <!-- Action Button -->
+            <div class="action-buttons">
+                <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
+                    <span class="btn-text">Simpan</span>
+                    <span class="spinner" hidden>
+                        <i class="fa fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+
+            <!-- Document Links Section -->
+            <div class="document-links-section">
+                <h6 class="document-links-title">Dokumen Terkait:</h6>
+                <div class="document-links-list">
+                    ${generateFileLink(item.akta_tanah_path, 'Akta Tanah')}
+                    ${generateFileLink(item.sertifikat_tanah_path, 'Sertifikat Tanah')}
+                    ${generateFileLink(item.pelengkap_path, 'File Pelengkap')}
+                    ${generateFileLink(item.file_withstempel_path, 'Unduh file stempel')}
+                </div>
+            </div>
         </div>
     `;
 
 }
 function generateFileLink(path, label) {
-    return path ? 
-        `<p>${label}: <a href="${path}" target="_blank"><button class="btn-view">View</button></a></p>` : '';
+    if (!path) return '';
+    
+    const toHref = (p) => { return p.startsWith('/') ? p : ('/' + p); };
+    const href = toHref(path);
+    const isPdf = /\.pdf($|\?)/i.test(path);
+    
+    return `
+        <div class="document-link-item">
+            <span class="document-label">${label}:</span>
+            ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
+                    : `<a href="${href}" target="_blank"><button class="btn-view">View</button></a>`}
+        </div>`;
 }
 document.querySelectorAll('#penelitikasieTable tbody tr').forEach(row => {
     row.addEventListener('click', function() {

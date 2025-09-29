@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verifikasi Pembayaran Bank</title>
+  <!-- Universal Alert System -->
+  <link rel="stylesheet" href="../../design-n-script/design_css/universal-alert.css">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -197,16 +199,23 @@
       }
 
       async function approve(nobooking){
-        const ok = confirm(`Yakin menyetujui transaksi untuk booking ${nobooking}?\nTindakan ini akan menandai verifikasi Disetujui dan status di Bank Tercheck.`);
+        const ok = await window.universalAlert.confirm(
+            `Yakin menyetujui transaksi untuk booking ${nobooking}?\nTindakan ini akan menandai verifikasi Disetujui dan status di Bank Tercheck.`,
+            'Konfirmasi Persetujuan'
+        );
         if(!ok) return;
         await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/approve`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({}) });
         try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
         await load();
       }
       async function reject(nobooking){
+        // TODO: Implement custom input dialog for rejection reason
         const cat = prompt('Alasan penolakan (wajib):');
         if(!cat || !cat.trim()) return;
-        const ok = confirm(`Yakin menolak booking ${nobooking} dengan alasan:\n"${cat.trim()}"?\nTindakan ini akan menandai verifikasi Ditolak kepada pemilik nobooking ${nobooking}.`);
+        const ok = await window.universalAlert.confirm(
+            `Yakin menolak booking ${nobooking} dengan alasan:\n"${cat.trim()}"?\nTindakan ini akan menandai verifikasi Ditolak kepada pemilik nobooking ${nobooking}.`,
+            'Konfirmasi Penolakan'
+        );
         if(!ok) return;
         await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/reject`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ catatan: cat.trim() }) });
         try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
@@ -223,6 +232,10 @@
       document.addEventListener('DOMContentLoaded', load);
     })();
   </script>
+  
+  <!-- Universal Alert System -->
+  <script src="../../design-n-script/script_backend/universal-alert.js"></script>
+  
   <script type="module">
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
