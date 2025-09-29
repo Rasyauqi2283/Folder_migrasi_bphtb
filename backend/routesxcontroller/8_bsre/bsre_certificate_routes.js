@@ -464,11 +464,49 @@ router.post('/api/pv/upload-signature', ttdVerifMiddleware, async (req, res) => 
   }
   try {
     const userid = req.session.user.userid;
-    const url = req.processedTTD?.url;
-    const mime = req.processedTTD?.mimeType || 'image/png';
+    
+    if (!req.processedTTD) {
+      console.error('[PV TTD UPLOAD] No processedTTD found:', {
+        hasProcessedTTD: !!req.processedTTD,
+        userid: userid
+      });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'File tanda tangan wajib diupload' 
+      });
+    }
+    
+    // Use the main (large) file from processedTTD
+    const mainFile = req.processedTTD.main || req.processedTTD.large;
+    const url = mainFile?.url;
+    const mime = mainFile?.mimeType || 'image/png';
+    const size = mainFile?.size || 0;
+    
+    console.log('[PV TTD UPLOAD] Processing file data:', {
+      hasProcessedTTD: !!req.processedTTD,
+      hasMainFile: !!mainFile,
+      url: url,
+      mime: mime,
+      size: size,
+      processedTTDKeys: req.processedTTD ? Object.keys(req.processedTTD) : 'N/A'
+    });
+    
     if (!url) return res.status(400).json({ success: false, message: 'File tidak diterima' });
+    
     await pool.query(`UPDATE a_2_verified_users SET tanda_tangan_path = $1, tanda_tangan_mime = $2 WHERE userid = $3`, [url, mime, userid]);
-    return res.json({ success: true, path: url });
+    
+    const responseData = {
+      success: true,
+      message: 'Tanda tangan berhasil diupload',
+      data: {
+        path: url,
+        mimeType: mime,
+        size_kb: Math.round(size / 1024)
+      }
+    };
+    
+    console.log('[PV TTD UPLOAD] Success response:', responseData);
+    return res.json(responseData);
   } catch (e) {
     console.error('Upload signature error:', e);
     return res.status(500).json({ success: false, message: 'Gagal upload tanda tangan' });

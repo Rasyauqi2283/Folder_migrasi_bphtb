@@ -129,9 +129,24 @@ router.post('/update-profile-paraf',
           WHERE userid = $3
           RETURNING tanda_tangan_path, tanda_tangan_mime
         `;
+        // Use the main (large) file from processedTTD
+        const mainFile = req.processedTTD.main || req.processedTTD.large;
+        const url = mainFile?.url;
+        const mime = mainFile?.mimeType || 'image/png';
+        const size = mainFile?.size || 0;
+        
+        console.log('[TTD UPLOAD] Processing file data:', {
+          hasProcessedTTD: !!req.processedTTD,
+          hasMainFile: !!mainFile,
+          url: url,
+          mime: mime,
+          size: size,
+          processedTTDKeys: req.processedTTD ? Object.keys(req.processedTTD) : 'N/A'
+        });
+        
         const result = await pool.query(updateQuery, [
-          req.processedTTD.url,
-          req.processedTTD.mimeType,
+          url,
+          mime,
           req.session.user.userid
         ]);
 
@@ -144,9 +159,9 @@ router.post('/update-profile-paraf',
           success: true,
           message: 'Tanda tangan berhasil diupload',
           data: {
-            path: req.processedTTD.url,
-            mimeType: req.processedTTD.mimeType,
-            size_kb: Math.round(req.processedTTD.size / 1024)
+            path: url,
+            mimeType: mime,
+            size_kb: Math.round(size / 1024)
           }
         };
         
