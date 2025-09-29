@@ -894,7 +894,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
 
         // Query untuk mendapatkan data PPAT renewal dengan filter
         let query = `
-            SELECT DISTINCT ON (b.nobooking)
+            SELECT 
                 b.nobooking,
                 b.userid,
                 b.nama_ppat as nama_ppat,
@@ -950,7 +950,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
 
         // Get total count for pagination
         let countQuery = `
-            SELECT COUNT(DISTINCT b.nobooking) as total
+            SELECT COUNT(b.nobooking) as total
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             WHERE b.status = 'Diserahkan'
@@ -1097,6 +1097,70 @@ router.get('/test', verifyAdmin, async (req, res) => {
             message: 'Database test failed',
             error: error.message,
             stack: error.stack
+        });
+    }
+});
+
+// GET /api/admin/notification-warehouse/ppat-chart-data - Get chart data for PPAT renewal based on booking completion dates
+router.get('/ppat-chart-data', verifyAdmin, async (req, res) => {
+    try {
+        const tahun = req.query.tahun || new Date().getFullYear();
+        
+        console.log(`🔍 [ADMIN] Fetching PPAT chart data for year: ${tahun}`);
+
+        // Query untuk mendapatkan data chart berdasarkan bulan penyelesaian
+        const query = `
+            SELECT 
+                EXTRACT(MONTH FROM b.tanggal_booking) as bulan,
+                COUNT(b.nobooking) as jumlah_transaksi,
+                COALESCE(SUM(b.nilai_bphtb), 0) as total_bphtb
+            FROM pat_1_bookingsspd b
+            WHERE b.status = 'Diserahkan'
+            AND EXTRACT(YEAR FROM b.tanggal_booking) = $1
+            GROUP BY EXTRACT(MONTH FROM b.tanggal_booking)
+            ORDER BY bulan ASC
+        `;
+
+        const result = await pool.query(query, [tahun]);
+        
+        // Initialize data for all 12 months
+        const monthlyData = Array.from({ length: 12 }, (_, i) => ({
+            month: i + 1,
+            monthName: new Date(tahun, i).toLocaleDateString('id-ID', { month: 'short' }),
+            jumlah_transaksi: 0,
+            total_bphtb: 0
+        }));
+
+        // Fill in actual data
+        result.rows.forEach(row => {
+            const monthIndex = row.bulan - 1;
+            if (monthIndex >= 0 && monthIndex < 12) {
+                monthlyData[monthIndex].jumlah_transaksi = parseInt(row.jumlah_transaksi);
+                monthlyData[monthIndex].total_bphtb = parseFloat(row.total_bphtb || 0);
+            }
+        });
+
+        console.log(`✅ [ADMIN] Found chart data for ${tahun}:`, monthlyData);
+
+        res.json({
+            success: true,
+            data: monthlyData,
+            tahun: tahun,
+            summary: {
+                total_transaksi: monthlyData.reduce((sum, month) => sum + month.jumlah_transaksi, 0),
+                total_bphtb: monthlyData.reduce((sum, month) => sum + month.total_bphtb, 0),
+                total_bphtb_formatted: `Rp ${monthlyData.reduce((sum, month) => sum + month.total_bphtb, 0).toLocaleString('id-ID')}`
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [ADMIN] Error fetching PPAT chart data:', error);
+        console.error('❌ [ADMIN] Error stack:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengambil data chart PPAT',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });

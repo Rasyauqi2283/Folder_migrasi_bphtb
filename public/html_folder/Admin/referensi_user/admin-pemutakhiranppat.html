@@ -451,46 +451,116 @@ for (let year = currentYear; year >= 2010; year--) {
   yearSelect.appendChild(option);
 }
 
-// Initialize chart
+// Initialize chart with empty data
+let taxChart;
 const ctx = document.getElementById('taxChart').getContext('2d');
-const taxChart = new Chart(ctx, {
-  type: 'bar',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    datasets: [{
-      label: 'Nilai Pajak',
-      data: [''],
-      backgroundColor: 'rgba(67, 97, 238, 0.7)',
-      borderColor: 'rgba(67, 97, 238, 1)',
-      borderWidth: 1
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: function(value) {
-            return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-          }
-        }
-      }
+
+function initializeChart() {
+  taxChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [{
+        label: 'Nilai Pajak',
+        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        backgroundColor: 'rgba(67, 97, 238, 0.7)',
+        borderColor: 'rgba(67, 97, 238, 1)',
+        borderWidth: 1
+      }]
     },
-    plugins: {
-      tooltip: {
-        callbacks: {
-          label: function(context) {
-            return 'Nilai: Rp ' + context.raw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return 'Rp ' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            }
           }
         }
       },
-      legend: {
-        display: false
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'Nilai: Rp ' + context.raw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            }
+          }
+        },
+        legend: {
+          display: false
+        }
       }
     }
+  });
+}
+
+// Load chart data from database
+async function loadChartData() {
+  try {
+    const currentYear = document.getElementById('yearSelect').value;
+    console.log('🔍 Loading chart data for year:', currentYear);
+    
+    const response = await fetch(`/api/admin/notification-warehouse/ppat-chart-data?tahun=${currentYear}`, {
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load chart data');
+    }
+    
+    console.log('📊 Chart data loaded:', data);
+    
+    // Update chart with real data
+    if (taxChart && data.data) {
+      const monthlyData = data.data.map(month => month.total_bphtb);
+      taxChart.data.datasets[0].data = monthlyData;
+      taxChart.update();
+      
+      // Update summary if available
+      if (data.summary) {
+        const summaryElement = document.querySelector('.chart-summary');
+        if (summaryElement) {
+          summaryElement.innerHTML = `
+            <div class="summary-item">
+              <span class="label">Total Transaksi:</span>
+              <span class="value">${data.summary.total_transaksi}</span>
+            </div>
+            <div class="summary-item">
+              <span class="label">Total Nilai BPHTB:</span>
+              <span class="value">${data.summary.total_bphtb_formatted}</span>
+            </div>
+          `;
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading chart data:', error);
+    // Show error message or keep default empty chart
   }
+}
+
+// Initialize chart when page loads
+initializeChart();
+
+// Load chart data when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  loadChartData();
+});
+
+// Year select event listener
+document.getElementById('yearSelect').addEventListener('change', () => {
+  loadChartData();
+  loadPPATRenewalData(); // Also reload table data
 });
 
 // Chart tab switching
