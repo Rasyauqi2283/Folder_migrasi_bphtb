@@ -571,7 +571,6 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
             SELECT DISTINCT ON (pv1.nobooking)
                 pv1.nobooking,
                 pv1.no_registrasi,
-                pv1.updated_at,
                 vu.special_field,
                 vu.ppatk_khusus,
                 b.noppbb,
@@ -583,7 +582,7 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
                 pv1.status as p_verifikasi_status,
                 pv1.trackstatus as p_verifikasi_trackstatus,
                 pv1.pemberi_persetujuan as p_verifikasi_pemberi,
-                pv1.updated_at as p_verifikasi_updated,
+                COALESCE(pv1.updated_at, pv1.created_at) as p_verifikasi_updated,
                 -- Status dari p_3_clear_to_paraf
                 p3.status as p_clear_status,
                 p3.trackstatus as p_clear_trackstatus,
@@ -621,7 +620,7 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
         }
 
         // Add ordering and pagination
-        query += ` ORDER BY pv1.no_registrasi ASC, pv1.updated_at DESC`;
+        query += ` ORDER BY pv1.no_registrasi ASC, COALESCE(pv1.updated_at, pv1.created_at) DESC`;
         
         paramCount++;
         query += ` LIMIT $${paramCount}`;
@@ -750,7 +749,6 @@ router.get('/lsb-ppat', verifyAdmin, async (req, res) => {
                 vu.divisi as ppat_divisi,
                 lsb.status as lsb_status,
                 lsb.trackstatus as lsb_trackstatus,
-                lsb.nama_penerima as lsb_penerima,
                 lsb.tanggal_serah as lsb_tanggal_serah
             FROM lsb_1_serah_berkas lsb
             LEFT JOIN pat_1_bookingsspd b ON lsb.nobooking = b.nobooking
