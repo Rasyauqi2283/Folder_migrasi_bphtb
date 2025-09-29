@@ -748,8 +748,7 @@ router.get('/lsb-ppat', verifyAdmin, async (req, res) => {
                 vu.nama as ppat_nama,
                 vu.divisi as ppat_divisi,
                 lsb.status as lsb_status,
-                lsb.trackstatus as lsb_trackstatus,
-                lsb.tanggal_serah as lsb_tanggal_serah
+                lsb.trackstatus as lsb_trackstatus
             FROM lsb_1_serah_berkas lsb
             LEFT JOIN pat_1_bookingsspd b ON lsb.nobooking = b.nobooking
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
