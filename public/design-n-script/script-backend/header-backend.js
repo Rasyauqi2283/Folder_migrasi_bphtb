@@ -1,8 +1,42 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+      // Function untuk menentukan path yang benar ke profile.html berdasarkan lokasi saat ini
+      function getProfilePath() {
+        const currentPath = window.location.pathname;
+        console.log('🔍 [HEADER] Current path:', currentPath);
+        
+        // Jika berada di root public
+        if (currentPath === '/' || currentPath === '/login.html') {
+          return 'profile.html';
+        }
+        
+        // Jika berada di html_folder (Admin, PPATK, Bank, dll)
+        if (currentPath.includes('/html_folder/')) {
+          // Hitung berapa level deep dari html_folder
+          const pathParts = currentPath.split('/');
+          const htmlFolderIndex = pathParts.indexOf('html_folder');
+          const levelsDeep = pathParts.length - htmlFolderIndex - 2; // -2 untuk file dan html_folder
+          
+          // Generate relative path
+          let relativePath = '';
+          for (let i = 0; i < levelsDeep; i++) {
+            relativePath += '../';
+          }
+          relativePath += 'profile.html';
+          
+          console.log('🔍 [HEADER] Calculated profile path:', relativePath);
+          return relativePath;
+        }
+        
+        // Default fallback
+        return '../../../profile.html';
+      }
+
       // Tombol profile akan mengarahkan ke halaman profil
       document.getElementById("profileButton").addEventListener("click", () => {
-        window.location.href = "profile.html"; // Arahkan ke profile.html
+        const profilePath = getProfilePath();
+        console.log('🔍 [HEADER] Navigating to profile:', profilePath);
+        window.location.href = profilePath;
       });
     //
     //
