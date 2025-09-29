@@ -143,7 +143,7 @@ router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, as
   console.log(`📁 [REGISTER] Secure file info:`, {
     hasSecureFile: !!secureFile,
     fileId: secureFile?.fileId,
-    userId: email
+    userEmail: email
   });
 
   // Validasi input

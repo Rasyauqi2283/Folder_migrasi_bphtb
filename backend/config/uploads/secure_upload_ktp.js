@@ -60,7 +60,7 @@ const secureFileFilter = (req, file, cb) => {
 export const secureUploadKTP = multer({
     storage: tempStorage,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
+        fileSize: 3 * 1024 * 1024, // 3MB
         files: 1 // Hanya 1 file
     },
     fileFilter: secureFileFilter
@@ -116,7 +116,7 @@ export const processKTPUpload = async (req, res, next) => {
             
             return res.status(400).json({
                 success: false,
-                message: 'File KTP tidak valid',
+                message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.',
                 errors: validation.errors
             });
         }
@@ -155,7 +155,7 @@ export const processKTPUpload = async (req, res, next) => {
         
         res.status(500).json({
             success: false,
-            message: 'Terjadi kesalahan saat memproses file KTP'
+            message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.'
         });
     }
 };

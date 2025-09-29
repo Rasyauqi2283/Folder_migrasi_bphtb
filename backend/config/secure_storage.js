@@ -288,10 +288,10 @@ export async function logFileAccess(fileId, userId, requesterRole, action, req) 
 export function validateKTPFile(file) {
     const errors = [];
     
-    // Validasi ukuran file (maksimal 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validasi ukuran file (maksimal 3MB)
+    const maxSize = 3 * 1024 * 1024; // 3MB
     if (file.size > maxSize) {
-        errors.push('Ukuran file terlalu besar (maksimal 5MB)');
+        errors.push('Ukuran file terlalu besar (maksimal 3MB)');
     }
     
     // Validasi tipe MIME
