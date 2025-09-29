@@ -20,6 +20,11 @@
 }
 
 .photo-overlay-content {
+    position: fixed;              /* tempelkan ke viewport */
+    top: 50%;                     /* titik referensi di tengah vertikal */
+    left: 50%;                    /* titik referensi di tengah horizontal */
+    transform: translate(-50%, -50%); /* geser balik agar pusat elemen pas */
+    
     background: linear-gradient(135deg, #4facfe, #00f2fe);
     border-radius: 20px;
     padding: 30px;
@@ -28,8 +33,9 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    position: relative;
+    z-index: 9999;                /* pastikan di atas layer lain */
 }
+
 
 .photo-overlay h3 {
     color: white;
