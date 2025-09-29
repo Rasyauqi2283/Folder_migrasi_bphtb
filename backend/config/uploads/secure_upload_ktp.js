@@ -115,8 +115,7 @@ export const processKTPUpload = async (req, res, next) => {
         console.log('✅ [SECURE_UPLOAD] File upload successful:', {
             filename: req.file.originalname,
             size: req.file.size,
-            mimetype: req.file.mimetype,
-            retries: retryCount - 1
+            mimetype: req.file.mimetype
         });
         
         // Validasi file yang lebih ketat
