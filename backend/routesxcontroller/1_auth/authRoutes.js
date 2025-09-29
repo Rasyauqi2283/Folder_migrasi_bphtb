@@ -134,8 +134,54 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Middleware untuk menangani multer errors
+const handleMulterError = (err, req, res, next) => {
+  console.error('🔒 [MULTER_ERROR] Multer error occurred:', err);
+  
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'File KTP terlalu besar. Maksimal 3MB diperbolehkan.'
+    });
+  }
+  
+  if (err.code === 'LIMIT_FILE_COUNT') {
+    return res.status(400).json({
+      success: false,
+      message: 'Hanya satu file KTP yang diperbolehkan.'
+    });
+  }
+  
+  if (err.message === 'INVALID_MIME_TYPE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Format file tidak didukung. Hanya JPEG dan PNG yang diperbolehkan.'
+    });
+  }
+  
+  if (err.message === 'INVALID_FILE_EXTENSION') {
+    return res.status(400).json({
+      success: false,
+      message: 'Ekstensi file tidak valid. Gunakan .jpg, .jpeg, atau .png'
+    });
+  }
+  
+  if (err.message === 'FILE_VALIDATION_ERROR') {
+    return res.status(400).json({
+      success: false,
+      message: 'File KTP gagal validasi. Silakan coba dengan file lain.'
+    });
+  }
+  
+  // Default multer error
+  return res.status(400).json({
+    success: false,
+    message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.'
+  });
+};
+
 // 2. Register endpoint (check ✔)
-router.post('/register', secureUploadKTP.single('fotoktp'), processKTPUpload, async (req, res) => {
+router.post('/register', secureUploadKTP.single('fotoktp'), handleMulterError, processKTPUpload, async (req, res) => {
   const { nama, nik, telepon, email, password, gender } = req.body;
   const secureFile = req.secureFile;  // File yang sudah dienkripsi
 

@@ -37,22 +37,32 @@ const tempStorage = multer.diskStorage({
 // File filter yang lebih ketat
 const secureFileFilter = (req, file, cb) => {
     try {
+        console.log('🔍 [SECURE_FILTER] Validating file:', {
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+        });
+        
         // Validasi MIME type
         const allowedMimes = ['image/jpeg', 'image/png', 'image/jpg'];
         if (!allowedMimes.includes(file.mimetype)) {
-            return cb(new Error('Format file tidak didukung. Hanya JPEG dan PNG yang diperbolehkan.'), false);
+            console.error('❌ [SECURE_FILTER] Invalid MIME type:', file.mimetype);
+            return cb(new Error('INVALID_MIME_TYPE'), false);
         }
         
         // Validasi ekstensi
         const allowedExtensions = ['.jpg', '.jpeg', '.png'];
         const fileExtension = path.extname(file.originalname).toLowerCase();
         if (!allowedExtensions.includes(fileExtension)) {
-            return cb(new Error('Ekstensi file tidak valid.'), false);
+            console.error('❌ [SECURE_FILTER] Invalid file extension:', fileExtension);
+            return cb(new Error('INVALID_FILE_EXTENSION'), false);
         }
         
+        console.log('✅ [SECURE_FILTER] File validation passed');
         cb(null, true);
     } catch (error) {
-        cb(new Error('Terjadi kesalahan saat validasi file.'), false);
+        console.error('❌ [SECURE_FILTER] Validation error:', error);
+        cb(new Error('FILE_VALIDATION_ERROR'), false);
     }
 };
 
@@ -147,15 +157,42 @@ export const processKTPUpload = async (req, res, next) => {
         
     } catch (error) {
         console.error('🔒 [SECURE] Error processing KTP upload:', error);
+        console.error('🔒 [SECURE] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            email: req.body?.email,
+            hasFile: !!req.file,
+            fileDetails: req.file ? {
+                originalname: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size
+            } : null
+        });
         
         // Hapus file temporary jika ada error
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
         
-        res.status(500).json({
+        // Return specific error message based on error type
+        let errorMessage = 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.';
+        let statusCode = 500;
+        
+        if (error.message.includes('Invalid userId')) {
+            errorMessage = 'Email tidak valid untuk upload file KTP.';
+            statusCode = 400;
+        } else if (error.message.includes('Gagal mengenkripsi')) {
+            errorMessage = 'Gagal memproses file KTP. Silakan coba lagi.';
+            statusCode = 500;
+        } else if (error.message.includes('File path is required')) {
+            errorMessage = 'File KTP tidak terdeteksi. Silakan pilih file yang valid.';
+            statusCode = 400;
+        }
+        
+        res.status(statusCode).json({
             success: false,
-            message: 'File KTP gagal diupload. Silakan coba lagi dengan file yang lebih kecil atau format yang berbeda.'
+            message: errorMessage,
+            debug: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };

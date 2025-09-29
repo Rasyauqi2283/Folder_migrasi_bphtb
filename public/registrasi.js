@@ -533,13 +533,13 @@ function validateForm() {
     if (!fotoktp || fotoktp.size === 0) {
         alert("Foto KTP harus diupload!");
         isValid = false;
-    } else if (fotoktp.size > 5 * 1024 * 1024) {
-        alert("Ukuran file KTP tidak boleh lebih dari 5MB!");
+    } else if (fotoktp.size > 3 * 1024 * 1024) {
+        alert("Ukuran file KTP tidak boleh lebih dari 3MB!");
         isValid = false;
     } else {
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
         if (!allowedTypes.includes(fotoktp.type)) {
-            alert("Format file KTP tidak didukung! Gunakan JPG, PNG, atau GIF.");
+            alert("Format file KTP tidak didukung! Gunakan JPG atau PNG.");
             isValid = false;
         }
     }

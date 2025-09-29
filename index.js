@@ -241,8 +241,8 @@ console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 // Body parsers must come before API routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/faqs', faqRoutes);
