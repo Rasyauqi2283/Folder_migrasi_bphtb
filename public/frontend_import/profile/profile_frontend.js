@@ -542,6 +542,14 @@ export class ProfileController {
     this.updateField('.userid', user.userid || user.id || 'N/A');
     this.updateField('.nama', user.nama || user.name || 'N/A');
     this.updateField('.divisi', user.divisi || 'N/A');
+    
+    // Hide divisi label for PPAT and PPATS
+    const divisiLabel = document.querySelector('.divisi-label');
+    if (divisiLabel && user.divisi && ['PPAT', 'PPATS'].includes(user.divisi)) {
+      divisiLabel.style.display = 'none';
+    } else if (divisiLabel) {
+      divisiLabel.style.display = 'block';
+    }
     this.updateField('#email', user.email || 'N/A');
     this.updateField('#telepon', user.telepon || user.phone || 'N/A');
     this.updateField('#username', user.username || user.user_name || 'N/A');
