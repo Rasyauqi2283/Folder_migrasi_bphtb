@@ -54,7 +54,18 @@ export function getNotificationBehavior(divisi) {
 // Function to log notification setup for debugging
 export function logNotificationSetup(divisi, userId) {
     const behavior = getNotificationBehavior(divisi);
-    console.log(`🔔 Notification Setup for ${divisi} (${userId}):`, behavior);
+    const isAdminStatusPage = window.location.pathname.includes('admin-status-ppat.html');
+    const panelEnabled = behavior.hasPanel && isAdminStatusPage;
+    
+    console.log(`🔔 Notification Setup for ${divisi} (${userId}):`, {
+        ...behavior,
+        currentPage: window.location.pathname,
+        isAdminStatusPage,
+        panelEnabled,
+        description: panelEnabled ? 
+            'Panel enabled - admin-status-ppat.html page' : 
+            'Panel disabled - not on admin-status-ppat.html page'
+    });
     return behavior;
 }
 

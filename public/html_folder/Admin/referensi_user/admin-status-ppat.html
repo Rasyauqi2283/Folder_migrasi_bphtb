@@ -240,7 +240,7 @@
     </div>
 
     <div style="max-height:520px; overflow:auto;">
-      <table class="status-table" role="table" aria-label="Tabel Status PPAT">
+      <table class="status-table" role="table" aria-label="Tabel Status PPAT" id="userTable">
         <thead>
           <tr><th>Nama</th><th>Status</th></tr>
         </thead>
@@ -265,7 +265,7 @@
       <button id="reloadUsers">Muat Ulang</button>
     </div>
     <div class="table-responsive">
-      <table class="excel-table gothic-table" id="userTable">
+      <table class="excel-table gothic-table" id="statusTable">
         <thead>
           <tr>
             <th>Nama</th>
@@ -1066,7 +1066,16 @@ renderNotifications();
   </script>
   <script type="module">
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
-    initNotifications();
+    
+    // Initialize notifications with panel explicitly enabled for this page
+    initNotifications({
+      createPanel: true, // Force enable panel for this page
+      panelOptions: {
+        width: '360px',
+        right: '20px',
+        maxItems: 200
+      }
+    });
   </script>
 </body>
 </html>

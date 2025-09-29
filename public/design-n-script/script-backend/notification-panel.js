@@ -9,8 +9,12 @@ export default class NotificationPanel {
         this.container = null;
         this.listEl = null;
         this.countEl = null;
+        this.isEnabled = false; // Default disabled
         this.initStyles();
-        this.createPanel();
+        // Only create panel if enabled
+        if (this.isEnabled) {
+            this.createPanel();
+        }
     }
 
     initStyles() {
@@ -92,6 +96,11 @@ export default class NotificationPanel {
     }
 
     addNotification(notification) {
+        // Only add if panel is enabled and container exists
+        if (!this.isEnabled || !this.container || !this.listEl) {
+            return;
+        }
+        
         // prepend
         const itemEl = this._buildItem(notification);
         this.listEl.insertBefore(itemEl, this.listEl.firstChild);
@@ -150,7 +159,7 @@ export default class NotificationPanel {
     }
 
     _updateCount() {
-        if (!this.countEl) return;
+        if (!this.isEnabled || !this.countEl || !this.listEl) return;
         const count = this.listEl.querySelectorAll('.notif-item').length;
         this.countEl.textContent = String(count);
         if (count === 0 && this.container) {
@@ -174,10 +183,37 @@ export default class NotificationPanel {
     }
 
     static init(options) {
+        // Check if we're on admin-status-ppat.html page
+        const isAdminStatusPage = window.location.pathname.includes('admin-status-ppat.html');
+        
         if (!window.notificationPanel) {
-            window.notificationPanel = new NotificationPanel(options);
+            // Enable panel only for admin-status-ppat.html
+            const panelOptions = {
+                ...options,
+                isEnabled: isAdminStatusPage
+            };
+            window.notificationPanel = new NotificationPanel(panelOptions);
         }
         return window.notificationPanel;
+    }
+
+    // Method to enable panel programmatically
+    enable() {
+        if (!this.isEnabled) {
+            this.isEnabled = true;
+            this.createPanel();
+        }
+    }
+
+    // Method to disable panel
+    disable() {
+        if (this.isEnabled && this.container) {
+            this.container.remove();
+            this.container = null;
+            this.listEl = null;
+            this.countEl = null;
+            this.isEnabled = false;
+        }
     }
 }
 

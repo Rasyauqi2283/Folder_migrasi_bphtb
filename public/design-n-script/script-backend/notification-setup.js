@@ -22,8 +22,12 @@ export async function initNotifications(options = {}) {
         const userId = user.id || user.userid;
         const divisi = user.divisi || '';
 
+        // Check if we're on admin-status-ppat.html page
+        const isAdminStatusPage = window.location.pathname.includes('admin-status-ppat.html');
+        
         // Determine if user should have notification panel
-        const shouldCreatePanel = createPanel !== null ? createPanel : isAdminDivisi(divisi);
+        // Panel only enabled for admin-status-ppat.html page
+        const shouldCreatePanel = createPanel !== null ? createPanel : (isAdminDivisi(divisi) && isAdminStatusPage);
         
         // Log notification setup for debugging
         logNotificationSetup(divisi, userId);
@@ -31,14 +35,14 @@ export async function initNotifications(options = {}) {
         // UI pop card (muncul kanan atas, auto-create jika container tidak ada)
         NotificationUI.init(containerId);
 
-        // Panel persisten (kanan) - HANYA untuk admin
+        // Panel persisten (kanan) - HANYA untuk admin-status-ppat.html
         let panel = null;
         if (shouldCreatePanel) {
             panel = NotificationPanel.init(panelOptions);
             await panel.loadHistory(userId, historyLimit);
-            console.log('✅ Notification panel created for admin user');
+            console.log('✅ Notification panel created for admin-status-ppat.html page');
         } else {
-            console.log('ℹ️ Notification panel disabled for non-admin divisi');
+            console.log('ℹ️ Notification panel disabled - not on admin-status-ppat.html page');
         }
 
         // Poller (long polling)
@@ -62,9 +66,9 @@ export async function initNotifications(options = {}) {
                 if (bookingId) seenBookings.add(key);
             } catch (_) {}
 
-            // Different behavior based on divisi
-            if (isAdminDivisi(divisi)) {
-                // Admin: Show in UI card + Panel
+            // Different behavior based on divisi and page
+            if (isAdminDivisi(divisi) && isAdminStatusPage) {
+                // Admin on admin-status-ppat.html: Show in UI card + Panel
                 if (window.notificationUI) {
                     window.notificationUI.showNotification({
                         id: notif.id,
@@ -77,7 +81,19 @@ export async function initNotifications(options = {}) {
                 if (window.notificationPanel) {
                     window.notificationPanel.addNotification(notif);
                 }
-                console.log('🔔 Admin notification: UI card + Panel');
+                console.log('🔔 Admin notification on admin-status-ppat.html: UI card + Panel');
+            } else if (isAdminDivisi(divisi)) {
+                // Admin on other pages: Show in UI card only (no panel)
+                if (window.notificationUI) {
+                    window.notificationUI.showNotification({
+                        id: notif.id,
+                        title: notif.title,
+                        message: notif.message,
+                        type: 'info',
+                        booking_id: notif.booking_id
+                    });
+                }
+                console.log('🔔 Admin notification on other pages: UI card only');
             } else if (isPollerOnlyDivisi(divisi)) {
                 // Poller-only divisi: Show in UI card only (no panel)
                 if (window.notificationUI) {
