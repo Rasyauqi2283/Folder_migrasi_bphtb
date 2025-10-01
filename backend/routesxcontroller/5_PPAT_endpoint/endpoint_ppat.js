@@ -45,11 +45,11 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         isPdf = publicIdWithExt.toLowerCase().endsWith('.pdf');
         
         console.log('📁 [PROXY] Extracted public_id:', publicIdWithExt);
-        console.log('📁 [PROXY] File type:', isPdf ? 'PDF (raw)' : 'Image');
-        console.log('📁 [PROXY] Resource type:', isPdf ? 'raw' : 'image');
+        console.log('📁 [PROXY] File type:', isPdf ? 'PDF' : 'Image');
+        console.log('📁 [PROXY] Resource type: auto (let Cloudinary detect)');
         
-        // SOLUSI: Gunakan Cloudinary utils.sign_url untuk PDF/RAW files
-        const resourceType = isPdf ? 'raw' : 'image';
+        // Use auto resource type for all files
+        const resourceType = 'auto';
         
         console.log('📥 [PROXY] Downloading file via Cloudinary API...');
         
@@ -222,7 +222,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
 // Endpoint untuk memperbaiki ACL file yang sudah ter-upload
 app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
     try {
-        const { publicId, resourceType = 'raw' } = req.body;
+        const { publicId, resourceType = 'auto' } = req.body;
         
         if (!publicId) {
             return res.status(400).json({ 
@@ -298,7 +298,7 @@ app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
             error: error.message,
             details: {
                 publicId: req.body.publicId,
-                resourceType: req.body.resourceType || 'raw'
+                resourceType: req.body.resourceType || 'auto'
             }
         });
     }
@@ -324,7 +324,7 @@ app.post('/api/files/fix-cloudinary-acl-batch', async (req, res) => {
         
         for (const file of files) {
             try {
-                const { publicId, resourceType = 'raw' } = file;
+                const { publicId, resourceType = 'auto' } = file;
                 
                 console.log('🔧 [ACL-FIX-BATCH] Processing:', publicId);
                 

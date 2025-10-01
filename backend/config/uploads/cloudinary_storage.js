@@ -105,7 +105,8 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     const uploadParams = {
       folder: 'bappenda/dokumen-sspd',
       public_id: publicId,
-      resource_type: isPdf ? 'raw' : 'image',
+      // Let Cloudinary auto-detect resource type
+      resource_type: 'auto',
       format: ext,
       // Force public access - multiple methods
       access_mode: 'public',
