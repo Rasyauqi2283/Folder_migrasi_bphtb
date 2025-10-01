@@ -23,4 +23,3 @@ export const uploadFile = async (filePath, customName) => {
   };
 
 export default cloudinary;
-export { uploadFile };
