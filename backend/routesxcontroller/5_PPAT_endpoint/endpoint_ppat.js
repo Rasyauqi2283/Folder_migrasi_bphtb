@@ -708,6 +708,19 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
 
 // ENDPOINT BARU: Upload ke Cloudinary
 app.post('/api/ppatk_upload-cloudinary',
+  // Add middleware to handle JSON parsing errors
+  (req, res, next) => {
+    // Ensure proper content type handling
+    if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+      // Let multer handle multipart data
+      next();
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Content-Type must be multipart/form-data for file upload'
+      });
+    }
+  },
   (req, res, next) => {
     console.log('🌐 [CLOUDINARY-ENDPOINT] Starting file upload process...');
     console.log('🌐 [CLOUDINARY-ENDPOINT] Railway deployment info:', {
@@ -737,19 +750,42 @@ app.post('/api/ppatk_upload-cloudinary',
       { name: 'pelengkap', maxCount: 1 }
     ])(req, res, (uploadErr) => {
       if (uploadErr) {
-        console.error('❌ [CLOUDINARY-ENDPOINT] Upload error:', {
+        // Enhanced error logging
+        console.error('❌ [CLOUDINARY-ENDPOINT] Upload error details:', {
           error: uploadErr.message,
           code: uploadErr.code,
           field: uploadErr.field,
+          stack: uploadErr.stack,
+          name: uploadErr.name,
+          // Check if it's a JSON parsing error
+          isJsonError: uploadErr.message?.includes('JSON') || uploadErr.message?.includes('Unexpected token'),
           railway_context: {
             RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
             RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
             timestamp: new Date().toISOString()
           }
         });
-        return res.status(400).json({ 
+        
+        // Handle different types of errors
+        let errorMessage = 'Error uploading files to Cloudinary';
+        let statusCode = 400;
+        
+        if (uploadErr.message?.includes('JSON') || uploadErr.message?.includes('Unexpected token')) {
+          errorMessage = 'Invalid response from Cloudinary - possible configuration issue';
+          statusCode = 500;
+        } else if (uploadErr.code === 'LIMIT_FILE_SIZE') {
+          errorMessage = 'File size too large. Maximum size is 5MB.';
+        } else if (uploadErr.code === 'LIMIT_FILE_COUNT') {
+          errorMessage = 'Too many files uploaded.';
+        } else if (uploadErr.code === 'LIMIT_UNEXPECTED_FILE') {
+          errorMessage = 'Unexpected file field.';
+        }
+        
+        return res.status(statusCode).json({ 
           success: false, 
-          message: uploadErr.message || 'Error uploading files to Cloudinary' 
+          message: errorMessage,
+          details: uploadErr.message,
+          code: uploadErr.code
         });
       }
       

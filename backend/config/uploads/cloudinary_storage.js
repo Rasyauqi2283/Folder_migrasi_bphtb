@@ -34,6 +34,7 @@ console.log('🌐 [CLOUDINARY-STORAGE] Cloudinary Config:', {
 const cloudinaryMixedStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
+    try {
     console.log('📤 [CLOUDINARY-UPLOAD] Starting upload process...');
     console.log('📤 [CLOUDINARY-UPLOAD] Railway context:', {
       RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
@@ -152,31 +153,57 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       },
       tags: [userid, docType, sequenceNumber, ppatk_khusus, currentYear.toString(), 'bappenda-sspd']
     };
+    } catch (error) {
+      console.error('❌ [CLOUDINARY-UPLOAD] Error in params function:', error);
+      throw error;
+    }
   }
 });
 
 // Multer middleware dengan Cloudinary storage
 export const mixedCloudinaryUpload = multer({
   storage: cloudinaryMixedStorage,
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-    const fileExtension = path.extname(file.originalname).toLowerCase();
-    
-    const isValidMimeType = allowed.includes(file.mimetype);
-    const isValidExtension = ['.pdf', '.jpg', '.jpeg', '.png'].includes(fileExtension);
-    
-    if (isValidMimeType && isValidExtension) {
-      cb(null, true);
-    } else {
-      console.log('❌ [CLOUDINARY] File rejected:', {
+  fileFilter: (req, file, cb) => {
+    try {
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      const fileExtension = path.extname(file.originalname).toLowerCase();
+      
+      const isValidMimeType = allowed.includes(file.mimetype);
+      const isValidExtension = ['.pdf', '.jpg', '.jpeg', '.png'].includes(fileExtension);
+      
+      console.log('🔍 [CLOUDINARY] File validation:', {
         filename: file.originalname,
         mimetype: file.mimetype,
-        extension: fileExtension
+        extension: fileExtension,
+        isValidMimeType,
+        isValidExtension,
+        userid: req.session?.user?.userid || 'no-session'
       });
-      cb(new Error(`Format file tidak didukung. Gunakan PDF, JPG, JPEG, atau PNG.`), false);
+      
+      if (isValidMimeType && isValidExtension) {
+        cb(null, true);
+      } else {
+        console.log('❌ [CLOUDINARY] File rejected:', {
+          filename: file.originalname,
+          mimetype: file.mimetype,
+          extension: fileExtension
+        });
+        cb(new Error(`Format file tidak didukung. Gunakan PDF, JPG, JPEG, atau PNG.`), false);
+      }
+    } catch (error) {
+      console.error('❌ [CLOUDINARY] File filter error:', error);
+      cb(error, false);
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  limits: { 
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 3 // Maximum 3 files
+  },
+  // Add error handling for multer
+  onError: (err, next) => {
+    console.error('❌ [CLOUDINARY] Multer error:', err);
+    next(err);
+  }
 });
 
 // Helper function untuk rename file di Cloudinary
