@@ -94,8 +94,21 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         if (isPdf) {
             console.log('🔐 [PROXY] Fetching RAW file with authentication...');
             
-            // Generate authenticated download URL
-            const authUrl = `https://${process.env.CLOUDINARY_API_KEY}:${process.env.CLOUDINARY_API_SECRET}@res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicIdWithExt}`;
+            const { utils } = cloudinary;
+
+            // generate signed URL (valid for 1 hour)
+            const authUrl = utils.sign_url(
+              `raw/upload/${publicIdWithExt}`,
+              {
+                resource_type: 'raw',
+                type: 'upload',
+                secure: true,
+                sign_url: true,
+                expires_at: Math.floor(Date.now() / 1000) + 3600, // expired in 1 hour
+              }
+            );
+
+            console.log('🔐 [PROXY] Signed Auth URL:', authUrl);
             
             response = await axios({
                 method: 'GET',
