@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import pool from '../../../db.js';
+import { pool } from '../../../db.js';
 import { generateSignedUrl } from '../../config/cloudinary/cloudinary.js';
 const router = express.Router();
 
