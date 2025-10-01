@@ -10,11 +10,21 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
     try {
         const { url } = req.query;
         
+        console.log('🔄 [CLOUDINARY-PROXY] Starting proxy request...');
+        console.log('🔄 [CLOUDINARY-PROXY] Railway context:', {
+            RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+            RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+            NODE_ENV: process.env.NODE_ENV || 'development',
+            timestamp: new Date().toISOString(),
+            endpoint: '/api/files/cloudinary-proxy'
+        });
+        
         if (!url) {
+            console.log('❌ [CLOUDINARY-PROXY] Missing URL parameter');
             return res.status(400).json({ success: false, message: 'URL parameter required' });
         }
 
-        console.log('🔄 [PROXY] Fetching file from Cloudinary:', url);
+        console.log('🔄 [CLOUDINARY-PROXY] Fetching file from Cloudinary:', url);
 
         // Decode URL
         const decodedUrl = decodeURIComponent(url);
@@ -607,7 +617,26 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
 // ENDPOINT BARU: Upload ke Cloudinary
 app.post('/api/ppatk_upload-cloudinary',
   (req, res, next) => {
-    console.log('🌐 [CLOUDINARY] Starting file upload process...');
+    console.log('🌐 [CLOUDINARY-ENDPOINT] Starting file upload process...');
+    console.log('🌐 [CLOUDINARY-ENDPOINT] Railway deployment info:', {
+      RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+      RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      endpoint: '/api/ppatk_upload-cloudinary'
+    });
+    console.log('🌐 [CLOUDINARY-ENDPOINT] Request info:', {
+      method: req.method,
+      url: req.url,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent'],
+        'content-length': req.headers['content-length']
+      },
+      hasSession: !!req.session,
+      hasUser: !!req.session?.user,
+      userid: req.session?.user?.userid || 'no-session'
+    });
     
     // Gunakan Cloudinary storage
     mixedCloudinaryUpload.fields([
@@ -616,14 +645,30 @@ app.post('/api/ppatk_upload-cloudinary',
       { name: 'pelengkap', maxCount: 1 }
     ])(req, res, (uploadErr) => {
       if (uploadErr) {
-        console.error('❌ [CLOUDINARY] Upload error:', uploadErr);
+        console.error('❌ [CLOUDINARY-ENDPOINT] Upload error:', {
+          error: uploadErr.message,
+          code: uploadErr.code,
+          field: uploadErr.field,
+          railway_context: {
+            RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+            RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+            timestamp: new Date().toISOString()
+          }
+        });
         return res.status(400).json({ 
           success: false, 
           message: uploadErr.message || 'Error uploading files to Cloudinary' 
         });
       }
       
-      console.log('✅ [CLOUDINARY] Files uploaded successfully:', req.files);
+      console.log('✅ [CLOUDINARY-ENDPOINT] Files uploaded successfully:', {
+        files: req.files,
+        railway_context: {
+          RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+          RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+          timestamp: new Date().toISOString()
+        }
+      });
       next();
     });
   }, async (req, res) => {
@@ -695,10 +740,17 @@ app.post('/api/ppatk_upload-cloudinary',
         const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.proxy_path || null;
         const pelengkapUrl = uploadedFiles.pelengkap?.proxy_path || null;
 
-        console.log('📁 [CLOUDINARY] Final URLs for database:', {
+        console.log('📁 [CLOUDINARY-ENDPOINT] Final URLs for database:', {
             akta: aktaTanahUrl,
             sertifikat: sertifikatTanahUrl,
-            pelengkap: pelengkapUrl
+            pelengkap: pelengkapUrl,
+            railway_context: {
+                RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+                RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+                nobooking: nobooking,
+                userid: userid,
+                timestamp: new Date().toISOString()
+            }
         });
 
         // Cek apakah nobooking ada di database
@@ -724,17 +776,31 @@ app.post('/api/ppatk_upload-cloudinary',
 
         const values = [aktaTanahUrl, sertifikatTanahUrl, pelengkapUrl, nobooking];
 
-        console.log('💾 [DB] Updating booking with proxy URLs:', {
+        console.log('💾 [CLOUDINARY-ENDPOINT] Updating booking with proxy URLs:', {
             nobooking: nobooking,
             akta: aktaTanahUrl,
             sertifikat: sertifikatTanahUrl,
-            pelengkap: pelengkapUrl
+            pelengkap: pelengkapUrl,
+            railway_context: {
+                RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+                RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+                userid: userid,
+                timestamp: new Date().toISOString()
+            }
         });
         
         const resultUpdate = await pool.query(updateQuery, values);
 
         if (resultUpdate.rowCount > 0) {
-            console.log('✅ [DB] Cloudinary URLs saved to database');
+            console.log('✅ [CLOUDINARY-ENDPOINT] Cloudinary URLs saved to database:', {
+                rowCount: resultUpdate.rowCount,
+                nobooking: nobooking,
+                railway_context: {
+                    RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+                    RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+                    timestamp: new Date().toISOString()
+                }
+            });
             
             res.json({ 
                 success: true, 
@@ -750,7 +816,18 @@ app.post('/api/ppatk_upload-cloudinary',
             res.status(404).json({ success: false, message: 'Failed to update database' });
         }
     } catch (error) {
-        console.error('❌ [ERROR] Upload to Cloudinary failed:', error);
+        console.error('❌ [CLOUDINARY-ENDPOINT] Upload to Cloudinary failed:', {
+            error: error.message,
+            stack: error.stack,
+            railway_context: {
+                RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+                RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+                NODE_ENV: process.env.NODE_ENV || 'development',
+                nobooking: nobooking,
+                userid: userid,
+                timestamp: new Date().toISOString()
+            }
+        });
         res.status(500).json({ success: false, message: 'Failed to save files: ' + error.message });
     }
 });

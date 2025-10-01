@@ -14,19 +14,45 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-console.log('🌐 Cloudinary Config:', {
+console.log('🌐 [CLOUDINARY-STORAGE] Initializing Cloudinary storage...');
+console.log('🌐 [CLOUDINARY-STORAGE] Railway environment info:', {
+  NODE_ENV: process.env.NODE_ENV,
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
+  RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+  RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID || 'local'
+});
+
+console.log('🌐 [CLOUDINARY-STORAGE] Cloudinary Config:', {
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY ? '***' + process.env.CLOUDINARY_API_KEY.slice(-4) : 'NOT SET',
-  api_secret: process.env.CLOUDINARY_API_SECRET ? '***SET***' : 'NOT SET'
+  api_secret: process.env.CLOUDINARY_API_SECRET ? '***SET***' : 'NOT SET',
+  config_status: process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET ? '✅ COMPLETE' : '❌ INCOMPLETE'
 });
 
 // Cloudinary Storage untuk Mixed Upload (PDF & Images)
 const cloudinaryMixedStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
+    console.log('📤 [CLOUDINARY-UPLOAD] Starting upload process...');
+    console.log('📤 [CLOUDINARY-UPLOAD] Railway context:', {
+      RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+      RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
+    
     const userid = req.session?.user?.userid || 'unknown';
     const ppatk_khusus = req.session?.user?.ppatk_khusus || 'PPATK';
     const currentYear = new Date().getFullYear();
+    
+    console.log('📤 [CLOUDINARY-UPLOAD] Session data:', {
+      userid: userid,
+      ppatk_khusus: ppatk_khusus,
+      divisi: req.session?.user?.divisi || 'unknown',
+      hasSession: !!req.session,
+      hasUser: !!req.session?.user
+    });
     
     // Determine document type dengan mapping yang lebih pendek
     const fieldToKeyMap = {
