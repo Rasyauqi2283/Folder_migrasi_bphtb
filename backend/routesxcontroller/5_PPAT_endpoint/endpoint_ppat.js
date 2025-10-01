@@ -44,6 +44,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         // Untuk RAW files, public_id INCLUDE extension
         // Untuk IMAGE files, public_id EXCLUDE extension
         let publicIdForApi = publicIdWithExt;
+        let downloadUrl;
 
         if (!isPdf) {
             // IMAGE → hapus extension
@@ -111,7 +112,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             
             response = await axios({
                 method: 'GET',
-                url: downloadStream,
+                url: downloadUrl,
                 responseType: 'arraybuffer',
                 timeout: 50000,
                 headers: {
