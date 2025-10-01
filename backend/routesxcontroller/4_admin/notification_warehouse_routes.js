@@ -907,7 +907,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
-            WHERE b.trackstatus = 'Terselesaikan'
+            WHERE b.trackstatus = 'Diserahkan'
             AND b.created_at >= $1
             AND b.created_at <= $2
         `;
@@ -977,7 +977,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
-            WHERE b.trackstatus = 'Terselesaikan'
+            WHERE b.trackstatus = 'Diserahkan'
             AND b.created_at >= $1
             AND b.created_at <= $2
         `;
@@ -1112,7 +1112,7 @@ router.get('/ppat-chart-data', verifyAdmin, async (req, res) => {
                 COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0) as total_bphtb
             FROM pat_1_bookingsspd b
             LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
-            WHERE b.trackstatus = 'Terselesaikan'
+            WHERE b.trackstatus = 'Diserahkan'
             AND EXTRACT(YEAR FROM b.created_at) = $1
             GROUP BY EXTRACT(MONTH FROM b.created_at)
             ORDER BY bulan ASC
