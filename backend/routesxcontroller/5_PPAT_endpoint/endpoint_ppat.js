@@ -45,14 +45,20 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         // Untuk IMAGE files, public_id EXCLUDE extension
         let publicIdForApi = publicIdWithExt;
 
-        // RAW (PDF, ZIP, dsb) → biarkan pakai extension
         if (!isPdf) {
-          // IMAGE → hapus extension (png/jpg/jpeg/webp)
-          publicIdForApi = publicIdForApi.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
-        } else {
-            // langsung pakai decodedUrl (public)
-            response = await axios.get(decodedUrl, { responseType: 'arraybuffer' });
-         }
+            // IMAGE → hapus extension
+            publicIdForApi = publicIdForApi.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+            // pakai cloudinary.api.resource untuk cek metadata image
+            const result = await cloudinary.api.resource(publicIdForApi, {
+              resource_type: 'image',
+              type: 'upload',
+              timeout: 50000
+            });
+            downloadUrl = result.secure_url;
+          } else {
+            // PDF → langsung bikin authenticated URL
+            downloadUrl = `https://${process.env.CLOUDINARY_API_KEY}:${process.env.CLOUDINARY_API_SECRET}@res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicIdWithExt}`;
+          }
         
         
         console.log('📋 [PROXY] Public ID for API:', {
