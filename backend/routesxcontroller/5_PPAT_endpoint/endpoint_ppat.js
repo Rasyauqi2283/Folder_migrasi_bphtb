@@ -44,7 +44,8 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             // Untuk PDF, public_id harus include extension
             const result = await cloudinary.api.resource(publicIdWithExt, {
                 resource_type: 'raw',
-                type: 'upload'
+                type: 'upload',
+                sign_url: true
             });
             
             const downloadUrl = result.secure_url;
@@ -69,7 +70,8 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             
             const result = await cloudinary.api.resource(publicIdForApi, {
                 resource_type: 'image',
-                type: 'upload'
+                type: 'upload',
+                sign_url: true
             });
             
             const downloadUrl = result.secure_url;
