@@ -306,3 +306,5 @@ task hari ini (kerapihan (folder dan file), ping admin to ltb (admin-datauser-pp
 -perombakan tanda tangan menjadi lebih simple
 -perombakan design
 -penambahan api untuk tabel tabel lain (seperti monitoring, laporan dan semacamnya)
+-perbaikan dropdown di beberapa table
+-memperbaiki alur atau path di pdfkit

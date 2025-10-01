@@ -898,7 +898,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
                 b.nobooking,
                 b.userid,
                 vu.ppatk_khusus,
-                b.nilai_bphtb,
+                bp.bphtb_yangtelah_dibayar AS nilai_bphtb,
                 b.tanggal_booking,
                 b.status,
                 b.trackstatus,
@@ -907,6 +907,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
                 vu.special_field
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
             WHERE b.status = 'Diserahkan'
             AND b.tanggal_booking >= $1
             AND b.tanggal_booking <= $2
@@ -1001,7 +1002,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             nobooking: booking.nobooking,
             userid: booking.userid,
             ppatk_khusus: booking.ppatk_khusus || '-',
-            nilai_bphtb: booking.nilai_bphtb || 0,
+            nilai_bphtb: booking.nilai_bphtb || '-',
             tanggal_booking: booking.tanggal_booking,
             status: booking.status,
             trackstatus: booking.trackstatus,
