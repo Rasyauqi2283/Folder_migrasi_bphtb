@@ -38,19 +38,16 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let response;
 
         if (isPdf) {
-            // PDF → Use cloudinary.utils.sign_url() untuk signed URL
+            // PDF → Use cloudinary.url() dengan sign_url untuk signed URL
             console.log('🔐 [PROXY] Generating signed URL for PDF...');
             
-            const authUrl = cloudinary.utils.sign_url(
-                publicIdWithExt, 
-                {
-                    resource_type: 'raw',
-                    type: 'upload',
-                    secure: true,
-                    sign_url: true,
-                    expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 jam
-                }
-            );
+            const authUrl = cloudinary.url(publicIdWithExt, {
+                resource_type: 'raw',
+                type: 'upload',
+                secure: true,
+                sign_url: true,
+                expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 jam
+            });
 
             console.log('🔐 [PROXY] Signed URL:', authUrl);
 
