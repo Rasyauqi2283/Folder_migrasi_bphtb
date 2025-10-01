@@ -1,5 +1,38 @@
 //masih banyak perbaikan
 /// (complete)
+
+// ===== HELPER FUNCTIONS untuk URL handling =====
+/**
+ * Get proper file URL - support both Cloudinary URLs dan local paths
+ */
+function getFileUrl(pathOrUrl) {
+    if (!pathOrUrl) return '';
+    
+    // Jika sudah URL lengkap (Cloudinary), return as-is
+    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+        return pathOrUrl;
+    }
+    
+    // Jika local path, tambahkan prefix /
+    return '/' + pathOrUrl.replace(/^\/+/, ''); // Remove leading slashes then add one
+}
+
+/**
+ * Get filename dari path atau URL
+ */
+function getFileName(pathOrUrl) {
+    if (!pathOrUrl) return 'Unknown';
+    
+    // Extract filename dari URL atau path
+    const parts = pathOrUrl.split('/');
+    const filename = parts[parts.length - 1];
+    
+    // Remove Cloudinary version prefix jika ada (v1234567890)
+    return filename.replace(/^v\d+_/, '');
+}
+
+// ===== END HELPER FUNCTIONS =====
+
 async function loadTableData(page = 1) {
     try {
         // Menggunakan parameter page jika ada
@@ -124,13 +157,13 @@ dropdownContent.innerHTML = `
                             <div class="file-content">
                                 ${item.akta_tanah_path.toLowerCase().endsWith('.pdf') ? 
                                     '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                    `<img src="${item.akta_tanah_url || '/' + item.akta_tanah_path}" class="file-thumbnail" alt="Preview">`}
+                                    `<img src="${getFileUrl(item.akta_tanah_path)}" class="file-thumbnail" alt="Preview">`}
                                 <div class="file-info">
-                                    <span class="file-name">${item.akta_tanah_path.split('/').pop()}</span>
+                                    <span class="file-name">${getFileName(item.akta_tanah_path)}</span>
                                     <span class="file-size">(Uploaded)</span>
                                 </div>
                             </div>
-                            <a href="${item.akta_tanah_url || '/' + item.akta_tanah_path}" target="_blank" class="btn-view">
+                            <a href="${getFileUrl(item.akta_tanah_path)}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>
@@ -160,13 +193,13 @@ dropdownContent.innerHTML = `
                             <div class="file-content">
                                 ${item.sertifikat_tanah_path.toLowerCase().endsWith('.pdf') ? 
                                     '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                    `<img src="${item.sertifikat_tanah_url || '/' + item.sertifikat_tanah_path}" class="file-thumbnail" alt="Preview">`}
+                                    `<img src="${getFileUrl(item.sertifikat_tanah_path)}" class="file-thumbnail" alt="Preview">`}
                                 <div class="file-info">
-                                    <span class="file-name">${item.sertifikat_tanah_path.split('/').pop()}</span>
+                                    <span class="file-name">${getFileName(item.sertifikat_tanah_path)}</span>
                                     <span class="file-size">(Uploaded)</span>
                                 </div>
                             </div>
-                            <a href="${item.sertifikat_tanah_url || '/' + item.sertifikat_tanah_path}" target="_blank" class="btn-view">
+                            <a href="${getFileUrl(item.sertifikat_tanah_path)}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>
@@ -196,13 +229,13 @@ dropdownContent.innerHTML = `
                             <div class="file-content">
                                 ${item.pelengkap_path.toLowerCase().endsWith('.pdf') ? 
                                     '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                    `<img src="${item.pelengkap_url || '/' + item.pelengkap_path}" class="file-thumbnail" alt="Preview">`}
+                                    `<img src="${getFileUrl(item.pelengkap_path)}" class="file-thumbnail" alt="Preview">`}
                                 <div class="file-info">
-                                    <span class="file-name">${item.pelengkap_path.split('/').pop()}</span>
+                                    <span class="file-name">${getFileName(item.pelengkap_path)}</span>
                                     <span class="file-size">(Uploaded)</span>
                                 </div>
                             </div>
-                            <a href="${item.pelengkap_url || '/' + item.pelengkap_path}" target="_blank" class="btn-view">
+                            <a href="${getFileUrl(item.pelengkap_path)}" target="_blank" class="btn-view">
                                 <i class="fas fa-eye"></i>
                             </a>
                         </div>

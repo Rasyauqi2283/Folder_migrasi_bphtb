@@ -500,57 +500,42 @@ app.post('/api/ppatk_upload-cloudinary',
             }
         }
 
-        // Rename files di Cloudinary dengan format yang benar
-        const renamePromises = [];
+        // Process uploaded files - TIDAK PERLU RENAME, langsung gunakan URL dari Cloudinary
         const fileMapping = {
             aktaTanah: 'Akta',
             sertifikatTanah: 'SertifikatTanah',
             pelengkap: 'DokumenP'
         };
 
-        const renamedFiles = {};
+        const uploadedFiles = {};
 
         for (const [fieldName, docType] of Object.entries(fileMapping)) {
             if (req.files[fieldName] && req.files[fieldName][0]) {
                 const file = req.files[fieldName][0];
-                const oldPublicId = extractPublicIdFromUrl(file.path);
-                const newPublicId = `bappenda/dokumen-sspd/${userid}_${docType}_${serial}_${year}`;
-                const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
-
-                console.log(`🔄 [CLOUDINARY] Renaming ${fieldName}:`, {
-                    old: oldPublicId,
-                    new: newPublicId,
-                    type: resourceType
+                
+                console.log(`📁 [CLOUDINARY] File uploaded:`, {
+                    field: fieldName,
+                    filename: file.filename,
+                    url: file.path,
+                    secure_url: file.path.replace('http://', 'https://')
                 });
 
-                try {
-                    await renameCloudinaryFile(oldPublicId, newPublicId, resourceType);
-                    
-                    // Generate new URL dengan format yang benar
-                    const newUrl = file.path.replace(oldPublicId, newPublicId);
-                    renamedFiles[fieldName] = {
-                        url: newUrl,
-                        public_id: newPublicId,
-                        secure_url: file.path.replace('http://', 'https://').replace(oldPublicId, newPublicId)
-                    };
-                } catch (renameErr) {
-                    console.error(`❌ [CLOUDINARY] Rename failed for ${fieldName}:`, renameErr);
-                    // Fallback: gunakan URL original
-                    renamedFiles[fieldName] = {
-                        url: file.path,
-                        public_id: oldPublicId,
-                        secure_url: file.path.replace('http://', 'https://')
-                    };
-                }
+                // Cloudinary sudah memberikan URL yang benar
+                uploadedFiles[fieldName] = {
+                    url: file.path.replace('http://', 'https://'),  // Pastikan HTTPS
+                    filename: file.filename,
+                    mimetype: file.mimetype,
+                    size: file.size
+                };
             }
         }
 
-        // Simpan Cloudinary URLs ke database
-        const aktaTanahUrl = renamedFiles.aktaTanah?.secure_url || null;
-        const sertifikatTanahUrl = renamedFiles.sertifikatTanah?.secure_url || null;
-        const pelengkapUrl = renamedFiles.pelengkap?.secure_url || null;
+        // Simpan Cloudinary URLs ke database (HTTPS URLs)
+        const aktaTanahUrl = uploadedFiles.aktaTanah?.url || null;
+        const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.url || null;
+        const pelengkapUrl = uploadedFiles.pelengkap?.url || null;
 
-        console.log('📁 [CLOUDINARY] Final URLs:', {
+        console.log('📁 [CLOUDINARY] Final URLs for database:', {
             akta: aktaTanahUrl,
             sertifikat: sertifikatTanahUrl,
             pelengkap: pelengkapUrl
