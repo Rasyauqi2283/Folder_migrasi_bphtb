@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import cloudinary from '../../config/cloudinary/cloudinary.js';
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
 // ===== CLOUDINARY PROXY ENDPOINT =====
@@ -32,18 +33,6 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         const cloudinaryModule = await import('cloudinary');
         const cloudinary = cloudinaryModule.v2;
         
-        // Configure cloudinary dengan credentials dari env
-        cloudinary.config({
-            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-            api_key: process.env.CLOUDINARY_API_KEY,
-            api_secret: process.env.CLOUDINARY_API_SECRET
-        });
-        
-        console.log('🔐 [PROXY] Cloudinary config check:', {
-            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-            api_key: process.env.CLOUDINARY_API_KEY ? `${process.env.CLOUDINARY_API_KEY.substring(0, 5)}...` : 'NOT SET',
-            api_secret: process.env.CLOUDINARY_API_SECRET ? '***exists***' : 'NOT SET'
-        });
         
         // SOLUSI: Gunakan Cloudinary API untuk download file (bukan generate URL)
         // Cloudinary.api.resource() akan return download URL dengan authentication
@@ -53,9 +42,17 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         // Untuk RAW files, public_id INCLUDE extension
         // Untuk IMAGE files, public_id EXCLUDE extension
-        const publicIdForApi = isPdf ? 
-            publicIdWithExt :  // RAW: include .pdf
-            publicIdWithExt.replace(/\.[^.]+$/, ''); // IMAGE: remove extension
+        let publicIdForApi = publicIdWithExt;
+
+        // RAW (PDF, ZIP, dsb) → biarkan pakai extension
+        if (!isPdf) {
+          // IMAGE → hapus extension (png/jpg/jpeg/webp)
+          publicIdForApi = publicIdForApi.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
+        } else {
+            // langsung pakai decodedUrl (public)
+            response = await axios.get(decodedUrl, { responseType: 'arraybuffer' });
+         }
+        
         
         console.log('📋 [PROXY] Public ID for API:', {
             original: publicIdWithExt,
