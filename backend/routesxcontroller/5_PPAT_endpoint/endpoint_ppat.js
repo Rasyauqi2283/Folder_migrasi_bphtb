@@ -1,389 +1,91 @@
 import fs from 'fs';
 import path from 'path';
-import cloudinary from '../../config/cloudinary/cloudinary.js';
-import axios from 'axios';
+import pool from '../../../db.js';
+import { generateSignedUrl } from '../../../config/cloudinary/cloudinary.js';
+const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
 // ===== CLOUDINARY PROXY ENDPOINT =====
 // Endpoint untuk serve files dari Cloudinary via Railway server
-app.get('/api/files/cloudinary-proxy', async (req, res) => {
-    // Declare variables in outer scope for error handling
-    let decodedUrl = null;
-    let publicIdWithExt = null;
-    let isPdf = false;
-    
+router.get("/secure/:nobooking", async (req, res) => {
+    const { nobooking } = req.params;
+  
     try {
-        const { url } = req.query;
-        
-        console.log('🔄 [CLOUDINARY-PROXY] Starting proxy request...');
-        console.log('🔄 [CLOUDINARY-PROXY] Railway context:', {
-            RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-            RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-            NODE_ENV: process.env.NODE_ENV || 'development',
-            timestamp: new Date().toISOString(),
-            endpoint: '/api/files/cloudinary-proxy'
-        });
-        
-        if (!url) {
-            console.log('❌ [CLOUDINARY-PROXY] Missing URL parameter');
-            return res.status(400).json({ success: false, message: 'URL parameter required' });
+      // 1. Ambil public_id dari DB
+      const result = await pool.query(
+        `SELECT 
+         akta_tanah_path, 
+         sertifikat_tanah_path, 
+         pelengkap_path, 
+         file_withstempel_path, 
+         pdf_dokumen_path
+       FROM pat_1_bookingsspd
+       WHERE nobooking = $1`,
+      [nobooking]
+      );
+  
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "booking tidak ditemukan" });
+      }
+  
+      const row = result.rows[0];
+  
+      // 2. Fungsi bantu untuk deteksi public_id
+    const extractPublicId = (path) => {
+        if (!path) return null;
+  
+        // Kasus lama -> path lokal
+        if (path.startsWith("penting_F_simpan")) {
+          return null; // nanti bisa di-handle khusus
         }
-
-        console.log('🔄 [CLOUDINARY-PROXY] Fetching file from Cloudinary:', url);
-
-        // Decode URL
-        decodedUrl = decodeURIComponent(url);
-        
-        // Extract public_id dari URL
-        const publicIdMatch = decodedUrl.match(/\/upload\/(?:v\d+\/)?(.+)$/);
-        if (!publicIdMatch) {
-            console.log('❌ [PROXY] Invalid Cloudinary URL format:', decodedUrl);
-            return res.status(400).json({ success: false, message: 'Invalid Cloudinary URL format' });
-        }
-        
-        publicIdWithExt = publicIdMatch[1];
-        isPdf = publicIdWithExt.toLowerCase().endsWith('.pdf');
-        
-        console.log('📁 [PROXY] Extracted public_id:', publicIdWithExt);
-        console.log('📁 [PROXY] File type:', isPdf ? 'PDF' : 'Image');
-        console.log('📁 [PROXY] Resource type: auto (let Cloudinary detect)');
-        
-        // Determine correct resource type based on file extension
-        const resourceType = isPdf ? 'raw' : 'image';
-        
-        console.log('📥 [PROXY] Downloading file via Cloudinary API...');
-        console.log('📥 [PROXY] Using resource type:', resourceType);
-        
-        let response;
-
-        if (isPdf) {
-            // PDF → Use raw resource type
-            console.log('🔐 [PROXY] Generating public URL for PDF...');
-            console.log('🔐 [PROXY] PDF public_id:', publicIdWithExt);
-            
-            try {
-                // Generate public URL with raw resource type
-                const publicUrl = cloudinary.url(publicIdWithExt, {
-                    resource_type: 'raw',
-                    type: 'upload',
-                    sign_url: false, // No signing for public files
-                    secure: true
-                });
-                
-                console.log('🔐 [PROXY] Generated public URL for PDF:', publicUrl);
-                
-                // Use public URL untuk download
-                response = await axios({
-                    method: 'GET',
-                    url: publicUrl,
-                    responseType: 'arraybuffer',
-                    timeout: 50000,
-                    headers: {
-                        'User-Agent': 'Railway-Proxy/1.0'
-                    }
-                });
-                
-                console.log('✅ [PROXY] PDF fetched via public URL');
-            } catch (apiError) {
-                console.error('❌ [PROXY] Public URL access failed:', apiError.message);
-                console.error('❌ [PROXY] Trying fallback with signed URL...');
-                
-                // Fallback: try signed URL if public URL fails
-                try {
-                    const signedUrl = cloudinary.url(publicIdWithExt, {
-                        resource_type: 'raw',
-                        type: 'upload',
-                        sign_url: true,
-                        expires_at: Math.floor(Date.now() / 1000) + 3600,
-                        secure: true
-                    });
-                    
-                    response = await axios({
-                        method: 'GET',
-                        url: signedUrl,
-                        responseType: 'arraybuffer',
-                        timeout: 50000,
-                        headers: {
-                            'User-Agent': 'Railway-Proxy/1.0'
-                        }
-                    });
-                    
-                    console.log('✅ [PROXY] PDF fetched via fallback signed URL');
-                } catch (fallbackError) {
-                    console.error('❌ [PROXY] Both public and signed URL failed');
-                    throw fallbackError;
-                }
-            }
-        } else {
-            // IMAGE → Remove extension for API call
-            const publicIdForApi = publicIdWithExt.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
-            
-            console.log('🖼️ [PROXY] Fetching image metadata...');
-            
-            const result = await cloudinary.api.resource(publicIdForApi, {
-                resource_type: 'image',
-                type: 'upload',
-                sign_url: true
-            });
-            
-            const downloadUrl = result.secure_url;
-            console.log('✅ [PROXY] Image URL retrieved');
-            
-            response = await axios({
-                method: 'GET',
-                url: downloadUrl,
-                responseType: 'arraybuffer',
-                timeout: 50000,
-                headers: {
-                    'User-Agent': 'Railway-Proxy/1.0'
-                }
-            });
-        }
-        
-        console.log('📋 [PROXY] Download info:', {
-            publicId: publicIdWithExt,
-            resourceType: resourceType,
-            isPdf: isPdf
-        });
-
-        // Get content type dari Cloudinary response
-        const contentType = response.headers['content-type'] || 'application/octet-stream';
-        
-        console.log('✅ [PROXY] File fetched successfully:', {
-            contentType: contentType,
-            size: response.data.length,
-            isPdf: isPdf
-        });
-
-        // Set headers yang benar
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Length', response.data.length);
-        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 year
-        
-        // Untuk PDF, tambahkan header agar bisa dibuka di browser
-        if (contentType === 'application/pdf' || isPdf) {
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'inline'); // Open in browser, bukan download
-        }
-        
-        // Send file content
-        res.send(Buffer.from(response.data));
-        
-    } catch (error) {
-        console.error('❌ [PROXY] Error fetching file from Cloudinary:', error.message);
-        console.error('❌ [PROXY] Error details:', error.response?.data || error);
-        console.error('❌ [PROXY] Error status:', error.response?.status);
-        console.error('❌ [PROXY] Error headers:', error.response?.headers);
-        console.error('❌ [PROXY] Request URL:', req.query.url);
-        console.error('❌ [PROXY] Decoded URL:', decodedUrl || 'not_available');
-        console.error('❌ [PROXY] Public ID:', publicIdWithExt || 'not_available');
-        
-        if (error.response?.status === 401) {
-            console.error('❌ [PROXY] 401 Error Details:', {
-                'x-cld-error': error.response?.headers['x-cld-error'],
-                'content-type': error.response?.headers['content-type'],
-                'server': error.response?.headers['server'],
-                'public_id': publicIdWithExt,
-                'is_pdf': isPdf,
-                'resource_type': isPdf ? 'raw' : 'image',
-                'railway_context': {
-                    RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-                    RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-                    timestamp: new Date().toISOString()
-                }
-            });
-            
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Cloudinary authentication failed - check credentials',
-                details: {
-                    'x-cld-error': error.response?.headers['x-cld-error'],
-                    'public_id': publicIdWithExt,
-                    'resource_type': isPdf ? 'raw' : 'image'
-                }
-            });
-        }
-        
-        if (error.response?.status === 404) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'File not found in Cloudinary' 
-            });
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to fetch file from Cloudinary',
-            error: error.message
-        });
-    }
-});
-
-// ===== FIX CLOUDINARY ACL ENDPOINT =====
-// Endpoint untuk memperbaiki ACL file yang sudah ter-upload
-app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
-    try {
-        const { publicId, resourceType } = req.body;
-        
-        // Auto-detect resource type if not provided
-        let detectedResourceType = resourceType;
-        if (!detectedResourceType) {
-            detectedResourceType = publicId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
-        }
-        
-        if (!publicId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'publicId is required' 
-            });
-        }
-        
-        console.log('🔧 [ACL-FIX] Fixing ACL for file:', publicId);
-        console.log('🔧 [ACL-FIX] Resource type:', detectedResourceType);
-        
-        // Method 1: Try explicit update
+  
+        // Kasus Cloudinary proxy URL
         try {
-            const result = await cloudinary.uploader.explicit(publicId, {
-                resource_type: detectedResourceType,
-                type: 'upload',
-                access_mode: 'public',
-                invalidate: true
-            });
-            
-            console.log('✅ [ACL-FIX] ACL fixed via explicit:', result.public_id);
-            
-            return res.json({
-                success: true,
-                message: 'ACL fixed successfully via explicit',
-                public_id: result.public_id,
-                secure_url: result.secure_url,
-                method: 'explicit'
-            });
-            
-        } catch (explicitError) {
-            console.log('⚠️ [ACL-FIX] Explicit method failed, trying rename method:', explicitError.message);
-            
-            // Method 2: Try rename to force public access
-            const tempPublicId = `${publicId}_temp_${Date.now()}`;
-            
-            try {
-                // Rename to temp
-                await cloudinary.uploader.rename(publicId, tempPublicId, {
-                    resource_type: detectedResourceType,
-                    type: 'upload'
-                });
-                
-                // Rename back with public access
-                const result = await cloudinary.uploader.rename(tempPublicId, publicId, {
-                    resource_type: detectedResourceType,
-                    type: 'upload',
-                    access_mode: 'public',
-                    invalidate: true
-                });
-                
-                console.log('✅ [ACL-FIX] ACL fixed via rename:', result.public_id);
-                
-                return res.json({
-                    success: true,
-                    message: 'ACL fixed successfully via rename',
-                    public_id: result.public_id,
-                    secure_url: result.secure_url,
-                    method: 'rename'
-                });
-                
-            } catch (renameError) {
-                console.error('❌ [ACL-FIX] Rename method also failed:', renameError.message);
-                throw renameError;
-            }
+          const decoded = decodeURIComponent(path);
+          // Contoh: https://res.cloudinary.com/xxx/raw/upload/v1234/bappenda/dokumen-sspd/PAT10_Akta_000004_2025.pdf
+          const match = decoded.match(/upload\/(?:v\d+\/)?(.+)$/);
+          return match ? match[1] : null;
+        } catch {
+          return null;
         }
-        
-    } catch (error) {
-        console.error('❌ [ACL-FIX] All methods failed:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fix ACL - all methods failed',
-            error: error.message,
-            details: {
-                publicId: req.body.publicId,
-                resourceType: detectedResourceType
-            }
-        });
-    }
-});
+      };
+  
+        // 3. Ambil public_id lalu generate signed URL
+        const files = {};
+        for (const key of [
+        "akta_tanah_path",
+        "sertifikat_tanah_path",
+        "pelengkap_path",
+        "file_withstempel_path",
+        "pdf_dokumen_path"
+        ]) {
+        const publicId = extractPublicId(row[key]);
 
-// ===== BATCH FIX ACL ENDPOINT =====
-// Endpoint untuk fix ACL multiple files sekaligus
-app.post('/api/files/fix-cloudinary-acl-batch', async (req, res) => {
-    try {
-        const { files } = req.body; // Array of {publicId, resourceType}
-        
-        if (!files || !Array.isArray(files) || files.length === 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'files array is required' 
-            });
+        if (publicId) {
+            files[key] = {
+            source: "cloudinary",
+            public_id: publicId,
+            signed_url: generateSignedUrl(publicId, 300), // valid 5 menit
+            };
+        } else if (row[key]) {
+            files[key] = {
+            source: "local",
+            path: row[key],
+            };
+        } else {
+            files[key] = null;
         }
-        
-        console.log('🔧 [ACL-FIX-BATCH] Fixing ACL for', files.length, 'files');
-        
-        const results = [];
-        const errors = [];
-        
-        for (const file of files) {
-            try {
-                const { publicId, resourceType } = file;
-                
-                // Auto-detect resource type if not provided
-                let detectedResourceType = resourceType;
-                if (!detectedResourceType) {
-                    detectedResourceType = publicId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
-                }
-                
-                console.log('🔧 [ACL-FIX-BATCH] Processing:', publicId);
-                
-                const result = await cloudinary.uploader.explicit(publicId, {
-                    resource_type: detectedResourceType,
-                    type: 'upload',
-                    access_mode: 'public',
-                    invalidate: true
-                });
-                
-                results.push({
-                    publicId,
-                    success: true,
-                    secure_url: result.secure_url
-                });
-                
-                console.log('✅ [ACL-FIX-BATCH] Fixed:', publicId);
-                
-            } catch (error) {
-                console.error('❌ [ACL-FIX-BATCH] Failed:', file.publicId, error.message);
-                errors.push({
-                    publicId: file.publicId,
-                    error: error.message
-                });
-            }
         }
-        
-        res.json({
-            success: true,
-            message: `Processed ${files.length} files`,
-            results,
-            errors,
-            summary: {
-                total: files.length,
-                success: results.length,
-                failed: errors.length
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ [ACL-FIX-BATCH] Batch processing failed:', error.message);
-        res.status(500).json({
-            success: false,
-            message: 'Batch ACL fix failed',
-            error: error.message
-        });
+  
+      // 4. Kirim ke frontend
+    return res.json({
+        success: true,
+        nobooking,
+        files,
+      });
+    } catch (err) {
+      console.error("❌ [API] Error get secure files:", err);
+      return res.status(500).json({ error: "Gagal ambil dokumen" });
     }
 });
 
@@ -1124,8 +826,9 @@ app.post('/api/ppatk_upload-pdf',
         return res.status(400).json({ success: false, message: 'No booking selected' });
     }
 
-    const normalizePath = (filePath) => filePath ? filePath.replace(/\\/g, '/') : null;
-    const pdfDokumenPath = normalizePath(req.file.path);
+        // Tambahan proxy untuk PDF dokumen
+    const pdfDokumenPath = req.file.path.replace('http://', 'https://');
+    const pdfProxyPath = `/api/files/cloudinary-proxy?url=${encodeURIComponent(pdfDokumenPath)}`;
 
     console.log('PDF file path:', pdfDokumenPath);
 
@@ -1143,13 +846,21 @@ app.post('/api/ppatk_upload-pdf',
             RETURNING *;
         `;
 
-        const values = [pdfDokumenPath, nobooking];
+        const values = [pdfProxyPath, nobooking];
 
         console.log('Updating booking with No. Booking:', nobooking);
         console.log('Update Query:', updateQuery);
         console.log('Values to update:', values);
 
         const resultUpdate = await pool.query(updateQuery, values);
+        console.log('📄 [CLOUDINARY-PDF] File uploaded:', {
+            filename: req.file.filename,
+            cloudinaryUrl: req.file.path,
+            proxyUrl: pdfProxyPath,
+            mimetype: req.file.mimetype,
+            isPdf: req.file.mimetype === 'application/pdf'
+          });
+          
 
         if (resultUpdate.rowCount > 0) {
             console.log('PDF path successfully updated in the database:', resultUpdate.rows[0]);

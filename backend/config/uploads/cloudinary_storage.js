@@ -4,6 +4,7 @@
 // Menggunakan external storage (Cloudinary) untuk persistent file storage
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import cloudinary from '../../config/cloudinary/cloudinary.js';
 import multer from 'multer';
 import path from 'path';
 
