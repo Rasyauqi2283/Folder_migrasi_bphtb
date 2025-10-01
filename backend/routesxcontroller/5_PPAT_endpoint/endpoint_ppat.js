@@ -103,12 +103,18 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let cloudinaryUrl;
         
         // If publicId is provided, generate fresh signed URL
-        if (publicId) {
+        if (publicId && publicId !== 'null' && publicId !== 'undefined') {
             console.log('🔄 [CLOUDINARY-PROXY] Generating fresh signed URL for:', publicId);
             cloudinaryUrl = generateSignedUrl(publicId, 3600); // 1 hour validity
-        } else {
+        } else if (url) {
             // Decode existing URL
             cloudinaryUrl = decodeURIComponent(url);
+        } else {
+            console.error('❌ [CLOUDINARY-PROXY] Both publicId and url are invalid:', { publicId, url });
+            return res.status(400).json({ 
+                error: "Invalid parameters - both publicId and url are required",
+                details: { publicId, url }
+            });
         }
         
         // Validate it's a Cloudinary URL
@@ -804,6 +810,21 @@ app.post('/api/ppatk_upload-cloudinary',
                 // Extract public_id from Cloudinary URL
                 const publicId = file.public_id || extractPublicIdFromUrl(file.path);
                 
+                console.log(`🔍 [CLOUDINARY-UPLOAD] File metadata for ${fieldName}:`, {
+                    filePath: file.path,
+                    filePublicId: file.public_id,
+                    extractedPublicId: extractPublicIdFromUrl(file.path),
+                    finalPublicId: publicId,
+                    filename: file.filename,
+                    mimetype: file.mimetype
+                });
+                
+                // Validate publicId before proceeding
+                if (!publicId || publicId === 'null') {
+                    console.error(`❌ [CLOUDINARY-UPLOAD] Invalid publicId for ${fieldName}:`, publicId);
+                    throw new Error(`Failed to extract valid publicId for ${fieldName}`);
+                }
+                
                 // Simpan metadata: cloudinary_url dan proxy_path
                 uploadedFiles[fieldName] = {
                     cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
@@ -954,6 +975,26 @@ app.post('/api/ppatk_upload-pdf',
         // Tambahan proxy untuk PDF dokumen
     const pdfDokumenPath = req.file.path.replace('http://', 'https://');
     const pdfPublicId = req.file.public_id || extractPublicIdFromUrl(pdfDokumenPath);
+    
+    console.log('🔍 [CLOUDINARY-PDF] PDF file metadata:', {
+        filePath: req.file.path,
+        pdfDokumenPath: pdfDokumenPath,
+        filePublicId: req.file.public_id,
+        extractedPublicId: extractPublicIdFromUrl(pdfDokumenPath),
+        finalPublicId: pdfPublicId,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype
+    });
+    
+    // Validate publicId before proceeding
+    if (!pdfPublicId || pdfPublicId === 'null') {
+        console.error('❌ [CLOUDINARY-PDF] Invalid publicId:', pdfPublicId);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Failed to extract valid publicId for PDF file' 
+        });
+    }
+    
     const pdfProxyPath = `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(pdfPublicId)}`;
 
     console.log('PDF file path:', pdfDokumenPath);

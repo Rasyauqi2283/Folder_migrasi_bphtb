@@ -110,8 +110,8 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       format: ext,
       // Secure authenticated access
       type: 'authenticated',
-      // Additional parameters
-      use_filename: true,
+      // Additional parameters - DON'T use filename when public_id is set
+      use_filename: false,
       unique_filename: false,
       overwrite: true,
       // Metadata
@@ -225,14 +225,26 @@ export async function deleteCloudinaryFile(publicId, resourceType = 'image') {
 
 // Helper function untuk extract public_id dari Cloudinary URL
 export function extractPublicIdFromUrl(url) {
-  if (!url) return null;
+  if (!url) {
+    console.log('❌ [EXTRACT-PUBLIC-ID] No URL provided');
+    return null;
+  }
+  
+  console.log('🔍 [EXTRACT-PUBLIC-ID] Extracting from URL:', url);
   
   // Format URL: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/[folder]/[public_id].[ext]
+  // Support both http and https
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
   if (match) {
+    let publicId = match[1];
     // Remove extension if present
-    return match[1].replace(/\.\w+$/, '');
+    publicId = publicId.replace(/\.\w+$/, '');
+    
+    console.log('✅ [EXTRACT-PUBLIC-ID] Extracted publicId:', publicId);
+    return publicId;
   }
+  
+  console.log('❌ [EXTRACT-PUBLIC-ID] Failed to extract publicId from URL:', url);
   return null;
 }
 
