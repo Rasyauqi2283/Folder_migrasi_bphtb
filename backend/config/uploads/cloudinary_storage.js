@@ -34,15 +34,20 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     const docType = fieldToKeyMap[file.fieldname] || 'Dokumen';
     
     const isPdf = file.mimetype === 'application/pdf';
-    const ext = path.extname(file.originalname).toLowerCase();
+    const ext = path.extname(file.originalname).toLowerCase().replace('.', ''); // Hapus dot
     
-    // Generate public_id (filename di Cloudinary)
-    const publicId = `${userid}_${docType}_${timestamp}_${randomStr}`;
+    // Generate public_id (filename di Cloudinary) - TANPA ekstensi untuk image, DENGAN ekstensi untuk raw
+    // Cloudinary akan auto-add extension untuk images, tapi perlu explicit untuk raw/pdf
+    const publicId = isPdf ? 
+      `${userid}_${docType}_${timestamp}_${randomStr}.pdf` :  // PDF: tambahkan .pdf
+      `${userid}_${docType}_${timestamp}_${randomStr}`;       // Image: Cloudinary auto-add
     
     console.log(`📁 [CLOUDINARY] Uploading to cloud:`, {
       folder: 'bappenda/dokumen-sspd',
       publicId: publicId,
       type: isPdf ? 'PDF' : 'Image',
+      resourceType: isPdf ? 'raw' : 'image',
+      format: ext,
       originalName: file.originalname
     });
     
@@ -50,8 +55,7 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       folder: 'bappenda/dokumen-sspd',
       public_id: publicId,
       resource_type: isPdf ? 'raw' : 'image',
-      format: isPdf ? 'pdf' : undefined, // auto-detect untuk images
-      allowed_formats: isPdf ? ['pdf'] : ['jpg', 'jpeg', 'png'],
+      format: ext, // Set format explicitly (pdf, jpg, png, jpeg)
       // Add metadata
       context: {
         userid: userid,
