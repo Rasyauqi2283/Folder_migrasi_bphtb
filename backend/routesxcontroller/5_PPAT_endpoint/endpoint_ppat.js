@@ -48,20 +48,21 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         console.log('📁 [PROXY] File type:', isPdf ? 'PDF' : 'Image');
         console.log('📁 [PROXY] Resource type: auto (let Cloudinary detect)');
         
-        // Use auto resource type for all files
-        const resourceType = 'auto';
+        // Determine correct resource type based on file extension
+        const resourceType = isPdf ? 'raw' : 'image';
         
         console.log('📥 [PROXY] Downloading file via Cloudinary API...');
+        console.log('📥 [PROXY] Using resource type:', resourceType);
         
         let response;
 
         if (isPdf) {
-            // PDF → Use public URL directly (no signing needed for public files)
+            // PDF → Use raw resource type
             console.log('🔐 [PROXY] Generating public URL for PDF...');
             console.log('🔐 [PROXY] PDF public_id:', publicIdWithExt);
             
             try {
-                // Generate public URL (no signing)
+                // Generate public URL with raw resource type
                 const publicUrl = cloudinary.url(publicIdWithExt, {
                     resource_type: 'raw',
                     type: 'upload',
@@ -222,7 +223,13 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
 // Endpoint untuk memperbaiki ACL file yang sudah ter-upload
 app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
     try {
-        const { publicId, resourceType = 'auto' } = req.body;
+        const { publicId, resourceType } = req.body;
+        
+        // Auto-detect resource type if not provided
+        let detectedResourceType = resourceType;
+        if (!detectedResourceType) {
+            detectedResourceType = publicId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
+        }
         
         if (!publicId) {
             return res.status(400).json({ 
@@ -232,12 +239,12 @@ app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
         }
         
         console.log('🔧 [ACL-FIX] Fixing ACL for file:', publicId);
-        console.log('🔧 [ACL-FIX] Resource type:', resourceType);
+        console.log('🔧 [ACL-FIX] Resource type:', detectedResourceType);
         
         // Method 1: Try explicit update
         try {
             const result = await cloudinary.uploader.explicit(publicId, {
-                resource_type: resourceType,
+                resource_type: detectedResourceType,
                 type: 'upload',
                 access_mode: 'public',
                 invalidate: true
@@ -262,13 +269,13 @@ app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
             try {
                 // Rename to temp
                 await cloudinary.uploader.rename(publicId, tempPublicId, {
-                    resource_type: resourceType,
+                    resource_type: detectedResourceType,
                     type: 'upload'
                 });
                 
                 // Rename back with public access
                 const result = await cloudinary.uploader.rename(tempPublicId, publicId, {
-                    resource_type: resourceType,
+                    resource_type: detectedResourceType,
                     type: 'upload',
                     access_mode: 'public',
                     invalidate: true
@@ -298,7 +305,7 @@ app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
             error: error.message,
             details: {
                 publicId: req.body.publicId,
-                resourceType: req.body.resourceType || 'auto'
+                resourceType: detectedResourceType
             }
         });
     }
@@ -324,12 +331,18 @@ app.post('/api/files/fix-cloudinary-acl-batch', async (req, res) => {
         
         for (const file of files) {
             try {
-                const { publicId, resourceType = 'auto' } = file;
+                const { publicId, resourceType } = file;
+                
+                // Auto-detect resource type if not provided
+                let detectedResourceType = resourceType;
+                if (!detectedResourceType) {
+                    detectedResourceType = publicId.toLowerCase().endsWith('.pdf') ? 'raw' : 'image';
+                }
                 
                 console.log('🔧 [ACL-FIX-BATCH] Processing:', publicId);
                 
                 const result = await cloudinary.uploader.explicit(publicId, {
-                    resource_type: resourceType,
+                    resource_type: detectedResourceType,
                     type: 'upload',
                     access_mode: 'public',
                     invalidate: true
