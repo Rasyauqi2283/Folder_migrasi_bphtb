@@ -37,14 +37,13 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     const ext = path.extname(file.originalname).toLowerCase().replace('.', ''); // Hapus dot
     
     // Generate public_id (filename di Cloudinary)
-    // PENTING: Untuk PDF, gunakan 'image' resource_type dengan format 'pdf' agar bisa public access
     const publicId = `${userid}_${docType}_${timestamp}_${randomStr}`;
     
     console.log(`📁 [CLOUDINARY] Uploading to cloud:`, {
       folder: 'bappenda/dokumen-sspd',
       publicId: publicId,
-      type: isPdf ? 'PDF (as image)' : 'Image',
-      resourceType: 'image', // Gunakan 'image' untuk semua file agar public accessible
+      type: isPdf ? 'PDF (raw)' : 'Image',
+      resourceType: isPdf ? 'raw' : 'image',
       format: ext,
       originalName: file.originalname
     });
@@ -52,9 +51,10 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     return {
       folder: 'bappenda/dokumen-sspd',
       public_id: publicId,
-      resource_type: 'image', // ✅ FIXED: Gunakan 'image' untuk PDF juga agar public accessible
+      resource_type: isPdf ? 'raw' : 'image', // PDF = raw, Image = image
       format: ext, // Set format explicitly (pdf, jpg, png, jpeg)
-      flags: isPdf ? 'attachment' : undefined, // PDF sebagai attachment
+      access_mode: 'public', // ✅ Make files publicly accessible
+      type: 'upload', // Upload type
       // Add metadata
       context: {
         userid: userid,
@@ -128,8 +128,54 @@ export function extractPublicIdFromUrl(url) {
   if (!url) return null;
   
   // Format URL: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/[folder]/[public_id].[ext]
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
-  return match ? match[1] : null;
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+  if (match) {
+    // Remove extension if present
+    return match[1].replace(/\.\w+$/, '');
+  }
+  return null;
+}
+
+// Helper function untuk generate signed URL (untuk RAW/PDF files)
+export function generateSignedUrl(publicId, options = {}) {
+  try {
+    const defaultOptions = {
+      resource_type: 'raw',
+      type: 'upload',
+      sign_url: true,
+      expires_at: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours
+      ...options
+    };
+    
+    const url = cloudinary.url(publicId, defaultOptions);
+    console.log(`🔐 [CLOUDINARY] Generated signed URL for: ${publicId}`);
+    return url;
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY] Failed to generate signed URL:`, error);
+    return null;
+  }
+}
+
+// Helper function untuk generate public delivery URL
+export function generatePublicUrl(publicId, resourceType = 'image', format = null) {
+  try {
+    const options = {
+      resource_type: resourceType,
+      type: 'upload',
+      secure: true
+    };
+    
+    if (format) {
+      options.format = format;
+    }
+    
+    const url = cloudinary.url(publicId, options);
+    console.log(`🌐 [CLOUDINARY] Generated public URL for: ${publicId}`);
+    return url;
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY] Failed to generate URL:`, error);
+    return null;
+  }
 }
 
 export { cloudinary };

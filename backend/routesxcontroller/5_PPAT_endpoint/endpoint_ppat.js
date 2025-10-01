@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl }) {
+export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
 // ini
 // Start PPATK Endpoint // (belum selesai)
 // Cek apakah user (PPAT/PPATS/others) sudah memiliki tanda tangan
@@ -512,17 +512,36 @@ app.post('/api/ppatk_upload-cloudinary',
         for (const [fieldName, docType] of Object.entries(fileMapping)) {
             if (req.files[fieldName] && req.files[fieldName][0]) {
                 const file = req.files[fieldName][0];
+                const isPdf = file.mimetype === 'application/pdf';
                 
                 console.log(`📁 [CLOUDINARY] File uploaded:`, {
                     field: fieldName,
                     filename: file.filename,
                     url: file.path,
-                    secure_url: file.path.replace('http://', 'https://')
+                    mimetype: file.mimetype,
+                    isPdf: isPdf
                 });
 
-                // Cloudinary sudah memberikan URL yang benar
+                let finalUrl = file.path.replace('http://', 'https://');
+                
+                // Untuk PDF, generate signed URL agar bisa diakses
+                if (isPdf) {
+                    const publicId = extractPublicIdFromUrl(file.path);
+                    if (publicId) {
+                        const signedUrl = generateSignedUrl(publicId, {
+                            resource_type: 'raw',
+                            expires_at: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 365) // 1 year
+                        });
+                        
+                        if (signedUrl) {
+                            finalUrl = signedUrl;
+                            console.log(`🔐 [CLOUDINARY] Generated signed URL for PDF: ${fieldName}`);
+                        }
+                    }
+                }
+
                 uploadedFiles[fieldName] = {
-                    url: file.path.replace('http://', 'https://'),  // Pastikan HTTPS
+                    url: finalUrl,
                     filename: file.filename,
                     mimetype: file.mimetype,
                     size: file.size
@@ -530,7 +549,7 @@ app.post('/api/ppatk_upload-cloudinary',
             }
         }
 
-        // Simpan Cloudinary URLs ke database (HTTPS URLs)
+        // Simpan Cloudinary URLs ke database (HTTPS URLs or Signed URLs)
         const aktaTanahUrl = uploadedFiles.aktaTanah?.url || null;
         const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.url || null;
         const pelengkapUrl = uploadedFiles.pelengkap?.url || null;

@@ -85,7 +85,7 @@ import { pdfDUpload, imgDUpload, mixedDUpload } from './backend/config/uploads/u
 import { ttdVerifMiddleware, uploadTTD } from './backend/config/uploads/upload_ttdverif.js';
 import { uploadDocumentMiddleware } from './backend/config/multer.js';
 // Import Cloudinary storage
-import { mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl } from './backend/config/uploads/cloudinary_storage.js';
+import { mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl } from './backend/config/uploads/cloudinary_storage.js';
 export {
   uploadProfile,
   pdfDUpload,
@@ -513,7 +513,9 @@ registerPPATKEndpoints({
   mixedCloudinaryUpload,
   renameCloudinaryFile,
   deleteCloudinaryFile,
-  extractPublicIdFromUrl
+  extractPublicIdFromUrl,
+  generateSignedUrl,
+  generatePublicUrl
 });
 
 function requireBankRole(req) {
