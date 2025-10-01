@@ -232,29 +232,143 @@ app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
         }
         
         console.log('🔧 [ACL-FIX] Fixing ACL for file:', publicId);
+        console.log('🔧 [ACL-FIX] Resource type:', resourceType);
         
-        // Update file access mode to public
-        const result = await cloudinary.uploader.explicit(publicId, {
-            resource_type: resourceType,
-            type: 'upload',
-            access_mode: 'public',
-            invalidate: true
+        // Method 1: Try explicit update
+        try {
+            const result = await cloudinary.uploader.explicit(publicId, {
+                resource_type: resourceType,
+                type: 'upload',
+                access_mode: 'public',
+                invalidate: true
+            });
+            
+            console.log('✅ [ACL-FIX] ACL fixed via explicit:', result.public_id);
+            
+            return res.json({
+                success: true,
+                message: 'ACL fixed successfully via explicit',
+                public_id: result.public_id,
+                secure_url: result.secure_url,
+                method: 'explicit'
+            });
+            
+        } catch (explicitError) {
+            console.log('⚠️ [ACL-FIX] Explicit method failed, trying rename method:', explicitError.message);
+            
+            // Method 2: Try rename to force public access
+            const tempPublicId = `${publicId}_temp_${Date.now()}`;
+            
+            try {
+                // Rename to temp
+                await cloudinary.uploader.rename(publicId, tempPublicId, {
+                    resource_type: resourceType,
+                    type: 'upload'
+                });
+                
+                // Rename back with public access
+                const result = await cloudinary.uploader.rename(tempPublicId, publicId, {
+                    resource_type: resourceType,
+                    type: 'upload',
+                    access_mode: 'public',
+                    invalidate: true
+                });
+                
+                console.log('✅ [ACL-FIX] ACL fixed via rename:', result.public_id);
+                
+                return res.json({
+                    success: true,
+                    message: 'ACL fixed successfully via rename',
+                    public_id: result.public_id,
+                    secure_url: result.secure_url,
+                    method: 'rename'
+                });
+                
+            } catch (renameError) {
+                console.error('❌ [ACL-FIX] Rename method also failed:', renameError.message);
+                throw renameError;
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ [ACL-FIX] All methods failed:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fix ACL - all methods failed',
+            error: error.message,
+            details: {
+                publicId: req.body.publicId,
+                resourceType: req.body.resourceType || 'raw'
+            }
         });
+    }
+});
+
+// ===== BATCH FIX ACL ENDPOINT =====
+// Endpoint untuk fix ACL multiple files sekaligus
+app.post('/api/files/fix-cloudinary-acl-batch', async (req, res) => {
+    try {
+        const { files } = req.body; // Array of {publicId, resourceType}
         
-        console.log('✅ [ACL-FIX] ACL fixed successfully:', result.public_id);
+        if (!files || !Array.isArray(files) || files.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'files array is required' 
+            });
+        }
+        
+        console.log('🔧 [ACL-FIX-BATCH] Fixing ACL for', files.length, 'files');
+        
+        const results = [];
+        const errors = [];
+        
+        for (const file of files) {
+            try {
+                const { publicId, resourceType = 'raw' } = file;
+                
+                console.log('🔧 [ACL-FIX-BATCH] Processing:', publicId);
+                
+                const result = await cloudinary.uploader.explicit(publicId, {
+                    resource_type: resourceType,
+                    type: 'upload',
+                    access_mode: 'public',
+                    invalidate: true
+                });
+                
+                results.push({
+                    publicId,
+                    success: true,
+                    secure_url: result.secure_url
+                });
+                
+                console.log('✅ [ACL-FIX-BATCH] Fixed:', publicId);
+                
+            } catch (error) {
+                console.error('❌ [ACL-FIX-BATCH] Failed:', file.publicId, error.message);
+                errors.push({
+                    publicId: file.publicId,
+                    error: error.message
+                });
+            }
+        }
         
         res.json({
             success: true,
-            message: 'ACL fixed successfully',
-            public_id: result.public_id,
-            secure_url: result.secure_url
+            message: `Processed ${files.length} files`,
+            results,
+            errors,
+            summary: {
+                total: files.length,
+                success: results.length,
+                failed: errors.length
+            }
         });
         
     } catch (error) {
-        console.error('❌ [ACL-FIX] Failed to fix ACL:', error.message);
+        console.error('❌ [ACL-FIX-BATCH] Batch processing failed:', error.message);
         res.status(500).json({
             success: false,
-            message: 'Failed to fix ACL',
+            message: 'Batch ACL fix failed',
             error: error.message
         });
     }

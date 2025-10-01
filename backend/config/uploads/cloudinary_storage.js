@@ -101,24 +101,25 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     // Format: PAT10_Akta_000001_2025
     const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
     
-    // Prepare upload parameters
+    // Prepare upload parameters - FORCE PUBLIC ACCESS
     const uploadParams = {
       folder: 'bappenda/dokumen-sspd',
       public_id: publicId,
       resource_type: isPdf ? 'raw' : 'image',
       format: ext,
+      // Force public access - multiple methods
       access_mode: 'public',
       type: 'upload',
+      // Additional public access parameters
+      use_filename: true,
+      unique_filename: false,
+      overwrite: true,
+      // Metadata
       context: `userid=${userid}|docType=${docType}|nobooking=${nobooking}|sequence=${sequenceNumber}|ppatk=${ppatk_khusus}|year=${currentYear}`,
       tags: `${userid},${docType},${sequenceNumber},${ppatk_khusus},${currentYear},bappenda-sspd`
     };
     
-    // Add PDF-specific options
-    if (isPdf) {
-      uploadParams.use_filename = true;
-      uploadParams.unique_filename = false;
-      uploadParams.overwrite = true;
-    }
+    // PDF-specific options are already set above
     
     console.log(`📁 [CLOUDINARY] Upload parameters:`, {
       ...uploadParams,
