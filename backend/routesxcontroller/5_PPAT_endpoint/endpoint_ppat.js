@@ -41,98 +41,56 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         console.log('📥 [PROXY] Downloading file via Cloudinary API...');
         
-        // Untuk RAW files, public_id INCLUDE extension
+        // Untuk RAW files (PDF), public_id INCLUDE extension
         // Untuk IMAGE files, public_id EXCLUDE extension
         let publicIdForApi = publicIdWithExt;
         let downloadUrl;
 
-        if (!isPdf) {
-            // IMAGE → hapus extension
-            publicIdForApi = publicIdForApi.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
-            // pakai cloudinary.api.resource untuk cek metadata image
-            const result = await cloudinary.api.resource(publicIdForApi, {
-              resource_type: 'image',
-              type: 'upload',
-              timeout: 50000
-            });
-            downloadUrl = result.secure_url;
-          } else {
-            // PDF → langsung bikin authenticated URL
-            downloadUrl = `https://${process.env.CLOUDINARY_API_KEY}:${process.env.CLOUDINARY_API_SECRET}@res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicIdWithExt}`;
-          }
-        
-        
-        console.log('📋 [PROXY] Public ID for API:', {
-            original: publicIdWithExt,
-            forApi: publicIdForApi,
-            resourceType: resourceType
-        });
-        
-        // Download file menggunakan cloudinary.api
-        const downloadStream = await new Promise((resolve, reject) => {
-            cloudinary.api.resource(publicIdForApi, {
-                resource_type: resourceType,
-                type: 'upload'
-            }, (error, result) => {
-                if (error) {
-                    console.error('❌ [CLOUDINARY API] Error:', error);
-                    reject(error);
-                } else {
-                    console.log('✅ [CLOUDINARY API] Resource info:', {
-                        secure_url: result.secure_url,
-                        format: result.format,
-                        bytes: result.bytes
-                    });
-                    resolve(result.secure_url);
-                }
-            });
-        });
-        
-        let response;
-        
-        // Untuk RAW files (PDF), gunakan authenticated request dengan API key
         if (isPdf) {
-            console.log('🔐 [PROXY] Fetching RAW file with authentication...');
+            // PDF → Use Cloudinary signed URL utility
+            console.log('🔐 [PROXY] Generating signed URL for PDF...');
             
-            const { utils } = cloudinary;
-
-            // generate signed URL (valid for 1 hour)
-            const authUrl = utils.sign_url(
-              `raw/upload/${publicIdWithExt}`,
-              {
+            const signedUrl = cloudinary.url(publicIdWithExt, {
                 resource_type: 'raw',
                 type: 'upload',
                 secure: true,
                 sign_url: true,
-                expires_at: Math.floor(Date.now() / 1000) + 3600, // expired in 1 hour
-              }
-            );
-
-            console.log('🔐 [PROXY] Signed Auth URL:', authUrl);
-            
-            response = await axios({
-                method: 'GET',
-                url: authUrl,
-                responseType: 'arraybuffer',
-                timeout: 50000,
-                headers: {
-                    'User-Agent': 'Railway-Proxy/1.0'
-                }
+                expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour
             });
+            
+            downloadUrl = signedUrl;
+            console.log('✅ [PROXY] Signed URL generated for PDF');
         } else {
-            // Untuk images, gunakan public URL
-            console.log('🖼️ [PROXY] Fetching IMAGE file (public)...');
+            // IMAGE → Remove extension for API call
+            publicIdForApi = publicIdWithExt.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
             
-            response = await axios({
-                method: 'GET',
-                url: downloadUrl,
-                responseType: 'arraybuffer',
-                timeout: 50000,
-                headers: {
-                    'User-Agent': 'Railway-Proxy/1.0'
-                }
+            console.log('🖼️ [PROXY] Fetching image metadata...');
+            
+            const result = await cloudinary.api.resource(publicIdForApi, {
+                resource_type: 'image',
+                type: 'upload'
             });
+            
+            downloadUrl = result.secure_url;
+            console.log('✅ [PROXY] Image URL retrieved');
         }
+        
+        console.log('📋 [PROXY] Download info:', {
+            publicId: publicIdForApi,
+            resourceType: resourceType,
+            isPdf: isPdf
+        });
+        
+        // Fetch file dari Cloudinary
+        const response = await axios({
+            method: 'GET',
+            url: downloadUrl,
+            responseType: 'arraybuffer',
+            timeout: 50000,
+            headers: {
+                'User-Agent': 'Railway-Proxy/1.0'
+            }
+        });
 
         // Get content type dari Cloudinary response
         const contentType = response.headers['content-type'] || 'application/octet-stream';
