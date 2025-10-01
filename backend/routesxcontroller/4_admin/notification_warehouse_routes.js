@@ -900,7 +900,6 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
                 vu.ppatk_khusus,
                 bp.bphtb_yangtelah_dibayar AS nilai_bphtb,
                 b.created_at as tanggal_booking,
-                b.status,
                 b.trackstatus,
                 vu.nama as user_nama,
                 vu.divisi,
@@ -952,7 +951,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             SELECT COUNT(b.nobooking) as total
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-            WHERE b.trackstatus = 'Terselesaikan'
+            WHERE b.trackstatus = 'Diserahkan'
             AND b.created_at >= $1
             AND b.created_at <= $2
         `;
