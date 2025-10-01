@@ -756,11 +756,22 @@ app.post('/api/ppatk_upload-cloudinary',
       next();
     });
   }, async (req, res) => {
-    const { userid } = req.session.user;
+    try {
+        console.log('🔍 [CLOUDINARY-ENDPOINT] Main handler started:', {
+            hasSession: !!req.session,
+            hasUser: !!req.session?.user,
+            userid: req.session?.user?.userid,
+            hasFiles: !!req.files,
+            filesKeys: req.files ? Object.keys(req.files) : [],
+            bodyKeys: Object.keys(req.body),
+            timestamp: new Date().toISOString()
+        });
 
-    if (!userid) {
-        return res.status(400).json({ success: false, message: 'User ID is required' });
-    }
+        const { userid } = req.session.user;
+
+        if (!userid) {
+            return res.status(400).json({ success: false, message: 'User ID is required' });
+        }
 
     // Memastikan ada file yang di-upload
     if (!req.files || !req.files.aktaTanah || !req.files.sertifikatTanah || !req.files.pelengkap) {
@@ -769,11 +780,10 @@ app.post('/api/ppatk_upload-cloudinary',
 
     const { nobooking } = req.body;
 
-    if (!nobooking) {
-        return res.status(400).json({ success: false, message: 'No booking selected' });
-    }
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'No booking selected' });
+        }
 
-    try {
         // Extract year and serial from nobooking
         let year = '0000';
         let serial = '000000';
@@ -839,7 +849,16 @@ app.post('/api/ppatk_upload-cloudinary',
                 // Validate publicId before proceeding
                 if (!publicId || publicId === 'null') {
                     console.error(`❌ [CLOUDINARY-UPLOAD] Invalid publicId for ${fieldName}:`, publicId);
-                    throw new Error(`Failed to extract valid publicId for ${fieldName}`);
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: `Failed to extract valid publicId for ${fieldName}`,
+                        details: {
+                            fieldName,
+                            publicId,
+                            filePath: file.path,
+                            allFileProperties: Object.keys(file)
+                        }
+                    });
                 }
                 
                 // Simpan metadata: cloudinary_url dan proxy_path
