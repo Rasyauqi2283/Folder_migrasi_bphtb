@@ -500,7 +500,7 @@ function initializeChart() {
 // Load chart data from database
 async function loadChartData() {
   try {
-    const currentYear = document.getElementById('yearSelect').value;
+    const currentYear = document.getElementById('tahuns').value;
     console.log('🔍 Loading chart data for year:', currentYear);
     
     const response = await fetch(`/api/admin/notification-warehouse/ppat-chart-data?tahun=${currentYear}`, {
@@ -558,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Year select event listener
-document.getElementById('yearSelect').addEventListener('change', () => {
+document.getElementById('tahuns').addEventListener('change', () => {
   loadChartData();
   loadPPATRenewalData(); // Also reload table data
 });
@@ -644,11 +644,11 @@ async function loadPPATRenewalData() {
       bookings.forEach(booking => {
         const row = tbody.insertRow();
         row.innerHTML = `
-          <td>${booking.nama_ppat}</td>
-          <td>${booking.userid}</td>
-          <td>${booking.ppatk_khusus}</td>
-          <td>${booking.nilai_formatted}</td>
-          <td>${booking.nobooking}</td>
+          <td>${booking.user_nama || '-'}</td>
+          <td>${booking.userid || '-'}</td>
+          <td>${booking.ppatk_khusus || '-'}</td>
+          <td>${booking.nilai_formatted || 'Rp 0'}</td>
+          <td>${booking.nobooking || '-'}</td>
           <td>
             <button class="btn-sm view-btn" data-booking="${booking.nobooking}">Lihat</button>
           </td>
