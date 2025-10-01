@@ -503,26 +503,59 @@ app.post('/api/ppatk_upload-input_validasisspd',
         return fallbackPath.startsWith('/') ? fallbackPath.substring(1) : fallbackPath;
     };
 
-    const aktaTanahPath = req.files.aktaTanah ? toRelativePublicPath(req.files.aktaTanah[0].path) : null;
-    const sertifikatTanahPath = req.files.sertifikatTanah ? toRelativePublicPath(req.files.sertifikatTanah[0].path) : null;
-    const pelengkapPath = req.files.pelengkap ? toRelativePublicPath(req.files.pelengkap[0].path) : null;
+    // FUNGSI RENAME FILE dengan format yang benar
+    const renameUploadedFile = (uploadedFile, nobooking, docType) => {
+        if (!uploadedFile) return null;
+        
+        const oldPath = uploadedFile.path;
+        const ext = path.extname(uploadedFile.filename);
+        const userid = req.session.user.userid;
+        
+        // Extract year and serial from nobooking
+        let year = '0000';
+        let serial = '000000';
+        if (typeof nobooking === 'string' && nobooking.includes('-')) {
+            const parts = nobooking.split('-');
+            if (parts.length >= 3) {
+                year = (parts[1] || '').replace(/[^0-9]/g, '').padStart(4, '0').slice(-4);
+                serial = (parts[2] || '').replace(/[^0-9]/g, '').padStart(6, '0').slice(-6);
+            }
+        }
+        
+        // Generate new filename: USERID_DocType_SERIAL_YEAR.ext
+        const newFilename = `${userid}_${docType}_${serial}_${year}${ext}`;
+        const dirPath = path.dirname(oldPath);
+        const newPath = path.join(dirPath, newFilename);
+        
+        try {
+            // Rename file
+            fs.renameSync(oldPath, newPath);
+            console.log(`✅ [RENAME] ${path.basename(oldPath)} → ${newFilename}`);
+            return newPath;
+        } catch (err) {
+            console.error(`❌ [RENAME] Error renaming file:`, err);
+            return oldPath; // Return old path if rename fails
+        }
+    };
+
+    // Rename files dengan format yang benar
+    const aktaTanahRenamedPath = req.files.aktaTanah ? 
+        renameUploadedFile(req.files.aktaTanah[0], nobooking, 'Akta') : null;
+    const sertifikatTanahRenamedPath = req.files.sertifikatTanah ? 
+        renameUploadedFile(req.files.sertifikatTanah[0], nobooking, 'SertifikatTanah') : null;
+    const pelengkapRenamedPath = req.files.pelengkap ? 
+        renameUploadedFile(req.files.pelengkap[0], nobooking, 'DokumenP') : null;
+
+    // Convert ke relative path
+    const aktaTanahPath = aktaTanahRenamedPath ? toRelativePublicPath(aktaTanahRenamedPath) : null;
+    const sertifikatTanahPath = sertifikatTanahRenamedPath ? toRelativePublicPath(sertifikatTanahRenamedPath) : null;
+    const pelengkapPath = pelengkapRenamedPath ? toRelativePublicPath(pelengkapRenamedPath) : null;
 
     // Debugging: Console log untuk melihat apakah file path sudah benar
-    console.log('📁 [UPLOAD] Uploaded files paths:');
+    console.log('📁 [UPLOAD] Final file paths after rename:');
     console.log('📁 [UPLOAD] Akta Tanah Path:', aktaTanahPath);
     console.log('📁 [UPLOAD] Sertifikat Tanah Path:', sertifikatTanahPath);
-    console.log('📁 [UPLOAD] File Pelengkap Path:', pelengkapPath);
-    
-    // Log original file paths untuk debugging
-    if (req.files.aktaTanah) {
-        console.log('📁 [UPLOAD] Original Akta Tanah Path:', req.files.aktaTanah[0].path);
-    }
-    if (req.files.sertifikatTanah) {
-        console.log('📁 [UPLOAD] Original Sertifikat Tanah Path:', req.files.sertifikatTanah[0].path);
-    }
-    if (req.files.pelengkap) {
-        console.log('📁 [UPLOAD] Original Pelengkap Path:', req.files.pelengkap[0].path);
-    }
+    console.log('📁 [UPLOAD] File Pelengkap Path:', pelengkapPath)
 
     try {
         // Cek apakah nobooking yang dipilih ada di pat_1_bookingsspd

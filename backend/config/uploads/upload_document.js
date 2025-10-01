@@ -89,18 +89,12 @@ const mixedStorage = multer.diskStorage({
     try {
       const ext = path.extname(file.originalname).toLowerCase();
       const userid = req.session?.user?.userid || 'unknown';
-      const nobooking = req.body?.nobooking || '';
-      // Extract year and serial from nobooking pattern e.g. XXXXX-YYYY-######
-      let year = '0000';
-      let serial = '000000';
-      if (typeof nobooking === 'string' && nobooking.includes('-')) {
-        const parts = nobooking.split('-');
-        if (parts.length >= 3) {
-          year = (parts[1] || '').replace(/[^0-9]/g, '').padStart(4, '0').slice(-4);
-          serial = (parts[2] || '').replace(/[^0-9]/g, '').padStart(6, '0').slice(-6);
-        }
-      }
-
+      
+      // PENTING: Gunakan timestamp sementara, akan di-rename setelah upload selesai
+      // Karena req.body.nobooking belum tersedia saat multer memproses filename
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      
       // Determine document key by fieldname
       const field = file.fieldname || '';
       const fieldToKeyMap = {
@@ -110,9 +104,13 @@ const mixedStorage = multer.diskStorage({
       };
       const docKey = fieldToKeyMap[field] || 'Dokumen';
 
-      const filename = `${userid}_${docKey}_${serial}_${year}${ext}`;
+      // Format: USERID_DocType_TIMESTAMP_RANDOM.ext
+      const filename = `${userid}_${docKey}_${timestamp}_${randomStr}${ext}`;
+      
+      console.log(`📁 [MULTER] Generating temp filename: ${filename}`);
       cb(null, filename);
     } catch (err) {
+      console.error('❌ [MULTER] Error generating filename:', err);
       const fallback = `upload-${Date.now()}${path.extname(file.originalname).toLowerCase()}`;
       cb(null, fallback);
     }
