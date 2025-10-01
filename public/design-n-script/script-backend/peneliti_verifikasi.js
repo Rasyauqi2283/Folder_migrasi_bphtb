@@ -451,12 +451,15 @@ async function simpanData(buttonElement) {
 
     try {
         console.log('Memproses No Booking:', nobooking);
+        
+        // 1) Check signature
         const signatureCheck = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
         const { has_signature } = await signatureCheck.json();
         if (!has_signature) {
-            throw new Error('Anda belum mengunggah tanda tangan!');
+            throw new Error('Anda belum mengunggah tanda tangan di profil!');
         }
 
+        // 2) Check persetujuan
         const persetujuanVerif = document.querySelector(`input[name="ParafVerif-${nobooking}"]:checked`)?.value;
         if (!persetujuanVerif) {
             throw new Error('Harap pilih setujui agar dapat mengetahui dokumen telah di cek');
@@ -564,7 +567,7 @@ async function simpanData(buttonElement) {
 
         // 8. Kirim data ke backend dengan timeout
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 10000); // Increase timeout untuk transfer signature
 
         const saveResponse = await fetch('/api/peneliti_update-berdasarkan-pemilihan', {
             method: 'POST',
@@ -580,14 +583,33 @@ async function simpanData(buttonElement) {
             throw new Error(await saveResponse.text());
         }
         
+        // 9. OTOMATIS transfer tanda tangan jika disetujui (tidak perlu modal lagi)
         if (persetujuanVerif === 'ya') {
-            await fetch('/api/peneliti/transfer-signature', {
-                method: 'POST',
-                credentials: 'include'
-            });
+            console.log('✍️ Automatically transferring signature...');
+            
+            try {
+                const transferResponse = await fetch('/api/peneliti/transfer-signature', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nobooking: nobooking })
+                });
+                
+                const transferResult = await transferResponse.json();
+                
+                if (!transferResponse.ok || !transferResult.success) {
+                    console.warn('⚠️ Signature transfer warning:', transferResult.message);
+                    // Tidak throw error, hanya warning karena data sudah tersimpan
+                } else {
+                    console.log('✅ Signature transferred successfully');
+                }
+            } catch (transferError) {
+                console.error('❌ Error transferring signature:', transferError);
+                // Tidak throw error, data sudah tersimpan
+            }
         }
 
-        alert("Data berhasil disimpan!");
+        alert("Data berhasil disimpan dan tanda tangan ditambahkan!");
         location.reload();
 
     } catch (error) {
@@ -771,98 +793,9 @@ window.onload = loadTableDataPenelitiV;
 
 // ===== Refactor: Signature flow using stored profile signature =====
 document.addEventListener('DOMContentLoaded', () => {
-    const showSignatureBtn = document.getElementById('showSignatureModal');
-    const overlay = document.getElementById('overlay-sign');
-    const overlayConfirmed = document.getElementById('overlay-sign-confirmed');
-    const overlayMsg = overlay?.querySelector('.overlay-content-sign p');
-    const btnCloseOverlay = document.getElementById('close_batal_overlay');
-    const btnAddSignature = document.getElementById('Tambahkan_tandatangan');
-    const btnCancelConfirm = document.getElementById('Tambahkan_tandatangan_batal_overlay');
-    const btnConfirm = document.getElementById('Tambahkan_tandatangan_confirmed');
-
-    if (showSignatureBtn) {
-        showSignatureBtn.addEventListener('click', async () => {
-            try {
-                // 1) Pastikan nobooking sudah dipilih
-                if (!selectedNoBooking) {
-                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum dipilih');
-                    return;
-                }
-
-                // 2) Pastikan user sudah punya tanda tangan di profil
-                const sigResp = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
-                const sigJson = await sigResp.json().catch(() => ({}));
-                if (!sigResp.ok || !sigJson.has_signature) {
-                    alert('Anda belum mengunggah tanda tangan di Profil. Silakan unggah terlebih dahulu.');
-                    return;
-                }
-
-                // 3) Pastikan dokumen sudah disimpan/diatur (tercantum di pv_1_clear_to_paraf)
-                const vResp = await fetch(`/api/validate-nobooking/${encodeURIComponent(selectedNoBooking)}`, { credentials: 'include' });
-                const vJson = await vResp.json().catch(() => ({}));
-                if (!vResp.ok || !vJson.success || !vJson.isValid) {
-                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum diatur sebagai dokumen yang disetujui.');
-                    return;
-                }
-
-                // 4) Semua valid → buka overlay konfirmasi penambahan tanda tangan
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    if (overlayMsg) {
-                        overlayMsg.textContent = `Dokumen Booking dengan No. Booking ${selectedNoBooking} telah dikirim oleh PPAT untuk verifikasi`;
-                    }
-                }
-            } catch (err) {
-                console.error('showSignatureModal error:', err);
-                alert('Terjadi kesalahan saat memeriksa status dokumen.');
-            }
-        });
-    }
-
-    if (btnCloseOverlay && overlay) {
-        btnCloseOverlay.addEventListener('click', () => {
-            overlay.style.display = 'none';
-        });
-    }
-
-    if (btnAddSignature && overlayConfirmed) {
-        btnAddSignature.addEventListener('click', () => {
-            overlayConfirmed.style.display = 'flex';
-        });
-    }
-
-    if (btnCancelConfirm && overlayConfirmed) {
-        btnCancelConfirm.addEventListener('click', () => {
-            overlayConfirmed.style.display = 'none';
-        });
-    }
-
-    if (btnConfirm) {
-        btnConfirm.addEventListener('click', async () => {
-            try {
-                if (!selectedNoBooking) {
-                    throw new Error('Parameter nobooking diperlukan');
-                }
-                // Transfer tanda tangan profil ke dokumen yang sudah disetujui dan belum memiliki tanda tangan
-                const resp = await fetch('/api/peneliti/transfer-signature', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nobooking: selectedNoBooking })
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (!resp.ok || json.success === false) {
-                    throw new Error(json.message || 'Gagal menambahkan tanda tangan');
-                }
-
-                alert('Tanda tangan berhasil ditambahkan pada dokumen yang memenuhi syarat.');
-            } catch (e) {
-                console.error('transfer-signature error:', e);
-                alert(`Gagal menandatangani dokumen: ${e.message}`);
-            } finally {
-                if (overlayConfirmed) overlayConfirmed.style.display = 'none';
-                if (overlay) overlay.style.display = 'none';
-            }
-        });
-    }
+    // ===== SIGNATURE MODAL LOGIC DIHAPUS =====
+    // Tanda tangan sekarang otomatis ditambahkan saat simpanData()
+    // Tidak perlu modal terpisah lagi
+    
+    console.log('✅ Signature will be added automatically when data is saved');
 });

@@ -2,6 +2,68 @@ import fs from 'fs';
 import path from 'path';
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
+// ===== CLOUDINARY PROXY ENDPOINT =====
+// Endpoint untuk serve files dari Cloudinary via Railway server
+app.get('/api/files/cloudinary-proxy', async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!url) {
+            return res.status(400).json({ success: false, message: 'URL parameter required' });
+        }
+
+        console.log('🔄 [PROXY] Fetching file from Cloudinary:', url);
+
+        // Import axios untuk fetch file
+        const axios = (await import('axios')).default;
+        
+        // Fetch file dari Cloudinary
+        const response = await axios({
+            method: 'GET',
+            url: url,
+            responseType: 'arraybuffer',
+            timeout: 30000
+        });
+
+        // Get content type dari Cloudinary response
+        const contentType = response.headers['content-type'] || 'application/octet-stream';
+        
+        console.log('✅ [PROXY] File fetched successfully:', {
+            contentType: contentType,
+            size: response.data.length
+        });
+
+        // Set headers yang benar
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', response.data.length);
+        
+        // Untuk PDF, tambahkan header agar bisa dibuka di browser
+        if (contentType === 'application/pdf' || url.toLowerCase().endsWith('.pdf')) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline'); // Open in browser, bukan download
+        }
+        
+        // Send file content
+        res.send(Buffer.from(response.data));
+        
+    } catch (error) {
+        console.error('❌ [PROXY] Error fetching file from Cloudinary:', error.message);
+        
+        if (error.response?.status === 404) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'File not found in Cloudinary' 
+            });
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch file from Cloudinary',
+            error: error.message
+        });
+    }
+});
+
 // ini
 // Start PPATK Endpoint // (belum selesai)
 // Cek apakah user (PPAT/PPATS/others) sudah memiliki tanda tangan
@@ -517,42 +579,27 @@ app.post('/api/ppatk_upload-cloudinary',
                 console.log(`📁 [CLOUDINARY] File uploaded:`, {
                     field: fieldName,
                     filename: file.filename,
-                    url: file.path,
+                    cloudinaryUrl: file.path,
                     mimetype: file.mimetype,
                     isPdf: isPdf
                 });
 
-                let finalUrl = file.path.replace('http://', 'https://');
-                
-                // Untuk PDF, generate signed URL agar bisa diakses
-                if (isPdf) {
-                    const publicId = extractPublicIdFromUrl(file.path);
-                    if (publicId) {
-                        const signedUrl = generateSignedUrl(publicId, {
-                            resource_type: 'raw',
-                            expires_at: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 365) // 1 year
-                        });
-                        
-                        if (signedUrl) {
-                            finalUrl = signedUrl;
-                            console.log(`🔐 [CLOUDINARY] Generated signed URL for PDF: ${fieldName}`);
-                        }
-                    }
-                }
-
+                // Simpan metadata: cloudinary_url dan proxy_path
                 uploadedFiles[fieldName] = {
-                    url: finalUrl,
+                    cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
+                    proxy_path: `/api/files/cloudinary-proxy?url=${encodeURIComponent(file.path)}`, // Railway proxy URL
                     filename: file.filename,
                     mimetype: file.mimetype,
-                    size: file.size
+                    size: file.size,
+                    isPdf: isPdf
                 };
             }
         }
 
-        // Simpan Cloudinary URLs ke database (HTTPS URLs or Signed URLs)
-        const aktaTanahUrl = uploadedFiles.aktaTanah?.url || null;
-        const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.url || null;
-        const pelengkapUrl = uploadedFiles.pelengkap?.url || null;
+        // Simpan Railway proxy URLs ke database (untuk user access)
+        const aktaTanahUrl = uploadedFiles.aktaTanah?.proxy_path || null;
+        const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.proxy_path || null;
+        const pelengkapUrl = uploadedFiles.pelengkap?.proxy_path || null;
 
         console.log('📁 [CLOUDINARY] Final URLs for database:', {
             akta: aktaTanahUrl,
@@ -567,7 +614,9 @@ app.post('/api/ppatk_upload-cloudinary',
             return res.status(404).json({ success: false, message: 'No booking not found in database' });
         }
 
-        // Update database dengan Cloudinary URLs
+        // Simpan PROXY URLs ke database (Railway URLs, bukan Cloudinary direct)
+        // Format: /api/files/cloudinary-proxy?url=CLOUDINARY_URL
+        // User akan akses via Railway, Railway fetch dari Cloudinary
         const updateQuery = `
             UPDATE pat_1_bookingsspd 
             SET 
@@ -581,7 +630,13 @@ app.post('/api/ppatk_upload-cloudinary',
 
         const values = [aktaTanahUrl, sertifikatTanahUrl, pelengkapUrl, nobooking];
 
-        console.log('💾 [DB] Updating booking:', nobooking);
+        console.log('💾 [DB] Updating booking with proxy URLs:', {
+            nobooking: nobooking,
+            akta: aktaTanahUrl,
+            sertifikat: sertifikatTanahUrl,
+            pelengkap: pelengkapUrl
+        });
+        
         const resultUpdate = await pool.query(updateQuery, values);
 
         if (resultUpdate.rowCount > 0) {
