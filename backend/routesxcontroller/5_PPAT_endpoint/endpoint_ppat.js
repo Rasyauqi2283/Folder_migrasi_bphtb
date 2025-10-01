@@ -56,28 +56,26 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let response;
 
         if (isPdf) {
-            // PDF → Use Cloudinary API resource untuk mendapatkan secure URL
-            console.log('🔐 [PROXY] Fetching PDF via Cloudinary API resource...');
+            // PDF → Use signed URL untuk mengatasi ACL issues
+            console.log('🔐 [PROXY] Generating signed URL for PDF...');
             console.log('🔐 [PROXY] PDF public_id:', publicIdWithExt);
             
             try {
-                // Get resource info dari Cloudinary API
-                const resourceInfo = await cloudinary.api.resource(publicIdWithExt, {
+                // Generate signed URL dengan expiration 1 hour
+                const signedUrl = cloudinary.url(publicIdWithExt, {
                     resource_type: 'raw',
-                    type: 'upload'
+                    type: 'upload',
+                    sign_url: true,
+                    expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+                    secure: true
                 });
                 
-                console.log('🔐 [PROXY] PDF resource info:', {
-                    public_id: resourceInfo.public_id,
-                    secure_url: resourceInfo.secure_url,
-                    bytes: resourceInfo.bytes,
-                    format: resourceInfo.format
-                });
+                console.log('🔐 [PROXY] Generated signed URL for PDF');
                 
-                // Use secure_url dari resource info
+                // Use signed URL untuk download
                 response = await axios({
                     method: 'GET',
-                    url: resourceInfo.secure_url,
+                    url: signedUrl,
                     responseType: 'arraybuffer',
                     timeout: 50000,
                     headers: {
@@ -85,9 +83,9 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
                     }
                 });
                 
-                console.log('✅ [PROXY] PDF fetched via resource secure URL');
+                console.log('✅ [PROXY] PDF fetched via signed URL');
             } catch (apiError) {
-                console.error('❌ [PROXY] Cloudinary API resource failed:', apiError.message);
+                console.error('❌ [PROXY] Signed URL generation failed:', apiError.message);
                 throw apiError;
             }
         } else {

@@ -16,8 +16,17 @@ console.log('🌐 [CLOUDINARY-CONFIG] Cloudinary credentials check:', {
   api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ SET' : '❌ MISSING',
   cloud_name_value: process.env.CLOUDINARY_CLOUD_NAME || 'NOT_SET',
   api_key_preview: process.env.CLOUDINARY_API_KEY ? 
-    '***' + process.env.CLOUDINARY_API_KEY.slice(-4) : 'NOT_SET'
+    '***' + process.env.CLOUDINARY_API_KEY.slice(-4) : 'NOT_SET',
+  api_secret_preview: process.env.CLOUDINARY_API_SECRET ? 
+    '***' + process.env.CLOUDINARY_API_SECRET.slice(-4) : 'NOT_SET'
 });
+
+// Validate credentials before config
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('❌ [CLOUDINARY-CONFIG] Missing required environment variables!');
+  console.error('❌ [CLOUDINARY-CONFIG] Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+  throw new Error('Cloudinary configuration incomplete - missing environment variables');
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
