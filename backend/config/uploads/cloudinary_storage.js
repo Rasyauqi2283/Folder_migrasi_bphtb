@@ -101,58 +101,41 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     // Format: PAT10_Akta_000001_2025
     const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
     
-    console.log(`📁 [CLOUDINARY] Uploading to cloud:`, {
+    // Prepare upload parameters
+    const uploadParams = {
       folder: 'bappenda/dokumen-sspd',
-      publicId: publicId,
-      userid: userid,
-      docType: docType,
-      nobooking: nobooking,
-      sequenceNumber: sequenceNumber,
-      ppatk_khusus: ppatk_khusus,
-      year: currentYear,
-      type: isPdf ? 'PDF (raw)' : 'Image',
-      resourceType: isPdf ? 'raw' : 'image',
+      public_id: publicId,
+      resource_type: isPdf ? 'raw' : 'image',
       format: ext,
-      originalName: file.originalname,
-      namingFormat: 'userid_dokumenpath_sequence_tahun',
+      access_mode: 'public',
+      type: 'upload',
+      context: `userid=${userid}|docType=${docType}|nobooking=${nobooking}|sequence=${sequenceNumber}|ppatk=${ppatk_khusus}|year=${currentYear}`,
+      tags: `${userid},${docType},${sequenceNumber},${ppatk_khusus},${currentYear},bappenda-sspd`
+    };
+    
+    // Add PDF-specific options
+    if (isPdf) {
+      uploadParams.use_filename = true;
+      uploadParams.unique_filename = false;
+      uploadParams.overwrite = true;
+    }
+    
+    console.log(`📁 [CLOUDINARY] Upload parameters:`, {
+      ...uploadParams,
+      // Log validation info separately
       validation: {
         nobookingProvided: !!nobooking,
         sequenceNumberValid: /^\d{6}$/.test(sequenceNumber),
         formatCorrect: nobooking.includes('-') && nobooking.split('-').length >= 3
+      },
+      fileInfo: {
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
       }
     });
     
-    return {
-      folder: 'bappenda/dokumen-sspd',
-      public_id: publicId,
-      resource_type: isPdf ? 'raw' : 'image', // PDF = raw, Image = image
-      format: ext, // Set format explicitly (pdf, jpg, png, jpeg)
-      access_mode: 'public', // ✅ Make files publicly accessible
-      type: 'upload', // Upload type
-      // Force public access for all files
-      allowed_formats: isPdf ? ['pdf'] : ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-      // Additional options for PDF access
-      ...(isPdf && {
-        use_filename: true,
-        unique_filename: false,
-        overwrite: true,
-        // Force public access for PDF files
-        access_control: 'public',
-        invalidate: true // Clear CDN cache
-      }),
-      // Add metadata
-      context: {
-        userid: userid,
-        docType: docType,
-        nobooking: nobooking,
-        sequenceNumber: sequenceNumber,
-        ppatk_khusus: ppatk_khusus,
-        year: currentYear,
-        uploadDate: new Date().toISOString(),
-        namingFormat: 'userid_dokumenpath_sequence_tahun'
-      },
-      tags: [userid, docType, sequenceNumber, ppatk_khusus, currentYear.toString(), 'bappenda-sspd']
-    };
+    return uploadParams;
     } catch (error) {
       console.error('❌ [CLOUDINARY-UPLOAD] Error in params function:', error);
       throw error;
