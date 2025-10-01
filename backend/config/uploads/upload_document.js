@@ -1,4 +1,6 @@
-// 2. multer untuk upload document
+// 2. multer untuk upload document (LOCAL STORAGE - DEPRECATED)
+// NOTE: File ini untuk backward compatibility dengan sistem lama
+// Sistem baru menggunakan cloudinary_storage.js untuk external storage
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -95,16 +97,16 @@ const mixedStorage = multer.diskStorage({
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
       
-      // Determine document key by fieldname
+      // Determine document key by fieldname (SAMA dengan Cloudinary)
       const field = file.fieldname || '';
       const fieldToKeyMap = {
         aktaTanah: 'Akta',
-        sertifikatTanah: 'SertifikatTanah',
-        pelengkap: 'DokumenP'
+        sertifikatTanah: 'Sertifikat',    // ✅ Sama dengan Cloudinary
+        pelengkap: 'Pelengkap'            // ✅ Sama dengan Cloudinary
       };
       const docKey = fieldToKeyMap[field] || 'Dokumen';
 
-      // Format: USERID_DocType_TIMESTAMP_RANDOM.ext
+      // Format: USERID_DocType_TIMESTAMP_RANDOM.ext (untuk backward compatibility)
       const filename = `${userid}_${docKey}_${timestamp}_${randomStr}${ext}`;
       
       console.log(`📁 [MULTER] Generating temp filename: ${filename}`);

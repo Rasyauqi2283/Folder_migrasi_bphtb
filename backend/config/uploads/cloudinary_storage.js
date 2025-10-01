@@ -1,4 +1,7 @@
 // backend/config/uploads/cloudinary_storage.js
+// CLOUDINARY STORAGE - PRODUCTION SYSTEM
+// NOTE: Ini adalah sistem upload utama untuk production
+// Menggunakan external storage (Cloudinary) untuk persistent file storage
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
