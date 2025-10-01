@@ -38,22 +38,21 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let response;
 
         if (isPdf) {
-            // PDF → Use cloudinary.url() dengan sign_url untuk signed URL
-            console.log('🔐 [PROXY] Generating signed URL for PDF...');
+            // PDF → Use cloudinary.api.resource() untuk mendapatkan secure_url yang authenticated
+            console.log('🔐 [PROXY] Fetching PDF metadata via Cloudinary API...');
             
-            const authUrl = cloudinary.url(publicIdWithExt, {
+            // Untuk PDF, public_id harus include extension
+            const result = await cloudinary.api.resource(publicIdWithExt, {
                 resource_type: 'raw',
-                type: 'upload',
-                secure: true,
-                sign_url: true,
-                expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 jam
+                type: 'upload'
             });
-
-            console.log('🔐 [PROXY] Signed URL:', authUrl);
+            
+            const downloadUrl = result.secure_url;
+            console.log('🔐 [PROXY] PDF secure URL retrieved:', downloadUrl);
 
             response = await axios({
                 method: 'GET',
-                url: authUrl,
+                url: downloadUrl,
                 responseType: 'arraybuffer',
                 timeout: 50000,
                 headers: {
@@ -61,7 +60,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
                 }
             });
             
-            console.log('✅ [PROXY] PDF fetched via signed URL');
+            console.log('✅ [PROXY] PDF fetched via secure URL');
         } else {
             // IMAGE → Remove extension for API call
             const publicIdForApi = publicIdWithExt.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
