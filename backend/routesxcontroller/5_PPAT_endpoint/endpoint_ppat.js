@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 import { pool } from '../../../db.js';
 const router = express.Router();
 
@@ -86,6 +87,65 @@ router.get("/secure/:nobooking", async (req, res) => {
     } catch (err) {
       console.error("❌ [API] Error get secure files:", err);
       return res.status(500).json({ error: "Gagal ambil dokumen" });
+    }
+});
+
+// ===== CLOUDINARY PROXY ENDPOINT =====
+// Endpoint untuk serve files dari Cloudinary via Railway server (public access)
+app.get('/api/files/cloudinary-proxy', async (req, res) => {
+    try {
+        const { url } = req.query;
+        
+        if (!url) {
+            return res.status(400).json({ error: "URL parameter is required" });
+        }
+
+        // Decode URL
+        const cloudinaryUrl = decodeURIComponent(url);
+        
+        // Validate it's a Cloudinary URL
+        if (!cloudinaryUrl.includes('cloudinary.com')) {
+            return res.status(400).json({ error: "Invalid Cloudinary URL" });
+        }
+
+        console.log('🌐 [CLOUDINARY-PROXY] Serving file:', {
+            url: cloudinaryUrl,
+            timestamp: new Date().toISOString()
+        });
+
+        // Fetch file from Cloudinary
+        const response = await axios.get(cloudinaryUrl, {
+            responseType: 'stream'
+        });
+        
+        // Get content type from Cloudinary response
+        const contentType = response.headers['content-type'] || 'application/octet-stream';
+        const contentLength = response.headers['content-length'];
+        
+        // Set headers
+        res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+            'Access-Control-Allow-Origin': '*'
+        });
+        
+        if (contentLength) {
+            res.set('Content-Length', contentLength);
+        }
+
+        // Stream the file
+        response.data.pipe(res);
+        
+    } catch (err) {
+        console.error("❌ [CLOUDINARY-PROXY] Error serving file:", err);
+        
+        // Handle axios errors
+        if (err.response) {
+            console.error('❌ [CLOUDINARY-PROXY] Cloudinary response error:', err.response.status);
+            return res.status(err.response.status).json({ error: "File not found on Cloudinary" });
+        }
+        
+        return res.status(500).json({ error: "Failed to serve file from Cloudinary" });
     }
 });
 
@@ -796,8 +856,8 @@ app.post('/api/ppatk_upload-pdf',
   (req, res, next) => {
     console.log('Starting PDF upload process...');
     
-    // Middleware untuk menangani PDF
-    pdfDUpload.single('pdfDokumen')(req, res, (err) => {
+    // Middleware untuk menangani PDF menggunakan Cloudinary
+    mixedCloudinaryUpload.single('pdfDokumen')(req, res, (err) => {
       if (err) {
         console.error('PDF upload error:', err);
         return res.status(400).json({ 
@@ -1492,7 +1552,7 @@ app.get('/api/ppatk_get-booking-data-completed', async (req, res) => {
 });
 
 // Endpoint untuk upload dokumen PPATK
-app.post('/api/ppatk_upload-documents', uploadDocumentMiddleware.fields([
+app.post('/api/ppatk_upload-documents', mixedCloudinaryUpload.fields([
     { name: 'document1', maxCount: 1 },  // Dokumen wajib
     { name: 'document2', maxCount: 1 }   // Dokumen tambahan (opsional)
 ]), async (req, res) => {

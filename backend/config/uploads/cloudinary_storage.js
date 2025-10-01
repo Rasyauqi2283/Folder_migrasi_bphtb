@@ -108,8 +108,7 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       // Use correct resource type based on file type
       resource_type: isPdf ? 'raw' : 'image',
       format: ext,
-      // Force public access - multiple methods
-      access_mode: 'public',
+      // Force public access
       type: 'upload',
       // Additional public access parameters
       use_filename: true,
