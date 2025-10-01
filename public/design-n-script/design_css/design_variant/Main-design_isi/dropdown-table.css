@@ -21,6 +21,7 @@
 
 /* Perubahan utama: dropdown-menu hidden secara default */
 .dropdown-menu-aksi {
+  overflow-x: hidden;
   display: none;
   position: absolute;
   right: 0;
