@@ -80,9 +80,6 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
                 }
             });
         });
-
-        // Import axios untuk fetch file
-        const axios = (await import('axios')).default;
         
         let response;
         
