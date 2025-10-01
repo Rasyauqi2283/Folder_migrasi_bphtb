@@ -66,7 +66,7 @@ router.get("/secure/:nobooking", async (req, res) => {
             files[key] = {
             source: "cloudinary",
             public_id: publicId,
-            signed_url: generateSignedUrl(publicId, 300), // valid 5 menit
+            signed_url: generateSignedUrl(publicId, 3600), // valid 1 jam
             };
         } else if (row[key]) {
             files[key] = {
@@ -94,14 +94,22 @@ router.get("/secure/:nobooking", async (req, res) => {
 // Endpoint untuk serve files dari Cloudinary via Railway server (authenticated access)
 app.get('/api/files/cloudinary-proxy', async (req, res) => {
     try {
-        const { url } = req.query;
+        const { url, publicId } = req.query;
         
-        if (!url) {
-            return res.status(400).json({ error: "URL parameter is required" });
+        if (!url && !publicId) {
+            return res.status(400).json({ error: "URL or publicId parameter is required" });
         }
 
-        // Decode URL
-        const cloudinaryUrl = decodeURIComponent(url);
+        let cloudinaryUrl;
+        
+        // If publicId is provided, generate fresh signed URL
+        if (publicId) {
+            console.log('🔄 [CLOUDINARY-PROXY] Generating fresh signed URL for:', publicId);
+            cloudinaryUrl = generateSignedUrl(publicId, 3600); // 1 hour validity
+        } else {
+            // Decode existing URL
+            cloudinaryUrl = decodeURIComponent(url);
+        }
         
         // Validate it's a Cloudinary URL
         if (!cloudinaryUrl.includes('cloudinary.com')) {
@@ -110,12 +118,14 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
 
         console.log('🌐 [CLOUDINARY-PROXY] Serving file:', {
             url: cloudinaryUrl,
+            hasPublicId: !!publicId,
             timestamp: new Date().toISOString()
         });
 
         // Fetch file from Cloudinary
         const response = await axios.get(cloudinaryUrl, {
-            responseType: 'stream'
+            responseType: 'stream',
+            timeout: 30000 // 30 second timeout
         });
         
         // Get content type from Cloudinary response
@@ -125,7 +135,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         // Set headers
         res.set({
             'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+            'Cache-Control': 'public, max-age=1800', // Cache for 30 minutes (shorter for signed URLs)
             'Access-Control-Allow-Origin': '*'
         });
         
@@ -141,11 +151,62 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         // Handle axios errors
         if (err.response) {
-            console.error('❌ [CLOUDINARY-PROXY] Cloudinary response error:', err.response.status);
-            return res.status(err.response.status).json({ error: "File not found on Cloudinary" });
+            console.error('❌ [CLOUDINARY-PROXY] Cloudinary response error:', {
+                status: err.response.status,
+                statusText: err.response.statusText,
+                headers: err.response.headers,
+                url: req.query.url || 'N/A'
+            });
+            
+            // Handle specific error cases
+            if (err.response.status === 401) {
+                return res.status(401).json({ 
+                    error: "Unauthorized access - signed URL may be expired or invalid",
+                    details: "Please refresh the page or contact administrator"
+                });
+            } else if (err.response.status === 404) {
+                return res.status(404).json({ error: "File not found on Cloudinary" });
+            }
+            
+            return res.status(err.response.status).json({ 
+                error: "Failed to access file from Cloudinary",
+                status: err.response.status 
+            });
         }
         
         return res.status(500).json({ error: "Failed to serve file from Cloudinary" });
+    }
+});
+
+// ===== REFRESH SIGNED URL ENDPOINT =====
+// Endpoint untuk refresh signed URL yang expired
+app.get('/api/files/refresh-signed-url', async (req, res) => {
+    try {
+        const { publicId } = req.query;
+        
+        if (!publicId) {
+            return res.status(400).json({ error: "publicId parameter is required" });
+        }
+
+        // Generate fresh signed URL
+        const signedUrl = generateSignedUrl(publicId, 3600); // 1 hour validity
+        
+        console.log('🔄 [REFRESH-SIGNED-URL] Generated fresh URL:', {
+            publicId,
+            signedUrl,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({
+            success: true,
+            signedUrl,
+            expiresIn: 3600,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (err) {
+        console.error("❌ [REFRESH-SIGNED-URL] Error generating signed URL:", err);
+        return res.status(500).json({ error: "Failed to generate signed URL" });
     }
 });
 
@@ -740,10 +801,14 @@ app.post('/api/ppatk_upload-cloudinary',
                     isPdf: isPdf
                 });
 
+                // Extract public_id from Cloudinary URL
+                const publicId = file.public_id || extractPublicIdFromUrl(file.path);
+                
                 // Simpan metadata: cloudinary_url dan proxy_path
                 uploadedFiles[fieldName] = {
                     cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
-                    proxy_path: `/api/files/cloudinary-proxy?url=${encodeURIComponent(file.path)}`, // Railway proxy URL
+                    proxy_path: `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(publicId)}`, // Railway proxy URL dengan publicId
+                    public_id: publicId, // Store public_id for fresh signed URL generation
                     filename: file.filename,
                     mimetype: file.mimetype,
                     size: file.size,
@@ -888,7 +953,8 @@ app.post('/api/ppatk_upload-pdf',
 
         // Tambahan proxy untuk PDF dokumen
     const pdfDokumenPath = req.file.path.replace('http://', 'https://');
-    const pdfProxyPath = `/api/files/cloudinary-proxy?url=${encodeURIComponent(pdfDokumenPath)}`;
+    const pdfPublicId = req.file.public_id || extractPublicIdFromUrl(pdfDokumenPath);
+    const pdfProxyPath = `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(pdfPublicId)}`;
 
     console.log('PDF file path:', pdfDokumenPath);
 
