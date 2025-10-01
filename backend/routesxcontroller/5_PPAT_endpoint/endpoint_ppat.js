@@ -86,16 +86,38 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         // Import axios untuk fetch file
         const axios = (await import('axios')).default;
         
-        // Fetch file dari secure_url
-        const response = await axios({
-            method: 'GET',
-            url: downloadStream,
-            responseType: 'arraybuffer',
-            timeout: 50000,
-            headers: {
-                'User-Agent': 'Railway-Proxy/1.0'
-            }
-        });
+        let response;
+        
+        // Untuk RAW files (PDF), gunakan authenticated request dengan API key
+        if (isPdf) {
+            console.log('🔐 [PROXY] Fetching RAW file with authentication...');
+            
+            // Generate authenticated download URL
+            const authUrl = `https://${process.env.CLOUDINARY_API_KEY}:${process.env.CLOUDINARY_API_SECRET}@res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/${publicIdWithExt}`;
+            
+            response = await axios({
+                method: 'GET',
+                url: authUrl,
+                responseType: 'arraybuffer',
+                timeout: 50000,
+                headers: {
+                    'User-Agent': 'Railway-Proxy/1.0'
+                }
+            });
+        } else {
+            // Untuk images, gunakan public URL
+            console.log('🖼️ [PROXY] Fetching IMAGE file (public)...');
+            
+            response = await axios({
+                method: 'GET',
+                url: downloadStream,
+                responseType: 'arraybuffer',
+                timeout: 50000,
+                headers: {
+                    'User-Agent': 'Railway-Proxy/1.0'
+                }
+            });
+        }
 
         // Get content type dari Cloudinary response
         const contentType = response.headers['content-type'] || 'application/octet-stream';
