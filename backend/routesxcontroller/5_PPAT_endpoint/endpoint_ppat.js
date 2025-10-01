@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
+export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl }) {
 // ini
 // Start PPATK Endpoint // (belum selesai)
 // Cek apakah user (PPAT/PPATS/others) sudah memiliki tanda tangan
@@ -448,9 +448,164 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
 });
 //
 
+// ENDPOINT BARU: Upload ke Cloudinary
+app.post('/api/ppatk_upload-cloudinary',
+  (req, res, next) => {
+    console.log('🌐 [CLOUDINARY] Starting file upload process...');
+    
+    // Gunakan Cloudinary storage
+    mixedCloudinaryUpload.fields([
+      { name: 'aktaTanah', maxCount: 1 },
+      { name: 'sertifikatTanah', maxCount: 1 },
+      { name: 'pelengkap', maxCount: 1 }
+    ])(req, res, (uploadErr) => {
+      if (uploadErr) {
+        console.error('❌ [CLOUDINARY] Upload error:', uploadErr);
+        return res.status(400).json({ 
+          success: false, 
+          message: uploadErr.message || 'Error uploading files to Cloudinary' 
+        });
+      }
+      
+      console.log('✅ [CLOUDINARY] Files uploaded successfully:', req.files);
+      next();
+    });
+  }, async (req, res) => {
+    const { userid } = req.session.user;
+
+    if (!userid) {
+        return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    // Memastikan ada file yang di-upload
+    if (!req.files || !req.files.aktaTanah || !req.files.sertifikatTanah || !req.files.pelengkap) {
+        return res.status(400).json({ success: false, message: 'Dokumen wajib belum lengkap (akta, sertifikat, pelengkap).' });
+    }
+
+    const { nobooking } = req.body;
+
+    if (!nobooking) {
+        return res.status(400).json({ success: false, message: 'No booking selected' });
+    }
+
+    try {
+        // Extract year and serial from nobooking
+        let year = '0000';
+        let serial = '000000';
+        if (typeof nobooking === 'string' && nobooking.includes('-')) {
+            const parts = nobooking.split('-');
+            if (parts.length >= 3) {
+                year = parts[1].replace(/[^0-9]/g, '').padStart(4, '0').slice(-4);
+                serial = parts[2].replace(/[^0-9]/g, '').padStart(6, '0').slice(-6);
+            }
+        }
+
+        // Rename files di Cloudinary dengan format yang benar
+        const renamePromises = [];
+        const fileMapping = {
+            aktaTanah: 'Akta',
+            sertifikatTanah: 'SertifikatTanah',
+            pelengkap: 'DokumenP'
+        };
+
+        const renamedFiles = {};
+
+        for (const [fieldName, docType] of Object.entries(fileMapping)) {
+            if (req.files[fieldName] && req.files[fieldName][0]) {
+                const file = req.files[fieldName][0];
+                const oldPublicId = extractPublicIdFromUrl(file.path);
+                const newPublicId = `bappenda/dokumen-sspd/${userid}_${docType}_${serial}_${year}`;
+                const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
+
+                console.log(`🔄 [CLOUDINARY] Renaming ${fieldName}:`, {
+                    old: oldPublicId,
+                    new: newPublicId,
+                    type: resourceType
+                });
+
+                try {
+                    await renameCloudinaryFile(oldPublicId, newPublicId, resourceType);
+                    
+                    // Generate new URL dengan format yang benar
+                    const newUrl = file.path.replace(oldPublicId, newPublicId);
+                    renamedFiles[fieldName] = {
+                        url: newUrl,
+                        public_id: newPublicId,
+                        secure_url: file.path.replace('http://', 'https://').replace(oldPublicId, newPublicId)
+                    };
+                } catch (renameErr) {
+                    console.error(`❌ [CLOUDINARY] Rename failed for ${fieldName}:`, renameErr);
+                    // Fallback: gunakan URL original
+                    renamedFiles[fieldName] = {
+                        url: file.path,
+                        public_id: oldPublicId,
+                        secure_url: file.path.replace('http://', 'https://')
+                    };
+                }
+            }
+        }
+
+        // Simpan Cloudinary URLs ke database
+        const aktaTanahUrl = renamedFiles.aktaTanah?.secure_url || null;
+        const sertifikatTanahUrl = renamedFiles.sertifikatTanah?.secure_url || null;
+        const pelengkapUrl = renamedFiles.pelengkap?.secure_url || null;
+
+        console.log('📁 [CLOUDINARY] Final URLs:', {
+            akta: aktaTanahUrl,
+            sertifikat: sertifikatTanahUrl,
+            pelengkap: pelengkapUrl
+        });
+
+        // Cek apakah nobooking ada di database
+        const result = await pool.query('SELECT * FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2', [nobooking, userid]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'No booking not found in database' });
+        }
+
+        // Update database dengan Cloudinary URLs
+        const updateQuery = `
+            UPDATE pat_1_bookingsspd 
+            SET 
+                akta_tanah_path = $1,
+                sertifikat_tanah_path = $2,
+                pelengkap_path = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE nobooking = $4
+            RETURNING *;
+        `;
+
+        const values = [aktaTanahUrl, sertifikatTanahUrl, pelengkapUrl, nobooking];
+
+        console.log('💾 [DB] Updating booking:', nobooking);
+        const resultUpdate = await pool.query(updateQuery, values);
+
+        if (resultUpdate.rowCount > 0) {
+            console.log('✅ [DB] Cloudinary URLs saved to database');
+            
+            res.json({ 
+                success: true, 
+                message: 'Files uploaded to Cloudinary successfully',
+                data: {
+                    akta_tanah_url: aktaTanahUrl,
+                    sertifikat_tanah_url: sertifikatTanahUrl,
+                    pelengkap_url: pelengkapUrl,
+                    nobooking: nobooking
+                }
+            });
+        } else {
+            res.status(404).json({ success: false, message: 'Failed to update database' });
+        }
+    } catch (error) {
+        console.error('❌ [ERROR] Upload to Cloudinary failed:', error);
+        res.status(500).json({ success: false, message: 'Failed to save files: ' + error.message });
+    }
+});
+
+// ENDPOINT LAMA: Upload ke Local Storage (DEPRECATED - untuk backward compatibility)
 app.post('/api/ppatk_upload-input_validasisspd',
   (req, res, next) => {
-    console.log('Starting file upload process...');
+    console.log('⚠️ [LOCAL] Using local storage (deprecated)...');
     
     // Middleware untuk menangani PDF atau Gambar (max 5MB)
     mixedDUpload.fields([

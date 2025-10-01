@@ -308,3 +308,47 @@ task hari ini (kerapihan (folder dan file), ping admin to ltb (admin-datauser-pp
 -penambahan api untuk tabel tabel lain (seperti monitoring, laporan dan semacamnya)
 -perbaikan dropdown di beberapa table
 -memperbaiki alur atau path di pdfkit
+
+#cloudinary Konfigurasi
+# PG DB
+PG_HOST=shortline.proxy.rlwy.net
+PG_PORT=17519
+PG_USER=postgres
+PG_PASSWORD=ifRMbliILazTJaLOcHhKXmgnhinHuJbO
+PG_DATABASE=railway
+# Email config
+EMAIL_USER=companyarras@gmail.com
+EMAIL_PASS=vdne unro vqzi ukun
+# Secret keys
+JWT_SECRET=keyF0rBAPPEND4L0qin
+SESSION_SECRET=keySEcretSEssion
+
+CORS_ORIGINS=https://bphtb-bappenda.up.railway.app
+
+NODE_ENV=development
+DISABLE_PAT3=1
+VITE_API_URI=bphtb-bappenda.up.railway.app
+
+# File Encryption (GENERATE YOUR OWN KEY!)
+FILE_ENCRYPTION_KEY=*** (Lihat di .env atau Railway variables) ***
+
+# SendGrid Configuration
+SENDGRID_API_KEY=*** (Lihat di .env atau Railway variables) ***
+
+# Twilio Configuration
+code_sangat_penting_twilio=*** (Lihat di .env atau Railway variables) ***
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Cloudinary Configuration (untuk persistent file storage)
+CLOUDINARY_CLOUD_NAME=*** (Lihat di .env atau Railway variables) ***
+CLOUDINARY_API_KEY=*** (Lihat di .env atau Railway variables) ***
+CLOUDINARY_API_SECRET=*** (Lihat di .env atau Railway variables) ***
+
+CATATAN PENTING:
+- Semua credentials/secrets HANYA disimpan di:
+  1. File .env (local development) - JANGAN di-commit ke Git!
+  2. Railway Environment Variables (production)
+- File ini hanya dokumentasi struktur, BUKAN tempat menyimpan actual secrets!

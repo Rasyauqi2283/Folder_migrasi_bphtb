@@ -84,6 +84,8 @@ import { uploadProfile } from './backend/config/uploads/upload_profpicture.js';
 import { pdfDUpload, imgDUpload, mixedDUpload } from './backend/config/uploads/upload_document.js';
 import { ttdVerifMiddleware, uploadTTD } from './backend/config/uploads/upload_ttdverif.js';
 import { uploadDocumentMiddleware } from './backend/config/multer.js';
+// Import Cloudinary storage
+import { mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl } from './backend/config/uploads/cloudinary_storage.js';
 export {
   uploadProfile,
   pdfDUpload,
@@ -506,7 +508,12 @@ registerPPATKEndpoints({
   uploadDocumentMiddleware,
   PAT3_DISABLED,
   triggerNotificationByStatus,
-  upsertBankVerification
+  upsertBankVerification,
+  // Cloudinary storage
+  mixedCloudinaryUpload,
+  renameCloudinaryFile,
+  deleteCloudinaryFile,
+  extractPublicIdFromUrl
 });
 
 function requireBankRole(req) {
@@ -3635,104 +3642,6 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
 });
 
 
-///////////////////////////////////////////////
-/*
-app.post('/api/LSB_upload-filestempel', uploadStempelFile.fields([
-    { name: 'FileStempel', maxCount: 1 }
-]), async (req, res) => {
-    console.log('[1] Mulai proses upload file stempel');
-    
-    try {
-        // Parse data JSON dari FormData
-        const requestData = JSON.parse(req.body.data);
-        const { userid, nobooking } = requestData;
-
-        // Validasi
-        if (!userid || !nobooking) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'User ID dan No Booking diperlukan' 
-            });
-        }
-
-        // Proses file
-        if (!req.files || !req.files.FileStempel) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'File stempel diperlukan' 
-            });
-        }
-        
-        const fileStempelPath = req.files.FileStempel[0].path;
-        
-        // Verifikasi booking
-        const bookingResult = await pool.query(
-            'SELECT * FROM p_1_verifikasi WHERE nobooking = $1', 
-            [nobooking]
-        );
-        
-        if (bookingResult.rows.length === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Booking tidak ditemukan' 
-            });
-        }
-
-        // Update data ke kedua tabel dalam transaksi
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            
-            // Update tabel pertama
-            const updateResultLSB = await client.query(
-                `UPDATE lsb_1_serah_berkas 
-                 SET file_withstempel_path = $1
-                 WHERE nobooking = $2
-                 RETURNING *`,
-                [fileStempelPath, nobooking]
-            );
-
-            // Update tabel kedua
-            const updateResultPAT = await client.query(
-                `UPDATE pat_1_bookingsspd 
-                 SET file_withstempel_path = $1
-                 WHERE nobooking = $2
-                 RETURNING *`,
-                [fileStempelPath, nobooking]
-            );
-
-            await client.query('COMMIT');
-            
-            // Hanya satu response yang dikirim
-            res.json({ 
-                success: true,
-                file_path: fileStempelPath,
-                message: 'File stempel berhasil diupload dan database diperbarui',
-                updated_rows: {
-                    lsb: updateResultLSB.rowCount,
-                    ppatk: updateResultPAT.rowCount
-                }
-            });
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
-    } catch (error) {
-        console.error('[ERROR] Detail error:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Terjadi kesalahan server',
-            errorDetails: error.message 
-        });
-    }
-});
-*/
-// END LSB (Loket Serah Berkas) Endpoint //
-
-///
-// Endpoint logout dan ping sudah dipindah ke authRoutes (/api/v1/auth/logout)
 ////////////////
 cron.schedule('*/10 * * * *', async () => {
   try {
