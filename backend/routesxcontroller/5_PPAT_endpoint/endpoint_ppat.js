@@ -28,8 +28,22 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         console.log('📁 [PROXY] Extracted public_id:', publicIdWithExt);
         
-        // Import cloudinary dan generate signed URL
-        const { cloudinary } = await import('../../config/uploads/cloudinary_storage.js');
+        // Import cloudinary SDK
+        const cloudinaryModule = await import('cloudinary');
+        const cloudinary = cloudinaryModule.v2;
+        
+        // Configure cloudinary dengan credentials dari env
+        cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET
+        });
+        
+        console.log('🔐 [PROXY] Cloudinary configured:', {
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key_exists: !!process.env.CLOUDINARY_API_KEY,
+            api_secret_exists: !!process.env.CLOUDINARY_API_SECRET
+        });
         
         // Generate signed URL untuk download
         const signedUrl = cloudinary.url(publicIdWithExt, {
@@ -39,7 +53,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             secure: true
         });
         
-        console.log('🔐 [PROXY] Generated signed URL');
+        console.log('🔐 [PROXY] Generated signed URL:', signedUrl ? 'SUCCESS' : 'FAILED');
 
         // Import axios untuk fetch file
         const axios = (await import('axios')).default;
