@@ -91,7 +91,7 @@ router.get("/secure/:nobooking", async (req, res) => {
 });
 
 // ===== CLOUDINARY PROXY ENDPOINT =====
-// Endpoint untuk serve files dari Cloudinary via Railway server (public access)
+// Endpoint untuk serve files dari Cloudinary via Railway server (authenticated access)
 app.get('/api/files/cloudinary-proxy', async (req, res) => {
     try {
         const { url } = req.query;

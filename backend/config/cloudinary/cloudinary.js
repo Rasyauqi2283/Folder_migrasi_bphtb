@@ -123,7 +123,7 @@ export const generateSignedUrl = (publicId, expirySeconds = 300) => {
 
     const signedUrl = cloudinary.url(publicId, {
       resource_type: "raw",
-      type: "upload",
+      type: "authenticated",
       sign_url: true,
       expires_at: expiresAt
     });
@@ -131,7 +131,8 @@ export const generateSignedUrl = (publicId, expirySeconds = 300) => {
     console.log("🔑 [SIGNED-URL] Generated:", {
       public_id: publicId,
       signed_url: signedUrl,
-      expires_in: expirySeconds + "s"
+      expires_in: expirySeconds + "s",
+      type: "authenticated"
     });
 
     return signedUrl;

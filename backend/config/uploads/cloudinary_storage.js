@@ -101,16 +101,16 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     // Format: PAT10_Akta_000001_2025
     const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
     
-    // Prepare upload parameters - FORCE PUBLIC ACCESS
+    // Prepare upload parameters - AUTHENTICATED ACCESS (SECURE)
     const uploadParams = {
       folder: 'bappenda/dokumen-sspd',
       public_id: publicId,
       // Use correct resource type based on file type
       resource_type: isPdf ? 'raw' : 'image',
       format: ext,
-      // Force public access
-      type: 'upload',
-      // Additional public access parameters
+      // Secure authenticated access
+      type: 'authenticated',
+      // Additional parameters
       use_filename: true,
       unique_filename: false,
       overwrite: true,
