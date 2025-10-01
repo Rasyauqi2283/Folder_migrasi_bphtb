@@ -39,31 +39,50 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             api_secret: process.env.CLOUDINARY_API_SECRET
         });
         
-        console.log('🔐 [PROXY] Cloudinary configured:', {
+        console.log('🔐 [PROXY] Cloudinary config check:', {
             cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-            api_key_exists: !!process.env.CLOUDINARY_API_KEY,
-            api_secret_exists: !!process.env.CLOUDINARY_API_SECRET
+            api_key: process.env.CLOUDINARY_API_KEY ? `${process.env.CLOUDINARY_API_KEY.substring(0, 5)}...` : 'NOT SET',
+            api_secret: process.env.CLOUDINARY_API_SECRET ? '***exists***' : 'NOT SET'
         });
         
-        // Generate signed URL untuk download
-        const signedUrl = cloudinary.url(publicIdWithExt, {
-            resource_type: isPdf ? 'raw' : 'image',
-            type: 'upload',
-            sign_url: true,
-            secure: true
-        });
+        // SOLUSI: Gunakan Cloudinary API untuk download file (bukan generate URL)
+        // Cloudinary.api.resource() akan return download URL dengan authentication
+        const resourceType = isPdf ? 'raw' : 'image';
         
-        console.log('🔐 [PROXY] Generated signed URL:', signedUrl ? 'SUCCESS' : 'FAILED');
+        console.log('📥 [PROXY] Downloading file via Cloudinary API...');
+        
+        // Download file menggunakan cloudinary.api
+        const downloadStream = await new Promise((resolve, reject) => {
+            cloudinary.api.resource(publicIdWithExt.replace(/\.[^.]+$/, ''), {
+                resource_type: resourceType,
+                type: 'upload'
+            }, (error, result) => {
+                if (error) {
+                    console.error('❌ [CLOUDINARY API] Error:', error);
+                    reject(error);
+                } else {
+                    console.log('✅ [CLOUDINARY API] Resource info:', {
+                        secure_url: result.secure_url,
+                        format: result.format,
+                        bytes: result.bytes
+                    });
+                    resolve(result.secure_url);
+                }
+            });
+        });
 
         // Import axios untuk fetch file
         const axios = (await import('axios')).default;
         
-        // Fetch file dari Cloudinary dengan signed URL
+        // Fetch file dari secure_url
         const response = await axios({
             method: 'GET',
-            url: signedUrl,
+            url: downloadStream,
             responseType: 'arraybuffer',
-            timeout: 30000
+            timeout: 50000,
+            headers: {
+                'User-Agent': 'Railway-Proxy/1.0'
+            }
         });
 
         // Get content type dari Cloudinary response
