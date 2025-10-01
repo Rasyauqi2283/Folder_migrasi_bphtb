@@ -274,116 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
         showErrorUI('Gagal memuat data awal');
     });
 
-    // ===== Overlay Paraf (serupa dengan peneliti_verifikasi.js) =====
-    const showSignatureBtn = document.getElementById('showSignatureModal');
-    const overlay = document.getElementById('overlay-sign');
-    const overlayConfirmed = document.getElementById('overlay-sign-confirmed');
-    const overlayMsg = overlay?.querySelector('.overlay-content-sign p');
-    const btnCloseOverlay = document.getElementById('close_batal_overlay');
-    const btnAddSignature = document.getElementById('Tambahkan_tandatangan');
-    const btnCancelConfirm = document.getElementById('Tambahkan_tandatangan_batal_overlay');
-    const btnConfirm = document.getElementById('Tambahkan_tandatangan_confirmed');
-
-    // Helper: ambil item terpilih
-    function getSelectedItem() {
-        if (!selectedNoBooking) return null;
-        return penParafRows.find(r => r.nobooking === selectedNoBooking) || null;
-    }
-
-    // Pastikan overlay tidak tampil saat awal
-    if (overlay) overlay.style.display = 'none';
-    if (overlayConfirmed) overlayConfirmed.style.display = 'none';
-
-    if (showSignatureBtn) {
-        showSignatureBtn.addEventListener('click', async () => {
-            try {
-                if (!selectedNoBooking) {
-                    alert('tidak bisa menandatangani dokumen disebabkan dokumen belum dipilih');
-                    return;
-                }
-
-                const item = getSelectedItem();
-                if (!item) {
-                    alert('Data baris tidak ditemukan. Muat ulang halaman.');
-                    return;
-                }
-
-                // Hanya boleh paraf jika persetujuan sudah true
-                const approved = (item.persetujuan === true) || (item.persetujuan === 'true');
-                if (!approved) {
-                    alert('Tidak bisa mem-paraf. Dokumen belum disetujui oleh Peneliti.');
-                    return;
-                }
-
-                // Pastikan user punya tanda tangan di profil
-                const sigResp = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
-                const sigJson = await sigResp.json().catch(() => ({}));
-                if (!sigResp.ok || !sigJson.has_signature) {
-                    alert('Anda belum mengunggah tanda tangan di Profil. Silakan unggah terlebih dahulu.');
-                    return;
-                }
-
-                // Semua valid → buka overlay konfirmasi penambahan paraf
-                if (overlay) {
-                    overlay.style.display = 'flex';
-                    if (overlayMsg) {
-                        overlayMsg.textContent = `Dokumen Booking dengan No. Booking ${selectedNoBooking} telah siap untuk diparaf.`;
-                    }
-                }
-            } catch (err) {
-                console.error('showSignatureModal (Paraf) error:', err);
-                alert('Terjadi kesalahan saat memeriksa status dokumen.');
-            }
-        });
-    }
-
-    if (btnCloseOverlay && overlay) {
-        btnCloseOverlay.addEventListener('click', () => {
-            overlay.style.display = 'none';
-        });
-    }
-
-    if (btnAddSignature && overlayConfirmed) {
-        btnAddSignature.addEventListener('click', () => {
-            overlayConfirmed.style.display = 'flex';
-        });
-    }
-
-    if (btnCancelConfirm && overlayConfirmed) {
-        btnCancelConfirm.addEventListener('click', () => {
-            overlayConfirmed.style.display = 'none';
-        });
-    }
-
-    if (btnConfirm) {
-        btnConfirm.addEventListener('click', async () => {
-            try {
-                if (!selectedNoBooking) {
-                    throw new Error('Parameter nobooking diperlukan');
-                }
-                // Menduplikasi path tanda tangan profil -> p_3_clear_to_paraf.tanda_paraf_path
-                const resp = await fetch('/api/peneliti/paraf-transfer-signature', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nobooking: selectedNoBooking })
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (!resp.ok || json.success === false) {
-                    throw new Error(json.message || 'Gagal menambahkan paraf');
-                }
-
-                alert('Paraf berhasil ditambahkan pada dokumen yang memenuhi syarat.');
-                location.reload();
-            } catch (e) {
-                console.error('paraf-transfer-signature error:', e);
-                alert(`Gagal menambahkan paraf: ${e.message}`);
-            } finally {
-                if (overlayConfirmed) overlayConfirmed.style.display = 'none';
-                if (overlay) overlay.style.display = 'none';
-            }
-        });
-    }
+    // ===== Tanda tangan otomatis ditambahkan saat simpan data =====
+    // Modal overlay dihapus - tanda tangan ditambahkan secara otomatis melalui persetujuan
 });
 //////
 //////
@@ -658,9 +550,9 @@ async function simpanData(buttonElement) {
             tanda_tangan_blob: base64TandaTangan
         };
 
-        // 8. Kirim data ke backend dengan timeout
+        // 8. Kirim data ke backend dengan timeout (diperpanjang untuk transfer tanda tangan)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10 detik untuk transfer tanda tangan
 
         const saveResponse = await fetch('/api/peneliti_update-ttd-paraf', {
             method: 'POST',
@@ -678,11 +570,25 @@ async function simpanData(buttonElement) {
             throw new Error(`HTTP ${saveResponse.status}: ${errorText}`);
         }
         
-        if (persetujuanParaf === 'ya') {
-            await fetch('/api/peneliti/paraf-transfer-signature', {
-                method: 'POST',
-                credentials: 'include'
-            });
+        // Transfer tanda tangan otomatis jika persetujuan = 'approve'
+        if (persetujuanParaf === 'approve') {
+            try {
+                const transferResponse = await fetch('/api/peneliti/paraf-transfer-signature', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nobooking: nobooking })
+                });
+                
+                if (!transferResponse.ok) {
+                    console.warn('Gagal transfer tanda tangan, tetapi data tetap tersimpan');
+                } else {
+                    console.log('Tanda tangan berhasil ditransfer');
+                }
+            } catch (transferError) {
+                console.warn('Error transfer tanda tangan:', transferError);
+                // Jangan throw error, biarkan proses lanjut
+            }
         }
 
         alert("Data berhasil disimpan!");
