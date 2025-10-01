@@ -56,26 +56,25 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let response;
 
         if (isPdf) {
-            // PDF → Use signed URL untuk mengatasi ACL issues
-            console.log('🔐 [PROXY] Generating signed URL for PDF...');
+            // PDF → Use public URL directly (no signing needed for public files)
+            console.log('🔐 [PROXY] Generating public URL for PDF...');
             console.log('🔐 [PROXY] PDF public_id:', publicIdWithExt);
             
             try {
-                // Generate signed URL dengan expiration 1 hour
-                const signedUrl = cloudinary.url(publicIdWithExt, {
+                // Generate public URL (no signing)
+                const publicUrl = cloudinary.url(publicIdWithExt, {
                     resource_type: 'raw',
                     type: 'upload',
-                    sign_url: true,
-                    expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+                    sign_url: false, // No signing for public files
                     secure: true
                 });
                 
-                console.log('🔐 [PROXY] Generated signed URL for PDF');
+                console.log('🔐 [PROXY] Generated public URL for PDF:', publicUrl);
                 
-                // Use signed URL untuk download
+                // Use public URL untuk download
                 response = await axios({
                     method: 'GET',
-                    url: signedUrl,
+                    url: publicUrl,
                     responseType: 'arraybuffer',
                     timeout: 50000,
                     headers: {
@@ -83,10 +82,36 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
                     }
                 });
                 
-                console.log('✅ [PROXY] PDF fetched via signed URL');
+                console.log('✅ [PROXY] PDF fetched via public URL');
             } catch (apiError) {
-                console.error('❌ [PROXY] Signed URL generation failed:', apiError.message);
-                throw apiError;
+                console.error('❌ [PROXY] Public URL access failed:', apiError.message);
+                console.error('❌ [PROXY] Trying fallback with signed URL...');
+                
+                // Fallback: try signed URL if public URL fails
+                try {
+                    const signedUrl = cloudinary.url(publicIdWithExt, {
+                        resource_type: 'raw',
+                        type: 'upload',
+                        sign_url: true,
+                        expires_at: Math.floor(Date.now() / 1000) + 3600,
+                        secure: true
+                    });
+                    
+                    response = await axios({
+                        method: 'GET',
+                        url: signedUrl,
+                        responseType: 'arraybuffer',
+                        timeout: 50000,
+                        headers: {
+                            'User-Agent': 'Railway-Proxy/1.0'
+                        }
+                    });
+                    
+                    console.log('✅ [PROXY] PDF fetched via fallback signed URL');
+                } catch (fallbackError) {
+                    console.error('❌ [PROXY] Both public and signed URL failed');
+                    throw fallbackError;
+                }
             }
         } else {
             // IMAGE → Remove extension for API call
@@ -188,6 +213,48 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Failed to fetch file from Cloudinary',
+            error: error.message
+        });
+    }
+});
+
+// ===== FIX CLOUDINARY ACL ENDPOINT =====
+// Endpoint untuk memperbaiki ACL file yang sudah ter-upload
+app.post('/api/files/fix-cloudinary-acl', async (req, res) => {
+    try {
+        const { publicId, resourceType = 'raw' } = req.body;
+        
+        if (!publicId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'publicId is required' 
+            });
+        }
+        
+        console.log('🔧 [ACL-FIX] Fixing ACL for file:', publicId);
+        
+        // Update file access mode to public
+        const result = await cloudinary.uploader.explicit(publicId, {
+            resource_type: resourceType,
+            type: 'upload',
+            access_mode: 'public',
+            invalidate: true
+        });
+        
+        console.log('✅ [ACL-FIX] ACL fixed successfully:', result.public_id);
+        
+        res.json({
+            success: true,
+            message: 'ACL fixed successfully',
+            public_id: result.public_id,
+            secure_url: result.secure_url
+        });
+        
+    } catch (error) {
+        console.error('❌ [ACL-FIX] Failed to fix ACL:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fix ACL',
             error: error.message
         });
     }

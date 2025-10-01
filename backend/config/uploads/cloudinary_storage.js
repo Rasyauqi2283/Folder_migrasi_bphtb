@@ -128,11 +128,16 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       format: ext, // Set format explicitly (pdf, jpg, png, jpeg)
       access_mode: 'public', // ✅ Make files publicly accessible
       type: 'upload', // Upload type
+      // Force public access for all files
+      allowed_formats: isPdf ? ['pdf'] : ['jpg', 'jpeg', 'png', 'gif', 'webp'],
       // Additional options for PDF access
       ...(isPdf && {
         use_filename: true,
         unique_filename: false,
-        overwrite: true
+        overwrite: true,
+        // Force public access for PDF files
+        access_control: 'public',
+        invalidate: true // Clear CDN cache
       }),
       // Add metadata
       context: {
