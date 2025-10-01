@@ -67,7 +67,7 @@ async function loadTableData(page = 1) {
                 dropdownContent.colSpan = 9;
                 dropdownContent.style.display = 'none'; // Dropdown akan disembunyikan pertama kali
 dropdownContent.innerHTML = `
-<div id='dropdown-case-badan' class="dropdown-container">
+<div id='dropdown-case-bookingsspd' class="dropdown-container">
     <div class="header-section">
         <h4>Detail No. Booking: ${item.nobooking}</h4>
     </div>
