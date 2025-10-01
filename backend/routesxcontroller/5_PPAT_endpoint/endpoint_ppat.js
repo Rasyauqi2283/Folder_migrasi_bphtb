@@ -51,29 +51,24 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         let response;
 
         if (isPdf) {
-            // PDF → Use cloudinary.api.resource() untuk mendapatkan secure_url yang authenticated
-            console.log('🔐 [PROXY] Fetching PDF metadata via Cloudinary API...');
+            // PDF → Generate signed URL untuk bypass ACL restrictions
+            console.log('🔐 [PROXY] Generating signed URL for PDF...');
             console.log('🔐 [PROXY] PDF public_id for API:', publicIdWithExt);
             
-            // Untuk PDF, public_id harus include extension
-            const result = await cloudinary.api.resource(publicIdWithExt, {
+            // Generate signed URL dengan expiration
+            const signedUrl = cloudinary.url(publicIdWithExt, {
                 resource_type: 'raw',
                 type: 'upload',
-                sign_url: true
+                sign_url: true,
+                expires_at: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+                secure: true
             });
             
-            const downloadUrl = result.secure_url;
-            console.log('🔐 [PROXY] PDF secure URL retrieved:', downloadUrl);
-            console.log('🔐 [PROXY] PDF metadata:', {
-                public_id: result.public_id,
-                format: result.format,
-                bytes: result.bytes,
-                created_at: result.created_at
-            });
+            console.log('🔐 [PROXY] PDF signed URL generated:', signedUrl);
 
             response = await axios({
                 method: 'GET',
-                url: downloadUrl,
+                url: signedUrl,
                 responseType: 'arraybuffer',
                 timeout: 50000,
                 headers: {
@@ -81,7 +76,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
                 }
             });
             
-            console.log('✅ [PROXY] PDF fetched via secure URL');
+            console.log('✅ [PROXY] PDF fetched via signed URL');
         } else {
             // IMAGE → Remove extension for API call
             const publicIdForApi = publicIdWithExt.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
@@ -142,14 +137,33 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         console.error('❌ [PROXY] Error details:', error.response?.data || error);
         console.error('❌ [PROXY] Error status:', error.response?.status);
         console.error('❌ [PROXY] Error headers:', error.response?.headers);
-        console.error('❌ [PROXY] Request URL:', url);
+        console.error('❌ [PROXY] Request URL:', req.query.url);
         console.error('❌ [PROXY] Decoded URL:', decodedUrl);
         console.error('❌ [PROXY] Public ID:', publicIdWithExt);
         
         if (error.response?.status === 401) {
+            console.error('❌ [PROXY] 401 Error Details:', {
+                'x-cld-error': error.response?.headers['x-cld-error'],
+                'content-type': error.response?.headers['content-type'],
+                'server': error.response?.headers['server'],
+                'public_id': publicIdWithExt,
+                'is_pdf': isPdf,
+                'resource_type': isPdf ? 'raw' : 'image',
+                'railway_context': {
+                    RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
+                    RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
+                    timestamp: new Date().toISOString()
+                }
+            });
+            
             return res.status(401).json({ 
                 success: false, 
-                message: 'Cloudinary authentication failed - check credentials' 
+                message: 'Cloudinary authentication failed - check credentials',
+                details: {
+                    'x-cld-error': error.response?.headers['x-cld-error'],
+                    'public_id': publicIdWithExt,
+                    'resource_type': isPdf ? 'raw' : 'image'
+                }
             });
         }
         
