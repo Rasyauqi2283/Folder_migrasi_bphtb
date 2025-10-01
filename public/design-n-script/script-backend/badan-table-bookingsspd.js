@@ -299,14 +299,16 @@ function displayPagination(currentPage, totalPages) {
     
     paginationContainer.innerHTML = '';  // Clear existing pagination buttons
     
-    // Jika hanya ada 1 halaman, tidak perlu pagination
-    if (totalPages <= 1) return;
+    // Set default jika tidak ada data
+    if (!totalPages || totalPages < 1) {
+        totalPages = 1;
+    }
 
-    // First Page Button
+    // First Page Button - disabled jika di halaman pertama
     const firstButton = createPaginationButton('first', '<<', currentPage === 1, () => loadTableData(1));
     paginationContainer.appendChild(firstButton);
 
-    // Previous Button
+    // Previous Button - disabled jika di halaman pertama
     const prevButton = createPaginationButton('prev', '<', currentPage === 1, () => loadTableData(currentPage - 1));
     paginationContainer.appendChild(prevButton);
 
@@ -317,30 +319,29 @@ function displayPagination(currentPage, totalPages) {
             const pageButton = createPaginationButton(
                 'number',
                 pageInfo.number,
-                pageInfo.number === currentPage,
+                false, // Page number tidak pernah disabled
                 () => loadTableData(pageInfo.number),
                 pageInfo.number === currentPage ? 'active' : '',
                 pageInfo.hideOnMobile ? 'hide-mobile' : ''
             );
             paginationContainer.appendChild(pageButton);
         } else if (pageInfo.type === 'ellipsis') {
-            const ellipsisButton = createPaginationButton('ellipsis', '...', false, null, 'ellipsis');
+            const ellipsisButton = createPaginationButton('ellipsis', '...', true, null, 'ellipsis');
             paginationContainer.appendChild(ellipsisButton);
         }
     });
 
-    // Next Button
-    const nextButton = createPaginationButton('next', '>', currentPage === totalPages, () => loadTableData(currentPage + 1));
+    // Next Button - disabled jika di halaman terakhir ATAU hanya ada 1 halaman
+    const nextButton = createPaginationButton('next', '>', currentPage >= totalPages, () => loadTableData(currentPage + 1));
     paginationContainer.appendChild(nextButton);
 
-    // Last Page Button
-    const lastButton = createPaginationButton('last', '>>', currentPage === totalPages, () => loadTableData(totalPages));
+    // Last Page Button - disabled jika di halaman terakhir ATAU hanya ada 1 halaman
+    const lastButton = createPaginationButton('last', '>>', currentPage >= totalPages, () => loadTableData(totalPages));
     paginationContainer.appendChild(lastButton);
 
     // Add page info
     const pageInfo = document.createElement('div');
     pageInfo.className = 'pagination-info';
-    pageInfo.innerHTML = `Halaman ${currentPage} dari ${totalPages}`;
     paginationContainer.appendChild(pageInfo);
 }
 
@@ -350,16 +351,28 @@ function createPaginationButton(type, text, disabled, onClick, extraClass = '', 
     button.innerHTML = text;
     button.disabled = disabled;
     
-    if (onClick) {
+    // Add disabled class for styling
+    if (disabled) {
+        button.classList.add('disabled');
+        button.style.cursor = 'not-allowed';
+        button.style.opacity = '0.5';
+    }
+    
+    if (onClick && !disabled) {
         button.onclick = onClick;
     }
     
     // Add accessibility attributes
     button.setAttribute('aria-label', getButtonLabel(type, text));
     button.setAttribute('role', 'button');
+    if (disabled) {
+        button.setAttribute('aria-disabled', 'true');
+    }
     
-    // Add ripple effect
-    button.classList.add('ripple');
+    // Add ripple effect only if not disabled
+    if (!disabled) {
+        button.classList.add('ripple');
+    }
     
     return button;
 }
