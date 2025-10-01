@@ -14,13 +14,40 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
 
         console.log('🔄 [PROXY] Fetching file from Cloudinary:', url);
 
+        // Decode URL
+        const decodedUrl = decodeURIComponent(url);
+        
+        // Extract public_id dari URL
+        const publicIdMatch = decodedUrl.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+        if (!publicIdMatch) {
+            return res.status(400).json({ success: false, message: 'Invalid Cloudinary URL format' });
+        }
+        
+        const publicIdWithExt = publicIdMatch[1];
+        const isPdf = publicIdWithExt.toLowerCase().endsWith('.pdf');
+        
+        console.log('📁 [PROXY] Extracted public_id:', publicIdWithExt);
+        
+        // Import cloudinary dan generate signed URL
+        const { cloudinary } = await import('../../config/uploads/cloudinary_storage.js');
+        
+        // Generate signed URL untuk download
+        const signedUrl = cloudinary.url(publicIdWithExt, {
+            resource_type: isPdf ? 'raw' : 'image',
+            type: 'upload',
+            sign_url: true,
+            secure: true
+        });
+        
+        console.log('🔐 [PROXY] Generated signed URL');
+
         // Import axios untuk fetch file
         const axios = (await import('axios')).default;
         
-        // Fetch file dari Cloudinary
+        // Fetch file dari Cloudinary dengan signed URL
         const response = await axios({
             method: 'GET',
-            url: url,
+            url: signedUrl,
             responseType: 'arraybuffer',
             timeout: 30000
         });
@@ -30,15 +57,17 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         console.log('✅ [PROXY] File fetched successfully:', {
             contentType: contentType,
-            size: response.data.length
+            size: response.data.length,
+            isPdf: isPdf
         });
 
         // Set headers yang benar
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Length', response.data.length);
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache 1 year
         
         // Untuk PDF, tambahkan header agar bisa dibuka di browser
-        if (contentType === 'application/pdf' || url.toLowerCase().endsWith('.pdf')) {
+        if (contentType === 'application/pdf' || isPdf) {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'inline'); // Open in browser, bukan download
         }
@@ -48,6 +77,14 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
     } catch (error) {
         console.error('❌ [PROXY] Error fetching file from Cloudinary:', error.message);
+        console.error('❌ [PROXY] Error details:', error.response?.data || error);
+        
+        if (error.response?.status === 401) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Cloudinary authentication failed - check credentials' 
+            });
+        }
         
         if (error.response?.status === 404) {
             return res.status(404).json({ 

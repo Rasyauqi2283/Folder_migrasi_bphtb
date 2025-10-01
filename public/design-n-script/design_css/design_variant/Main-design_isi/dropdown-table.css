@@ -316,14 +316,17 @@
   font-size: 12px;
   font-weight: 600;
   color: #1e40af;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  line-height: 1.4;
 }
 
 #dropdown-case-bookingsspd .file-size {
   font-size: 11px;
   color: #64748b;
+  white-space: nowrap;
 }
 
 /* BUTTONS - Modern Style */
