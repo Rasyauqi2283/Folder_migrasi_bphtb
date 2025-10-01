@@ -30,7 +30,8 @@ router.post('/login', async (req, res) => {
             userid, password, nama, email, divisi, 
             fotoprofil, statuspengguna, verifiedstatus,
             username, nip, special_field, special_parafv, pejabat_umum,
-            tanda_tangan_mime, tanda_tangan_path, telepon, gender
+            tanda_tangan_mime, tanda_tangan_path, telepon, gender,
+            ppatk_khusus
         FROM a_2_verified_users 
         WHERE (email = $1 OR userid = $1 OR username = $1)
         AND verifiedstatus = 'complete'
@@ -89,6 +90,7 @@ router.post('/login', async (req, res) => {
       special_field: user.special_field,
       special_parafv: user.special_parafv,
       pejabat_umum: user.pejabat_umum,
+      ppatk_khusus: user.ppatk_khusus,
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,

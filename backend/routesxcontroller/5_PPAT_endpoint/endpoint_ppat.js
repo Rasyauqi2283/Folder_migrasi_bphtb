@@ -22,6 +22,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         // Extract public_id dari URL
         const publicIdMatch = decodedUrl.match(/\/upload\/(?:v\d+\/)?(.+)$/);
         if (!publicIdMatch) {
+            console.log('❌ [PROXY] Invalid Cloudinary URL format:', decodedUrl);
             return res.status(400).json({ success: false, message: 'Invalid Cloudinary URL format' });
         }
         
@@ -29,6 +30,8 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         const isPdf = publicIdWithExt.toLowerCase().endsWith('.pdf');
         
         console.log('📁 [PROXY] Extracted public_id:', publicIdWithExt);
+        console.log('📁 [PROXY] File type:', isPdf ? 'PDF (raw)' : 'Image');
+        console.log('📁 [PROXY] Resource type:', isPdf ? 'raw' : 'image');
         
         // SOLUSI: Gunakan Cloudinary utils.sign_url untuk PDF/RAW files
         const resourceType = isPdf ? 'raw' : 'image';
@@ -40,6 +43,7 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         if (isPdf) {
             // PDF → Use cloudinary.api.resource() untuk mendapatkan secure_url yang authenticated
             console.log('🔐 [PROXY] Fetching PDF metadata via Cloudinary API...');
+            console.log('🔐 [PROXY] PDF public_id for API:', publicIdWithExt);
             
             // Untuk PDF, public_id harus include extension
             const result = await cloudinary.api.resource(publicIdWithExt, {
@@ -50,6 +54,12 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
             
             const downloadUrl = result.secure_url;
             console.log('🔐 [PROXY] PDF secure URL retrieved:', downloadUrl);
+            console.log('🔐 [PROXY] PDF metadata:', {
+                public_id: result.public_id,
+                format: result.format,
+                bytes: result.bytes,
+                created_at: result.created_at
+            });
 
             response = await axios({
                 method: 'GET',
@@ -120,6 +130,11 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
     } catch (error) {
         console.error('❌ [PROXY] Error fetching file from Cloudinary:', error.message);
         console.error('❌ [PROXY] Error details:', error.response?.data || error);
+        console.error('❌ [PROXY] Error status:', error.response?.status);
+        console.error('❌ [PROXY] Error headers:', error.response?.headers);
+        console.error('❌ [PROXY] Request URL:', url);
+        console.error('❌ [PROXY] Decoded URL:', decodedUrl);
+        console.error('❌ [PROXY] Public ID:', publicIdWithExt);
         
         if (error.response?.status === 401) {
             return res.status(401).json({ 

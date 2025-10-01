@@ -25,7 +25,7 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
     const userid = req.session?.user?.userid || 'unknown';
-    const userkhususppat = req.session?.user?.ppatk_khusus || 'PPAT';
+    const ppatk_khusus = req.session?.user?.ppatk_khusus || 'PPATK';
     const currentYear = new Date().getFullYear();
     
     // Determine document type dengan mapping yang lebih pendek
@@ -40,16 +40,20 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     const ext = path.extname(file.originalname).toLowerCase().replace('.', ''); // Hapus dot
     
     // Generate public_id dengan format: userid_dokumenpath_ppatk_khusus_tahun
-    const publicId = `${userid}_${docType}_${userkhususppat}_${currentYear}`;
+    const publicId = `${userid}_${docType}_${ppatk_khusus}_${currentYear}`;
     
     console.log(`📁 [CLOUDINARY] Uploading to cloud:`, {
       folder: 'bappenda/dokumen-sspd',
       publicId: publicId,
+      userid: userid,
+      docType: docType,
+      ppatk_khusus: ppatk_khusus,
+      year: currentYear,
       type: isPdf ? 'PDF (raw)' : 'Image',
       resourceType: isPdf ? 'raw' : 'image',
       format: ext,
       originalName: file.originalname,
-      namingFormat: 'userid_dokumenpath_userkhususppat_tahun'
+      namingFormat: 'userid_dokumenpath_ppatk_khusus_tahun'
     });
     
     return {
@@ -63,12 +67,12 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       context: {
         userid: userid,
         docType: docType,
-        userkhususppat: userkhususppat,
+        ppatk_khusus: ppatk_khusus,
         year: currentYear,
         uploadDate: new Date().toISOString(),
-        namingFormat: 'userid_dokumenpath_userkhususppat_tahun'
+        namingFormat: 'userid_dokumenpath_ppatk_khusus_tahun'
       },
-      tags: [userid, docType, userkhususppat, currentYear.toString(), 'bappenda-sspd']
+      tags: [userid, docType, ppatk_khusus, currentYear.toString(), 'bappenda-sspd']
     };
   }
 });
