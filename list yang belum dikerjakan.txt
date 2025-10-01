@@ -309,19 +309,6 @@ task hari ini (kerapihan (folder dan file), ping admin to ltb (admin-datauser-pp
 -perbaikan dropdown di beberapa table
 -memperbaiki alur atau path di pdfkit
 
-#cloudinary Konfigurasi
-# PG DB
-PG_HOST=shortline.proxy.rlwy.net
-PG_PORT=17519
-PG_USER=postgres
-PG_PASSWORD=ifRMbliILazTJaLOcHhKXmgnhinHuJbO
-PG_DATABASE=railway
-# Email config
-EMAIL_USER=companyarras@gmail.com
-EMAIL_PASS=vdne unro vqzi ukun
-# Secret keys
-JWT_SECRET=keyF0rBAPPEND4L0qin
-SESSION_SECRET=keySEcretSEssion
 
 CORS_ORIGINS=https://bphtb-bappenda.up.railway.app
 
