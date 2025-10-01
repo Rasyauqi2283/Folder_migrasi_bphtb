@@ -51,9 +51,21 @@ app.get('/api/files/cloudinary-proxy', async (req, res) => {
         
         console.log('📥 [PROXY] Downloading file via Cloudinary API...');
         
+        // Untuk RAW files, public_id INCLUDE extension
+        // Untuk IMAGE files, public_id EXCLUDE extension
+        const publicIdForApi = isPdf ? 
+            publicIdWithExt :  // RAW: include .pdf
+            publicIdWithExt.replace(/\.[^.]+$/, ''); // IMAGE: remove extension
+        
+        console.log('📋 [PROXY] Public ID for API:', {
+            original: publicIdWithExt,
+            forApi: publicIdForApi,
+            resourceType: resourceType
+        });
+        
         // Download file menggunakan cloudinary.api
         const downloadStream = await new Promise((resolve, reject) => {
-            cloudinary.api.resource(publicIdWithExt.replace(/\.[^.]+$/, ''), {
+            cloudinary.api.resource(publicIdForApi, {
                 resource_type: resourceType,
                 type: 'upload'
             }, (error, result) => {
