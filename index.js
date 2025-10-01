@@ -81,16 +81,13 @@ import { runFullDatabaseMonitoring } from './database_monitoring.js';
 import pgSession from 'connect-pg-simple';
 //cek upload file
 import { uploadProfile } from './backend/config/uploads/upload_profpicture.js';
-import { pdfDUpload, imgDUpload, mixedDUpload } from './backend/config/uploads/upload_document.js';
+// Local storage removed - using Cloudinary only
 import { ttdVerifMiddleware, uploadTTD } from './backend/config/uploads/upload_ttdverif.js';
 import { uploadDocumentMiddleware } from './backend/config/multer.js';
 // Import Cloudinary storage
 import { mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl } from './backend/config/uploads/cloudinary_storage.js';
 export {
   uploadProfile,
-  pdfDUpload,
-  imgDUpload,
-  mixedDUpload,
   ttdVerifMiddleware,
   uploadDocumentMiddleware
 };
@@ -502,8 +499,7 @@ registerPPATKEndpoints({
   pool,
   logger,
   morganMiddleware,
-  mixedDUpload,
-  pdfDUpload,
+  // Local storage removed
   uploadTTD,
   uploadDocumentMiddleware,
   PAT3_DISABLED,
@@ -4126,6 +4122,8 @@ app.get('/api/ppatk/generate-pdf-verif-paraf/:nobooking', async (req, res) => {
 // Healthcheck endpoint untuk Railway
 app.get('/health', async (req, res) => {
   try {
+    console.log('🏥 [HEALTH] Healthcheck started...');
+    
     // Quick database check with timeout
     const dbCheck = Promise.race([
       pool.query('SELECT 1'),
@@ -4135,19 +4133,27 @@ app.get('/health', async (req, res) => {
     ]);
     
     await dbCheck;
+    console.log('✅ [HEALTH] Database connection OK');
     
-    res.status(200).json({
+    const healthData = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development'
-    });
+      environment: process.env.NODE_ENV || 'development',
+      region: process.env.RAILWAY_REGION || 'unknown',
+      version: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local'
+    };
+    
+    console.log('✅ [HEALTH] Healthcheck passed:', healthData);
+    res.status(200).json(healthData);
+    
   } catch (error) {
-    console.error('Healthcheck failed:', error.message);
+    console.error('❌ [HEALTH] Healthcheck failed:', error.message);
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: error.message
+      error: error.message,
+      region: process.env.RAILWAY_REGION || 'unknown'
     });
   }
 });

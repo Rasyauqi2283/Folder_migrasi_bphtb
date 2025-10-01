@@ -1128,8 +1128,7 @@ function showAlert(type, message, title = null) {
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk_upload-cloudinary',  // ✅ UPDATED: Gunakan Cloudinary endpoint
-            fallbackEndpoint: '/api/ppatk_upload-input_validasisspd'  // Fallback ke local jika Cloudinary error
+            apiEndpoint: '/api/ppatk_upload-cloudinary'  // ✅ Cloudinary only - local storage removed
         };
 
         function initializeFileUploads() {
