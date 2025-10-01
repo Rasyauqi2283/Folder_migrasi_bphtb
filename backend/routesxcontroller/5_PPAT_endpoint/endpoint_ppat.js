@@ -804,11 +804,28 @@ app.post('/api/ppatk_upload-cloudinary',
                     filename: file.filename,
                     cloudinaryUrl: file.path,
                     mimetype: file.mimetype,
-                    isPdf: isPdf
+                    isPdf: isPdf,
+                    // Log all available properties from Cloudinary response
+                    allFileProperties: Object.keys(file),
+                    fileObject: file
                 });
 
                 // Extract public_id from Cloudinary URL
-                const publicId = file.public_id || extractPublicIdFromUrl(file.path);
+                // Try multiple possible properties from Cloudinary response
+                let publicId = file.public_id || 
+                              file.publicId || 
+                              file.publicid || 
+                              extractPublicIdFromUrl(file.path);
+                
+                // If still no publicId, try to extract from URL path
+                if (!publicId || publicId === 'null') {
+                    // Extract from URL: https://res.cloudinary.com/cloud/raw/upload/v123/folder/public_id.ext
+                    const urlMatch = file.path.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+                    if (urlMatch) {
+                        publicId = urlMatch[1].replace(/\.\w+$/, '');
+                        console.log('🔄 [CLOUDINARY-UPLOAD] Extracted publicId from URL:', publicId);
+                    }
+                }
                 
                 console.log(`🔍 [CLOUDINARY-UPLOAD] File metadata for ${fieldName}:`, {
                     filePath: file.path,
@@ -974,7 +991,20 @@ app.post('/api/ppatk_upload-pdf',
 
         // Tambahan proxy untuk PDF dokumen
     const pdfDokumenPath = req.file.path.replace('http://', 'https://');
-    const pdfPublicId = req.file.public_id || extractPublicIdFromUrl(pdfDokumenPath);
+    let pdfPublicId = req.file.public_id || 
+                     req.file.publicId || 
+                     req.file.publicid || 
+                     extractPublicIdFromUrl(pdfDokumenPath);
+    
+    // If still no publicId, try to extract from URL path
+    if (!pdfPublicId || pdfPublicId === 'null') {
+        // Extract from URL: https://res.cloudinary.com/cloud/raw/upload/v123/folder/public_id.ext
+        const urlMatch = req.file.path.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+        if (urlMatch) {
+            pdfPublicId = urlMatch[1].replace(/\.\w+$/, '');
+            console.log('🔄 [CLOUDINARY-PDF] Extracted publicId from URL:', pdfPublicId);
+        }
+    }
     
     console.log('🔍 [CLOUDINARY-PDF] PDF file metadata:', {
         filePath: req.file.path,

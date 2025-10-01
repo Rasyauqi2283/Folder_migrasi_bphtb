@@ -101,6 +101,15 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     // Format: PAT10_Akta_000001_2025
     const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
     
+    console.log('🔍 [CLOUDINARY-UPLOAD] Generated publicId:', {
+      userid,
+      docType,
+      sequenceNumber,
+      currentYear,
+      generatedPublicId: publicId,
+      isValid: !!publicId && publicId !== 'null' && publicId !== 'undefined'
+    });
+    
     // Prepare upload parameters - AUTHENTICATED ACCESS (SECURE)
     const uploadParams = {
       folder: 'bappenda/dokumen-sspd',
