@@ -145,6 +145,9 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       }
     });
     
+    console.log(`📁 [CLOUDINARY] Expected publicId:`, publicId);
+    console.log(`📁 [CLOUDINARY] Upload will use public_id:`, publicId);
+    
     return uploadParams;
     } catch (error) {
       console.error('❌ [CLOUDINARY-UPLOAD] Error in params function:', error);

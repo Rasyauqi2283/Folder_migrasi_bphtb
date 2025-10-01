@@ -827,6 +827,15 @@ app.post('/api/ppatk_upload-cloudinary',
                               file.publicid || 
                               extractPublicIdFromUrl(file.path);
                 
+                console.log('🔍 [CLOUDINARY-UPLOAD] PublicId extraction attempt:', {
+                    filePublicId: file.public_id,
+                    filePublicIdType: typeof file.public_id,
+                    filePublicIdValue: file.public_id,
+                    extractedFromUrl: extractPublicIdFromUrl(file.path),
+                    filePath: file.path,
+                    allFileKeys: Object.keys(file)
+                });
+                
                 // If still no publicId, try to extract from URL path
                 if (!publicId || publicId === 'null') {
                     // Extract from URL: https://res.cloudinary.com/cloud/raw/upload/v123/folder/public_id.ext
@@ -834,6 +843,22 @@ app.post('/api/ppatk_upload-cloudinary',
                     if (urlMatch) {
                         publicId = urlMatch[1].replace(/\.\w+$/, '');
                         console.log('🔄 [CLOUDINARY-UPLOAD] Extracted publicId from URL:', publicId);
+                    }
+                }
+                
+                // Final fallback: Generate publicId based on expected format
+                if (!publicId || publicId === 'null') {
+                    console.log('🔄 [CLOUDINARY-UPLOAD] Generating fallback publicId...');
+                    // Extract from nobooking: PAT10-2025-000001
+                    const parts = nobooking.split('-');
+                    if (parts.length >= 3) {
+                        const userid = parts[0];
+                        const year = parts[1];
+                        const sequence = parts[2];
+                        const docType = fieldName === 'aktaTanah' ? 'Akta' : 
+                                       fieldName === 'sertifikatTanah' ? 'Sertifikat' : 'Pelengkap';
+                        publicId = `${userid}_${docType}_${sequence}_${year}`;
+                        console.log('🔄 [CLOUDINARY-UPLOAD] Generated fallback publicId:', publicId);
                     }
                 }
                 
@@ -1022,6 +1047,20 @@ app.post('/api/ppatk_upload-pdf',
         if (urlMatch) {
             pdfPublicId = urlMatch[1].replace(/\.\w+$/, '');
             console.log('🔄 [CLOUDINARY-PDF] Extracted publicId from URL:', pdfPublicId);
+        }
+    }
+    
+    // Final fallback: Generate publicId based on expected format
+    if (!pdfPublicId || pdfPublicId === 'null') {
+        console.log('🔄 [CLOUDINARY-PDF] Generating fallback publicId...');
+        // Extract from nobooking: PAT10-2025-000001
+        const parts = nobooking.split('-');
+        if (parts.length >= 3) {
+            const userid = parts[0];
+            const year = parts[1];
+            const sequence = parts[2];
+            pdfPublicId = `${userid}_DokumenP_${sequence}_${year}`;
+            console.log('🔄 [CLOUDINARY-PDF] Generated fallback publicId:', pdfPublicId);
         }
     }
     
