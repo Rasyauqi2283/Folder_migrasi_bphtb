@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import cloudinary from '../../config/cloudinary/cloudinary.js';
+import axios from 'axios';
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, mixedDUpload, pdfDUpload, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
 // ===== CLOUDINARY PROXY ENDPOINT =====
