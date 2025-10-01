@@ -10,7 +10,18 @@ console.log('🌐 [CLOUDINARY-CONFIG] Environment check:', {
   RAILWAY_REGION: process.env.RAILWAY_REGION || 'local'
 });
 
-console.log('🌐 [CLOUDINARY-CONFIG] Cloudinary credentials check:', {
+// Check for CLOUDINARY_URL first (preferred method)
+const hasCloudinaryUrl = !!process.env.CLOUDINARY_URL;
+const hasIndividualCredentials = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
+console.log('🌐 [CLOUDINARY-CONFIG] Configuration method check:', {
+  has_cloudinary_url: hasCloudinaryUrl ? '✅ SET' : '❌ MISSING',
+  has_individual_credentials: hasIndividualCredentials ? '✅ SET' : '❌ MISSING',
+  cloudinary_url_preview: process.env.CLOUDINARY_URL ? 
+    'cloudinary://***:***@' + (process.env.CLOUDINARY_URL.split('@')[1] || 'unknown') : 'NOT_SET'
+});
+
+console.log('🌐 [CLOUDINARY-CONFIG] Individual credentials check:', {
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? '✅ SET' : '❌ MISSING',
   api_key: process.env.CLOUDINARY_API_KEY ? '✅ SET' : '❌ MISSING',
   api_secret: process.env.CLOUDINARY_API_SECRET ? '✅ SET' : '❌ MISSING',
@@ -22,18 +33,27 @@ console.log('🌐 [CLOUDINARY-CONFIG] Cloudinary credentials check:', {
 });
 
 // Validate credentials before config
-if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+if (!hasCloudinaryUrl && !hasIndividualCredentials) {
   console.error('❌ [CLOUDINARY-CONFIG] Missing required environment variables!');
-  console.error('❌ [CLOUDINARY-CONFIG] Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+  console.error('❌ [CLOUDINARY-CONFIG] Required: Either CLOUDINARY_URL or individual credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)');
   throw new Error('Cloudinary configuration incomplete - missing environment variables');
 }
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-});
+// Configure Cloudinary
+if (hasCloudinaryUrl) {
+  console.log('🌐 [CLOUDINARY-CONFIG] Using CLOUDINARY_URL for configuration');
+  cloudinary.config({
+    secure: true
+  });
+} else {
+  console.log('🌐 [CLOUDINARY-CONFIG] Using individual credentials for configuration');
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true
+  });
+}
 
 // Test connection
 cloudinary.api.ping()

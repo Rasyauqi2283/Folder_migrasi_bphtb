@@ -65,21 +65,60 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
     const isPdf = file.mimetype === 'application/pdf';
     const ext = path.extname(file.originalname).toLowerCase().replace('.', ''); // Hapus dot
     
-    // Generate public_id dengan format: userid_dokumenpath_ppatk_khusus_tahun
-    const publicId = `${userid}_${docType}_${ppatk_khusus}_${currentYear}`;
+    // Get nobooking from request body (MUST be available during upload)
+    const nobooking = req.body?.nobooking;
+    
+    // Validate nobooking is present
+    if (!nobooking) {
+      console.error('❌ [CLOUDINARY] nobooking is required but not provided in request body');
+      throw new Error('nobooking is required for file upload');
+    }
+    
+    // Extract sequence number from nobooking (format: ppatk_khusus-year-sequence)
+    // Example: 20012-2025-000030 -> extract 000030
+    let sequenceNumber;
+    if (nobooking.includes('-')) {
+      const parts = nobooking.split('-');
+      if (parts.length >= 3) {
+        sequenceNumber = parts[2]; // Get the last part (sequence number)
+      } else {
+        console.error('❌ [CLOUDINARY] Invalid nobooking format:', nobooking);
+        throw new Error('Invalid nobooking format - expected format: ppatk_khusus-year-sequence');
+      }
+    } else {
+      console.error('❌ [CLOUDINARY] Invalid nobooking format (no dashes):', nobooking);
+      throw new Error('Invalid nobooking format - expected format: ppatk_khusus-year-sequence');
+    }
+    
+    // Validate sequence number is numeric and properly formatted
+    if (!sequenceNumber || !/^\d{6}$/.test(sequenceNumber)) {
+      console.error('❌ [CLOUDINARY] Invalid sequence number format:', sequenceNumber);
+      throw new Error('Invalid sequence number format - expected 6 digits');
+    }
+    
+    // Generate public_id dengan format: userid_dokumenpath_sequence_tahun
+    // Format: PAT10_Akta_000001_2025
+    const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
     
     console.log(`📁 [CLOUDINARY] Uploading to cloud:`, {
       folder: 'bappenda/dokumen-sspd',
       publicId: publicId,
       userid: userid,
       docType: docType,
+      nobooking: nobooking,
+      sequenceNumber: sequenceNumber,
       ppatk_khusus: ppatk_khusus,
       year: currentYear,
       type: isPdf ? 'PDF (raw)' : 'Image',
       resourceType: isPdf ? 'raw' : 'image',
       format: ext,
       originalName: file.originalname,
-      namingFormat: 'userid_dokumenpath_ppatk_khusus_tahun'
+      namingFormat: 'userid_dokumenpath_sequence_tahun',
+      validation: {
+        nobookingProvided: !!nobooking,
+        sequenceNumberValid: /^\d{6}$/.test(sequenceNumber),
+        formatCorrect: nobooking.includes('-') && nobooking.split('-').length >= 3
+      }
     });
     
     return {
@@ -99,12 +138,14 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       context: {
         userid: userid,
         docType: docType,
+        nobooking: nobooking,
+        sequenceNumber: sequenceNumber,
         ppatk_khusus: ppatk_khusus,
         year: currentYear,
         uploadDate: new Date().toISOString(),
-        namingFormat: 'userid_dokumenpath_ppatk_khusus_tahun'
+        namingFormat: 'userid_dokumenpath_sequence_tahun'
       },
-      tags: [userid, docType, ppatk_khusus, currentYear.toString(), 'bappenda-sspd']
+      tags: [userid, docType, sequenceNumber, ppatk_khusus, currentYear.toString(), 'bappenda-sspd']
     };
   }
 });
