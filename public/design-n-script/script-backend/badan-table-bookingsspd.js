@@ -13,6 +13,11 @@ function getFileUrl(pathOrUrl) {
         return pathOrUrl;
     }
     
+    // Jika file ID Uploadcare, gunakan proxy endpoint
+    if (pathOrUrl.includes('ucarecdn.com') || pathOrUrl.match(/^[a-f0-9-]+$/)) {
+        return `${config.proxyEndpoint}?fileId=${encodeURIComponent(pathOrUrl)}`;
+    }
+    
     // Jika local path, tambahkan prefix /
     return '/' + pathOrUrl.replace(/^\/+/, ''); // Remove leading slashes then add one
 }
@@ -1128,7 +1133,10 @@ function showAlert(type, message, title = null) {
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk/uploadcare-upload'  // ✅ Uploadcare only
+            apiEndpoint: '/api/ppatk/uploadcare-upload',  // ✅ Uploadcare multiple files
+            pdfEndpoint: '/api/ppatk/uploadcare-pdf-upload',  // ✅ Uploadcare single PDF
+            proxyEndpoint: '/api/ppatk/uploadcare-proxy',  // ✅ Uploadcare proxy
+            healthEndpoint: '/api/ppatk/uploadcare-health'  // ✅ Uploadcare health check
         };
 
         function initializeFileUploads() {
@@ -1256,7 +1264,7 @@ function showAlert(type, message, title = null) {
         }
         async function uploadFiles(selectedNoBooking) {
             // Confirm before upload
-            if (!confirm('Anda yakin ingin mengupload dokumen?')) {
+            if (!confirm('Anda yakin ingin mengupload dokumen ke Uploadcare?')) {
                 return;
             }
 
@@ -1278,6 +1286,21 @@ function showAlert(type, message, title = null) {
                 }
             }
 
+            // Check Uploadcare health first
+            try {
+                const healthResponse = await fetch(config.healthEndpoint, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!healthResponse.ok) {
+                    showStatus("Uploadcare service tidak tersedia. Silakan coba lagi nanti.", 'error', selectedNoBooking);
+                    return;
+                }
+            } catch (healthError) {
+                console.warn('Health check failed, proceeding with upload:', healthError);
+            }
+
             // Prepare form data
             const formData = new FormData();
             formData.append('nobooking', selectedNoBooking);
@@ -1291,15 +1314,20 @@ function showAlert(type, message, title = null) {
             try {
                 // UI updates
                 btnUpload.disabled = true;
-                btnUpload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload...';
+                btnUpload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload ke Uploadcare...';
                 progressBar.style.display = 'block';
-                showStatus("Mengupload dokumen...", 'info', selectedNoBooking);
+                showStatus("Mengupload dokumen ke Uploadcare...", 'info', selectedNoBooking);
 
-                // Upload with progress
+                // Upload with progress tracking
                 const xhr = new XMLHttpRequest();
                 xhr.upload.onprogress = (e) => {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    document.querySelector(`#uploadProgress-${selectedNoBooking} .progress-fill`).style.width = `${percent}%`;
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        const progressFill = document.querySelector(`#uploadProgress-${selectedNoBooking} .progress-fill`);
+                        if (progressFill) {
+                            progressFill.style.width = `${percent}%`;
+                        }
+                    }
                 };
 
                 const response = await fetch(config.apiEndpoint, {
@@ -1308,25 +1336,55 @@ function showAlert(type, message, title = null) {
                     body: formData
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
-                    showStatus("Dokumen berhasil diupload!", 'success', selectedNoBooking);
+                    showStatus("Dokumen berhasil diupload ke Uploadcare!", 'success', selectedNoBooking);
+                    
+                    // Log cleanup results if available
+                    if (result.cleanup_status) {
+                        console.log('🧹 Cleanup results:', result.cleanup_status);
+                    }
+                    
                     updateDocumentDisplay(selectedNoBooking, result.data);
                     resetFileInputs(selectedNoBooking);
-                    location.reload();
+                    
+                    // Reload after a short delay to show success message
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
                 } else {
-                    showStatus(result.message || "Gagal mengupload dokumen", 'error', selectedNoBooking);
+                    showStatus(result.message || "Gagal mengupload dokumen ke Uploadcare", 'error', selectedNoBooking);
                 }
             } catch (error) {
-                console.error('Upload error:', error);
-                showStatus("Terjadi kesalahan saat mengupload. Silakan coba lagi.", 'error', selectedNoBooking);
+                console.error('Uploadcare upload error:', error);
+                
+                let errorMessage = "Terjadi kesalahan saat mengupload ke Uploadcare.";
+                
+                if (error.message.includes('HTTP 413')) {
+                    errorMessage = "File terlalu besar. Maksimal 5MB per file.";
+                } else if (error.message.includes('HTTP 415')) {
+                    errorMessage = "Format file tidak didukung. Gunakan PDF, JPG, atau PNG.";
+                } else if (error.message.includes('HTTP 500')) {
+                    errorMessage = "Server error. Silakan coba lagi nanti.";
+                } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    errorMessage = "Koneksi bermasalah. Periksa internet Anda.";
+                }
+                
+                showStatus(errorMessage, 'error', selectedNoBooking);
             } finally {
                 btnUpload.disabled = false;
                 btnUpload.innerHTML = '<i class="fas fa-upload"></i> Upload Semua Dokumen';
                 setTimeout(() => {
                     progressBar.style.display = 'none';
-                    document.querySelector(`#uploadProgress-${selectedNoBooking} .progress-fill`).style.width = '0%';
+                    const progressFill = document.querySelector(`#uploadProgress-${selectedNoBooking} .progress-fill`);
+                    if (progressFill) {
+                        progressFill.style.width = '0%';
+                    }
                 }, 1000);
             }
         }
@@ -3026,10 +3084,24 @@ function setupDocumentPreview(inputId, previewContainerId, previewImageId) {
     }
 }
 
-// Upload dokumen
+// Upload dokumen ke Uploadcare
 async function uploadDocuments(doc1, doc2, bookingId = null) {
     try {
-        console.log('Menyiapkan data dokumen untuk upload...');
+        console.log('Menyiapkan data dokumen untuk upload ke Uploadcare...');
+        
+        // Check Uploadcare health first
+        try {
+            const healthResponse = await fetch(config.healthEndpoint, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            if (!healthResponse.ok) {
+                throw new Error('Uploadcare service tidak tersedia');
+            }
+        } catch (healthError) {
+            console.warn('Health check failed, proceeding with upload:', healthError);
+        }
         
         const formData = new FormData();
         
@@ -3049,10 +3121,11 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
             console.log('Booking ID added:', bookingId);
         }
         
-        console.log('Mengirim request dokumen ke server...');
+        console.log('Mengirim request dokumen ke Uploadcare...');
         
-        const response = await fetch('/api/ppatk_upload-documents', {
+        const response = await fetch('/api/ppatk/uploadcare-pdf-upload', {
             method: 'POST',
+            credentials: 'include',
             body: formData,
             credentials: 'include'
         });
@@ -3064,7 +3137,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         console.log('Response data:', data);
         
         if (!response.ok) {
-            let errorMessage = data.message || 'Gagal mengupload dokumen';
+            let errorMessage = data.message || 'Gagal mengupload dokumen ke Uploadcare';
             
             // Handle specific error codes
             if (data.error_code === 'MISSING_REQUIRED_DOCUMENT') {
@@ -3073,12 +3146,24 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
                 errorMessage = 'Data user tidak ditemukan. Silakan login ulang.';
             } else if (data.error_code === 'DATABASE_ERROR') {
                 errorMessage = 'Error database. Silakan coba lagi.';
+            } else if (data.error_code === 'UPLOADCARE_ERROR') {
+                errorMessage = 'Error Uploadcare service. Silakan coba lagi.';
+            } else if (response.status === 413) {
+                errorMessage = 'File terlalu besar. Maksimal 5MB per file.';
+            } else if (response.status === 415) {
+                errorMessage = 'Format file tidak didukung. Gunakan PDF, JPG, atau PNG.';
             }
             
             throw new Error(errorMessage);
         }
         
-        showAlert('success', 'Dokumen berhasil diupload!');
+        showAlert('success', 'Dokumen berhasil diupload ke Uploadcare!');
+        
+        // Log cleanup results if available
+        if (data.cleanup_status) {
+            console.log('🧹 Cleanup results:', data.cleanup_status);
+        }
+        
         closeDocModal();
         
         // Refresh table data to show uploaded documents
@@ -3088,13 +3173,15 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         
         return data;
     } catch (error) {
-        console.error('Document Upload Error:', error);
+        console.error('Uploadcare Document Upload Error:', error);
         
         // Handle network errors
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            showAlert('error', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+            showAlert('error', 'Tidak dapat terhubung ke Uploadcare. Periksa koneksi internet Anda.');
+        } else if (error.message.includes('Uploadcare service tidak tersedia')) {
+            showAlert('error', 'Uploadcare service tidak tersedia. Silakan coba lagi nanti.');
         } else {
-            showAlert('error', error.message || 'Terjadi kesalahan saat mengupload dokumen');
+            showAlert('error', error.message || 'Terjadi kesalahan saat mengupload dokumen ke Uploadcare');
         }
         
         throw error;
