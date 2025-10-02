@@ -62,13 +62,8 @@ export async function uploadToUploadcare(file, options = {}) {
 
     // Upload file to Uploadcare
     // Convert file buffer to proper format for Uploadcare
-    const fileData = {
-      name: fileName,
-      type: file.mimetype,
-      data: file.buffer
-    };
-    
-    const uploadResult = await uploadClient.uploadFile(fileData, {
+    // Uploadcare expects a Buffer or Uint8Array directly
+    const uploadResult = await uploadClient.uploadFile(file.buffer, {
       fileName: fileName,
       metadata: {
         folder: folderStructure,
@@ -89,18 +84,19 @@ export async function uploadToUploadcare(file, options = {}) {
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size,
-      mimeType: uploadResult.mimeType
+      mimeType: uploadResult.mimeType,
+      cdnUrl: uploadResult.cdnUrl
     });
 
     return {
       success: true,
-      fileId: uploadResult.file,
+      fileId: uploadResult.file || uploadResult.uuid,
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size,
       mimeType: uploadResult.mimeType,
-      url: uploadResult.cdnUrl,
-      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file}`,
+      fileUrl: uploadResult.cdnUrl,
+      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`,
       metadata: {
         userid,
         nobooking,
