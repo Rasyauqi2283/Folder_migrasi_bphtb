@@ -16,16 +16,10 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
         throw new Error('pool parameter is required');
     }
     
-    // Create fallback middleware if not provided
-    const safeUploadTTD = uploadTTD || ((req, res, next) => {
-        console.log('⚠️ [PPATK] uploadTTD middleware not provided, using fallback');
-        next();
-    });
-    
-    const safeUploadDocumentMiddleware = uploadDocumentMiddleware || ((req, res, next) => {
-        console.log('⚠️ [PPATK] uploadDocumentMiddleware not provided, using fallback');
-        next();
-    });
+    // Middleware validation and logging
+    console.log('🔧 [PPATK] Middleware status:');
+    console.log('  - uploadTTD:', typeof uploadTTD === 'function' ? '✅ Available' : '❌ Not available');
+    console.log('  - uploadDocumentMiddleware:', typeof uploadDocumentMiddleware === 'function' ? '✅ Available' : '❌ Not available');
 // ===== UPLOADCARE ENDPOINTS SETUP =====
 // Setup Uploadcare endpoints
 app.use('/api/ppatk', uploadcareRoutes);
@@ -80,8 +74,8 @@ app.post('/api/cleanup-old-files', async (req, res) => {
         const { userid, docType, sequenceNumber, nobooking } = req.body;
         
         if (!userid || !docType || !sequenceNumber) {
-            return res.status(400).json({
-                success: false,
+            return res.status(400).json({ 
+                success: false, 
                 message: 'Missing required fields: userid, docType, sequenceNumber'
             });
         }
@@ -106,7 +100,7 @@ app.post('/api/cleanup-old-files', async (req, res) => {
             message: 'Manual cleanup completed',
             result: cleanupResult
         });
-
+        
     } catch (error) {
         console.error('❌ [CLEANUP] Manual cleanup failed:', error);
         res.status(500).json({
@@ -239,7 +233,7 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         const dataResult = await pool.query(dataQuery, queryParams);
         
         res.json({
-            success: true,
+            success: true, 
             data: dataResult.rows,
             pagination: {
                 page: parseInt(page),
@@ -248,7 +242,7 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
                 pages: Math.ceil(totalCount / limit)
             }
         });
-        
+
     } catch (error) {
         console.error('❌ [PPATK] Load all booking failed:', error);
         res.status(500).json({
@@ -261,9 +255,9 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
 // PPATK: Get booking detail by nobooking
 app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
     try {
-        if (!req.session || !req.session.user) {
-            return res.status(401).json({ success: false, message: 'Unauthorized' });
-        }
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
 
         const { nobooking } = req.params;
         const userid = req.session.user.userid;
@@ -288,20 +282,20 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         
         if (result.rows.length === 0) {
             return res.status(404).json({
-                success: false,
+      success: false, 
                 message: 'Booking not found'
             });
         }
         
         res.json({
-            success: true,
+            success: true, 
             data: result.rows[0]
         });
-        
+
     } catch (error) {
         console.error('❌ [PPATK] Get booking detail failed:', error);
         res.status(500).json({
-            success: false,
+            success: false, 
             message: 'Failed to get booking detail: ' + error.message
         });
     }
@@ -319,8 +313,8 @@ app.put('/api/ppatk/booking/:nobooking/status', async (req, res) => {
         const userid = req.session.user.userid;
         
         if (!status) {
-            return res.status(400).json({
-                success: false,
+            return res.status(400).json({ 
+                success: false, 
                 message: 'Status is required'
             });
         }
@@ -340,17 +334,17 @@ app.put('/api/ppatk/booking/:nobooking/status', async (req, res) => {
                 message: 'Booking not found'
             });
         }
-        
-        res.json({
+
+        res.json({ 
             success: true,
             message: 'Status updated successfully',
             data: result.rows[0]
         });
-        
+
     } catch (error) {
         console.error('❌ [PPATK] Update status failed:', error);
-        res.status(500).json({
-            success: false,
+        res.status(500).json({ 
+            success: false, 
             message: 'Failed to update status: ' + error.message
         });
     }
@@ -375,8 +369,8 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
         const result = await pool.query(query, [nobooking, userid]);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
+            return res.status(404).json({ 
+                success: false, 
                 message: 'Booking not found'
             });
         }
@@ -386,18 +380,18 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
             message: 'Booking deleted successfully',
             data: result.rows[0]
         });
-        
+
     } catch (error) {
         console.error('❌ [PPATK] Delete booking failed:', error);
-        res.status(500).json({
-            success: false,
+        res.status(500).json({ 
+            success: false, 
             message: 'Failed to delete booking: ' + error.message
         });
     }
 });
 
 // Upload signatures endpoint
-app.post('/api/ppatk/upload-signatures', safeUploadTTD, async (req, res) => {
+app.post('/api/ppatk/upload-signatures', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -411,13 +405,13 @@ app.post('/api/ppatk/upload-signatures', safeUploadTTD, async (req, res) => {
         }
 
         // Handle signature upload logic here
-        res.json({
-            success: true,
+            res.json({
+                success: true,
             message: 'Signature uploaded successfully',
             nobooking: nobooking
-        });
+            });
 
-    } catch (error) {
+        } catch (error) {
         console.error('❌ [PPATK] Upload signature failed:', error);
         res.status(500).json({
             success: false,
@@ -427,7 +421,7 @@ app.post('/api/ppatk/upload-signatures', safeUploadTTD, async (req, res) => {
 });
 
 // Upload documents endpoint
-app.post('/api/ppatk/upload-documents', safeUploadDocumentMiddleware, async (req, res) => {
+app.post('/api/ppatk/upload-documents', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -482,8 +476,8 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
 
     } catch (error) {
         console.error('❌ [PPATK] Get documents failed:', error);
-        res.status(500).json({
-            success: false,
+        res.status(500).json({ 
+            success: false, 
             message: 'Get documents failed: ' + error.message
         });
     }
@@ -517,7 +511,7 @@ app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Booking not found' });
         }
-
+        
         res.json({
             success: true,
             message: 'Status updated successfully',
@@ -526,8 +520,8 @@ app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
 
     } catch (error) {
         console.error('❌ [PPATK] Update track status failed:', error);
-        res.status(500).json({
-            success: false,
+        res.status(500).json({ 
+            success: false, 
             message: 'Update track status failed: ' + error.message
         });
     }
