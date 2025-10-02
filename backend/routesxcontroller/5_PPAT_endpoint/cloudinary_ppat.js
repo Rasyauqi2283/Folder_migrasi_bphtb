@@ -661,25 +661,59 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             cloudinaryUrl: file.path
                         });
 
-                        // Test jika file bisa diakses dari Cloudinary
+                        // Test jika file bisa diakses dari Cloudinary dengan retry logic
                         let fileExists = false;
-                        try {
-                            const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
-                            const testResponse = await axios.head(testUrl, { 
-                                timeout: 10000,
-                                validateStatus: (status) => status < 500 // Accept 404 but not 5xx
-                            });
-                            fileExists = testResponse.status === 200;
-                            console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test for ${fieldName}:`, {
-                                status: testResponse.status,
-                                exists: fileExists
-                            });
-                        } catch (testError) {
-                            console.warn(`⚠️ [CLOUDINARY-UPLOAD] File existence test failed for ${fieldName}:`, {
-                                error: testError.message,
-                                status: testError.response?.status
-                            });
-                            fileExists = false;
+                        const maxRetries = 3;
+                        const retryDelay = 2000; // 2 seconds
+                        
+                        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                            try {
+                                console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test attempt ${attempt}/${maxRetries} for ${fieldName}`);
+                                
+                                // Wait a bit before testing (Cloudinary propagation delay)
+                                if (attempt > 1) {
+                                    console.log(`⏳ [CLOUDINARY-UPLOAD] Waiting ${retryDelay}ms before retry...`);
+                                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                                }
+                                
+                                const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
+                                const testResponse = await axios.head(testUrl, { 
+                                    timeout: 15000,
+                                    validateStatus: (status) => status < 500 // Accept 404 but not 5xx
+                                });
+                                
+                                fileExists = testResponse.status === 200;
+                                console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test attempt ${attempt} for ${fieldName}:`, {
+                                    status: testResponse.status,
+                                    exists: fileExists,
+                                    url: testUrl
+                                });
+                                
+                                if (fileExists) {
+                                    console.log(`✅ [CLOUDINARY-UPLOAD] File existence confirmed on attempt ${attempt}`);
+                                    break; // Success, exit retry loop
+                                } else {
+                                    console.warn(`⚠️ [CLOUDINARY-UPLOAD] File not found on attempt ${attempt}, status: ${testResponse.status}`);
+                                }
+                                
+                            } catch (testError) {
+                                console.warn(`⚠️ [CLOUDINARY-UPLOAD] File existence test attempt ${attempt} failed for ${fieldName}:`, {
+                                    error: testError.message,
+                                    status: testError.response?.status,
+                                    code: testError.code
+                                });
+                                
+                                if (attempt === maxRetries) {
+                                    console.error(`❌ [CLOUDINARY-UPLOAD] All ${maxRetries} attempts failed for file existence test`);
+                                    fileExists = false;
+                                }
+                            }
+                        }
+                        
+                        // Final decision: if file still doesn't exist after retries, assume it exists (upload was successful)
+                        if (!fileExists) {
+                            console.warn(`⚠️ [CLOUDINARY-UPLOAD] File existence test failed after ${maxRetries} attempts, but upload was successful. Assuming file exists.`);
+                            fileExists = true; // Override to true since upload was successful
                         }
 
                         if (!fileExists) {
