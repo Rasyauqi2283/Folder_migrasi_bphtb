@@ -3,12 +3,12 @@
 
 // ===== HELPER FUNCTIONS untuk URL handling =====
 /**
- * Get proper file URL - support both Cloudinary URLs dan local paths
+ * Get proper file URL - support Uploadcare URLs
  */
 function getFileUrl(pathOrUrl) {
     if (!pathOrUrl) return '';
     
-    // Jika sudah URL lengkap (Cloudinary), return as-is
+    // Jika sudah URL lengkap (Uploadcare), return as-is
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
         return pathOrUrl;
     }
@@ -27,7 +27,7 @@ function getFileName(pathOrUrl) {
     const parts = pathOrUrl.split('/');
     const filename = parts[parts.length - 1];
     
-    // Remove Cloudinary version prefix jika ada (v1234567890)
+    // Remove version prefix jika ada (v1234567890)
     return filename.replace(/^v\d+_/, '');
 }
 
@@ -1123,12 +1123,12 @@ function showAlert(type, message, title = null) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // ======================
-        // GLOBAL CONFIGURATION cloudinary
+        // GLOBAL CONFIGURATION uploadcare
         // ======================
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk_upload-cloudinary'  // ✅ Cloudinary only - local storage removed
+            apiEndpoint: '/api/ppatk/uploadcare-upload'  // ✅ Uploadcare only
         };
 
         function initializeFileUploads() {

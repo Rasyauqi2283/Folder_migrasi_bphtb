@@ -81,11 +81,9 @@ import { runFullDatabaseMonitoring } from './database_monitoring.js';
 import pgSession from 'connect-pg-simple';
 //cek upload file
 import { uploadProfile } from './backend/config/uploads/upload_profpicture.js';
-// Local storage removed - using Cloudinary only
+// Local storage removed - using Uploadcare only
 import { ttdVerifMiddleware, uploadTTD } from './backend/config/uploads/upload_ttdverif.js';
 import { uploadDocumentMiddleware } from './backend/config/multer.js';
-// Import Cloudinary storage
-import { mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl } from './backend/config/uploads/cloudinary_storage.js';
 export {
   uploadProfile,
   ttdVerifMiddleware,
@@ -504,14 +502,7 @@ registerPPATKEndpoints({
   uploadDocumentMiddleware,
   PAT3_DISABLED,
   triggerNotificationByStatus,
-  upsertBankVerification,
-  // Cloudinary storage
-  mixedCloudinaryUpload,
-  renameCloudinaryFile,
-  deleteCloudinaryFile,
-  extractPublicIdFromUrl,
-  generateSignedUrl,
-  generatePublicUrl
+  upsertBankVerification
 });
 
 function requireBankRole(req) {
