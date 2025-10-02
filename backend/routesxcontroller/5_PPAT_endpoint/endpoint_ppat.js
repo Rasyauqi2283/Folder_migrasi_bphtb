@@ -600,6 +600,42 @@ app.get('/api/ppatk/check-signature', async (req, res) => {
   }
 });
 
+// Endpoint untuk check signature (compatible dengan frontend)
+app.get('/api/check-my-signature', async (req, res) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  try {
+    console.log('🔍 [CHECK-SIGNATURE] Checking signature for user:', req.session.user.userid);
+    
+    const { rows } = await pool.query(
+      `SELECT tanda_tangan_path FROM a_2_verified_users WHERE userid = $1`,
+      [req.session.user.userid]
+    );
+    
+    const pathVal = rows[0]?.tanda_tangan_path;
+    const hasSignature = !!(pathVal && String(pathVal).trim() !== '');
+    
+    console.log('✅ [CHECK-SIGNATURE] Result:', { 
+      userid: req.session.user.userid, 
+      hasSignature, 
+      signaturePath: pathVal 
+    });
+    
+    return res.json({ 
+      success: true, 
+      has_signature: hasSignature,
+      signaturePath: pathVal || null
+    });
+  } catch (error) {
+    console.error('❌ [CHECK-SIGNATURE] Error checking signature:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Gagal memeriksa tanda tangan' 
+    });
+  }
+});
+
 // Endpoint untuk save additional data PPATK
 app.post('/api/save-ppatk-additional-data', async (req, res) => {
     try {
