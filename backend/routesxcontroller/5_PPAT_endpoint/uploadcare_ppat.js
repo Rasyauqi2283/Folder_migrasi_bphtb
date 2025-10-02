@@ -367,6 +367,7 @@ export function createUploadcarePDFUploadHandler() {
         console.warn(`⚠️ [UPLOADCARE-PDF-CLEANUP] PDF cleanup failed:`, cleanupError.message);
       }
 
+      
       // Upload PDF to Uploadcare
       // Convert multer file object to proper format for Uploadcare
       const fileForUpload = {
