@@ -8,6 +8,24 @@ import uploadcareRoutes from './uploadcare_routes.js';
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
+    // Validate required parameters
+    if (!app) {
+        throw new Error('app parameter is required');
+    }
+    if (!pool) {
+        throw new Error('pool parameter is required');
+    }
+    
+    // Create fallback middleware if not provided
+    const safeUploadTTD = uploadTTD || ((req, res, next) => {
+        console.log('⚠️ [PPATK] uploadTTD middleware not provided, using fallback');
+        next();
+    });
+    
+    const safeUploadDocumentMiddleware = uploadDocumentMiddleware || ((req, res, next) => {
+        console.log('⚠️ [PPATK] uploadDocumentMiddleware not provided, using fallback');
+        next();
+    });
 // ===== UPLOADCARE ENDPOINTS SETUP =====
 // Setup Uploadcare endpoints
 app.use('/api/ppatk', uploadcareRoutes);
@@ -379,7 +397,7 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
 });
 
 // Upload signatures endpoint
-app.post('/api/ppatk/upload-signatures', uploadTTD, async (req, res) => {
+app.post('/api/ppatk/upload-signatures', safeUploadTTD, async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -409,7 +427,7 @@ app.post('/api/ppatk/upload-signatures', uploadTTD, async (req, res) => {
 });
 
 // Upload documents endpoint
-app.post('/api/ppatk/upload-documents', uploadDocumentMiddleware, async (req, res) => {
+app.post('/api/ppatk/upload-documents', safeUploadDocumentMiddleware, async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
