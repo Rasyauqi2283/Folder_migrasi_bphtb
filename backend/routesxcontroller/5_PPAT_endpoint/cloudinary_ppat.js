@@ -865,8 +865,8 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, '');
                     const timestamp = `${dateStr}_${timeStr}`;
                     
-                    // New format: DokumenP_sequence_timestamp (folder sudah mengandung userid/nobooking)
-                    pdfPublicId = `DokumenP_${sequence}_${timestamp}`;
+                    // New format: userid_DokumenP_sequence_timestamp (folder sudah mengandung userid/nobooking)
+                    pdfPublicId = `${userid}_DokumenP_${sequence}_${timestamp}`;
                 }
             }
             
