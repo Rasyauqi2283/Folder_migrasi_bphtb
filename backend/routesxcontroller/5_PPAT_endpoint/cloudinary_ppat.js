@@ -113,53 +113,69 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
                 console.log('🔄 [CLOUDINARY-PROXY] Validating publicId exists on Cloudinary:', publicId);
                 
-                // Quick validation: check if file exists before generating signed URL
-                try {
-                    const validationUrl = generateSignedUrlParam(publicId, 60, resourceType);
-                    const validationResponse = await axios.head(validationUrl, { 
-                        timeout: 5000,
-                        validateStatus: (status) => status < 500 // Accept 404 but not 5xx
-                    });
-                    
-                    if (validationResponse.status !== 200) {
-                        console.error('❌ [CLOUDINARY-PROXY] File validation failed:', {
-                            publicId,
-                            resourceType,
-                            status: validationResponse.status,
-                            cldError: validationResponse.headers['x-cld-error']
+                // Enhanced validation: check if file exists with retry logic
+                let fileValidationPassed = false;
+                const maxRetries = 3;
+                const retryDelay = 1000; // 1 second for proxy (shorter than upload)
+                
+                for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                    try {
+                        console.log(`🔍 [CLOUDINARY-PROXY] File validation attempt ${attempt}/${maxRetries} for publicId: ${publicId}`);
+                        
+                        // Wait a bit before testing (except first attempt)
+                        if (attempt > 1) {
+                            console.log(`⏳ [CLOUDINARY-PROXY] Waiting ${retryDelay}ms before retry...`);
+                            await new Promise(resolve => setTimeout(resolve, retryDelay));
+                        }
+                        
+                        const validationUrl = generateSignedUrlParam(publicId, 60, resourceType);
+                        const validationResponse = await axios.head(validationUrl, { 
+                            timeout: 8000,
+                            validateStatus: (status) => status < 500 // Accept 404 but not 5xx
                         });
                         
-                        return res.status(404).json({
-                            error: "File not found on Cloudinary",
-                            details: validationResponse.headers['x-cld-error'] || 'File does not exist',
-                            publicId: publicId,
-                            resourceType: resourceType,
-                            suggestion: "File may have been deleted or never uploaded successfully"
+                        if (validationResponse.status === 200) {
+                            console.log(`✅ [CLOUDINARY-PROXY] File validation passed on attempt ${attempt}`);
+                            fileValidationPassed = true;
+                            break; // Success, exit retry loop
+                        } else {
+                            console.warn(`⚠️ [CLOUDINARY-PROXY] File validation failed on attempt ${attempt}:`, {
+                                status: validationResponse.status,
+                                cldError: validationResponse.headers['x-cld-error']
+                            });
+                        }
+                        
+                    } catch (validationError) {
+                        console.warn(`⚠️ [CLOUDINARY-PROXY] File validation attempt ${attempt} failed:`, {
+                            error: validationError.message,
+                            status: validationError.response?.status,
+                            code: validationError.code
                         });
+                        
+                        if (attempt === maxRetries) {
+                            console.error(`❌ [CLOUDINARY-PROXY] All ${maxRetries} validation attempts failed for publicId: ${publicId}`);
+                        }
                     }
+                }
+                
+                if (!fileValidationPassed) {
+                    console.error('❌ [CLOUDINARY-PROXY] File validation failed after all retries:', {
+                        publicId,
+                        resourceType,
+                        maxRetries
+                    });
                     
-                    console.log('✅ [CLOUDINARY-PROXY] File validation passed, generating signed URL');
-                    cloudinaryUrl = generateSignedUrlParam(publicId, 3600, resourceType); // 1 hour validity with resource type
-                    
-                } catch (validationError) {
-                    console.error('❌ [CLOUDINARY-PROXY] File validation error:', validationError.message);
-                    
-                    if (validationError.response?.status === 404) {
-                        return res.status(404).json({
-                            error: "File not found on Cloudinary",
-                            details: validationError.response.headers['x-cld-error'] || 'File does not exist',
-                            publicId: publicId,
-                            resourceType: resourceType,
-                            suggestion: "File may have been deleted or never uploaded successfully"
-                        });
-                    }
-                    
-                    return res.status(500).json({
-                        error: "Failed to validate file on Cloudinary",
-                        details: validationError.message,
-                        publicId: publicId
+                    return res.status(404).json({
+                        error: "File not found on Cloudinary",
+                        details: `File not accessible after ${maxRetries} attempts - may be temporarily unavailable or deleted`,
+                        publicId: publicId,
+                        resourceType: resourceType,
+                        suggestion: "File may be processing or temporarily unavailable. Please try again in a few moments."
                     });
                 }
+                
+                console.log('✅ [CLOUDINARY-PROXY] File validation passed, generating signed URL');
+                cloudinaryUrl = generateSignedUrlParam(publicId, 3600, resourceType); // 1 hour validity with resource type
             } else if (url) {
                 // Decode existing URL
                 cloudinaryUrl = decodeURIComponent(url);
