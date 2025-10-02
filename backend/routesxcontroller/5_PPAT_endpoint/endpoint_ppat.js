@@ -636,6 +636,202 @@ app.get('/api/check-my-signature', async (req, res) => {
   }
 });
 
+// Endpoint untuk menyimpan booking dan perhitungan BPHTB
+app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
+    const userid = req.session.user ? req.session.user.userid : null;
+    const nama = req.session.user ? req.session.user.nama : null;
+    
+    // Pastikan user sudah login dan session ada
+    if (!userid || !nama) {
+        console.warn('Unauthorized access attempt', { endpoint: req.originalUrl });
+        return res.status(401).json({ message: 'Silakan login terlebih dahulu.' });
+    }
+
+    // Validasi Divisi
+    if (!['PPAT', 'PPATS'].includes(req.session.user.divisi)) {
+        console.warn('Forbidden access attempt', { user: userid, divisi: req.session.user.divisi });
+        return res.status(403).json({ message: 'Hanya pengguna dengan divisi PPAT dan PPATS yang bisa membuat booking' });
+    }
+
+    const client = await pool.connect();
+    const { 
+        jenis_wajib_pajak, noppbb, namawajibpajak, alamatwajibpajak, 
+        namapemilikobjekpajak, alamatpemilikobjekpajak, tahunajb, 
+        kabupatenkotawp, kecamatanwp ,kelurahandesawp, rtrwwp, npwpwp, kodeposwp, 
+        kabupatenkotaop, kecamatanop, kelurahandesaop, rtrwop, npwpop, kodeposop, status_kepemilikan,
+
+        // Penghitungan NJOP
+        luas_tanah, njop_tanah, luas_bangunan, njop_bangunan,
+        
+        // Data perhitungan BPHTB
+        nilaiPerolehanObjekPajakTidakKenaPajak, bphtb_yangtelah_dibayar,
+        
+        // Data Objek Pajak
+        hargatransaksi, letaktanahdanbangunan, rt_rwobjekpajak,  kelurahandesalp, kecamatanlp, jenisPerolehan,
+        keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, 
+        nomor_bukti_pembayaran
+    } = req.body;
+    
+    const tanggal = req.body.tanggal;  // Misalnya 01052025
+    console.log("Tanggal AJB yang diterima di backend:", tanggal);
+
+    // Mapping value ke tampilan yang lebih baik
+    const statusKepemilikanMap = {
+        'milik_pribadi': 'Milik Pribadi',
+        'milik_bersama': 'Milik Bersama',
+        'sewa': 'Sewa',
+        'hgb': 'Hak Guna Bangunan'
+    };
+
+    const statusKepemilikanFormatted = statusKepemilikanMap[status_kepemilikan] || null;
+
+    try {
+        await client.query('BEGIN');  // Memulai transaksi
+
+        // 1. Simpan data booking ke tabel pat_1_bookingsspd
+        const bookingQuery = `
+            INSERT INTO pat_1_bookingsspd (userid, jenis_wajib_pajak, noppbb, namawajibpajak, 
+                                           alamatwajibpajak, namapemilikobjekpajak, alamatpemilikobjekpajak, 
+                                           tanggal, tahunajb, kabupatenkotawp, kecamatanwp, kelurahandesawp, 
+                                           rtrwwp, npwpwp, kodeposwp, kabupatenkotaop, kecamatanop, kelurahandesaop, 
+                                           rtrwop, npwpop, kodeposop, trackstatus, nama)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, 'Draft', $22)
+            RETURNING bookingid, nobooking;
+        `;
+        const bookingValues = [
+            userid, jenis_wajib_pajak, noppbb, namawajibpajak, alamatwajibpajak,
+            namapemilikobjekpajak, alamatpemilikobjekpajak, tanggal, tahunajb,
+            kabupatenkotawp, kecamatanwp, kelurahandesawp, rtrwwp, npwpwp, kodeposwp,
+            kabupatenkotaop, kecamatanop, kelurahandesaop, rtrwop, npwpop, kodeposop, nama
+        ];
+
+        const bookingResult = await client.query(bookingQuery, bookingValues);
+        if (!bookingResult.rows[0] || !bookingResult.rows[0].nobooking) {
+            return res.status(500).json({ message: 'Gagal mendapatkan booking ID.' });
+        }
+        const nobooking = bookingResult.rows[0].nobooking;  // Mendapatkan nobooking setelah data disimpan
+        const Bookingid = bookingResult.rows[0].bookingid;  // Mendapatkan bookingid setelah data disimpan
+
+        if (!nobooking) {
+            await client.query('ROLLBACK');
+            return res.status(500).json({ message: 'Gagal mendapatkan nobooking.' });
+        }
+
+        console.log('Nobooking berhasil diambil:', nobooking);
+        console.log('Bookingid berhasil diambil:', Bookingid);
+
+        const penghitunganquery = `
+            INSERT INTO pat_5_penghitungan_njop (nobooking, luas_tanah, njop_tanah, luas_bangunan, njop_bangunan)
+            VALUES ($1, $2, $3, $4, $5);`;
+        const penghitunganvalues = [nobooking, luas_tanah, njop_tanah, luas_bangunan, njop_bangunan];
+
+        await client.query(penghitunganquery, penghitunganvalues);
+
+        // 2. Simpan data perhitungan BPHTB ke tabel pat_2_bphtb_perhitungan
+        const bphtbQuery = `
+            INSERT INTO pat_2_bphtb_perhitungan (nobooking, nilaiPerolehanObjekPajakTidakKenaPajak, bphtb_yangtelah_dibayar)
+            VALUES ($1, $2, $3);
+        `;
+        const bphtbValues = [
+            nobooking, nilaiPerolehanObjekPajakTidakKenaPajak, bphtb_yangtelah_dibayar
+        ];
+
+        await client.query(bphtbQuery, bphtbValues);  // Menyimpan perhitungan BPHTB
+
+        // 3. Simpan data objek pajak ke tabel pat_4_objek_pajak
+        const objekPajakQuery = `
+            INSERT INTO pat_4_objek_pajak (nobooking, harga_transaksi, letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, 
+                                          keterangan, nomor_sertifikat, tanggal_perolehan, 
+                                          tanggal_pembayaran, nomor_bukti_pembayaran, kelurahandesalp, kecamatanlp, jenis_perolehan)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
+        `;
+        const objekPajakValues = [
+            nobooking, hargatransaksi, letaktanahdanbangunan, rt_rwobjekpajak, statusKepemilikanFormatted, keterangan, nomor_sertifikat,
+            tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, kelurahandesalp, kecamatanlp, jenisPerolehan 
+        ];
+
+        await client.query(objekPajakQuery, objekPajakValues);  // Menyimpan data objek pajak
+
+        const ValidasiQuery = `
+            INSERT INTO pat_8_validasi_tambahan (nobooking)
+            VALUES ($1);
+        `;
+        const ValidasiValues = [
+            nobooking
+        ];
+
+        await client.query(ValidasiQuery, ValidasiValues);  // Menyimpan data objek pajak
+
+        // 4. (Opsional) Siapkan baris awal dokumen, tanda tangan, dan validasi surat
+        // Gunakan savepoint agar jika tabel/kolom tidak cocok, transaksi utama tetap lanjut
+        if (!PAT3_DISABLED) {
+            try {
+                await client.query('SAVEPOINT sp_docs');
+                const insertDocs = `
+                    INSERT INTO pat_3_documents (userid, nama, path_document1, path_document2, booking_id, upload_date)
+                    VALUES ($1, $2, NULL, NULL, $3, NOW())
+                `;
+                await client.query(insertDocs, [userid, nama, Bookingid]);
+            } catch (e) {
+                await client.query('ROLLBACK TO SAVEPOINT sp_docs');
+                console.warn('Skip init pat_3_documents:', e.message);
+            }
+        } else {
+            console.log('Lewati init pat_3_documents (dinonaktifkan)');
+        }
+
+        try {
+            await client.query('SAVEPOINT sp_sign');
+            // Ambil path tanda tangan dari profil pengguna (boleh null jika belum ada)
+            const sigRes = await client.query(
+                'SELECT tanda_tangan_path FROM a_2_verified_users WHERE userid = $1',
+                [userid]
+            );
+            const tandaTanganPath = sigRes.rows[0]?.tanda_tangan_path || null;
+            
+            const insertSign = `
+                INSERT INTO pat_6_sign (nobooking, tanda_tangan_path, status_tanda_tangan, created_at)
+                VALUES ($1, $2, $3, NOW())
+            `;
+            await client.query(insertSign, [nobooking, tandaTanganPath, 'pending']);
+        } catch (e) {
+            await client.query('ROLLBACK TO SAVEPOINT sp_sign');
+            console.warn('Skip init pat_6_sign:', e.message);
+        }
+
+        try {
+            await client.query('SAVEPOINT sp_valsurat');
+            const insertValSurat = `
+                INSERT INTO pat_7_validasi_surat (nobooking, status_surat, created_at)
+                VALUES ($1, 'pending', NOW())
+            `;
+            await client.query(insertValSurat, [nobooking]);
+        } catch (e) {
+            await client.query('ROLLBACK TO SAVEPOINT sp_valsurat');
+            console.warn('Skip init pat_7_validasi_surat:', e.message);
+        }
+        
+        await client.query('COMMIT');  // Commit transaksi
+
+        // Mengirimkan response sukses
+        res.status(201).json({ 
+            success: true, 
+            message: 'Booking, perhitungan BPHTB, dan objek pajak berhasil disimpan.',
+            nobooking: nobooking
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');  // Rollback transaksi jika terjadi error
+        console.error('Error during booking, BPHTB calculation, and objek pajak creation:', error);
+        res.status(500).json({
+            success: false, 
+            message: 'Gagal menyimpan booking, perhitungan BPHTB, dan objek pajak.'
+        });
+    } finally {
+        client.release();  // Melepaskan koneksi setelah operasi selesai
+    }
+});
+
 // Endpoint untuk save additional data PPATK
 app.post('/api/save-ppatk-additional-data', async (req, res) => {
     try {
