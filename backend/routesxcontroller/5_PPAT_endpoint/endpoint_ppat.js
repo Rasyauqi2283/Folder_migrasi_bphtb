@@ -53,7 +53,7 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
         const sql = `
             SELECT 
                 b.nobooking, b.noppbb, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak, b.npwpwp, b.trackstatus, b.updated_at,
-                b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path,
+                b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path
             FROM pat_1_bookingsspd b
             WHERE ${where}
             ORDER BY b.updated_at DESC NULLS LAST
