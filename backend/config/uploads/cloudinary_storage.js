@@ -250,11 +250,32 @@ export function extractPublicIdFromUrl(url) {
   
   console.log('🔍 [EXTRACT-PUBLIC-ID] Extracting from URL:', url);
   
-  // Format URL: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/[folder]/[public_id].[ext]
-  // Support both http and https
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)$/);
-  if (match) {
-    let publicId = match[1];
+  // Support multiple Cloudinary URL formats:
+  // 1. Regular: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/[folder]/[public_id].[ext]
+  // 2. Signed: https://res.cloudinary.com/[cloud]/[type]/authenticated/s--signature--/v[version]/[folder]/[public_id].[ext]
+  // 3. Authenticated: https://res.cloudinary.com/[cloud]/[type]/authenticated/s--signature--/v[version]/[folder]/[public_id].[ext]
+  
+  let publicId = null;
+  
+  // Try different regex patterns
+  const patterns = [
+    // Pattern 1: Regular upload URLs
+    /\/upload\/(?:v\d+\/)?(.+)$/,
+    // Pattern 2: Authenticated/signed URLs  
+    /\/authenticated\/[^\/]+\/v\d+\/(.+)$/,
+    // Pattern 3: Any Cloudinary URL with folder structure
+    /\/[^\/]+\/[^\/]+\/[^\/]+\/(.+)$/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      publicId = match[1];
+      break;
+    }
+  }
+  
+  if (publicId) {
     // Remove extension if present
     publicId = publicId.replace(/\.\w+$/, '');
     

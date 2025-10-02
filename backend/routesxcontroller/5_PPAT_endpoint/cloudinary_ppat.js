@@ -1,11 +1,11 @@
 import express from 'express';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-import { cleanupOldFiles } from '../../config/uploads/cloudinary_storage.js';
+import { cleanupOldFiles, generateSignedUrl } from '../../config/uploads/cloudinary_storage.js';
 
 // ===== CLOUDINARY PROXY ENDPOINT =====
 // Endpoint untuk serve files dari Cloudinary via Railway server
-export function createCloudinaryProxyRouter({ generateSignedUrl }) {
+export function createCloudinaryProxyRouter({ generateSignedUrl: generateSignedUrlParam }) {
     const router = express.Router();
 
     // Endpoint untuk serve files dari Cloudinary via Railway server
@@ -62,7 +62,7 @@ export function createCloudinaryProxyRouter({ generateSignedUrl }) {
                   files[key] = {
                   source: "cloudinary",
                   public_id: publicId,
-                  signed_url: generateSignedUrl(publicId, 3600), // valid 1 jam
+                  signed_url: generateSignedUrlParam(publicId, 3600), // valid 1 jam
                   };
               }
             }
@@ -83,7 +83,7 @@ export function createCloudinaryProxyRouter({ generateSignedUrl }) {
 }
 
 // Endpoint untuk serve files dari Cloudinary via Railway server (authenticated access)
-export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
+export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSignedUrlParam }) {
     return async (req, res) => {
         try {
             console.log('🌐 [CLOUDINARY-PROXY] Request received:', {
@@ -94,8 +94,8 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
             });
 
             // Validate generateSignedUrl function
-            if (!generateSignedUrl || typeof generateSignedUrl !== 'function') {
-                console.error('❌ [CLOUDINARY-PROXY] generateSignedUrl is not a function:', typeof generateSignedUrl);
+            if (!generateSignedUrlParam || typeof generateSignedUrlParam !== 'function') {
+                console.error('❌ [CLOUDINARY-PROXY] generateSignedUrl is not a function:', typeof generateSignedUrlParam);
                 return res.status(500).json({ 
                     error: "Server configuration error - generateSignedUrl not available" 
                 });
@@ -115,7 +115,7 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                 
                 // Quick validation: check if file exists before generating signed URL
                 try {
-                    const validationUrl = generateSignedUrl(publicId, 60, resourceType);
+                    const validationUrl = generateSignedUrlParam(publicId, 60, resourceType);
                     const validationResponse = await axios.head(validationUrl, { 
                         timeout: 5000,
                         validateStatus: (status) => status < 500 // Accept 404 but not 5xx
@@ -139,7 +139,7 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                     }
                     
                     console.log('✅ [CLOUDINARY-PROXY] File validation passed, generating signed URL');
-                    cloudinaryUrl = generateSignedUrl(publicId, 3600, resourceType); // 1 hour validity with resource type
+                    cloudinaryUrl = generateSignedUrlParam(publicId, 3600, resourceType); // 1 hour validity with resource type
                     
                 } catch (validationError) {
                     console.error('❌ [CLOUDINARY-PROXY] File validation error:', validationError.message);
@@ -386,7 +386,7 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
 }
 
 // Endpoint untuk refresh signed URL yang expired
-export function createRefreshSignedUrlEndpoint({ generateSignedUrl }) {
+export function createRefreshSignedUrlEndpoint({ generateSignedUrl: generateSignedUrlParam }) {
     return async (req, res) => {
         try {
             const { publicId } = req.query;
@@ -398,7 +398,7 @@ export function createRefreshSignedUrlEndpoint({ generateSignedUrl }) {
             console.log('🔄 [REFRESH-SIGNED-URL] Refreshing signed URL for:', publicId);
             
             // Generate fresh signed URL
-            const signedUrl = generateSignedUrl(publicId, 3600); // 1 hour validity
+                const signedUrl = generateSignedUrlParam(publicId, 3600); // 1 hour validity
             
             res.json({
                 success: true,
@@ -618,7 +618,14 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                 const sequence = parts[2];
                                 const docType = fieldName === 'aktaTanah' ? 'Akta' : 
                                                fieldName === 'sertifikatTanah' ? 'Sertifikat' : 'Pelengkap';
-                                publicId = `${userid}_${docType}_${sequence}_${year}`;
+                                
+                                // Add timestamp untuk uniqueness
+                                const currentDate = new Date();
+                                const dateStr = currentDate.toISOString().slice(0, 10).replace(/-/g, '');
+                                const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, '');
+                                const timestamp = `${dateStr}_${timeStr}`;
+                                
+                                publicId = `${userid}_${docType}_${sequence}_${year}_${timestamp}`;
                                 console.log('🔄 [CLOUDINARY-UPLOAD] Generated fallback publicId:', publicId);
                             }
                         }
@@ -881,7 +888,14 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     const userid = parts[0];
                     const year = parts[1];
                     const sequence = parts[2];
-                    pdfPublicId = `${userid}_DokumenP_${sequence}_${year}`;
+                    
+                    // Add timestamp untuk uniqueness
+                    const currentDate = new Date();
+                    const dateStr = currentDate.toISOString().slice(0, 10).replace(/-/g, '');
+                    const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, '');
+                    const timestamp = `${dateStr}_${timeStr}`;
+                    
+                    pdfPublicId = `${userid}_DokumenP_${sequence}_${year}_${timestamp}`;
                     console.log('🔄 [CLOUDINARY-PDF] Generated fallback publicId:', pdfPublicId);
                 }
             }
