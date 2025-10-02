@@ -1,6 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 import { pool } from '../../../db.js';
 import { 
     createCloudinaryProxyRouter, 
@@ -81,7 +82,6 @@ app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
                             // Test if file exists on Cloudinary
                             try {
                                 const testUrl = generateSignedUrl(publicId, 60, resourceType);
-                                const axios = require('axios');
                                 const testResponse = await axios.head(testUrl, { 
                                     timeout: 5000,
                                     validateStatus: (status) => status < 500
@@ -166,7 +166,6 @@ app.get('/api/check-file-status/:publicId', async (req, res) => {
         let cloudinaryStatus = null;
         try {
             const testUrl = generateSignedUrl(publicId, 60, resourceType);
-            const axios = require('axios');
             const testResponse = await axios.head(testUrl, { 
                 timeout: 5000,
                 validateStatus: (status) => status < 500
@@ -251,7 +250,6 @@ app.get('/api/cloudinary-health-check', async (req, res) => {
         let cloudinaryReachability = false;
         try {
             const testUrl = 'https://res.cloudinary.com/test/image/upload/v1/test';
-            const axios = require('axios');
             const response = await axios.get(testUrl, { 
                 timeout: 5000,
                 validateStatus: () => true // Accept any status

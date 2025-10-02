@@ -115,7 +115,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                 // Quick validation: check if file exists before generating signed URL
                 try {
                     const validationUrl = generateSignedUrl(publicId, 60, resourceType);
-                    const axios = require('axios');
                     const validationResponse = await axios.head(validationUrl, { 
                         timeout: 5000,
                         validateStatus: (status) => status < 500 // Accept 404 but not 5xx
@@ -658,7 +657,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         let fileExists = false;
                         try {
                             const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
-                            const axios = require('axios');
                             const testResponse = await axios.head(testUrl, { 
                                 timeout: 10000,
                                 validateStatus: (status) => status < 500 // Accept 404 but not 5xx
