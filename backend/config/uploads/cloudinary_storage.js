@@ -97,14 +97,15 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       throw new Error('Invalid sequence number format - expected 6 digits');
     }
     
-    // Generate public_id dengan format: userid_dokumenpath_sequence_tahun_timestamp
-    // Format: PAT10_Akta_000001_2025_20251002_143022 (YYYYMMDD_HHMMSS)
+    // Generate public_id dengan format: docType_sequence_timestamp (untuk folder structure)
+    // Format: Akta_000001_20251002_143022 (YYYYMMDD_HHMMSS)
     const currentDate = new Date();
     const dateStr = currentDate.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
     const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
     const timestamp = `${dateStr}_${timeStr}`;
     
-    const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}_${timestamp}`;
+    // PublicId akan menjadi: docType_sequence_timestamp (folder sudah mengandung userid/nobooking)
+    const publicId = `${docType}_${sequenceNumber}_${timestamp}`;
     
     console.log('🔍 [CLOUDINARY-UPLOAD] Generated publicId:', {
       userid,
@@ -116,10 +117,10 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       isValid: !!publicId && publicId !== 'null' && publicId !== 'undefined'
     });
     
-    // Prepare upload parameters - AUTHENTICATED ACCESS (SECURE)
+    // Prepare upload parameters - PUBLIC ACCESS (REVIEW FRIENDLY)
     const uploadParams = {
-      folder: 'bappenda/dokumen-sspd',
-      public_id: publicId,
+      folder: `bappenda/sspd/${currentYear}/${userid}/${nobooking}`,
+      public_id: `${docType}_${sequenceNumber}_${timestamp}`,
       // Use correct resource type based on file type
       resource_type: isPdf ? 'raw' : 'image',
       format: ext,
@@ -129,9 +130,9 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       use_filename: false,
       unique_filename: false,
       overwrite: true,
-      // Metadata
-      context: `userid=${userid}|docType=${docType}|nobooking=${nobooking}|sequence=${sequenceNumber}|ppatk=${ppatk_khusus}|year=${currentYear}`,
-      tags: `${userid},${docType},${sequenceNumber},${ppatk_khusus},${currentYear},bappenda-sspd`
+      // Enhanced metadata for better organization
+      context: `userid=${userid}|docType=${docType}|nobooking=${nobooking}|sequence=${sequenceNumber}|ppatk=${ppatk_khusus}|year=${currentYear}|timestamp=${timestamp}`,
+      tags: `${userid},${docType},${sequenceNumber},${ppatk_khusus},${currentYear},bappenda-sspd,public-access`
     };
     
     // PDF-specific options are already set above
@@ -252,8 +253,7 @@ export function extractPublicIdFromUrl(url) {
   
   // Support multiple Cloudinary URL formats:
   // 1. Regular: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/[folder]/[public_id].[ext]
-  // 2. Signed: https://res.cloudinary.com/[cloud]/[type]/authenticated/s--signature--/v[version]/[folder]/[public_id].[ext]
-  // 3. Authenticated: https://res.cloudinary.com/[cloud]/[type]/authenticated/s--signature--/v[version]/[folder]/[public_id].[ext]
+  // 2. Public: https://res.cloudinary.com/[cloud]/[type]/upload/v[version]/bappenda/sspd/2025/userid/nobooking/[public_id].[ext]
   
   let publicId = null;
   
@@ -261,8 +261,8 @@ export function extractPublicIdFromUrl(url) {
   const patterns = [
     // Pattern 1: Regular upload URLs
     /\/upload\/(?:v\d+\/)?(.+)$/,
-    // Pattern 2: Authenticated/signed URLs  
-    /\/authenticated\/[^\/]+\/v\d+\/(.+)$/,
+    // Pattern 2: Public URLs with new folder structure
+    /\/upload\/(?:v\d+\/)?bappenda\/sspd\/\d+\/\w+\/\w+\/(.+)$/,
     // Pattern 3: Any Cloudinary URL with folder structure
     /\/[^\/]+\/[^\/]+\/[^\/]+\/(.+)$/
   ];
@@ -279,11 +279,8 @@ export function extractPublicIdFromUrl(url) {
     // Remove extension if present
     publicId = publicId.replace(/\.\w+$/, '');
     
-    // Remove folder path (everything before the last slash)
-    // e.g., "bappenda/dokumen-sspd/PAT09_Akta_000001_2025_20251002_020829" -> "PAT09_Akta_000001_2025_20251002_020829"
-    const pathParts = publicId.split('/');
-    publicId = pathParts[pathParts.length - 1];
-    
+    // For new structure, publicId is already clean: docType_sequence_timestamp
+    // e.g., "Akta_000001_20251002_143022"
     console.log('✅ [EXTRACT-PUBLIC-ID] Extracted publicId:', publicId);
     return publicId;
   }
@@ -302,11 +299,33 @@ export function generateSignedUrl(publicId, options = {}) {
       ...options
     };
     
+    // Generate full public URL dengan folder structure
     const url = cloudinary.url(publicId, defaultOptions);
     console.log(`🔐 [CLOUDINARY] Generated public URL for: ${publicId}`);
     return url;
   } catch (error) {
     console.error(`❌ [CLOUDINARY] Failed to generate public URL:`, error);
+    return null;
+  }
+}
+
+// Helper function untuk generate public URL dengan folder structure
+export function generatePublicUrlWithFolder(userid, nobooking, publicId, resourceType = 'raw') {
+  try {
+    const currentYear = new Date().getFullYear();
+    const folderPath = `bappenda/sspd/${currentYear}/${userid}/${nobooking}`;
+    const fullPublicId = `${folderPath}/${publicId}`;
+    
+    const url = cloudinary.url(fullPublicId, {
+      resource_type: resourceType,
+      type: 'upload',
+      secure: true
+    });
+    
+    console.log(`🌐 [CLOUDINARY] Generated public URL with folder: ${fullPublicId}`);
+    return url;
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY] Failed to generate public URL with folder:`, error);
     return null;
   }
 }
@@ -334,18 +353,26 @@ export function generatePublicUrl(publicId, resourceType = 'image', format = nul
 }
 
 // Helper function untuk mencari file lama berdasarkan pattern
-export async function findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image') {
+export async function findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image', nobooking = null) {
   try {
     console.log(`🔍 [CLOUDINARY-CLEANUP] Searching for old files:`, {
       userid,
       docType,
       sequenceNumber,
       currentYear,
-      resourceType
+      resourceType,
+      nobooking
     });
 
-    // Pattern untuk mencari file lama: userid_docType_sequenceNumber_year_*
-    const searchPattern = `${userid}_${docType}_${sequenceNumber}_${currentYear}_*`;
+    // Pattern untuk mencari file lama dengan folder structure baru
+    let searchPattern;
+    if (nobooking) {
+      // Search dalam folder spesifik: bappenda/sspd/year/userid/nobooking/docType_sequence_*
+      searchPattern = `bappenda/sspd/${currentYear}/${userid}/${nobooking}/${docType}_${sequenceNumber}_*`;
+    } else {
+      // Search dalam folder user: bappenda/sspd/year/userid/*/docType_sequence_*
+      searchPattern = `bappenda/sspd/${currentYear}/${userid}/*/${docType}_${sequenceNumber}_*`;
+    }
     
     const result = await cloudinary.search
       .expression(`public_id:${searchPattern}`)
@@ -368,7 +395,7 @@ export async function findOldFiles(userid, docType, sequenceNumber, currentYear,
 }
 
 // Helper function untuk menghapus file lama (kecuali yang terbaru)
-export async function cleanupOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image', keepLatest = 1) {
+export async function cleanupOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image', keepLatest = 1, nobooking = null) {
   try {
     console.log(`🧹 [CLOUDINARY-CLEANUP] Starting cleanup for:`, {
       userid,
@@ -376,10 +403,11 @@ export async function cleanupOldFiles(userid, docType, sequenceNumber, currentYe
       sequenceNumber,
       currentYear,
       resourceType,
-      keepLatest
+      keepLatest,
+      nobooking
     });
 
-    const oldFiles = await findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType);
+    const oldFiles = await findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType, nobooking);
     
     if (oldFiles.length <= keepLatest) {
       console.log(`✅ [CLOUDINARY-CLEANUP] No cleanup needed - only ${oldFiles.length} files found`);

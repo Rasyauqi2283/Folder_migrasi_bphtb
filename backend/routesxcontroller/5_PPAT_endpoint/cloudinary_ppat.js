@@ -2,7 +2,7 @@
 import express from 'express';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-import { cleanupOldFiles, generateSignedUrl } from '../../config/uploads/cloudinary_storage.js';
+import { cleanupOldFiles, generateSignedUrl, generatePublicUrlWithFolder } from '../../config/uploads/cloudinary_storage.js';
 
 // ===== CLOUDINARY PROXY ENDPOINT =====
 // Endpoint untuk serve files dari Cloudinary via Railway server
@@ -670,25 +670,36 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         // Simpan metadata: cloudinary_url dan proxy_path
                         const resourceType = isPdf ? 'raw' : 'image';
                         
+                        // Generate direct public URL untuk review yang mudah
+                        const directPublicUrl = generatePublicUrlWithFolder(userid, nobooking, publicId, resourceType);
                         
                         uploadedFiles[fieldName] = {
                             cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
                             proxy_path: `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(publicId)}&resourceType=${resourceType}`, // Railway proxy URL dengan publicId dan resourceType
+                            direct_public_url: directPublicUrl, // Direct public URL untuk review
                             public_id: publicId, // Store public_id for fresh signed URL generation
                             filename: file.filename,
                             mimetype: file.mimetype,
                             size: file.size,
                             isPdf: isPdf,
                             resource_type: resourceType,
-                            exists_on_cloudinary: fileExists
+                            exists_on_cloudinary: fileExists,
+                            // Metadata untuk review
+                            review_info: {
+                                userid: userid,
+                                nobooking: nobooking,
+                                docType: docType,
+                                uploadDate: new Date().toISOString(),
+                                folderPath: `bappenda/sspd/${new Date().getFullYear()}/${userid}/${nobooking}`
+                            }
                         };
 
                         // Cleanup file lama setelah upload berhasil (background task)
                         try {
-                            // Extract components untuk cleanup
-                            const parts = publicId.split('_');
-                            if (parts.length >= 5) {
-                                const [userid, docType, sequenceNumber, currentYear] = parts;
+                            // Extract components untuk cleanup dari nobooking
+                            const parts = nobooking.split('-');
+                            if (parts.length >= 3) {
+                                const [userid, currentYear, sequenceNumber] = parts;
                                 
                                 // Cleanup file lama (keep latest 2 files untuk safety)
                                 const cleanupResult = await cleanupOldFiles(
@@ -697,7 +708,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                     sequenceNumber, 
                                     currentYear, 
                                     resourceType, 
-                                    2 // Keep latest 2 files
+                                    2, // Keep latest 2 files
+                                    nobooking // Pass nobooking for specific folder search
                                 );
                                 
                                 
@@ -712,10 +724,10 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                     }
                 }
 
-                // Simpan Railway proxy URLs ke database (untuk user access)
-                const aktaTanahUrl = uploadedFiles.aktaTanah?.proxy_path || null;
-                const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.proxy_path || null;
-                const pelengkapUrl = uploadedFiles.pelengkap?.proxy_path || null;
+                // Simpan URLs ke database (proxy + direct public untuk review)
+                const aktaTanahUrl = uploadedFiles.aktaTanah?.direct_public_url || uploadedFiles.aktaTanah?.proxy_path || null;
+                const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.direct_public_url || uploadedFiles.sertifikatTanah?.proxy_path || null;
+                const pelengkapUrl = uploadedFiles.pelengkap?.direct_public_url || uploadedFiles.pelengkap?.proxy_path || null;
 
 
                 // Update database dengan proxy URLs
@@ -737,10 +749,29 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         data: {
                             nobooking,
                             uploadedFiles: Object.keys(uploadedFiles),
+                            // URLs untuk review
+                            reviewUrls: {
+                                aktaTanah: uploadedFiles.aktaTanah?.direct_public_url,
+                                sertifikatTanah: uploadedFiles.sertifikatTanah?.direct_public_url,
+                                pelengkap: uploadedFiles.pelengkap?.direct_public_url
+                            },
+                            // Proxy URLs untuk internal access
                             proxyUrls: {
                                 aktaTanah: aktaTanahUrl,
                                 sertifikatTanah: sertifikatTanahUrl,
                                 pelengkap: pelengkapUrl
+                            },
+                            // Metadata untuk review
+                            reviewInfo: {
+                                userid,
+                                uploadDate: new Date().toISOString(),
+                                folderStructure: `bappenda/sspd/${new Date().getFullYear()}/${userid}/${nobooking}`,
+                                files: Object.values(uploadedFiles).map(file => ({
+                                    type: file.review_info?.docType,
+                                    publicId: file.public_id,
+                                    size: file.size,
+                                    mimetype: file.mimetype
+                                }))
                             }
                         }
                     });
@@ -834,7 +865,8 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, '');
                     const timestamp = `${dateStr}_${timeStr}`;
                     
-                    pdfPublicId = `${userid}_DokumenP_${sequence}_${year}_${timestamp}`;
+                    // New format: DokumenP_sequence_timestamp (folder sudah mengandung userid/nobooking)
+                    pdfPublicId = `DokumenP_${sequence}_${timestamp}`;
                 }
             }
             
@@ -860,12 +892,13 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     return res.status(404).json({ success: false, message: 'Booking not found' });
                 }
 
-                // Update database dengan proxy URL untuk PDF (always raw for PDFs)
+                // Update database dengan direct public URL untuk PDF (always raw for PDFs)
+                const pdfDirectUrl = generatePublicUrlWithFolder(userid, nobooking, pdfPublicId, 'raw');
                 const pdfProxyPath = `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(pdfPublicId)}&resourceType=raw`;
                 
                 const updateResult = await pool.query(
                     'UPDATE pat_1_bookingsspd SET pdf_dokumen_path = $1, updated_at = CURRENT_TIMESTAMP WHERE nobooking = $2 AND userid = $3',
-                    [pdfProxyPath, nobooking, userid]
+                    [pdfDirectUrl, nobooking, userid]
                 );
 
                 if (updateResult.rowCount > 0) {
@@ -875,8 +908,20 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                         message: 'PDF uploaded successfully to Cloudinary',
                         data: {
                             nobooking,
-                            pdfProxyPath,
-                            pdfPublicId
+                            // URLs untuk review
+                            reviewUrl: pdfDirectUrl,
+                            proxyPath: pdfProxyPath,
+                            pdfPublicId,
+                            // Metadata untuk review
+                            reviewInfo: {
+                                userid,
+                                nobooking,
+                                docType: 'DokumenP',
+                                uploadDate: new Date().toISOString(),
+                                folderStructure: `bappenda/sspd/${new Date().getFullYear()}/${userid}/${nobooking}`,
+                                publicId: pdfPublicId,
+                                resourceType: 'raw'
+                            }
                         }
                     });
                 } else {

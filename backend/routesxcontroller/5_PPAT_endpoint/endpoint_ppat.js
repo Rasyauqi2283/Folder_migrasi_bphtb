@@ -10,7 +10,7 @@ import {
     createCloudinaryUploadHandler,
     createCloudinaryPDFUploadHandler
 } from './cloudinary_ppat.js';
-import { findOldFiles, cleanupOldFiles } from '../../config/uploads/cloudinary_storage.js';
+import { findOldFiles, cleanupOldFiles, generatePublicUrlWithFolder } from '../../config/uploads/cloudinary_storage.js';
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
