@@ -87,6 +87,7 @@ import { uploadDocumentMiddleware } from './backend/config/multer.js';
 export {
   uploadProfile,
   ttdVerifMiddleware,
+  uploadTTD,
   uploadDocumentMiddleware
 };
 // static config

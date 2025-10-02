@@ -18,8 +18,8 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
     
     // Middleware validation and logging
     console.log('🔧 [PPATK] Middleware status:');
-    console.log('  - uploadTTD:', typeof uploadTTD === 'function' ? '✅ Available' : '❌ Not available');
-    console.log('  - uploadDocumentMiddleware:', typeof uploadDocumentMiddleware === 'function' ? '✅ Available' : '❌ Not available');
+    console.log('  - uploadTTD:', uploadTTD && typeof uploadTTD.fields === 'function' ? '✅ Available' : '❌ Not available');
+    console.log('  - uploadDocumentMiddleware:', uploadDocumentMiddleware && typeof uploadDocumentMiddleware.fields === 'function' ? '✅ Available' : '❌ Not available');
 // ===== UPLOADCARE ENDPOINTS SETUP =====
 // Setup Uploadcare endpoints
 app.use('/api/ppatk', uploadcareRoutes);
