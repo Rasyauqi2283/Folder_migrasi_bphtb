@@ -197,13 +197,13 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         
         if (search) {
             paramCount++;
-            whereClause += ` AND (nobooking ILIKE $${paramCount} )`;
+            whereClause += ` AND (nobooking ILIKE $${paramCount} OR namawajibpajak ILIKE $${paramCount} OR namapemilikobjekpajak ILIKE $${paramCount})`;
             queryParams.push(`%${search}%`);
         }
         
         if (status) {
             paramCount++;
-            whereClause += ` AND status = $${paramCount}`;
+            whereClause += ` AND trackstatus = $${paramCount}`;
             queryParams.push(status);
         }
         
@@ -214,13 +214,19 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         const dataQuery = `
             SELECT 
                 nobooking,
-                status,
+                noppbb,
+                namawajibpajak,
+                namapemilikobjekpajak,
+                npwpwp,
+                tahunajb,
+                trackstatus,
                 created_at,
                 updated_at,
                 akta_tanah_path,
                 sertifikat_tanah_path,
                 pelengkap_path,
-                pdf_dokumen_path
+                pdf_dokumen_path,
+                file_withstempel_path
             FROM pat_1_bookingsspd 
             ${whereClause}
             ORDER BY created_at DESC
@@ -263,13 +269,19 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         const query = `
             SELECT 
                 nobooking,
-                status,
+                noppbb,
+                namawajibpajak,
+                namapemilikobjekpajak,
+                npwpwp,
+                tahunajb,
+                trackstatus,
                 created_at,
                 updated_at,
                 akta_tanah_path,
                 sertifikat_tanah_path,
                 pelengkap_path,
-                pdf_dokumen_path
+                pdf_dokumen_path,
+                file_withstempel_path
             FROM pat_1_bookingsspd 
             WHERE nobooking = $1 AND userid = $2
         `;
@@ -298,31 +310,31 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
 });
 
 // PPATK: Update booking status
-app.put('/api/ppatk/booking/:nobooking/status', async (req, res) => {
+app.put('/api/ppatk/booking/:nobooking/trackstatus', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
         const { nobooking } = req.params;
-        const { status } = req.body;
+        const { trackstatus } = req.body;
         const userid = req.session.user.userid;
         
-        if (!status) {
+        if (!trackstatus) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Status is required'
+                message: 'Trackstatus is required'
             });
         }
         
         const query = `
             UPDATE pat_1_bookingsspd 
-            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            SET trackstatus = $1, updated_at = CURRENT_TIMESTAMP
             WHERE nobooking = $2 AND userid = $3
             RETURNING *
         `;
         
-        const result = await pool.query(query, [status, nobooking, userid]);
+        const result = await pool.query(query, [trackstatus, nobooking, userid]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({
@@ -487,22 +499,22 @@ app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
         }
 
         const { nobooking } = req.params;
-        const { status } = req.body;
+        const { trackstatus } = req.body;
         const userid = req.session.user.userid;
 
-        if (!status) {
-            return res.status(400).json({ success: false, message: 'Status required' });
+        if (!trackstatus) {
+            return res.status(400).json({ success: false, message: 'Trackstatus required' });
         }
 
-        // Update status in database
+        // Update trackstatus in database
         const query = `
             UPDATE pat_1_bookingsspd 
-            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            SET trackstatus = $1, updated_at = CURRENT_TIMESTAMP
             WHERE nobooking = $2 AND userid = $3
             RETURNING *
         `;
         
-        const result = await pool.query(query, [status, nobooking, userid]);
+        const result = await pool.query(query, [trackstatus, nobooking, userid]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Booking not found' });
