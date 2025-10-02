@@ -85,6 +85,21 @@ export function createCloudinaryProxyRouter({ generateSignedUrl }) {
 export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
     return async (req, res) => {
         try {
+            console.log('🌐 [CLOUDINARY-PROXY] Request received:', {
+                method: req.method,
+                url: req.url,
+                query: req.query,
+                timestamp: new Date().toISOString()
+            });
+
+            // Validate generateSignedUrl function
+            if (!generateSignedUrl || typeof generateSignedUrl !== 'function') {
+                console.error('❌ [CLOUDINARY-PROXY] generateSignedUrl is not a function:', typeof generateSignedUrl);
+                return res.status(500).json({ 
+                    error: "Server configuration error - generateSignedUrl not available" 
+                });
+            }
+
             const { url, publicId, resourceType = 'raw' } = req.query;
             
             if (!url && !publicId) {
@@ -141,7 +156,12 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
             response.data.pipe(res);
             
         } catch (err) {
-            console.error("❌ [CLOUDINARY-PROXY] Error serving file:", err);
+            console.error("❌ [CLOUDINARY-PROXY] Error serving file:", {
+                error: err.message,
+                stack: err.stack,
+                query: req.query,
+                timestamp: new Date().toISOString()
+            });
             
             // Handle axios errors with minimal logging
             if (err.response) {
@@ -172,7 +192,12 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                 });
             }
             
-            return res.status(500).json({ error: "Failed to serve file from Cloudinary" });
+            // Handle other errors (like network issues, timeout, etc.)
+            return res.status(500).json({ 
+                error: "Failed to serve file from Cloudinary",
+                details: err.message,
+                timestamp: new Date().toISOString()
+            });
         }
     };
 }

@@ -17,6 +17,16 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
 const cloudinaryProxyRouter = createCloudinaryProxyRouter({ generateSignedUrl });
 app.use('/api/ppatk', cloudinaryProxyRouter);
 
+// Test endpoint untuk debugging 502 error
+app.get('/api/test-cloudinary-proxy', (req, res) => {
+    res.json({ 
+        success: true, 
+        message: 'Cloudinary proxy test endpoint working',
+        timestamp: new Date().toISOString(),
+        hasGenerateSignedUrl: typeof generateSignedUrl === 'function'
+    });
+});
+
 app.get('/api/files/cloudinary-proxy', createCloudinaryProxyEndpoint({ generateSignedUrl }));
 app.get('/api/files/refresh-signed-url', createRefreshSignedUrlEndpoint({ generateSignedUrl }));
 app.post('/api/ppatk_upload-cloudinary', ...createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPublicIdFromUrl }));
@@ -75,12 +85,35 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
         
         const result = await pool.query(sql, params);
         
-        console.log(`✅ [PPATK-GET-BOOKING-DATA] Found ${result.rows.length} bookings for user: ${userid}`);
+        // Count total records for pagination
+        const countSql = `
+            SELECT COUNT(*) as total
+            FROM pat_1_bookingsspd b
+            WHERE ${where.replace(/\$(\d+)/g, (match, num) => {
+                const paramIndex = parseInt(num);
+                if (paramIndex <= params.length - 2) { // Exclude limit and offset params
+                    return match;
+                }
+                return '1=1'; // Remove limit/offset from count query
+            })}
+        `;
+        const countParams = params.slice(0, -2); // Remove limit and offset
+        const countResult = await pool.query(countSql, countParams);
+        const totalRecords = parseInt(countResult.rows[0].total);
+        const totalPages = Math.ceil(totalRecords / lim);
+        
+        console.log(`✅ [PPATK-GET-BOOKING-DATA] Found ${result.rows.length} bookings for user: ${userid}, total: ${totalRecords}, pages: ${totalPages}`);
         
         return res.json({ 
             success: true, 
             page: pageNum, 
-            limit: lim, 
+            limit: lim,
+            pagination: {
+                page: pageNum,
+                totalPages: totalPages,
+                totalRecords: totalRecords
+            },
+            totalPages: totalPages, // For backward compatibility
             data: result.rows 
         });
     } catch (error) {
