@@ -557,8 +557,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
 
                         // Test jika file bisa diakses dari Cloudinary dengan enhanced logging
                         let fileExists = false;
-                        const maxRetries = 3;
-                        const retryDelay = 2000; // 2 seconds
+                        const maxRetries = 5; // Increased from 3 to 5
+                        const retryDelay = 10000; // Increased from 2 seconds to 5 seconds
                         
                         console.log(`🔍 [CLOUDINARY-UPLOAD] Testing file existence for ${fieldName}:`, {
                             publicId,
@@ -566,6 +566,11 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             expectedResourceType: isPdf ? 'raw' : 'image',
                             cloudinaryUrl: file.path
                         });
+                        
+                        // Extract version from upload URL to use in testing
+                        const uploadVersionMatch = file.path.match(/\/upload\/(v\d+)\//);
+                        const uploadVersion = uploadVersionMatch ? uploadVersionMatch[1] : 'v1';
+                        console.log(`🔍 [CLOUDINARY-UPLOAD] Using upload version: ${uploadVersion}`);
                         
                         for (let attempt = 1; attempt <= maxRetries; attempt++) {
                             try {
@@ -575,7 +580,11 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                     await new Promise(resolve => setTimeout(resolve, retryDelay));
                                 }
                                 
-                                const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
+                                // Use the same version as upload for testing
+                                const testUrl = generateSignedUrl(publicId, {
+                                    resource_type: isPdf ? 'raw' : 'image',
+                                    version: uploadVersion
+                                });
                                 console.log(`🔍 [CLOUDINARY-UPLOAD] Testing URL (attempt ${attempt}): ${testUrl}`);
                                 
                                 const testResponse = await axios.head(testUrl, { 
@@ -872,14 +881,19 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
 
             // Test jika PDF file bisa diakses dari Cloudinary dengan enhanced logging
             let pdfFileExists = false;
-            const maxRetries = 3;
-            const retryDelay = 10000; // 10 seconds
+            const maxRetries = 5; // Increased from 3 to 5
+            const retryDelay = 8000; // Increased from 10 seconds to 5 seconds
             
             console.log(`🔍 [CLOUDINARY-PDF] Testing PDF file existence:`, {
                 pdfPublicId,
                 expectedResourceType: 'raw',
                 cloudinaryUrl: req.file.path
             });
+            
+            // Extract version from upload URL to use in testing
+            const uploadVersionMatch = req.file.path.match(/\/upload\/(v\d+)\//);
+            const uploadVersion = uploadVersionMatch ? uploadVersionMatch[1] : 'v1';
+            console.log(`🔍 [CLOUDINARY-PDF] Using upload version: ${uploadVersion}`);
             
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
@@ -889,7 +903,11 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                         await new Promise(resolve => setTimeout(resolve, retryDelay));
                     }
                     
-                    const testUrl = generateSignedUrl(pdfPublicId, 60, 'raw');
+                    // Use the same version as upload for testing
+                    const testUrl = generateSignedUrl(pdfPublicId, {
+                        resource_type: 'raw',
+                        version: uploadVersion
+                    });
                     console.log(`🔍 [CLOUDINARY-PDF] Testing URL (attempt ${attempt}): ${testUrl}`);
                     
                     const testResponse = await axios.head(testUrl, { 

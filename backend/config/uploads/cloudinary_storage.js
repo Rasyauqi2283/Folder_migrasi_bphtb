@@ -303,7 +303,7 @@ export function generateSignedUrl(publicId, options = {}) {
     
     // Generate full public URL dengan folder structure
     const url = cloudinary.url(publicId, defaultOptions);
-    console.log(`🔐 [CLOUDINARY] Generated public URL for: ${publicId}`);
+    console.log(`🔐 [CLOUDINARY] Generated public URL for: ${publicId}${options.version ? ` (version: ${options.version})` : ''}`);
     return url;
   } catch (error) {
     console.error(`❌ [CLOUDINARY] Failed to generate public URL:`, error);
@@ -507,20 +507,29 @@ export async function findOldFiles(userid, docType, sequenceNumber, currentYear,
       searchPattern = `bappenda/sspd/${currentYear}/${userid}/*/${userid}_${docType}_${sequenceNumber}_*`;
     }
     
-    const result = await cloudinary.search
-      .expression(`public_id:${searchPattern}`)
-      .with_field('resource_type')
-      .max_results(50)
-      .execute();
+    try {
+      const result = await cloudinary.search
+        .expression(`public_id:${searchPattern}`)
+        .with_field('resource_type')
+        .max_results(50)
+        .execute();
 
-    console.log(`🔍 [CLOUDINARY-CLEANUP] Found ${result.resources.length} old files`);
-    
-    return result.resources.map(resource => ({
-      public_id: resource.public_id,
-      created_at: resource.created_at,
-      bytes: resource.bytes,
-      format: resource.format
-    }));
+      console.log(`🔍 [CLOUDINARY-CLEANUP] Found ${result.resources.length} old files`);
+      
+      return result.resources.map(resource => ({
+        public_id: resource.public_id,
+        created_at: resource.created_at,
+        bytes: resource.bytes,
+        format: resource.format
+      }));
+    } catch (searchError) {
+      console.warn(`⚠️ [CLOUDINARY-CLEANUP] Search API failed, using fallback strategy:`, searchError.message);
+      
+      // Fallback: Return empty array to skip cleanup
+      // This prevents the entire upload process from failing
+      console.log(`🛡️ [CLOUDINARY-CLEANUP] Fallback: Skipping cleanup due to search API failure`);
+      return [];
+    }
   } catch (error) {
     console.error(`❌ [CLOUDINARY-CLEANUP] Failed to search old files:`, error);
     return [];
