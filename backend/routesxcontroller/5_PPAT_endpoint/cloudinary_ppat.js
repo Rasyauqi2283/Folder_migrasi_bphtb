@@ -131,11 +131,98 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
             // Reduced logging to avoid Railway rate limits
             console.log('🌐 [CLOUDINARY-PROXY] Serving:', publicId || 'unknown');
 
-            // Fetch file from Cloudinary
-            const response = await axios.get(cloudinaryUrl, {
-                responseType: 'stream',
-                timeout: 30000 // 30 second timeout
+            // Enhanced Cloudinary request with better error handling
+            console.log('🌐 [CLOUDINARY-PROXY] Making request to Cloudinary:', {
+                url: cloudinaryUrl,
+                publicId: publicId,
+                resourceType: resourceType,
+                timestamp: new Date().toISOString()
             });
+
+            // Retry logic for Cloudinary requests
+            let response;
+            let lastError;
+            const maxRetries = 3;
+            
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.log(`🌐 [CLOUDINARY-PROXY] Attempt ${attempt}/${maxRetries} to fetch from Cloudinary`);
+                    
+                    response = await axios.get(cloudinaryUrl, {
+                        responseType: 'stream',
+                        timeout: 30000, // 30 second timeout
+                        maxRedirects: 5, // Allow redirects
+                        validateStatus: function (status) {
+                            // Accept all status codes, handle errors manually
+                            return true;
+                        },
+                        headers: {
+                            'User-Agent': 'Railway-Proxy/1.0',
+                            'Accept': '*/*',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
+                    
+                    // If we get here, request was successful
+                    console.log(`✅ [CLOUDINARY-PROXY] Successfully fetched from Cloudinary on attempt ${attempt}`);
+                    break;
+                    
+                } catch (error) {
+                    lastError = error;
+                    console.error(`❌ [CLOUDINARY-PROXY] Attempt ${attempt}/${maxRetries} failed:`, {
+                        error: error.message,
+                        code: error.code,
+                        status: error.response?.status
+                    });
+                    
+                    if (attempt === maxRetries) {
+                        throw error; // Final attempt failed
+                    }
+                    
+                    // Wait before retry (exponential backoff)
+                    const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                    console.log(`⏳ [CLOUDINARY-PROXY] Waiting ${waitTime}ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+
+            // Check if response is successful
+            if (response.status >= 400) {
+                console.error('❌ [CLOUDINARY-PROXY] Cloudinary returned error status:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: response.headers,
+                    url: cloudinaryUrl
+                });
+                
+                // Handle specific Cloudinary errors
+                if (response.status === 401) {
+                    return res.status(401).json({ 
+                        error: "Unauthorized access to Cloudinary resource",
+                        details: "Signed URL may be expired or invalid",
+                        publicId: publicId
+                    });
+                } else if (response.status === 404) {
+                    return res.status(404).json({ 
+                        error: "Resource not found on Cloudinary",
+                        details: response.headers['x-cld-error'] || 'File does not exist',
+                        publicId: publicId
+                    });
+                } else if (response.status === 403) {
+                    return res.status(403).json({ 
+                        error: "Access forbidden to Cloudinary resource",
+                        details: "Resource may be private or access denied",
+                        publicId: publicId
+                    });
+                } else {
+                    return res.status(response.status).json({ 
+                        error: "Cloudinary server error",
+                        status: response.status,
+                        details: response.headers['x-cld-error'] || response.statusText,
+                        publicId: publicId
+                    });
+                }
+            }
             
             // Get content type from Cloudinary response
             const contentType = response.headers['content-type'] || 'application/octet-stream';
@@ -158,12 +245,43 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
         } catch (err) {
             console.error("❌ [CLOUDINARY-PROXY] Error serving file:", {
                 error: err.message,
+                code: err.code,
                 stack: err.stack,
                 query: req.query,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                isNetworkError: !err.response,
+                isTimeout: err.code === 'ECONNABORTED'
             });
             
-            // Handle axios errors with minimal logging
+            // Handle different types of errors
+            if (err.code === 'ECONNABORTED') {
+                return res.status(504).json({ 
+                    error: "Request timeout to Cloudinary",
+                    details: "Cloudinary request took too long (>30s)",
+                    publicId: publicId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+                return res.status(502).json({ 
+                    error: "Cannot connect to Cloudinary",
+                    details: "Network connectivity issue to Cloudinary servers",
+                    publicId: publicId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            if (err.code === 'ECONNRESET') {
+                return res.status(502).json({ 
+                    error: "Connection reset by Cloudinary",
+                    details: "Cloudinary server reset the connection",
+                    publicId: publicId,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            // Handle axios response errors
             if (err.response) {
                 const status = err.response.status;
                 const cldError = err.response.headers['x-cld-error'] || 'Unknown error';
@@ -175,7 +293,8 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                 if (status === 401) {
                     return res.status(401).json({ 
                         error: "Unauthorized access - signed URL may be expired or invalid",
-                        details: "Please refresh the page or contact administrator"
+                        details: "Please refresh the page or contact administrator",
+                        publicId: publicId
                     });
                 } else if (status === 404) {
                     return res.status(404).json({ 
@@ -183,19 +302,35 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                         publicId: publicId,
                         details: cldError
                     });
+                } else if (status === 403) {
+                    return res.status(403).json({ 
+                        error: "Access forbidden to Cloudinary resource",
+                        details: "Resource may be private or access denied",
+                        publicId: publicId
+                    });
+                } else if (status >= 500) {
+                    return res.status(502).json({ 
+                        error: "Cloudinary server error",
+                        status: status,
+                        details: cldError,
+                        publicId: publicId
+                    });
                 }
                 
                 return res.status(status).json({ 
                     error: "Failed to access file from Cloudinary",
                     status: status,
-                    details: cldError
+                    details: cldError,
+                    publicId: publicId
                 });
             }
             
-            // Handle other errors (like network issues, timeout, etc.)
+            // Handle other errors (like network issues, etc.)
             return res.status(500).json({ 
                 error: "Failed to serve file from Cloudinary",
                 details: err.message,
+                code: err.code,
+                publicId: publicId,
                 timestamp: new Date().toISOString()
             });
         }

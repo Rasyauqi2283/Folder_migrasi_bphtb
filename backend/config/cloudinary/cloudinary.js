@@ -117,27 +117,58 @@ export const uploadFile = async (filePath, customName) => {
 // STEP 7: Generate Signed URL (Authenticated Mode)
 // - dipanggil saat user ingin lihat file
 // ===============================
-export const generateSignedUrl = (publicId, expirySeconds = 300, resourceType = "raw") => {
+export const generateSignedUrl = (publicId, expirySeconds = 3600, resourceType = "raw") => {
   try {
+    // Validate input parameters
+    if (!publicId || typeof publicId !== 'string' || publicId.trim().length === 0) {
+      throw new Error('Invalid publicId: must be a non-empty string');
+    }
+
+    if (!resourceType || !['image', 'video', 'raw', 'auto'].includes(resourceType)) {
+      throw new Error('Invalid resourceType: must be one of [image, video, raw, auto]');
+    }
+
+    if (expirySeconds < 60 || expirySeconds > 86400) {
+      console.warn('⚠️ [SIGNED-URL] Expiry seconds out of recommended range (60-86400), using 3600');
+      expirySeconds = 3600;
+    }
+
     const expiresAt = Math.floor(Date.now() / 1000) + expirySeconds;
 
+    // Generate signed URL with enhanced options
     const signedUrl = cloudinary.url(publicId, {
       resource_type: resourceType,
       type: "authenticated",
       sign_url: true,
-      expires_at: expiresAt
+      expires_at: expiresAt,
+      secure: true, // Force HTTPS
+      quality: "auto", // Optimize quality
+      fetch_format: "auto" // Optimize format
     });
 
-    console.log("🔑 [SIGNED-URL] Generated:", {
+    // Validate generated URL
+    if (!signedUrl || !signedUrl.includes('cloudinary.com')) {
+      throw new Error('Generated URL is invalid or does not contain cloudinary.com domain');
+    }
+
+    console.log("🔑 [SIGNED-URL] Generated successfully:", {
       public_id: publicId,
       resource_type: resourceType,
       expires_in: expirySeconds + "s",
+      expires_at: new Date(expiresAt * 1000).toISOString(),
+      url_length: signedUrl.length,
       type: "authenticated"
     });
 
     return signedUrl;
   } catch (err) {
-    console.error("❌ Signed URL generation failed:", err);
+    console.error("❌ Signed URL generation failed:", {
+      error: err.message,
+      publicId: publicId,
+      resourceType: resourceType,
+      expirySeconds: expirySeconds,
+      timestamp: new Date().toISOString()
+    });
     throw err;
   }
 };

@@ -27,6 +27,69 @@ app.get('/api/test-cloudinary-proxy', (req, res) => {
     });
 });
 
+// Cloudinary health check endpoint
+app.get('/api/cloudinary-health-check', async (req, res) => {
+    try {
+        console.log('🔍 [CLOUDINARY-HEALTH] Starting health check...');
+        
+        // Test 1: Check if generateSignedUrl function works
+        let signedUrlTest = null;
+        try {
+            signedUrlTest = generateSignedUrl('test_public_id', 60, 'raw');
+            console.log('✅ [CLOUDINARY-HEALTH] Signed URL generation test passed');
+        } catch (err) {
+            console.error('❌ [CLOUDINARY-HEALTH] Signed URL generation test failed:', err.message);
+        }
+
+        // Test 2: Check environment variables
+        const envCheck = {
+            CLOUDINARY_URL: !!process.env.CLOUDINARY_URL,
+            CLOUDINARY_CLOUD_NAME: !!process.env.CLOUDINARY_CLOUD_NAME,
+            CLOUDINARY_API_KEY: !!process.env.CLOUDINARY_API_KEY,
+            CLOUDINARY_API_SECRET: !!process.env.CLOUDINARY_API_SECRET
+        };
+
+        // Test 3: Check if we can make a simple request to Cloudinary
+        let cloudinaryReachability = false;
+        try {
+            const testUrl = 'https://res.cloudinary.com/test/image/upload/v1/test';
+            const axios = require('axios');
+            const response = await axios.get(testUrl, { 
+                timeout: 5000,
+                validateStatus: () => true // Accept any status
+            });
+            cloudinaryReachability = response.status !== 0; // If we get any response, Cloudinary is reachable
+            console.log('✅ [CLOUDINARY-HEALTH] Cloudinary reachability test:', response.status);
+        } catch (err) {
+            console.error('❌ [CLOUDINARY-HEALTH] Cloudinary reachability test failed:', err.message);
+        }
+
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            tests: {
+                signedUrlGeneration: !!signedUrlTest,
+                environmentVariables: envCheck,
+                cloudinaryReachability: cloudinaryReachability
+            },
+            environment: {
+                NODE_ENV: process.env.NODE_ENV,
+                RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
+                RAILWAY_REGION: process.env.RAILWAY_REGION
+            },
+            generatedTestUrl: signedUrlTest
+        });
+
+    } catch (error) {
+        console.error('❌ [CLOUDINARY-HEALTH] Health check failed:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 app.get('/api/files/cloudinary-proxy', createCloudinaryProxyEndpoint({ generateSignedUrl }));
 app.get('/api/files/refresh-signed-url', createRefreshSignedUrlEndpoint({ generateSignedUrl }));
 app.post('/api/ppatk_upload-cloudinary', ...createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPublicIdFromUrl }));
