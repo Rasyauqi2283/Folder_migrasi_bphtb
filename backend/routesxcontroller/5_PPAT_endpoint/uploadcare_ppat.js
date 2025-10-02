@@ -42,18 +42,25 @@ export function createUploadcareUploadHandler() {
   return async (req, res) => {
     try {
       console.log('📤 [UPLOADCARE-UPLOAD] Starting upload process...');
+      
+      // Check authentication
+      if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+      
+      const userid = req.session.user.userid;
       console.log('📤 [UPLOADCARE-UPLOAD] Request body:', {
         nobooking: req.body.nobooking,
-        userid: req.body.userid,
+        userid: userid,
         files: Object.keys(req.files || {})
       });
 
-      const { nobooking, userid } = req.body;
+      const { nobooking } = req.body;
 
-      if (!nobooking || !userid) {
+      if (!nobooking) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: nobooking and userid'
+          message: 'Missing required field: nobooking'
         });
       }
 
@@ -300,13 +307,19 @@ export function createUploadcarePDFUploadHandler() {
   return async (req, res) => {
     try {
       console.log('📤 [UPLOADCARE-PDF] Starting PDF upload process...');
+      
+      // Check authentication
+      if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+      
+      const userid = req.session.user.userid;
+      const { nobooking } = req.body;
 
-      const { nobooking, userid } = req.body;
-
-      if (!nobooking || !userid) {
+      if (!nobooking) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: nobooking and userid'
+          message: 'Missing required field: nobooking'
         });
       }
 
