@@ -197,7 +197,7 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         
         if (search) {
             paramCount++;
-            whereClause += ` AND (nobooking ILIKE $${paramCount} OR nama_pemohon ILIKE $${paramCount} OR alamat_tanah ILIKE $${paramCount})`;
+            whereClause += ` AND (nobooking ILIKE $${paramCount} )`;
             queryParams.push(`%${search}%`);
         }
         
@@ -214,8 +214,6 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         const dataQuery = `
             SELECT 
                 nobooking,
-                nama_pemohon,
-                alamat_tanah,
                 status,
                 created_at,
                 updated_at,
@@ -265,8 +263,6 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         const query = `
             SELECT 
                 nobooking,
-                nama_pemohon,
-                alamat_tanah,
                 status,
                 created_at,
                 updated_at,
