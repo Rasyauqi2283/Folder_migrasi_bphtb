@@ -2,7 +2,7 @@
 import express from 'express';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-import { cleanupOldFiles, generateSignedUrl, generatePublicUrlWithFolder } from '../../config/uploads/cloudinary_storage.js';
+import { cleanupOldFiles, generateSignedUrl, generatePublicUrlWithFolder, generateSignedUrlWithFallback } from '../../config/uploads/cloudinary_storage.js';
 
 // ===== CLOUDINARY PROXY ENDPOINT =====
 // Endpoint untuk serve files dari Cloudinary via Railway server
@@ -107,92 +107,39 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
             // If publicId is provided, validate it exists on Cloudinary first
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
                 
-                // Enhanced validation: check if file exists with retry logic
-                let fileValidationPassed = false;
-                const maxRetries = 3;
-                const retryDelay = 1000; // 1 second for proxy (shorter than upload)
-                
-                for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                    try {
-                        
-                        // Wait a bit before testing (except first attempt)
-                        if (attempt > 1) {
-                            await new Promise(resolve => setTimeout(resolve, retryDelay));
-                        }
-                        
-                        const validationUrl = generateSignedUrlParam(publicId, 60, resourceType);
-                        const validationResponse = await axios.head(validationUrl, { 
-                            timeout: 8000,
-                            validateStatus: (status) => status < 500 // Accept 404 but not 5xx
-                        });
-                        
-                        if (validationResponse.status === 200) {
-                            fileValidationPassed = true;
-                            break; // Success, exit retry loop
-                        } else {
-                            console.warn(`⚠️ [CLOUDINARY-PROXY] File validation failed on attempt ${attempt}:`, {
-                                status: validationResponse.status,
-                                cldError: validationResponse.headers['x-cld-error']
-                            });
-                        }
-                        
-                    } catch (validationError) {
-                        console.warn(`⚠️ [CLOUDINARY-PROXY] File validation attempt ${attempt} failed:`, {
-                            error: validationError.message,
-                            status: validationError.response?.status,
-                            code: validationError.code
-                        });
-                        
-                        if (attempt === maxRetries) {
-                            console.error(`❌ [CLOUDINARY-PROXY] All ${maxRetries} validation attempts failed for publicId: ${publicId}`);
-                        }
-                    }
-                }
-                
-                if (!fileValidationPassed) {
-                    console.warn('⚠️ [CLOUDINARY-PROXY] File validation failed with original resourceType, trying alternative resourceType...');
+                try {
+                    // Use enhanced fallback function
+                    const fallbackResult = await generateSignedUrlWithFallback(publicId, {
+                        resourceType: resourceType,
+                        expirySeconds: 60
+                    });
                     
-                    // Try alternative resource type (raw vs image)
-                    const alternativeResourceType = resourceType === 'raw' ? 'image' : 'raw';
-                    
-                    try {
-                        const altValidationUrl = generateSignedUrlParam(publicId, 60, alternativeResourceType);
-                        const altValidationResponse = await axios.head(altValidationUrl, { 
-                            timeout: 8000,
-                            validateStatus: (status) => status < 500
-                        });
+                    if (fallbackResult.success) {
+                        cloudinaryUrl = fallbackResult.url;
+                        resourceType = fallbackResult.resourceType; // Update resource type if fallback was used
                         
-                        if (altValidationResponse.status === 200) {
-                            fileValidationPassed = true;
-                            // Update resourceType for the rest of the function
-                            resourceType = alternativeResourceType;
-                        } else {
-                            console.warn(`⚠️ [CLOUDINARY-PROXY] Alternative resourceType ${alternativeResourceType} also failed:`, {
-                                status: altValidationResponse.status
-                            });
+                        if (fallbackResult.fallback) {
+                            console.log(`✅ [CLOUDINARY-PROXY] Using fallback resource type: ${resourceType}`);
                         }
-                    } catch (altError) {
-                        console.warn(`⚠️ [CLOUDINARY-PROXY] Alternative resourceType validation failed:`, altError.message);
+                    } else {
+                        throw new Error('Fallback function failed');
                     }
-                }
-                
-                if (!fileValidationPassed) {
-                    console.error('❌ [CLOUDINARY-PROXY] File validation failed after all attempts:', {
+                    
+                } catch (fallbackError) {
+                    console.error('❌ [CLOUDINARY-PROXY] Fallback validation failed:', {
                         publicId,
                         originalResourceType: req.query.resourceType,
-                        maxRetries
+                        error: fallbackError.message
                     });
                     
                     return res.status(404).json({
                         error: "File not found on Cloudinary",
                         details: `File not accessible with any resourceType - may be temporarily unavailable or deleted`,
                         publicId: publicId,
-                        attemptedResourceTypes: ['raw', 'image'],
+                        attemptedResourceTypes: ['raw', 'image', 'video'],
                         suggestion: "File may be processing or temporarily unavailable. Please try again in a few moments."
                     });
                 }
-                
-                cloudinaryUrl = generateSignedUrlParam(publicId, 60, resourceType); // Public URL (no expiry)
             } else if (url) {
                 // Decode existing URL
                 cloudinaryUrl = decodeURIComponent(url);
@@ -608,19 +555,29 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         }
                         
 
-                        // Test jika file bisa diakses dari Cloudinary dengan retry logic
+                        // Test jika file bisa diakses dari Cloudinary dengan enhanced logging
                         let fileExists = false;
                         const maxRetries = 3;
                         const retryDelay = 2000; // 2 seconds
+                        
+                        console.log(`🔍 [CLOUDINARY-UPLOAD] Testing file existence for ${fieldName}:`, {
+                            publicId,
+                            isPdf,
+                            expectedResourceType: isPdf ? 'raw' : 'image',
+                            cloudinaryUrl: file.path
+                        });
                         
                         for (let attempt = 1; attempt <= maxRetries; attempt++) {
                             try {
                                 // Wait a bit before testing (Cloudinary propagation delay)
                                 if (attempt > 1) {
+                                    console.log(`⏳ [CLOUDINARY-UPLOAD] Waiting ${retryDelay}ms before retry attempt ${attempt}...`);
                                     await new Promise(resolve => setTimeout(resolve, retryDelay));
                                 }
                                 
                                 const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
+                                console.log(`🔍 [CLOUDINARY-UPLOAD] Testing URL (attempt ${attempt}): ${testUrl}`);
+                                
                                 const testResponse = await axios.head(testUrl, { 
                                     timeout: 15000,
                                     validateStatus: (status) => status < 500 // Accept 404 but not 5xx
@@ -628,7 +585,18 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                 
                                 fileExists = testResponse.status === 200;
                                 
+                                console.log(`📊 [CLOUDINARY-UPLOAD] Test result (attempt ${attempt}):`, {
+                                    status: testResponse.status,
+                                    success: fileExists,
+                                    headers: {
+                                        'content-type': testResponse.headers['content-type'],
+                                        'content-length': testResponse.headers['content-length'],
+                                        'x-cld-error': testResponse.headers['x-cld-error']
+                                    }
+                                });
+                                
                                 if (fileExists) {
+                                    console.log(`✅ [CLOUDINARY-UPLOAD] File exists and accessible on attempt ${attempt}`);
                                     break; // Success, exit retry loop
                                 } else {
                                     console.warn(`⚠️ [CLOUDINARY-UPLOAD] File not found on attempt ${attempt}, status: ${testResponse.status}`);
@@ -638,7 +606,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                 console.warn(`⚠️ [CLOUDINARY-UPLOAD] File existence test attempt ${attempt} failed for ${fieldName}:`, {
                                     error: testError.message,
                                     status: testError.response?.status,
-                                    code: testError.code
+                                    code: testError.code,
+                                    responseHeaders: testError.response?.headers
                                 });
                                 
                                 if (attempt === maxRetries) {
@@ -694,32 +663,21 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             }
                         };
 
-                        // Cleanup file lama setelah upload berhasil (background task)
-                        try {
-                            // Extract components untuk cleanup dari nobooking
-                            const parts = nobooking.split('-');
-                            if (parts.length >= 3) {
-                                const [userid, currentYear, sequenceNumber] = parts;
-                                
-                                // Cleanup file lama (keep latest 2 files untuk safety)
-                                const cleanupResult = await cleanupOldFiles(
-                                    userid, 
-                                    docType, 
-                                    sequenceNumber, 
-                                    currentYear, 
-                                    resourceType, 
-                                    2, // Keep latest 2 files
-                                    nobooking // Pass nobooking for specific folder search
-                                );
-                                
-                                
-                                // Add cleanup info to uploaded file metadata
-                                uploadedFiles[fieldName].cleanup_result = cleanupResult;
-                            }
-                        } catch (cleanupError) {
-                            console.warn(`⚠️ [CLOUDINARY-UPLOAD] Cleanup failed for ${fieldName}:`, cleanupError.message);
-                            // Don't fail the upload if cleanup fails
-                            uploadedFiles[fieldName].cleanup_error = cleanupError.message;
+                        // Store cleanup info for later execution (after database update)
+                        const parts = nobooking.split('-');
+                        if (parts.length >= 3) {
+                            const [userid, currentYear, sequenceNumber] = parts;
+                            
+                            // Prepare cleanup task (will be executed after database update)
+                            uploadedFiles[fieldName].cleanup_task = {
+                                userid,
+                                docType,
+                                sequenceNumber,
+                                currentYear,
+                                resourceType,
+                                nobooking,
+                                publicId: publicId
+                            };
                         }
                     }
                 }
@@ -742,6 +700,59 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                 );
 
                 if (result.rowCount > 0) {
+                    // ✅ DATABASE UPDATE BERHASIL - Sekarang lakukan cleanup yang aman
+                    console.log('✅ [CLOUDINARY-UPLOAD] Database updated successfully, starting safe cleanup...');
+                    
+                    // Execute cleanup tasks in background (non-blocking)
+                    const cleanupPromises = Object.entries(uploadedFiles)
+                        .filter(([_, fileData]) => fileData.cleanup_task)
+                        .map(async ([fieldName, fileData]) => {
+                            try {
+                                const { userid, docType, sequenceNumber, currentYear, resourceType, nobooking, publicId } = fileData.cleanup_task;
+                                
+                                console.log(`🧹 [CLOUDINARY-CLEANUP] Starting cleanup for ${fieldName}:`, {
+                                    userid,
+                                    docType,
+                                    publicId
+                                });
+                                
+                                // Cleanup file lama (keep latest 2 files untuk safety)
+                                const cleanupResult = await cleanupOldFiles(
+                                    userid, 
+                                    docType, 
+                                    sequenceNumber, 
+                                    currentYear, 
+                                    resourceType, 
+                                    2, // Keep latest 2 files
+                                    nobooking // Pass nobooking for specific folder search
+                                );
+                                
+                                console.log(`✅ [CLOUDINARY-CLEANUP] Cleanup completed for ${fieldName}:`, cleanupResult);
+                                
+                                return {
+                                    fieldName,
+                                    success: true,
+                                    cleanupResult
+                                };
+                                
+                            } catch (cleanupError) {
+                                console.warn(`⚠️ [CLOUDINARY-CLEANUP] Cleanup failed for ${fieldName}:`, cleanupError.message);
+                                return {
+                                    fieldName,
+                                    success: false,
+                                    error: cleanupError.message
+                                };
+                            }
+                        });
+                    
+                    // Execute cleanup in parallel (non-blocking response)
+                    Promise.all(cleanupPromises)
+                        .then(cleanupResults => {
+                            console.log('🧹 [CLOUDINARY-CLEANUP] All cleanup tasks completed:', cleanupResults);
+                        })
+                        .catch(error => {
+                            console.error('❌ [CLOUDINARY-CLEANUP] Some cleanup tasks failed:', error);
+                        });
                     
                     res.json({
                         success: true,
@@ -772,6 +783,11 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                     size: file.size,
                                     mimetype: file.mimetype
                                 }))
+                            },
+                            // Cleanup status
+                            cleanupStatus: {
+                                message: 'Cleanup will be executed in background after successful upload',
+                                tasks: Object.keys(uploadedFiles).filter(key => uploadedFiles[key].cleanup_task).length
                             }
                         }
                     });

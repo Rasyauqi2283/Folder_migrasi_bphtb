@@ -6,6 +6,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 import path from 'path';
+import axios from 'axios';
 
 // Initialize Cloudinary
 cloudinary.config({
@@ -307,6 +308,66 @@ export function generateSignedUrl(publicId, options = {}) {
     console.error(`❌ [CLOUDINARY] Failed to generate public URL:`, error);
     return null;
   }
+}
+
+// Enhanced function dengan fallback untuk resource type
+export async function generateSignedUrlWithFallback(publicId, options = {}) {
+  const {
+    resourceType = 'raw',
+    expirySeconds = 3600,
+    ...otherOptions
+  } = options;
+
+  // Try original resource type first
+  try {
+    const signedUrl = generateSignedUrl(publicId, { ...otherOptions, resource_type: resourceType });
+    
+    if (!signedUrl) {
+      throw new Error('Failed to generate URL');
+    }
+    
+    // Test if URL is accessible
+    const response = await axios.head(signedUrl, { 
+      timeout: 5000,
+      validateStatus: (status) => status < 500
+    });
+    
+    if (response.status === 200) {
+      return { url: signedUrl, resourceType, success: true };
+    }
+    
+  } catch (error) {
+    console.warn(`⚠️ [SIGNED-URL-FALLBACK] Original resource type ${resourceType} failed:`, error.message);
+  }
+
+  // Try alternative resource types
+  const alternativeTypes = resourceType === 'raw' ? ['image', 'video'] : ['raw', 'video'];
+  
+  for (const altResourceType of alternativeTypes) {
+    try {
+      const altUrl = generateSignedUrl(publicId, { ...otherOptions, resource_type: altResourceType });
+      
+      if (!altUrl) {
+        continue;
+      }
+      
+      const response = await axios.head(altUrl, { 
+        timeout: 5000,
+        validateStatus: (status) => status < 500
+      });
+      
+      if (response.status === 200) {
+        console.log(`✅ [SIGNED-URL-FALLBACK] Found working resource type: ${altResourceType}`);
+        return { url: altUrl, resourceType: altResourceType, success: true, fallback: true };
+      }
+      
+    } catch (error) {
+      console.warn(`⚠️ [SIGNED-URL-FALLBACK] Alternative resource type ${altResourceType} failed:`, error.message);
+    }
+  }
+
+  // All attempts failed
+  throw new Error(`File not accessible with any resource type. Public ID: ${publicId}`);
 }
 
 // Helper function untuk generate public URL dengan folder structure
