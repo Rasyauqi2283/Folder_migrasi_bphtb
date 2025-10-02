@@ -7,7 +7,7 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 import path from 'path';
 import axios from 'axios';
-import { pool } from '../../db.js';
+import { pool } from '../../../db.js';
 
 // Initialize Cloudinary
 cloudinary.config({
