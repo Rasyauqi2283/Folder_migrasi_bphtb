@@ -7,6 +7,7 @@ import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import multer from 'multer';
 import path from 'path';
 import axios from 'axios';
+import { pool } from '../../db.js';
 
 // Initialize Cloudinary
 cloudinary.config({
@@ -415,6 +416,75 @@ export function generatePublicUrl(publicId, resourceType = 'image', format = nul
   }
 }
 
+// Helper function untuk mengecek apakah file masih direferensikan di database
+async function checkFileInDatabase(publicId, nobooking, userid) {
+  try {
+    if (!nobooking || !userid) {
+      console.log(`⚠️ [CLOUDINARY-VALIDATION] Missing nobooking or userid, skipping database check`);
+      return false;
+    }
+
+    const result = await pool.query(`
+      SELECT 
+        akta_tanah_path,
+        sertifikat_tanah_path,
+        pelengkap_path,
+        pdf_dokumen_path
+      FROM pat_1_bookingsspd
+      WHERE nobooking = $1 AND userid = $2
+    `, [nobooking, userid]);
+
+    if (result.rows.length === 0) {
+      return false;
+    }
+
+    const booking = result.rows[0];
+    const filePaths = [
+      booking.akta_tanah_path,
+      booking.sertifikat_tanah_path,
+      booking.pelengkap_path,
+      booking.pdf_dokumen_path
+    ];
+
+    // Check if any path contains the public ID
+    const isReferenced = filePaths.some(path => 
+      path && path.includes(publicId)
+    );
+
+    if (isReferenced) {
+      console.log(`🔍 [CLOUDINARY-VALIDATION] File ${publicId} is still referenced in database`);
+    }
+
+    return isReferenced;
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY-VALIDATION] Error checking database for ${publicId}:`, error);
+    return false; // Assume not referenced if check fails
+  }
+}
+
+// Helper function untuk mengecek apakah file masih accessible di Cloudinary
+async function checkFileAccessibility(publicId, resourceType) {
+  try {
+    const testUrl = generateSignedUrl(publicId, 60, resourceType);
+    
+    const response = await axios.head(testUrl, {
+      timeout: 5000,
+      validateStatus: (status) => status < 500
+    });
+
+    const isAccessible = response.status === 200;
+    
+    if (!isAccessible) {
+      console.log(`🔍 [CLOUDINARY-VALIDATION] File ${publicId} not accessible (status: ${response.status})`);
+    }
+
+    return isAccessible;
+  } catch (error) {
+    console.log(`🔍 [CLOUDINARY-VALIDATION] File ${publicId} not accessible: ${error.message}`);
+    return false;
+  }
+}
+
 // Helper function untuk mencari file lama berdasarkan pattern
 export async function findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image', nobooking = null) {
   try {
@@ -484,10 +554,43 @@ export async function cleanupOldFiles(userid, docType, sequenceNumber, currentYe
 
     console.log(`🧹 [CLOUDINARY-CLEANUP] Will delete ${filesToDelete.length} old files, keep ${filesToKeep.length} latest`);
 
+    // 🛡️ SAFETY CHECK: Validate files before deletion
+    const validatedFilesToDelete = [];
+    
+    for (const file of filesToDelete) {
+      try {
+        // Check if file is currently referenced in database
+        const isReferenced = await checkFileInDatabase(file.public_id, nobooking, userid);
+        
+        if (isReferenced) {
+          console.warn(`⚠️ [CLOUDINARY-CLEANUP] SKIPPING deletion of ${file.public_id} - still referenced in database`);
+          continue;
+        }
+        
+        // Check if file is accessible (not already deleted)
+        const isAccessible = await checkFileAccessibility(file.public_id, resourceType);
+        
+        if (!isAccessible) {
+          console.warn(`⚠️ [CLOUDINARY-CLEANUP] SKIPPING deletion of ${file.public_id} - file not accessible (may already be deleted)`);
+          continue;
+        }
+        
+        validatedFilesToDelete.push(file);
+        console.log(`✅ [CLOUDINARY-CLEANUP] Validated for deletion: ${file.public_id}`);
+        
+      } catch (validationError) {
+        console.warn(`⚠️ [CLOUDINARY-CLEANUP] Validation failed for ${file.public_id}:`, validationError.message);
+        // Skip this file if validation fails
+        continue;
+      }
+    }
+
+    console.log(`🧹 [CLOUDINARY-CLEANUP] After validation: ${validatedFilesToDelete.length} files safe to delete`);
+
     let deletedCount = 0;
     const deletionResults = [];
 
-    for (const file of filesToDelete) {
+    for (const file of validatedFilesToDelete) {
       try {
         const result = await cloudinary.uploader.destroy(file.public_id, {
           resource_type: resourceType
