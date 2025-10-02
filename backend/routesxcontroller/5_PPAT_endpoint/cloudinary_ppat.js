@@ -111,7 +111,12 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
             
             // If publicId is provided, validate it exists on Cloudinary first
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
-                console.log('🔄 [CLOUDINARY-PROXY] Validating publicId exists on Cloudinary:', publicId);
+                console.log('🔄 [CLOUDINARY-PROXY] Validating publicId exists on Cloudinary:', {
+                    publicId: publicId,
+                    resourceType: resourceType,
+                    url: req.url,
+                    query: req.query
+                });
                 
                 // Enhanced validation: check if file exists with retry logic
                 let fileValidationPassed = false;
@@ -159,17 +164,46 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                 }
                 
                 if (!fileValidationPassed) {
-                    console.error('❌ [CLOUDINARY-PROXY] File validation failed after all retries:', {
+                    console.warn('⚠️ [CLOUDINARY-PROXY] File validation failed with original resourceType, trying alternative resourceType...');
+                    
+                    // Try alternative resource type (raw vs image)
+                    const alternativeResourceType = resourceType === 'raw' ? 'image' : 'raw';
+                    console.log(`🔄 [CLOUDINARY-PROXY] Trying alternative resourceType: ${alternativeResourceType}`);
+                    
+                    try {
+                        const altValidationUrl = generateSignedUrlParam(publicId, 60, alternativeResourceType);
+                        const altValidationResponse = await axios.head(altValidationUrl, { 
+                            timeout: 8000,
+                            validateStatus: (status) => status < 500
+                        });
+                        
+                        if (altValidationResponse.status === 200) {
+                            console.log(`✅ [CLOUDINARY-PROXY] File found with alternative resourceType: ${alternativeResourceType}`);
+                            fileValidationPassed = true;
+                            // Update resourceType for the rest of the function
+                            resourceType = alternativeResourceType;
+                        } else {
+                            console.warn(`⚠️ [CLOUDINARY-PROXY] Alternative resourceType ${alternativeResourceType} also failed:`, {
+                                status: altValidationResponse.status
+                            });
+                        }
+                    } catch (altError) {
+                        console.warn(`⚠️ [CLOUDINARY-PROXY] Alternative resourceType validation failed:`, altError.message);
+                    }
+                }
+                
+                if (!fileValidationPassed) {
+                    console.error('❌ [CLOUDINARY-PROXY] File validation failed after all attempts:', {
                         publicId,
-                        resourceType,
+                        originalResourceType: req.query.resourceType,
                         maxRetries
                     });
                     
                     return res.status(404).json({
                         error: "File not found on Cloudinary",
-                        details: `File not accessible after ${maxRetries} attempts - may be temporarily unavailable or deleted`,
+                        details: `File not accessible with any resourceType - may be temporarily unavailable or deleted`,
                         publicId: publicId,
-                        resourceType: resourceType,
+                        attemptedResourceTypes: ['raw', 'image'],
                         suggestion: "File may be processing or temporarily unavailable. Please try again in a few moments."
                     });
                 }
@@ -747,6 +781,14 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
 
                         // Simpan metadata: cloudinary_url dan proxy_path
                         const resourceType = isPdf ? 'raw' : 'image';
+                        
+                        console.log(`🔍 [CLOUDINARY-UPLOAD] Resource type determination for ${fieldName}:`, {
+                            mimetype: file.mimetype,
+                            isPdf: isPdf,
+                            resourceType: resourceType,
+                            filename: file.filename
+                        });
+                        
                         uploadedFiles[fieldName] = {
                             cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
                             proxy_path: `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(publicId)}&resourceType=${resourceType}`, // Railway proxy URL dengan publicId dan resourceType
