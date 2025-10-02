@@ -27,6 +27,204 @@ app.get('/api/test-cloudinary-proxy', (req, res) => {
     });
 });
 
+// Endpoint untuk membersihkan proxy path yang tidak valid
+app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
+    try {
+        console.log('🧹 [CLEANUP] Starting cleanup of invalid proxy paths...');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        
+        // Ambil semua booking dengan proxy paths
+        const bookingsQuery = `
+            SELECT nobooking, akta_tanah_path, sertifikat_tanah_path, pelengkap_path, pdf_dokumen_path
+            FROM pat_1_bookingsspd 
+            WHERE userid = $1 
+            AND (akta_tanah_path LIKE '%cloudinary-proxy%' 
+                 OR sertifikat_tanah_path LIKE '%cloudinary-proxy%' 
+                 OR pelengkap_path LIKE '%cloudinary-proxy%' 
+                 OR pdf_dokumen_path LIKE '%cloudinary-proxy%')
+        `;
+        
+        const bookings = await pool.query(bookingsQuery, [userid]);
+        console.log(`🧹 [CLEANUP] Found ${bookings.rows.length} bookings with proxy paths`);
+        
+        let cleanedCount = 0;
+        let errors = [];
+        
+        for (const booking of bookings.rows) {
+            try {
+                const updates = {};
+                const params = [];
+                let paramCount = 1;
+                
+                // Check each proxy path
+                const paths = {
+                    akta_tanah_path: booking.akta_tanah_path,
+                    sertifikat_tanah_path: booking.sertifikat_tanah_path,
+                    pelengkap_path: booking.pelengkap_path,
+                    pdf_dokumen_path: booking.pdf_dokumen_path
+                };
+                
+                for (const [fieldName, path] of Object.entries(paths)) {
+                    if (path && path.includes('cloudinary-proxy')) {
+                        // Extract publicId from proxy path
+                        const publicIdMatch = path.match(/publicId=([^&]+)/);
+                        if (publicIdMatch) {
+                            const publicId = decodeURIComponent(publicIdMatch[1]);
+                            const resourceTypeMatch = path.match(/resourceType=([^&]+)/);
+                            const resourceType = resourceTypeMatch ? resourceTypeMatch[1] : 'raw';
+                            
+                            // Test if file exists on Cloudinary
+                            try {
+                                const testUrl = generateSignedUrl(publicId, 60, resourceType);
+                                const axios = require('axios');
+                                const testResponse = await axios.head(testUrl, { 
+                                    timeout: 5000,
+                                    validateStatus: (status) => status < 500
+                                });
+                                
+                                if (testResponse.status !== 200) {
+                                    console.log(`🧹 [CLEANUP] Removing invalid proxy path: ${fieldName} = ${path}`);
+                                    updates[fieldName] = null;
+                                    cleanedCount++;
+                                }
+                            } catch (testError) {
+                                console.log(`🧹 [CLEANUP] Removing invalid proxy path (error): ${fieldName} = ${path}`);
+                                updates[fieldName] = null;
+                                cleanedCount++;
+                            }
+                        }
+                    }
+                }
+                
+                // Update database if needed
+                if (Object.keys(updates).length > 0) {
+                    const updateFields = Object.keys(updates).map(field => `${field} = $${paramCount++}`).join(', ');
+                    const updateParams = [...Object.values(updates), booking.nobooking, userid];
+                    
+                    await pool.query(
+                        `UPDATE pat_1_bookingsspd SET ${updateFields}, updated_at = CURRENT_TIMESTAMP WHERE nobooking = $${paramCount} AND userid = $${paramCount + 1}`,
+                        updateParams
+                    );
+                }
+                
+            } catch (error) {
+                console.error(`❌ [CLEANUP] Error processing booking ${booking.nobooking}:`, error);
+                errors.push({ nobooking: booking.nobooking, error: error.message });
+            }
+        }
+        
+        console.log(`✅ [CLEANUP] Cleanup completed: ${cleanedCount} invalid proxy paths removed`);
+        
+        res.json({
+            success: true,
+            message: 'Cleanup completed',
+            cleanedCount,
+            totalBookings: bookings.rows.length,
+            errors: errors.length > 0 ? errors : undefined
+        });
+        
+    } catch (error) {
+        console.error('❌ [CLEANUP] Cleanup failed:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Endpoint untuk mendapatkan informasi detail tentang file yang tidak ditemukan
+app.get('/api/check-file-status/:publicId', async (req, res) => {
+    try {
+        const { publicId } = req.params;
+        const { resourceType = 'raw' } = req.query;
+        
+        if (!publicId) {
+            return res.status(400).json({ success: false, message: 'publicId is required' });
+        }
+        
+        console.log(`🔍 [FILE-STATUS] Checking status for publicId: ${publicId}`);
+        
+        // Check database for this publicId
+        const dbQuery = `
+            SELECT nobooking, akta_tanah_path, sertifikat_tanah_path, pelengkap_path, pdf_dokumen_path, userid, updated_at
+            FROM pat_1_bookingsspd 
+            WHERE akta_tanah_path LIKE $1 
+               OR sertifikat_tanah_path LIKE $1 
+               OR pelengkap_path LIKE $1 
+               OR pdf_dokumen_path LIKE $1
+        `;
+        
+        const searchPattern = `%publicId=${encodeURIComponent(publicId)}%`;
+        const dbResult = await pool.query(dbQuery, [searchPattern]);
+        
+        // Check if file exists on Cloudinary
+        let cloudinaryStatus = null;
+        try {
+            const testUrl = generateSignedUrl(publicId, 60, resourceType);
+            const axios = require('axios');
+            const testResponse = await axios.head(testUrl, { 
+                timeout: 5000,
+                validateStatus: (status) => status < 500
+            });
+            
+            cloudinaryStatus = {
+                exists: testResponse.status === 200,
+                status: testResponse.status,
+                headers: {
+                    'x-cld-error': testResponse.headers['x-cld-error'],
+                    'content-type': testResponse.headers['content-type'],
+                    'content-length': testResponse.headers['content-length']
+                }
+            };
+        } catch (cloudinaryError) {
+            cloudinaryStatus = {
+                exists: false,
+                error: cloudinaryError.message,
+                status: cloudinaryError.response?.status,
+                headers: cloudinaryError.response?.headers
+            };
+        }
+        
+        res.json({
+            success: true,
+            publicId,
+            resourceType,
+            database: {
+                found: dbResult.rows.length > 0,
+                records: dbResult.rows.map(row => ({
+                    nobooking: row.nobooking,
+                    userid: row.userid,
+                    updated_at: row.updated_at,
+                    paths: {
+                        akta_tanah_path: row.akta_tanah_path,
+                        sertifikat_tanah_path: row.sertifikat_tanah_path,
+                        pelengkap_path: row.pelengkap_path,
+                        pdf_dokumen_path: row.pdf_dokumen_path
+                    }
+                }))
+            },
+            cloudinary: cloudinaryStatus,
+            recommendations: dbResult.rows.length === 0 ? 
+                'File not found in database - may need to re-upload' :
+                cloudinaryStatus.exists === false ?
+                    'File found in database but not on Cloudinary - database cleanup needed' :
+                    'File exists and accessible'
+        });
+        
+    } catch (error) {
+        console.error('❌ [FILE-STATUS] Error checking file status:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Cloudinary health check endpoint
 app.get('/api/cloudinary-health-check', async (req, res) => {
     try {

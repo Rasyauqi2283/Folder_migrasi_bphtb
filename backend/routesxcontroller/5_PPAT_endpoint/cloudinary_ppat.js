@@ -108,10 +108,58 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
 
             let cloudinaryUrl;
             
-            // If publicId is provided, generate fresh signed URL with correct resource type
+            // If publicId is provided, validate it exists on Cloudinary first
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
-                console.log('🔄 [CLOUDINARY-PROXY] Generating fresh signed URL for:', publicId, 'resourceType:', resourceType);
-                cloudinaryUrl = generateSignedUrl(publicId, 3600, resourceType); // 1 hour validity with resource type
+                console.log('🔄 [CLOUDINARY-PROXY] Validating publicId exists on Cloudinary:', publicId);
+                
+                // Quick validation: check if file exists before generating signed URL
+                try {
+                    const validationUrl = generateSignedUrl(publicId, 60, resourceType);
+                    const axios = require('axios');
+                    const validationResponse = await axios.head(validationUrl, { 
+                        timeout: 5000,
+                        validateStatus: (status) => status < 500 // Accept 404 but not 5xx
+                    });
+                    
+                    if (validationResponse.status !== 200) {
+                        console.error('❌ [CLOUDINARY-PROXY] File validation failed:', {
+                            publicId,
+                            resourceType,
+                            status: validationResponse.status,
+                            cldError: validationResponse.headers['x-cld-error']
+                        });
+                        
+                        return res.status(404).json({
+                            error: "File not found on Cloudinary",
+                            details: validationResponse.headers['x-cld-error'] || 'File does not exist',
+                            publicId: publicId,
+                            resourceType: resourceType,
+                            suggestion: "File may have been deleted or never uploaded successfully"
+                        });
+                    }
+                    
+                    console.log('✅ [CLOUDINARY-PROXY] File validation passed, generating signed URL');
+                    cloudinaryUrl = generateSignedUrl(publicId, 3600, resourceType); // 1 hour validity with resource type
+                    
+                } catch (validationError) {
+                    console.error('❌ [CLOUDINARY-PROXY] File validation error:', validationError.message);
+                    
+                    if (validationError.response?.status === 404) {
+                        return res.status(404).json({
+                            error: "File not found on Cloudinary",
+                            details: validationError.response.headers['x-cld-error'] || 'File does not exist',
+                            publicId: publicId,
+                            resourceType: resourceType,
+                            suggestion: "File may have been deleted or never uploaded successfully"
+                        });
+                    }
+                    
+                    return res.status(500).json({
+                        error: "Failed to validate file on Cloudinary",
+                        details: validationError.message,
+                        publicId: publicId
+                    });
+                }
             } else if (url) {
                 // Decode existing URL
                 cloudinaryUrl = decodeURIComponent(url);
@@ -599,6 +647,48 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             });
                         }
                         
+                        // Validasi bahwa file benar-benar ada di Cloudinary sebelum menyimpan proxy path
+                        console.log(`🔍 [CLOUDINARY-UPLOAD] Validating file existence for ${fieldName}:`, {
+                            publicId: publicId,
+                            resourceType: isPdf ? 'raw' : 'image',
+                            cloudinaryUrl: file.path
+                        });
+
+                        // Test jika file bisa diakses dari Cloudinary
+                        let fileExists = false;
+                        try {
+                            const testUrl = generateSignedUrl(publicId, 60, isPdf ? 'raw' : 'image');
+                            const axios = require('axios');
+                            const testResponse = await axios.head(testUrl, { 
+                                timeout: 10000,
+                                validateStatus: (status) => status < 500 // Accept 404 but not 5xx
+                            });
+                            fileExists = testResponse.status === 200;
+                            console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test for ${fieldName}:`, {
+                                status: testResponse.status,
+                                exists: fileExists
+                            });
+                        } catch (testError) {
+                            console.warn(`⚠️ [CLOUDINARY-UPLOAD] File existence test failed for ${fieldName}:`, {
+                                error: testError.message,
+                                status: testError.response?.status
+                            });
+                            fileExists = false;
+                        }
+
+                        if (!fileExists) {
+                            console.error(`❌ [CLOUDINARY-UPLOAD] File ${publicId} does not exist on Cloudinary, skipping database update`);
+                            return res.status(500).json({ 
+                                success: false, 
+                                message: `File upload failed - file not accessible on Cloudinary`,
+                                details: {
+                                    fieldName,
+                                    publicId,
+                                    error: 'File not found on Cloudinary after upload'
+                                }
+                            });
+                        }
+
                         // Simpan metadata: cloudinary_url dan proxy_path
                         const resourceType = isPdf ? 'raw' : 'image';
                         uploadedFiles[fieldName] = {
@@ -609,7 +699,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             mimetype: file.mimetype,
                             size: file.size,
                             isPdf: isPdf,
-                            resource_type: resourceType
+                            resource_type: resourceType,
+                            exists_on_cloudinary: fileExists
                         };
                     }
                 }
