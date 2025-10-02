@@ -1,6 +1,7 @@
 // Uploadcare Storage Configuration
 import { UploadClient } from '@uploadcare/upload-client';
 import { pool } from '../../../db.js';
+import blob from 'buffer';
 
 // Uploadcare Configuration
 const UPLOADCARE_CONFIG = {
@@ -17,6 +18,10 @@ console.log('🌐 [UPLOADCARE-STORAGE] Uploadcare Config:', {
   apiBase: UPLOADCARE_CONFIG.apiBase,
   config_status: '✅ COMPLETE'
 });
+
+const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
+// Bungkus buffer dengan Blob agar mimetype ikut dikirim
+const blob = new Blob([fileBuffer], { type: file.mimetype });
 
 // Initialize Uploadcare client
 const uploadClient = new UploadClient({
@@ -62,22 +67,72 @@ export async function uploadToUploadcare(file, options = {}) {
 
     // Upload file to Uploadcare
     // Convert file buffer to proper format for Uploadcare
-    // Uploadcare expects a Buffer or Uint8Array directly
-    const uploadResult = await uploadClient.uploadFile(file.buffer, {
-      fileName: fileName,
-      metadata: {
-        folder: folderStructure,
-        userid: userid,
-        nobooking: nobooking,
-        docType: docType,
-        sequenceNumber: sequenceNumber,
-        resourceType: resourceType,
-        uploadDate: new Date().toISOString()
-      },
-      store: true, // Store file permanently
-      secureSignature: true, // Enable secure signature
-      secureExpire: Math.floor(Date.now() / 1000) + 3600 // 1 hour expiry
+    // Ensure buffer is properly formatted as binary data
+    console.log(`🔍 [UPLOADCARE-UPLOAD] File buffer info:`, {
+      bufferType: typeof file.buffer,
+      bufferLength: file.buffer?.length,
+      bufferIsBuffer: Buffer.isBuffer(file.buffer),
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
     });
+    
+    // Ensure we have a proper Buffer
+    const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
+    
+    // Try with different buffer formats
+    console.log(`🔍 [UPLOADCARE-UPLOAD] Attempting upload with buffer...`);
+    
+    let uploadResult;
+    try {
+      // Try with buffer directly
+      uploadResult = await uploadClient.uploadFile(blob, {
+        fileName: fileName,
+        metadata: {
+          folder: folderStructure,
+          userid: userid,
+          nobooking: nobooking,
+          docType: docType,
+          sequenceNumber: sequenceNumber,
+          resourceType: resourceType,
+          uploadDate: new Date().toISOString()
+        },
+        store: true,
+        secureSignature: true,
+        secureExpire: Math.floor(Date.now() / 1000) + 3600
+      });
+      
+      console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful with buffer`);
+      
+    } catch (bufferError) {
+      console.log(`⚠️ [UPLOADCARE-UPLOAD] Buffer upload failed:`, bufferError.message);
+      
+      // Try with Uint8Array
+      try {
+        const uint8Array = new Uint8Array(fileBuffer);
+        uploadResult = await uploadClient.uploadFile(uint8Array, {
+          fileName: fileName,
+          metadata: {
+            folder: folderStructure,
+            userid: userid,
+            nobooking: nobooking,
+            docType: docType,
+            sequenceNumber: sequenceNumber,
+            resourceType: resourceType,
+            uploadDate: new Date().toISOString()
+          },
+          store: true,
+          secureSignature: true,
+          secureExpire: Math.floor(Date.now() / 1000) + 3600
+        });
+        
+        console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful with Uint8Array`);
+        
+      } catch (uint8Error) {
+        console.log(`⚠️ [UPLOADCARE-UPLOAD] Uint8Array upload failed:`, uint8Error.message);
+        throw new Error(`All upload methods failed: ${bufferError.message}, ${uint8Error.message}`);
+      }
+    }
 
     console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful:`, {
       fileId: uploadResult.file,
