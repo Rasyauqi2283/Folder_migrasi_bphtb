@@ -1,3 +1,4 @@
+//backend/routesxcontroller/5_PPAT_endpoint/cloudinary_ppat.js
 import express from 'express';
 import axios from 'axios';
 import { pool } from '../../../db.js';
@@ -86,12 +87,6 @@ export function createCloudinaryProxyRouter({ generateSignedUrl: generateSignedU
 export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSignedUrlParam }) {
     return async (req, res) => {
         try {
-            console.log('🌐 [CLOUDINARY-PROXY] Request received:', {
-                method: req.method,
-                url: req.url,
-                query: req.query,
-                timestamp: new Date().toISOString()
-            });
 
             // Validate generateSignedUrl function
             if (!generateSignedUrlParam || typeof generateSignedUrlParam !== 'function') {
@@ -111,12 +106,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
             
             // If publicId is provided, validate it exists on Cloudinary first
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
-                console.log('🔄 [CLOUDINARY-PROXY] Validating publicId exists on Cloudinary:', {
-                    publicId: publicId,
-                    resourceType: resourceType,
-                    url: req.url,
-                    query: req.query
-                });
                 
                 // Enhanced validation: check if file exists with retry logic
                 let fileValidationPassed = false;
@@ -125,11 +114,9 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                 
                 for (let attempt = 1; attempt <= maxRetries; attempt++) {
                     try {
-                        console.log(`🔍 [CLOUDINARY-PROXY] File validation attempt ${attempt}/${maxRetries} for publicId: ${publicId}`);
                         
                         // Wait a bit before testing (except first attempt)
                         if (attempt > 1) {
-                            console.log(`⏳ [CLOUDINARY-PROXY] Waiting ${retryDelay}ms before retry...`);
                             await new Promise(resolve => setTimeout(resolve, retryDelay));
                         }
                         
@@ -140,7 +127,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                         });
                         
                         if (validationResponse.status === 200) {
-                            console.log(`✅ [CLOUDINARY-PROXY] File validation passed on attempt ${attempt}`);
                             fileValidationPassed = true;
                             break; // Success, exit retry loop
                         } else {
@@ -168,7 +154,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                     
                     // Try alternative resource type (raw vs image)
                     const alternativeResourceType = resourceType === 'raw' ? 'image' : 'raw';
-                    console.log(`🔄 [CLOUDINARY-PROXY] Trying alternative resourceType: ${alternativeResourceType}`);
                     
                     try {
                         const altValidationUrl = generateSignedUrlParam(publicId, 60, alternativeResourceType);
@@ -178,7 +163,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                         });
                         
                         if (altValidationResponse.status === 200) {
-                            console.log(`✅ [CLOUDINARY-PROXY] File found with alternative resourceType: ${alternativeResourceType}`);
                             fileValidationPassed = true;
                             // Update resourceType for the rest of the function
                             resourceType = alternativeResourceType;
@@ -208,7 +192,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                     });
                 }
                 
-                console.log('✅ [CLOUDINARY-PROXY] File validation passed, generating signed URL');
                 cloudinaryUrl = generateSignedUrlParam(publicId, 3600, resourceType); // 1 hour validity with resource type
             } else if (url) {
                 // Decode existing URL
@@ -226,16 +209,7 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                 return res.status(400).json({ error: "Invalid Cloudinary URL" });
             }
 
-            // Reduced logging to avoid Railway rate limits
-            console.log('🌐 [CLOUDINARY-PROXY] Serving:', publicId || 'unknown');
 
-            // Enhanced Cloudinary request with better error handling
-            console.log('🌐 [CLOUDINARY-PROXY] Making request to Cloudinary:', {
-                url: cloudinaryUrl,
-                publicId: publicId,
-                resourceType: resourceType,
-                timestamp: new Date().toISOString()
-            });
 
             // Retry logic for Cloudinary requests
             let response;
@@ -244,8 +218,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
             
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    console.log(`🌐 [CLOUDINARY-PROXY] Attempt ${attempt}/${maxRetries} to fetch from Cloudinary`);
-                    
                     response = await axios.get(cloudinaryUrl, {
                         responseType: 'stream',
                         timeout: 30000, // 30 second timeout
@@ -262,7 +234,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                     });
                     
                     // If we get here, request was successful
-                    console.log(`✅ [CLOUDINARY-PROXY] Successfully fetched from Cloudinary on attempt ${attempt}`);
                     break;
                     
                 } catch (error) {
@@ -279,7 +250,6 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                     
                     // Wait before retry (exponential backoff)
                     const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-                    console.log(`⏳ [CLOUDINARY-PROXY] Waiting ${waitTime}ms before retry...`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 }
             }
@@ -445,7 +415,6 @@ export function createRefreshSignedUrlEndpoint({ generateSignedUrl: generateSign
                 return res.status(400).json({ error: "publicId parameter is required" });
             }
             
-            console.log('🔄 [REFRESH-SIGNED-URL] Refreshing signed URL for:', publicId);
             
             // Generate fresh signed URL
                 const signedUrl = generateSignedUrlParam(publicId, 3600); // 1 hour validity
@@ -486,26 +455,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
         
         // Multer middleware
         (req, res, next) => {
-            console.log('🌐 [CLOUDINARY-ENDPOINT] Starting file upload process...');
-            console.log('🌐 [CLOUDINARY-ENDPOINT] Railway deployment info:', {
-              RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-              RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-              NODE_ENV: process.env.NODE_ENV || 'development',
-              timestamp: new Date().toISOString(),
-              endpoint: '/api/ppatk_upload-cloudinary'
-            });
-            console.log('🌐 [CLOUDINARY-ENDPOINT] Request info:', {
-              method: req.method,
-              url: req.url,
-              headers: {
-                'content-type': req.headers['content-type'],
-                'user-agent': req.headers['user-agent'],
-                'content-length': req.headers['content-length']
-              },
-              hasSession: !!req.session,
-              hasUser: !!req.session?.user,
-              userid: req.session?.user?.userid || 'no-session'
-            });
             
             // Gunakan Cloudinary storage
             mixedCloudinaryUpload.fields([
@@ -553,14 +502,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                 });
               }
               
-              console.log('✅ [CLOUDINARY-ENDPOINT] Files uploaded successfully:', {
-                files: req.files,
-                railway_context: {
-                  RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-                  RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-                  timestamp: new Date().toISOString()
-                }
-              });
               next();
             });
         },
@@ -568,15 +509,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
         // Main upload handler
         async (req, res) => {
             try {
-                console.log('🔍 [CLOUDINARY-ENDPOINT] Main handler started:', {
-                    hasSession: !!req.session,
-                    hasUser: !!req.session?.user,
-                    userid: req.session?.user?.userid,
-                    hasFiles: !!req.files,
-                    filesKeys: req.files ? Object.keys(req.files) : [],
-                    bodyKeys: Object.keys(req.body),
-                    timestamp: new Date().toISOString()
-                });
 
                 const { userid } = req.session.user;
 
@@ -620,16 +552,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         const file = req.files[fieldName][0];
                         const isPdf = file.mimetype === 'application/pdf';
                         
-                        console.log(`📁 [CLOUDINARY] File uploaded:`, {
-                            field: fieldName,
-                            filename: file.filename,
-                            cloudinaryUrl: file.path,
-                            mimetype: file.mimetype,
-                            isPdf: isPdf,
-                            // Log all available properties from Cloudinary response
-                            allFileProperties: Object.keys(file),
-                            fileObject: file
-                        });
 
                         // Extract public_id from Cloudinary URL
                         // Try multiple possible properties from Cloudinary response
@@ -638,14 +560,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                       file.publicid || 
                                       extractPublicIdFromUrl(file.path);
                         
-                        console.log('🔍 [CLOUDINARY-UPLOAD] PublicId extraction attempt:', {
-                            filePublicId: file.public_id,
-                            filePublicIdType: typeof file.public_id,
-                            filePublicIdValue: file.public_id,
-                            extractedFromUrl: extractPublicIdFromUrl(file.path),
-                            filePath: file.path,
-                            allFileKeys: Object.keys(file)
-                        });
                         
                         // If still no publicId, try to extract from URL path
                         if (!publicId || publicId === 'null') {
@@ -653,13 +567,11 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             const urlMatch = file.path.match(/\/upload\/(?:v\d+\/)?(.+)$/);
                             if (urlMatch) {
                                 publicId = urlMatch[1].replace(/\.\w+$/, '');
-                                console.log('🔄 [CLOUDINARY-UPLOAD] Extracted publicId from URL:', publicId);
                             }
                         }
                         
                         // Final fallback: Generate publicId based on expected format
                         if (!publicId || publicId === 'null') {
-                            console.log('🔄 [CLOUDINARY-UPLOAD] Generating fallback publicId...');
                             // Extract from nobooking: PAT10-2025-000001
                             const parts = nobooking.split('-');
                             if (parts.length >= 3) {
@@ -676,18 +588,9 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                 const timestamp = `${dateStr}_${timeStr}`;
                                 
                                 publicId = `${userid}_${docType}_${sequence}_${year}_${timestamp}`;
-                                console.log('🔄 [CLOUDINARY-UPLOAD] Generated fallback publicId:', publicId);
                             }
                         }
                         
-                        console.log(`🔍 [CLOUDINARY-UPLOAD] File metadata for ${fieldName}:`, {
-                            filePath: file.path,
-                            filePublicId: file.public_id,
-                            extractedPublicId: extractPublicIdFromUrl(file.path),
-                            finalPublicId: publicId,
-                            filename: file.filename,
-                            mimetype: file.mimetype
-                        });
                         
                         // Validate publicId before proceeding
                         if (!publicId || publicId === 'null') {
@@ -704,12 +607,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             });
                         }
                         
-                        // Validasi bahwa file benar-benar ada di Cloudinary sebelum menyimpan proxy path
-                        console.log(`🔍 [CLOUDINARY-UPLOAD] Validating file existence for ${fieldName}:`, {
-                            publicId: publicId,
-                            resourceType: isPdf ? 'raw' : 'image',
-                            cloudinaryUrl: file.path
-                        });
 
                         // Test jika file bisa diakses dari Cloudinary dengan retry logic
                         let fileExists = false;
@@ -718,11 +615,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         
                         for (let attempt = 1; attempt <= maxRetries; attempt++) {
                             try {
-                                console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test attempt ${attempt}/${maxRetries} for ${fieldName}`);
-                                
                                 // Wait a bit before testing (Cloudinary propagation delay)
                                 if (attempt > 1) {
-                                    console.log(`⏳ [CLOUDINARY-UPLOAD] Waiting ${retryDelay}ms before retry...`);
                                     await new Promise(resolve => setTimeout(resolve, retryDelay));
                                 }
                                 
@@ -733,14 +627,8 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                 });
                                 
                                 fileExists = testResponse.status === 200;
-                                console.log(`🔍 [CLOUDINARY-UPLOAD] File existence test attempt ${attempt} for ${fieldName}:`, {
-                                    status: testResponse.status,
-                                    exists: fileExists,
-                                    url: testUrl
-                                });
                                 
                                 if (fileExists) {
-                                    console.log(`✅ [CLOUDINARY-UPLOAD] File existence confirmed on attempt ${attempt}`);
                                     break; // Success, exit retry loop
                                 } else {
                                     console.warn(`⚠️ [CLOUDINARY-UPLOAD] File not found on attempt ${attempt}, status: ${testResponse.status}`);
@@ -782,12 +670,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         // Simpan metadata: cloudinary_url dan proxy_path
                         const resourceType = isPdf ? 'raw' : 'image';
                         
-                        console.log(`🔍 [CLOUDINARY-UPLOAD] Resource type determination for ${fieldName}:`, {
-                            mimetype: file.mimetype,
-                            isPdf: isPdf,
-                            resourceType: resourceType,
-                            filename: file.filename
-                        });
                         
                         uploadedFiles[fieldName] = {
                             cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
@@ -803,8 +685,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
 
                         // Cleanup file lama setelah upload berhasil (background task)
                         try {
-                            console.log(`🧹 [CLOUDINARY-UPLOAD] Starting cleanup for ${fieldName}...`);
-                            
                             // Extract components untuk cleanup
                             const parts = publicId.split('_');
                             if (parts.length >= 5) {
@@ -820,7 +700,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                                     2 // Keep latest 2 files
                                 );
                                 
-                                console.log(`✅ [CLOUDINARY-UPLOAD] Cleanup completed for ${fieldName}:`, cleanupResult);
                                 
                                 // Add cleanup info to uploaded file metadata
                                 uploadedFiles[fieldName].cleanup_result = cleanupResult;
@@ -838,14 +717,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                 const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.proxy_path || null;
                 const pelengkapUrl = uploadedFiles.pelengkap?.proxy_path || null;
 
-                console.log('💾 [CLOUDINARY-UPLOAD] Saving to database:', {
-                    nobooking,
-                    userid,
-                    aktaTanahUrl,
-                    sertifikatTanahUrl,
-                    pelengkapUrl,
-                    timestamp: new Date().toISOString()
-                });
 
                 // Update database dengan proxy URLs
                 const result = await pool.query(
@@ -859,19 +730,6 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                 );
 
                 if (result.rowCount > 0) {
-                    console.log('✅ [CLOUDINARY-UPLOAD] Files uploaded and saved successfully:', {
-                        nobooking,
-                        userid,
-                        uploadedFiles: Object.keys(uploadedFiles),
-                        railway_context: {
-                            RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-                            RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-                            NODE_ENV: process.env.NODE_ENV || 'development',
-                            nobooking: nobooking,
-                            userid: userid,
-                            timestamp: new Date().toISOString()
-                        }
-                    });
                     
                     res.json({
                         success: true,
@@ -913,14 +771,6 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
     return [
         // Multer middleware untuk PDF
         (req, res, next) => {
-            console.log('🌐 [CLOUDINARY-PDF] Starting PDF upload process...');
-            console.log('🌐 [CLOUDINARY-PDF] Railway deployment info:', {
-                RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA?.substring(0, 7) || 'local',
-                RAILWAY_REGION: process.env.RAILWAY_REGION || 'local',
-                NODE_ENV: process.env.NODE_ENV || 'development',
-                timestamp: new Date().toISOString(),
-                endpoint: '/api/ppatk_upload-pdf'
-            });
             
             mixedCloudinaryUpload.single('pdfDokumen')(req, res, (err) => {
                 if (err) {
@@ -931,7 +781,6 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     });
                 }
                 
-                console.log('PDF uploaded successfully:', req.file);
                 next();
             });
         },
@@ -967,13 +816,11 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 const urlMatch = req.file.path.match(/\/upload\/(?:v\d+\/)?(.+)$/);
                 if (urlMatch) {
                     pdfPublicId = urlMatch[1].replace(/\.\w+$/, '');
-                    console.log('🔄 [CLOUDINARY-PDF] Extracted publicId from URL:', pdfPublicId);
                 }
             }
             
             // Final fallback: Generate publicId based on expected format
             if (!pdfPublicId || pdfPublicId === 'null') {
-                console.log('🔄 [CLOUDINARY-PDF] Generating fallback publicId...');
                 // Extract from nobooking: PAT10-2025-000001
                 const parts = nobooking.split('-');
                 if (parts.length >= 3) {
@@ -988,19 +835,9 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     const timestamp = `${dateStr}_${timeStr}`;
                     
                     pdfPublicId = `${userid}_DokumenP_${sequence}_${year}_${timestamp}`;
-                    console.log('🔄 [CLOUDINARY-PDF] Generated fallback publicId:', pdfPublicId);
                 }
             }
             
-            console.log('🔍 [CLOUDINARY-PDF] PDF file metadata:', {
-                filePath: req.file.path,
-                pdfDokumenPath: pdfDokumenPath,
-                filePublicId: req.file.public_id,
-                extractedPublicId: extractPublicIdFromUrl(pdfDokumenPath),
-                finalPublicId: pdfPublicId,
-                filename: req.file.filename,
-                mimetype: req.file.mimetype
-            });
             
             // Validate publicId before proceeding
             if (!pdfPublicId || pdfPublicId === 'null') {
@@ -1032,12 +869,6 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 );
 
                 if (updateResult.rowCount > 0) {
-                    console.log('✅ [CLOUDINARY-PDF] PDF uploaded and saved successfully:', {
-                        nobooking,
-                        userid,
-                        pdfProxyPath,
-                        pdfPublicId
-                    });
                     
                     res.json({
                         success: true,
