@@ -192,7 +192,7 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl: generateSigne
                     });
                 }
                 
-                cloudinaryUrl = generateSignedUrlParam(publicId, 3600, resourceType); // 1 hour validity with resource type
+                cloudinaryUrl = generateSignedUrlParam(publicId, 60, resourceType); // Public URL (no expiry)
             } else if (url) {
                 // Decode existing URL
                 cloudinaryUrl = decodeURIComponent(url);
@@ -416,14 +416,14 @@ export function createRefreshSignedUrlEndpoint({ generateSignedUrl: generateSign
             }
             
             
-            // Generate fresh signed URL
-                const signedUrl = generateSignedUrlParam(publicId, 3600); // 1 hour validity
+            // Generate fresh public URL
+                const signedUrl = generateSignedUrlParam(publicId, 60); // Public URL (no expiry)
             
             res.json({
                 success: true,
                 publicId: publicId,
                 signedUrl: signedUrl,
-                expiresIn: 3600
+                type: "public"
             });
             
         } catch (error) {

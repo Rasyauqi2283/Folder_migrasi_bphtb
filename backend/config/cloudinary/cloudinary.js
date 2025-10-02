@@ -135,12 +135,10 @@ export const generateSignedUrl = (publicId, expirySeconds = 3600, resourceType =
 
     const expiresAt = Math.floor(Date.now() / 1000) + expirySeconds;
 
-    // Generate signed URL with enhanced options
+    // Generate public URL (no signing needed)
     const signedUrl = cloudinary.url(publicId, {
       resource_type: resourceType,
-      type: "authenticated",
-      sign_url: true,
-      expires_at: expiresAt,
+      type: "upload",
       secure: true, // Force HTTPS
       quality: "auto", // Optimize quality
       fetch_format: "auto" // Optimize format
@@ -151,22 +149,19 @@ export const generateSignedUrl = (publicId, expirySeconds = 3600, resourceType =
       throw new Error('Generated URL is invalid or does not contain cloudinary.com domain');
     }
 
-    console.log("🔑 [SIGNED-URL] Generated successfully:", {
+    console.log("🔑 [PUBLIC-URL] Generated successfully:", {
       public_id: publicId,
       resource_type: resourceType,
-      expires_in: expirySeconds + "s",
-      expires_at: new Date(expiresAt * 1000).toISOString(),
       url_length: signedUrl.length,
-      type: "authenticated"
+      type: "public"
     });
 
     return signedUrl;
   } catch (err) {
-    console.error("❌ Signed URL generation failed:", {
+    console.error("❌ Public URL generation failed:", {
       error: err.message,
       publicId: publicId,
       resourceType: resourceType,
-      expirySeconds: expirySeconds,
       timestamp: new Date().toISOString()
     });
     throw err;

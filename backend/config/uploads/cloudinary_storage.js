@@ -123,8 +123,8 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       // Use correct resource type based on file type
       resource_type: isPdf ? 'raw' : 'image',
       format: ext,
-      // Secure authenticated access
-      type: 'authenticated',
+      // Public access mode
+      type: 'upload',
       // Additional parameters - DON'T use filename when public_id is set
       use_filename: false,
       unique_filename: false,
@@ -292,22 +292,21 @@ export function extractPublicIdFromUrl(url) {
   return null;
 }
 
-// Helper function untuk generate signed URL (untuk RAW/PDF files)
+// Helper function untuk generate public URL (untuk RAW/PDF files)
 export function generateSignedUrl(publicId, options = {}) {
   try {
     const defaultOptions = {
       resource_type: 'raw',
       type: 'upload',
-      sign_url: true,
-      expires_at: Math.floor(Date.now() / 1000) + (60 * 60 * 24), // 24 hours
+      secure: true,
       ...options
     };
     
     const url = cloudinary.url(publicId, defaultOptions);
-    console.log(`🔐 [CLOUDINARY] Generated signed URL for: ${publicId}`);
+    console.log(`🔐 [CLOUDINARY] Generated public URL for: ${publicId}`);
     return url;
   } catch (error) {
-    console.error(`❌ [CLOUDINARY] Failed to generate signed URL:`, error);
+    console.error(`❌ [CLOUDINARY] Failed to generate public URL:`, error);
     return null;
   }
 }
