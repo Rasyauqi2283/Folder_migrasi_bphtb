@@ -35,8 +35,21 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
 
         const { page = 1, limit = 20, q } = req.query;
         const userid = req.session.user.userid;
-        const lim = Math.min(parseInt(limit) || 20, 100);
-        const off = (parseInt(page) - 1) * lim;
+        
+        // Validasi dan sanitasi parameter pagination
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 20;
+        const lim = Math.min(Math.max(limitNum, 1), 100); // antara 1-100
+        const off = Math.max((pageNum - 1) * lim, 0); // minimal 0
+        
+        console.log(`🔍 [PPATK-GET-BOOKING-DATA] Pagination params:`, {
+            page: page,
+            limit: limit,
+            pageNum: pageNum,
+            limitNum: limitNum,
+            lim: lim,
+            off: off
+        });
         
         console.log(`🔍 [PPATK-GET-BOOKING-DATA] Request from user: ${userid}, page: ${page}`);
         
@@ -66,7 +79,7 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
         
         return res.json({ 
             success: true, 
-            page: parseInt(page), 
+            page: pageNum, 
             limit: lim, 
             data: result.rows 
         });
@@ -83,8 +96,12 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
 app.get('/api/ppatk/lsb_send/rekap/diserahkan', async (req, res) => {
     try {
         const { page = 1, limit = 20, q } = req.query;
-        const lim = Math.min(parseInt(limit) || 20, 100);
-        const off = (parseInt(page) - 1) * lim;
+        
+        // Validasi dan sanitasi parameter pagination
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 20;
+        const lim = Math.min(Math.max(limitNum, 1), 100); // antara 1-100
+        const off = Math.max((pageNum - 1) * lim, 0); // minimal 0
         const params = [];
         let where = `trackstatus = 'Diserahkan'`;
         if (q && String(q).trim().length) {
@@ -103,7 +120,7 @@ app.get('/api/ppatk/lsb_send/rekap/diserahkan', async (req, res) => {
             LIMIT $${params.length-1} OFFSET $${params.length}
         `;
         const rows = await pool.query(sql, params);
-        return res.json({ success:true, page: parseInt(page), limit: lim, rows: rows.rows });
+        return res.json({ success:true, page: pageNum, limit: lim, rows: rows.rows });
     } catch (e) {
         console.error('ppatk rekap diserahkan error:', e);
         return res.status(500).json({ success:false, error: e.message });
