@@ -92,6 +92,60 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
     }
 });
 
+// PPATK: Get documents endpoint (untuk kompatibilitas dengan frontend)
+app.get('/api/ppatk_get-documents', async (req, res) => {
+    try {
+        // Jika PAT3_DISABLED, return empty data instead of 503 error
+        if (PAT3_DISABLED) {
+            return res.json({ 
+                success: true, 
+                data: [], 
+                message: 'Fitur dokumen dinonaktifkan - mengembalikan data kosong' 
+            });
+        }
+
+        // Validasi session
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Session tidak valid. Silakan login ulang.'
+            });
+        }
+
+        const { userid } = req.session.user;
+        const { booking_id } = req.query;
+
+        let query = `
+            SELECT id, userid, nama, path_document1, path_document2, booking_id, upload_date
+            FROM pat_3_documents 
+            WHERE userid = $1
+        `;
+        let params = [userid];
+
+        // Jika booking_id diberikan, filter berdasarkan booking_id
+        if (booking_id) {
+            query += ` AND booking_id = $2`;
+            params.push(booking_id);
+        }
+
+        query += ` ORDER BY upload_date DESC`;
+
+        const result = await pool.query(query, params);
+
+        res.json({
+            success: true,
+            data: result.rows
+        });
+
+    } catch (error) {
+        console.error('Error fetching documents:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+
 // PPATK: daftar berkas yang sudah Diserahkan (untuk unduh berkas tervalidasi)
 app.get('/api/ppatk/lsb_send/rekap/diserahkan', async (req, res) => {
     try {

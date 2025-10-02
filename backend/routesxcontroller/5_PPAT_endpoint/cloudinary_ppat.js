@@ -85,7 +85,7 @@ export function createCloudinaryProxyRouter({ generateSignedUrl }) {
 export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
     return async (req, res) => {
         try {
-            const { url, publicId } = req.query;
+            const { url, publicId, resourceType = 'raw' } = req.query;
             
             if (!url && !publicId) {
                 return res.status(400).json({ error: "URL or publicId parameter is required" });
@@ -93,10 +93,10 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
 
             let cloudinaryUrl;
             
-            // If publicId is provided, generate fresh signed URL
+            // If publicId is provided, generate fresh signed URL with correct resource type
             if (publicId && publicId !== 'null' && publicId !== 'undefined') {
-                console.log('🔄 [CLOUDINARY-PROXY] Generating fresh signed URL for:', publicId);
-                cloudinaryUrl = generateSignedUrl(publicId, 3600); // 1 hour validity
+                console.log('🔄 [CLOUDINARY-PROXY] Generating fresh signed URL for:', publicId, 'resourceType:', resourceType);
+                cloudinaryUrl = generateSignedUrl(publicId, 3600, resourceType); // 1 hour validity with resource type
             } else if (url) {
                 // Decode existing URL
                 cloudinaryUrl = decodeURIComponent(url);
@@ -113,11 +113,8 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
                 return res.status(400).json({ error: "Invalid Cloudinary URL" });
             }
 
-            console.log('🌐 [CLOUDINARY-PROXY] Serving file:', {
-                url: cloudinaryUrl,
-                hasPublicId: !!publicId,
-                timestamp: new Date().toISOString()
-            });
+            // Reduced logging to avoid Railway rate limits
+            console.log('🌐 [CLOUDINARY-PROXY] Serving:', publicId || 'unknown');
 
             // Fetch file from Cloudinary
             const response = await axios.get(cloudinaryUrl, {
@@ -146,28 +143,32 @@ export function createCloudinaryProxyEndpoint({ generateSignedUrl }) {
         } catch (err) {
             console.error("❌ [CLOUDINARY-PROXY] Error serving file:", err);
             
-            // Handle axios errors
+            // Handle axios errors with minimal logging
             if (err.response) {
-                console.error('❌ [CLOUDINARY-PROXY] Cloudinary response error:', {
-                    status: err.response.status,
-                    statusText: err.response.statusText,
-                    headers: err.response.headers,
-                    url: req.query.url || 'N/A'
-                });
+                const status = err.response.status;
+                const cldError = err.response.headers['x-cld-error'] || 'Unknown error';
+                
+                // Reduced logging to avoid Railway rate limits
+                console.error(`❌ [CLOUDINARY-PROXY] ${status}: ${cldError}`);
                 
                 // Handle specific error cases
-                if (err.response.status === 401) {
+                if (status === 401) {
                     return res.status(401).json({ 
                         error: "Unauthorized access - signed URL may be expired or invalid",
                         details: "Please refresh the page or contact administrator"
                     });
-                } else if (err.response.status === 404) {
-                    return res.status(404).json({ error: "File not found on Cloudinary" });
+                } else if (status === 404) {
+                    return res.status(404).json({ 
+                        error: "File not found on Cloudinary",
+                        publicId: publicId,
+                        details: cldError
+                    });
                 }
                 
-                return res.status(err.response.status).json({ 
+                return res.status(status).json({ 
                     error: "Failed to access file from Cloudinary",
-                    status: err.response.status 
+                    status: status,
+                    details: cldError
                 });
             }
             
@@ -439,14 +440,16 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                         }
                         
                         // Simpan metadata: cloudinary_url dan proxy_path
+                        const resourceType = isPdf ? 'raw' : 'image';
                         uploadedFiles[fieldName] = {
                             cloudinary_url: file.path.replace('http://', 'https://'), // Cloudinary URL (untuk internal)
-                            proxy_path: `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(publicId)}`, // Railway proxy URL dengan publicId
+                            proxy_path: `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(publicId)}&resourceType=${resourceType}`, // Railway proxy URL dengan publicId dan resourceType
                             public_id: publicId, // Store public_id for fresh signed URL generation
                             filename: file.filename,
                             mimetype: file.mimetype,
                             size: file.size,
-                            isPdf: isPdf
+                            isPdf: isPdf,
+                            resource_type: resourceType
                         };
                     }
                 }
@@ -634,8 +637,8 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                     return res.status(404).json({ success: false, message: 'Booking not found' });
                 }
 
-                // Update database dengan proxy URL untuk PDF
-                const pdfProxyPath = `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(pdfPublicId)}`;
+                // Update database dengan proxy URL untuk PDF (always raw for PDFs)
+                const pdfProxyPath = `/api/files/cloudinary-proxy?publicId=${encodeURIComponent(pdfPublicId)}&resourceType=raw`;
                 
                 const updateResult = await pool.query(
                     'UPDATE pat_1_bookingsspd SET pdf_dokumen_path = $1, updated_at = CURRENT_TIMESTAMP WHERE nobooking = $2 AND userid = $3',

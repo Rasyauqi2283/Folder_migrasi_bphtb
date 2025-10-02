@@ -117,12 +117,12 @@ export const uploadFile = async (filePath, customName) => {
 // STEP 7: Generate Signed URL (Authenticated Mode)
 // - dipanggil saat user ingin lihat file
 // ===============================
-export const generateSignedUrl = (publicId, expirySeconds = 300) => {
+export const generateSignedUrl = (publicId, expirySeconds = 300, resourceType = "raw") => {
   try {
     const expiresAt = Math.floor(Date.now() / 1000) + expirySeconds;
 
     const signedUrl = cloudinary.url(publicId, {
-      resource_type: "raw",
+      resource_type: resourceType,
       type: "authenticated",
       sign_url: true,
       expires_at: expiresAt
@@ -130,7 +130,7 @@ export const generateSignedUrl = (publicId, expirySeconds = 300) => {
 
     console.log("🔑 [SIGNED-URL] Generated:", {
       public_id: publicId,
-      signed_url: signedUrl,
+      resource_type: resourceType,
       expires_in: expirySeconds + "s",
       type: "authenticated"
     });
