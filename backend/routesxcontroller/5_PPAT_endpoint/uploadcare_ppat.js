@@ -137,7 +137,15 @@ export function createUploadcareUploadHandler() {
           }
 
           // Upload file to Uploadcare
-          const uploadResult = await uploadToUploadcare(file, {
+          // Convert multer file object to proper format for Uploadcare
+          const fileForUpload = {
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          };
+          
+          const uploadResult = await uploadToUploadcare(fileForUpload, {
             userid,
             nobooking,
             docType,
@@ -360,7 +368,15 @@ export function createUploadcarePDFUploadHandler() {
       }
 
       // Upload PDF to Uploadcare
-      const uploadResult = await uploadToUploadcare(req.file, {
+      // Convert multer file object to proper format for Uploadcare
+      const fileForUpload = {
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      };
+      
+      const uploadResult = await uploadToUploadcare(fileForUpload, {
         userid,
         nobooking,
         docType: 'DokumenP',

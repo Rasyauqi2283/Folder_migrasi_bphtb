@@ -61,7 +61,14 @@ export async function uploadToUploadcare(file, options = {}) {
     });
 
     // Upload file to Uploadcare
-    const uploadResult = await uploadClient.uploadFile(file, {
+    // Convert file buffer to proper format for Uploadcare
+    const fileData = {
+      name: fileName,
+      type: file.mimetype,
+      data: file.buffer
+    };
+    
+    const uploadResult = await uploadClient.uploadFile(fileData, {
       fileName: fileName,
       metadata: {
         folder: folderStructure,
