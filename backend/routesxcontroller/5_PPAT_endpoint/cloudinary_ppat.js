@@ -1,6 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import { pool } from '../../../db.js';
+import { cleanupOldFiles } from '../../config/uploads/cloudinary_storage.js';
 
 // ===== CLOUDINARY PROXY ENDPOINT =====
 // Endpoint untuk serve files dari Cloudinary via Railway server
@@ -700,6 +701,36 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             resource_type: resourceType,
                             exists_on_cloudinary: fileExists
                         };
+
+                        // Cleanup file lama setelah upload berhasil (background task)
+                        try {
+                            console.log(`🧹 [CLOUDINARY-UPLOAD] Starting cleanup for ${fieldName}...`);
+                            
+                            // Extract components untuk cleanup
+                            const parts = publicId.split('_');
+                            if (parts.length >= 5) {
+                                const [userid, docType, sequenceNumber, currentYear] = parts;
+                                
+                                // Cleanup file lama (keep latest 2 files untuk safety)
+                                const cleanupResult = await cleanupOldFiles(
+                                    userid, 
+                                    docType, 
+                                    sequenceNumber, 
+                                    currentYear, 
+                                    resourceType, 
+                                    2 // Keep latest 2 files
+                                );
+                                
+                                console.log(`✅ [CLOUDINARY-UPLOAD] Cleanup completed for ${fieldName}:`, cleanupResult);
+                                
+                                // Add cleanup info to uploaded file metadata
+                                uploadedFiles[fieldName].cleanup_result = cleanupResult;
+                            }
+                        } catch (cleanupError) {
+                            console.warn(`⚠️ [CLOUDINARY-UPLOAD] Cleanup failed for ${fieldName}:`, cleanupError.message);
+                            // Don't fail the upload if cleanup fails
+                            uploadedFiles[fieldName].cleanup_error = cleanupError.message;
+                        }
                     }
                 }
 

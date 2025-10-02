@@ -10,6 +10,7 @@ import {
     createCloudinaryUploadHandler,
     createCloudinaryPDFUploadHandler
 } from './cloudinary_ppat.js';
+import { findOldFiles, cleanupOldFiles } from '../../config/uploads/cloudinary_storage.js';
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification, mixedCloudinaryUpload, renameCloudinaryFile, deleteCloudinaryFile, extractPublicIdFromUrl, generateSignedUrl, generatePublicUrl }) {
@@ -217,6 +218,111 @@ app.get('/api/check-file-status/:publicId', async (req, res) => {
         
     } catch (error) {
         console.error('❌ [FILE-STATUS] Error checking file status:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Endpoint untuk manual cleanup file lama di Cloudinary
+app.post('/api/cleanup-old-files', async (req, res) => {
+    try {
+        console.log('🧹 [MANUAL-CLEANUP] Starting manual cleanup...');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        const { docType, sequenceNumber, currentYear, resourceType = 'image', keepLatest = 1 } = req.body;
+        
+        if (!docType || !sequenceNumber || !currentYear) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required parameters: docType, sequenceNumber, currentYear' 
+            });
+        }
+
+        console.log(`🧹 [MANUAL-CLEANUP] Cleanup request:`, {
+            userid,
+            docType,
+            sequenceNumber,
+            currentYear,
+            resourceType,
+            keepLatest
+        });
+
+        const cleanupResult = await cleanupOldFiles(
+            userid,
+            docType,
+            sequenceNumber,
+            currentYear,
+            resourceType,
+            keepLatest
+        );
+
+        res.json({
+            success: true,
+            message: 'Manual cleanup completed',
+            result: cleanupResult,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ [MANUAL-CLEANUP] Manual cleanup failed:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Endpoint untuk mencari file lama tanpa menghapus
+app.get('/api/find-old-files', async (req, res) => {
+    try {
+        console.log('🔍 [FIND-OLD-FILES] Starting search...');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        const { docType, sequenceNumber, currentYear, resourceType = 'image' } = req.query;
+        
+        if (!docType || !sequenceNumber || !currentYear) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required parameters: docType, sequenceNumber, currentYear' 
+            });
+        }
+
+        console.log(`🔍 [FIND-OLD-FILES] Search request:`, {
+            userid,
+            docType,
+            sequenceNumber,
+            currentYear,
+            resourceType
+        });
+
+        const oldFiles = await findOldFiles(
+            userid,
+            docType,
+            sequenceNumber,
+            currentYear,
+            resourceType
+        );
+
+        res.json({
+            success: true,
+            message: 'Search completed',
+            files: oldFiles,
+            count: oldFiles.length,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ [FIND-OLD-FILES] Search failed:', error);
         res.status(500).json({
             success: false,
             error: error.message

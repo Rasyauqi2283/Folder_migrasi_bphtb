@@ -97,15 +97,21 @@ const cloudinaryMixedStorage = new CloudinaryStorage({
       throw new Error('Invalid sequence number format - expected 6 digits');
     }
     
-    // Generate public_id dengan format: userid_dokumenpath_sequence_tahun
-    // Format: PAT10_Akta_000001_2025
-    const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}`;
+    // Generate public_id dengan format: userid_dokumenpath_sequence_tahun_timestamp
+    // Format: PAT10_Akta_000001_2025_20251002_143022 (YYYYMMDD_HHMMSS)
+    const currentDate = new Date();
+    const dateStr = currentDate.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const timeStr = currentDate.toTimeString().slice(0, 8).replace(/:/g, ''); // HHMMSS
+    const timestamp = `${dateStr}_${timeStr}`;
+    
+    const publicId = `${userid}_${docType}_${sequenceNumber}_${currentYear}_${timestamp}`;
     
     console.log('🔍 [CLOUDINARY-UPLOAD] Generated publicId:', {
       userid,
       docType,
       sequenceNumber,
       currentYear,
+      timestamp,
       generatedPublicId: publicId,
       isValid: !!publicId && publicId !== 'null' && publicId !== 'undefined'
     });
@@ -299,6 +305,113 @@ export function generatePublicUrl(publicId, resourceType = 'image', format = nul
   } catch (error) {
     console.error(`❌ [CLOUDINARY] Failed to generate URL:`, error);
     return null;
+  }
+}
+
+// Helper function untuk mencari file lama berdasarkan pattern
+export async function findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image') {
+  try {
+    console.log(`🔍 [CLOUDINARY-CLEANUP] Searching for old files:`, {
+      userid,
+      docType,
+      sequenceNumber,
+      currentYear,
+      resourceType
+    });
+
+    // Pattern untuk mencari file lama: userid_docType_sequenceNumber_year_*
+    const searchPattern = `${userid}_${docType}_${sequenceNumber}_${currentYear}_*`;
+    
+    const result = await cloudinary.search
+      .expression(`public_id:${searchPattern}`)
+      .resource_type(resourceType)
+      .max_results(50)
+      .execute();
+
+    console.log(`🔍 [CLOUDINARY-CLEANUP] Found ${result.resources.length} old files`);
+    
+    return result.resources.map(resource => ({
+      public_id: resource.public_id,
+      created_at: resource.created_at,
+      bytes: resource.bytes,
+      format: resource.format
+    }));
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY-CLEANUP] Failed to search old files:`, error);
+    return [];
+  }
+}
+
+// Helper function untuk menghapus file lama (kecuali yang terbaru)
+export async function cleanupOldFiles(userid, docType, sequenceNumber, currentYear, resourceType = 'image', keepLatest = 1) {
+  try {
+    console.log(`🧹 [CLOUDINARY-CLEANUP] Starting cleanup for:`, {
+      userid,
+      docType,
+      sequenceNumber,
+      currentYear,
+      resourceType,
+      keepLatest
+    });
+
+    const oldFiles = await findOldFiles(userid, docType, sequenceNumber, currentYear, resourceType);
+    
+    if (oldFiles.length <= keepLatest) {
+      console.log(`✅ [CLOUDINARY-CLEANUP] No cleanup needed - only ${oldFiles.length} files found`);
+      return { deleted: 0, kept: oldFiles.length };
+    }
+
+    // Sort by created_at (newest first) dan ambil yang terbaru untuk di-keep
+    const sortedFiles = oldFiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const filesToKeep = sortedFiles.slice(0, keepLatest);
+    const filesToDelete = sortedFiles.slice(keepLatest);
+
+    console.log(`🧹 [CLOUDINARY-CLEANUP] Will delete ${filesToDelete.length} old files, keep ${filesToKeep.length} latest`);
+
+    let deletedCount = 0;
+    const deletionResults = [];
+
+    for (const file of filesToDelete) {
+      try {
+        const result = await cloudinary.uploader.destroy(file.public_id, {
+          resource_type: resourceType
+        });
+        
+        if (result.result === 'ok') {
+          deletedCount++;
+          console.log(`🗑️ [CLOUDINARY-CLEANUP] Deleted: ${file.public_id}`);
+          deletionResults.push({ public_id: file.public_id, status: 'deleted', bytes: file.bytes });
+        } else {
+          console.warn(`⚠️ [CLOUDINARY-CLEANUP] Failed to delete: ${file.public_id} - ${result.result}`);
+          deletionResults.push({ public_id: file.public_id, status: 'failed', reason: result.result });
+        }
+      } catch (deleteError) {
+        console.error(`❌ [CLOUDINARY-CLEANUP] Error deleting ${file.public_id}:`, deleteError);
+        deletionResults.push({ public_id: file.public_id, status: 'error', error: deleteError.message });
+      }
+    }
+
+    const totalBytesFreed = deletionResults
+      .filter(r => r.status === 'deleted' && r.bytes)
+      .reduce((sum, r) => sum + r.bytes, 0);
+
+    console.log(`✅ [CLOUDINARY-CLEANUP] Cleanup completed:`, {
+      deleted: deletedCount,
+      kept: filesToKeep.length,
+      totalBytesFreed: totalBytesFreed,
+      results: deletionResults
+    });
+
+    return {
+      deleted: deletedCount,
+      kept: filesToKeep.length,
+      totalBytesFreed: totalBytesFreed,
+      results: deletionResults
+    };
+
+  } catch (error) {
+    console.error(`❌ [CLOUDINARY-CLEANUP] Cleanup failed:`, error);
+    throw error;
   }
 }
 
