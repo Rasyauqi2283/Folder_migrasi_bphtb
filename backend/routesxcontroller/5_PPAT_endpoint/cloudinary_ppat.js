@@ -663,21 +663,35 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             }
                         };
 
-                        // Store cleanup info for later execution (after database update)
+                        // 🧹 CLEAN FIRST STRATEGY: Clean old files BEFORE upload
                         const parts = nobooking.split('-');
                         if (parts.length >= 3) {
                             const [userid, currentYear, sequenceNumber] = parts;
                             
-                            // Prepare cleanup task (will be executed after database update)
-                            uploadedFiles[fieldName].cleanup_task = {
-                                userid,
-                                docType,
-                                sequenceNumber,
-                                currentYear,
-                                resourceType,
-                                nobooking,
-                                publicId: publicId
-                            };
+                            console.log(`🧹 [CLEAN-FIRST] Starting cleanup for ${fieldName} before upload...`);
+                            
+                            try {
+                                // Clean old files first (keep latest 1 file for safety)
+                                const cleanupResult = await cleanupOldFiles(
+                                    userid, 
+                                    docType, 
+                                    sequenceNumber, 
+                                    currentYear, 
+                                    resourceType, 
+                                    1, // Keep only 1 file (more aggressive cleanup)
+                                    nobooking
+                                );
+                                
+                                console.log(`✅ [CLEAN-FIRST] Cleanup completed for ${fieldName}:`, cleanupResult);
+                                
+                                // Store cleanup result in uploaded file metadata
+                                uploadedFiles[fieldName].cleanup_result = cleanupResult;
+                                
+                            } catch (cleanupError) {
+                                console.warn(`⚠️ [CLEAN-FIRST] Cleanup failed for ${fieldName}:`, cleanupError.message);
+                                // Continue with upload even if cleanup fails
+                                uploadedFiles[fieldName].cleanup_error = cleanupError.message;
+                            }
                         }
                     }
                 }
@@ -700,63 +714,12 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                 );
 
                 if (result.rowCount > 0) {
-                    // ✅ DATABASE UPDATE BERHASIL - Sekarang lakukan cleanup yang aman
-                    console.log('✅ [CLOUDINARY-UPLOAD] Database updated successfully, starting safe cleanup...');
-                    
-                    // Execute cleanup tasks in background (non-blocking)
-                    const cleanupPromises = Object.entries(uploadedFiles)
-                        .filter(([_, fileData]) => fileData.cleanup_task)
-                        .map(async ([fieldName, fileData]) => {
-                            try {
-                                const { userid, docType, sequenceNumber, currentYear, resourceType, nobooking, publicId } = fileData.cleanup_task;
-                                
-                                console.log(`🧹 [CLOUDINARY-CLEANUP] Starting cleanup for ${fieldName}:`, {
-                                    userid,
-                                    docType,
-                                    publicId
-                                });
-                                
-                                // Cleanup file lama (keep latest 2 files untuk safety)
-                                const cleanupResult = await cleanupOldFiles(
-                                    userid, 
-                                    docType, 
-                                    sequenceNumber, 
-                                    currentYear, 
-                                    resourceType, 
-                                    2, // Keep latest 2 files
-                                    nobooking // Pass nobooking for specific folder search
-                                );
-                                
-                                console.log(`✅ [CLOUDINARY-CLEANUP] Cleanup completed for ${fieldName}:`, cleanupResult);
-                                
-                                return {
-                                    fieldName,
-                                    success: true,
-                                    cleanupResult
-                                };
-                                
-                            } catch (cleanupError) {
-                                console.warn(`⚠️ [CLOUDINARY-CLEANUP] Cleanup failed for ${fieldName}:`, cleanupError.message);
-                                return {
-                                    fieldName,
-                                    success: false,
-                                    error: cleanupError.message
-                                };
-                            }
-                        });
-                    
-                    // Execute cleanup in parallel (non-blocking response)
-                    Promise.all(cleanupPromises)
-                        .then(cleanupResults => {
-                            console.log('🧹 [CLOUDINARY-CLEANUP] All cleanup tasks completed:', cleanupResults);
-                        })
-                        .catch(error => {
-                            console.error('❌ [CLOUDINARY-CLEANUP] Some cleanup tasks failed:', error);
-                        });
+                    // ✅ DATABASE UPDATE BERHASIL - Clean First strategy completed
+                    console.log('✅ [CLOUDINARY-UPLOAD] Database updated successfully - Clean First strategy completed');
                     
                     res.json({
                         success: true,
-                        message: 'Files uploaded successfully to Cloudinary',
+                        message: 'Files uploaded successfully to Cloudinary (Clean First Strategy)',
                         data: {
                             nobooking,
                             uploadedFiles: Object.keys(uploadedFiles),
@@ -786,8 +749,14 @@ export function createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPu
                             },
                             // Cleanup status
                             cleanupStatus: {
-                                message: 'Cleanup will be executed in background after successful upload',
-                                tasks: Object.keys(uploadedFiles).filter(key => uploadedFiles[key].cleanup_task).length
+                                message: 'Clean First strategy - old files cleaned before upload',
+                                strategy: 'Clean First, Then Upload',
+                                cleanupResults: Object.entries(uploadedFiles)
+                                    .filter(([_, fileData]) => fileData.cleanup_result)
+                                    .map(([fieldName, fileData]) => ({
+                                        field: fieldName,
+                                        result: fileData.cleanup_result
+                                    }))
                             }
                         }
                     });
@@ -980,6 +949,40 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 });
             }
 
+            // 🧹 CLEAN FIRST STRATEGY: Clean old PDF files BEFORE database update
+            console.log('🧹 [CLEAN-FIRST-PDF] Starting PDF cleanup before database update...');
+            
+            let pdfCleanupResult = null;
+            try {
+                // Extract components untuk cleanup dari nobooking
+                const parts = nobooking.split('-');
+                if (parts.length >= 3) {
+                    const [userid, currentYear, sequenceNumber] = parts;
+                    
+                    console.log(`🧹 [CLEAN-FIRST-PDF] Starting PDF cleanup:`, {
+                        userid,
+                        docType: 'DokumenP',
+                        pdfPublicId
+                    });
+                    
+                    // Cleanup PDF file lama (keep latest 1 file untuk safety)
+                    pdfCleanupResult = await cleanupOldFiles(
+                        userid, 
+                        'DokumenP', 
+                        sequenceNumber, 
+                        currentYear, 
+                        'raw', 
+                        1, // Keep only 1 file (more aggressive cleanup)
+                        nobooking
+                    );
+                    
+                    console.log(`✅ [CLEAN-FIRST-PDF] PDF cleanup completed:`, pdfCleanupResult);
+                }
+            } catch (cleanupError) {
+                console.warn(`⚠️ [CLEAN-FIRST-PDF] PDF cleanup failed:`, cleanupError.message);
+                // Continue with database update even if cleanup fails
+            }
+
             try {
                 const result = await pool.query('SELECT * FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2', [nobooking, userid]);
 
@@ -997,62 +1000,12 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 );
 
                 if (updateResult.rowCount > 0) {
-                    // ✅ DATABASE UPDATE BERHASIL - Sekarang lakukan cleanup yang aman untuk PDF
-                    console.log('✅ [CLOUDINARY-PDF] Database updated successfully, starting safe PDF cleanup...');
-                    
-                    // Execute PDF cleanup in background (non-blocking)
-                    const pdfCleanupPromise = (async () => {
-                        try {
-                            // Extract components untuk cleanup dari nobooking
-                            const parts = nobooking.split('-');
-                            if (parts.length >= 3) {
-                                const [userid, currentYear, sequenceNumber] = parts;
-                                
-                                console.log(`🧹 [CLOUDINARY-PDF-CLEANUP] Starting PDF cleanup:`, {
-                                    userid,
-                                    docType: 'DokumenP',
-                                    pdfPublicId
-                                });
-                                
-                                // Cleanup PDF file lama (keep latest 2 files untuk safety)
-                                const cleanupResult = await cleanupOldFiles(
-                                    userid, 
-                                    'DokumenP', 
-                                    sequenceNumber, 
-                                    currentYear, 
-                                    'raw', 
-                                    2, // Keep latest 2 files
-                                    nobooking // Pass nobooking for specific folder search
-                                );
-                                
-                                console.log(`✅ [CLOUDINARY-PDF-CLEANUP] PDF cleanup completed:`, cleanupResult);
-                                
-                                return {
-                                    success: true,
-                                    cleanupResult
-                                };
-                            }
-                        } catch (cleanupError) {
-                            console.warn(`⚠️ [CLOUDINARY-PDF-CLEANUP] PDF cleanup failed:`, cleanupError.message);
-                            return {
-                                success: false,
-                                error: cleanupError.message
-                            };
-                        }
-                    })();
-                    
-                    // Execute cleanup in background (non-blocking response)
-                    pdfCleanupPromise
-                        .then(cleanupResult => {
-                            console.log('🧹 [CLOUDINARY-PDF-CLEANUP] PDF cleanup task completed:', cleanupResult);
-                        })
-                        .catch(error => {
-                            console.error('❌ [CLOUDINARY-PDF-CLEANUP] PDF cleanup task failed:', error);
-                        });
+                    // ✅ DATABASE UPDATE BERHASIL - Clean First strategy completed for PDF
+                    console.log('✅ [CLOUDINARY-PDF] Database updated successfully - Clean First strategy completed for PDF');
                     
                     res.json({
                         success: true,
-                        message: 'PDF uploaded successfully to Cloudinary',
+                        message: 'PDF uploaded successfully to Cloudinary (Clean First Strategy)',
                         data: {
                             nobooking,
                             // URLs untuk review
@@ -1071,8 +1024,9 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                             },
                             // Cleanup status
                             cleanupStatus: {
-                                message: 'PDF cleanup will be executed in background after successful upload',
-                                task: 'PDF cleanup scheduled'
+                                message: 'Clean First strategy - old PDF files cleaned before upload',
+                                strategy: 'Clean First, Then Upload',
+                                cleanupResult: pdfCleanupResult
                             }
                         }
                     });

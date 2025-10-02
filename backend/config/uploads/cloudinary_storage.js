@@ -509,7 +509,7 @@ export async function findOldFiles(userid, docType, sequenceNumber, currentYear,
     
     const result = await cloudinary.search
       .expression(`public_id:${searchPattern}`)
-      .resource_type(resourceType)
+      .with_field('resource_type')
       .max_results(50)
       .execute();
 
