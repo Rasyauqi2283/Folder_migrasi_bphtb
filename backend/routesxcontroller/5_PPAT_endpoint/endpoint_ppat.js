@@ -189,7 +189,22 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         const userid = req.session.user.userid;
         const { page = 1, limit = 10, search = '', status = '' } = req.query;
         
-        const offset = (page - 1) * limit;
+        // Validate and sanitize pagination parameters
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // Ensure positive values
+        const safePage = Math.max(1, pageNum);
+        const safeLimit = Math.max(1, Math.min(100, limitNum)); // Max 100 items per page
+        const safeOffset = Math.max(0, (safePage - 1) * safeLimit);
+        
+        // Debug logging
+        console.log('🔍 [PPATK] Pagination parameters:', {
+            original: { page, limit },
+            parsed: { pageNum, limitNum },
+            safe: { safePage, safeLimit, safeOffset }
+        });
         
         let whereClause = 'WHERE userid = $1';
         const queryParams = [userid];
@@ -233,17 +248,17 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
             LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
         `;
         
-        queryParams.push(limit, offset);
+        queryParams.push(safeLimit, safeOffset);
         const dataResult = await pool.query(dataQuery, queryParams);
         
         res.json({
             success: true, 
             data: dataResult.rows,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: safePage,
+                limit: safeLimit,
                 total: totalCount,
-                pages: Math.ceil(totalCount / limit)
+                pages: Math.ceil(totalCount / safeLimit)
             }
         });
 
