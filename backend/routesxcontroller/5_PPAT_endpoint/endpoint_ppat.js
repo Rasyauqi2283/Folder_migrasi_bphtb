@@ -485,8 +485,8 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
 
         // Get documents from database
         const query = `
-            SELECT document1_path, document2_path, created_at
-            FROM uploaded_documents 
+            SELECT akta_tanah_path, sertifikat_tanah_path, pelengkap_path, pdf_dokumen_path, file_withstempel_path, created_at
+            FROM pat_1_bookingsspd
             WHERE booking_id = $1 AND userid = $2
         `;
         
