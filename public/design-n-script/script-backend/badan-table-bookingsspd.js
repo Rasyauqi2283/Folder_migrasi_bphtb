@@ -41,7 +41,7 @@ function getFileName(pathOrUrl) {
 async function loadTableData(page = 1) {
     try {
         // Menggunakan parameter page jika ada
-        const url = `/api/ppatk_get-booking-data?page=${page}`;
+        const url = `/api/ppatk/load-all-booking?page=${page}`;
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -476,7 +476,7 @@ function deleteSelectedRow() {
 
         if (isConfirmed) {
             const nobooking = selectedRow.cells[0].textContent;
-            fetch(`/api/ppatk_update-trackstatus/${nobooking}`, {
+            fetch(`/api/ppatk/update-trackstatus/${nobooking}`, {
                 method: 'PUT',
                 credentials: 'include'
             })
@@ -535,7 +535,7 @@ async function viewDocument(nobooking) {
     }
 
     // Buat URL untuk mengakses PDF
-    const pdfUrl = `/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}`;
+    const pdfUrl = `/api/ppatk/generate-pdf-mohon-validasi/${encodeURIComponent(nobooking)}`;
     
     // Membuka PDF di jendela baru
     window.open(pdfUrl, '_blank');
@@ -875,7 +875,7 @@ async function uploadSignatures(nobooking, signature1Blob) {
         
         console.log('Mengirim request ke server...');
         
-        const response = await fetch('/api/ppatk_upload-signatures', {
+        const response = await fetch('/api/ppatk/upload-signatures', {
             method: 'POST',
             body: formData,
             credentials: 'include'
@@ -1794,7 +1794,7 @@ async function sendToLtb(nobooking) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 detik timeout
 
-            const response = await fetch('/api/ppatk_ltb-process', {
+            const response = await fetch('/api/ppatk/ltb-process', {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -2941,7 +2941,7 @@ function generateFormHTML(data) {
 
 async function fetchDataFromDatabase(nobooking, userInput = {}) {
     try {
-        const response = await fetch(`/api/ppatk_get-booking-data/${nobooking}`, {
+        const response = await fetch(`/api/ppatk/booking/${nobooking}`, {
             credentials: 'include' // Untuk mengirim session cookie jika diperlukan
         });
         
@@ -3191,7 +3191,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
 // Function to load uploaded documents for a specific booking
 async function loadUploadedDocuments(bookingId) {
     try {
-        const response = await fetch(`/api/ppatk_get-documents?booking_id=${bookingId}`, {
+        const response = await fetch(`/api/ppatk/get-documents?booking_id=${bookingId}`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -3333,7 +3333,7 @@ async function replaceUploadedDocument(bookingId, documentType) {
             formData.append(documentType, file);
             formData.append('booking_id', bookingId);
             
-            const response = await fetch('/api/ppatk_upload-documents', {
+            const response = await fetch('/api/ppatk/upload-documents', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'

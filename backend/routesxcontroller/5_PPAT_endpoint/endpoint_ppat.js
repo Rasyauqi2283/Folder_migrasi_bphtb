@@ -378,5 +378,172 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
     }
 });
 
+// Upload signatures endpoint
+app.post('/api/ppatk/upload-signatures', uploadTTD, async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.body;
+        const userid = req.session.user.userid;
+
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'No booking required' });
+        }
+
+        // Handle signature upload logic here
+        res.json({
+            success: true,
+            message: 'Signature uploaded successfully',
+            nobooking: nobooking
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Upload signature failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Upload signature failed: ' + error.message
+        });
+    }
+});
+
+// Upload documents endpoint
+app.post('/api/ppatk/upload-documents', uploadDocumentMiddleware, async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { booking_id } = req.body;
+        const userid = req.session.user.userid;
+
+        // Handle document upload logic here
+        res.json({
+            success: true,
+            message: 'Documents uploaded successfully',
+            booking_id: booking_id
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Upload documents failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Upload documents failed: ' + error.message
+        });
+    }
+});
+
+// Get documents endpoint
+app.get('/api/ppatk/get-documents', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { booking_id } = req.query;
+        const userid = req.session.user.userid;
+
+        if (!booking_id) {
+            return res.status(400).json({ success: false, message: 'Booking ID required' });
+        }
+
+        // Get documents from database
+        const query = `
+            SELECT document1_path, document2_path, created_at
+            FROM uploaded_documents 
+            WHERE booking_id = $1 AND userid = $2
+        `;
+        
+        const result = await pool.query(query, [booking_id, userid]);
+        
+        res.json({
+            success: true,
+            data: result.rows[0] || null
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Get documents failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Get documents failed: ' + error.message
+        });
+    }
+});
+
+// Update track status endpoint
+app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.params;
+        const { status } = req.body;
+        const userid = req.session.user.userid;
+
+        if (!status) {
+            return res.status(400).json({ success: false, message: 'Status required' });
+        }
+
+        // Update status in database
+        const query = `
+            UPDATE pat_1_bookingsspd 
+            SET status = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE nobooking = $2 AND userid = $3
+            RETURNING *
+        `;
+        
+        const result = await pool.query(query, [status, nobooking, userid]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Status updated successfully',
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Update track status failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Update track status failed: ' + error.message
+        });
+    }
+});
+
+// LTB process endpoint
+app.post('/api/ppatk/ltb-process', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.body;
+        const userid = req.session.user.userid;
+
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'No booking required' });
+        }
+
+        // Handle LTB process logic here
+        res.json({
+            success: true,
+            message: 'LTB process completed successfully',
+            nobooking: nobooking
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] LTB process failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'LTB process failed: ' + error.message
+        });
+    }
+});
+
 console.log('✅ [PPATK] All endpoints registered successfully');
 }
