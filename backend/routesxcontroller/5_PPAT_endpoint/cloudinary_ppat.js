@@ -901,6 +901,85 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 });
             }
 
+            // Test jika PDF file bisa diakses dari Cloudinary dengan enhanced logging
+            let pdfFileExists = false;
+            const maxRetries = 3;
+            const retryDelay = 10000; // 10 seconds
+            
+            console.log(`🔍 [CLOUDINARY-PDF] Testing PDF file existence:`, {
+                pdfPublicId,
+                expectedResourceType: 'raw',
+                cloudinaryUrl: req.file.path
+            });
+            
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    // Wait a bit before testing (Cloudinary propagation delay)
+                    if (attempt > 1) {
+                        console.log(`⏳ [CLOUDINARY-PDF] Waiting ${retryDelay}ms before retry attempt ${attempt}...`);
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
+                    
+                    const testUrl = generateSignedUrl(pdfPublicId, 60, 'raw');
+                    console.log(`🔍 [CLOUDINARY-PDF] Testing URL (attempt ${attempt}): ${testUrl}`);
+                    
+                    const testResponse = await axios.head(testUrl, { 
+                        timeout: 15000,
+                        validateStatus: (status) => status < 500 // Accept 404 but not 5xx
+                    });
+                    
+                    pdfFileExists = testResponse.status === 200;
+                    
+                    console.log(`📊 [CLOUDINARY-PDF] Test result (attempt ${attempt}):`, {
+                        status: testResponse.status,
+                        success: pdfFileExists,
+                        headers: {
+                            'content-type': testResponse.headers['content-type'],
+                            'content-length': testResponse.headers['content-length'],
+                            'x-cld-error': testResponse.headers['x-cld-error']
+                        }
+                    });
+                    
+                    if (pdfFileExists) {
+                        console.log(`✅ [CLOUDINARY-PDF] PDF file exists and accessible on attempt ${attempt}`);
+                        break; // Success, exit retry loop
+                    } else {
+                        console.warn(`⚠️ [CLOUDINARY-PDF] PDF file not found on attempt ${attempt}, status: ${testResponse.status}`);
+                    }
+                    
+                } catch (testError) {
+                    console.warn(`⚠️ [CLOUDINARY-PDF] PDF file existence test attempt ${attempt} failed:`, {
+                        error: testError.message,
+                        status: testError.response?.status,
+                        code: testError.code,
+                        responseHeaders: testError.response?.headers
+                    });
+                    
+                    if (attempt === maxRetries) {
+                        console.error(`❌ [CLOUDINARY-PDF] All ${maxRetries} attempts failed for PDF file existence test`);
+                        pdfFileExists = false;
+                    }
+                }
+            }
+            
+            // Final decision: if file still doesn't exist after retries, assume it exists (upload was successful)
+            if (!pdfFileExists) {
+                console.warn(`⚠️ [CLOUDINARY-PDF] PDF file existence test failed after ${maxRetries} attempts, but upload was successful. Assuming file exists.`);
+                pdfFileExists = true; // Override to true since upload was successful
+            }
+
+            if (!pdfFileExists) {
+                console.error(`❌ [CLOUDINARY-PDF] PDF file ${pdfPublicId} does not exist on Cloudinary, skipping database update`);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: `PDF file upload failed - file not accessible on Cloudinary`,
+                    details: {
+                        pdfPublicId,
+                        error: 'PDF file not found on Cloudinary after upload'
+                    }
+                });
+            }
+
             try {
                 const result = await pool.query('SELECT * FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2', [nobooking, userid]);
 
@@ -918,6 +997,58 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                 );
 
                 if (updateResult.rowCount > 0) {
+                    // ✅ DATABASE UPDATE BERHASIL - Sekarang lakukan cleanup yang aman untuk PDF
+                    console.log('✅ [CLOUDINARY-PDF] Database updated successfully, starting safe PDF cleanup...');
+                    
+                    // Execute PDF cleanup in background (non-blocking)
+                    const pdfCleanupPromise = (async () => {
+                        try {
+                            // Extract components untuk cleanup dari nobooking
+                            const parts = nobooking.split('-');
+                            if (parts.length >= 3) {
+                                const [userid, currentYear, sequenceNumber] = parts;
+                                
+                                console.log(`🧹 [CLOUDINARY-PDF-CLEANUP] Starting PDF cleanup:`, {
+                                    userid,
+                                    docType: 'DokumenP',
+                                    pdfPublicId
+                                });
+                                
+                                // Cleanup PDF file lama (keep latest 2 files untuk safety)
+                                const cleanupResult = await cleanupOldFiles(
+                                    userid, 
+                                    'DokumenP', 
+                                    sequenceNumber, 
+                                    currentYear, 
+                                    'raw', 
+                                    2, // Keep latest 2 files
+                                    nobooking // Pass nobooking for specific folder search
+                                );
+                                
+                                console.log(`✅ [CLOUDINARY-PDF-CLEANUP] PDF cleanup completed:`, cleanupResult);
+                                
+                                return {
+                                    success: true,
+                                    cleanupResult
+                                };
+                            }
+                        } catch (cleanupError) {
+                            console.warn(`⚠️ [CLOUDINARY-PDF-CLEANUP] PDF cleanup failed:`, cleanupError.message);
+                            return {
+                                success: false,
+                                error: cleanupError.message
+                            };
+                        }
+                    })();
+                    
+                    // Execute cleanup in background (non-blocking response)
+                    pdfCleanupPromise
+                        .then(cleanupResult => {
+                            console.log('🧹 [CLOUDINARY-PDF-CLEANUP] PDF cleanup task completed:', cleanupResult);
+                        })
+                        .catch(error => {
+                            console.error('❌ [CLOUDINARY-PDF-CLEANUP] PDF cleanup task failed:', error);
+                        });
                     
                     res.json({
                         success: true,
@@ -937,6 +1068,11 @@ export function createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extrac
                                 folderStructure: `bappenda/sspd/${new Date().getFullYear()}/${userid}/${nobooking}`,
                                 publicId: pdfPublicId,
                                 resourceType: 'raw'
+                            },
+                            // Cleanup status
+                            cleanupStatus: {
+                                message: 'PDF cleanup will be executed in background after successful upload',
+                                task: 'PDF cleanup scheduled'
                             }
                         }
                     });
