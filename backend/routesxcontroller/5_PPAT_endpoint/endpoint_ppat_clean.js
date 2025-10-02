@@ -874,5 +874,4 @@ async function generateRegistrationNumber() {
 }
 
 // Export router untuk digunakan di file lain jika diperlukan
-// export { router };
 }
