@@ -22,6 +22,65 @@ app.get('/api/files/refresh-signed-url', createRefreshSignedUrlEndpoint({ genera
 app.post('/api/ppatk_upload-cloudinary', ...createCloudinaryUploadHandler({ mixedCloudinaryUpload, extractPublicIdFromUrl }));
 app.post('/api/ppatk_upload-pdf', ...createCloudinaryPDFUploadHandler({ mixedCloudinaryUpload, extractPublicIdFromUrl }));
 
+// PPATK: Load all booking data for table (untuk frontend table)
+app.get('/api/ppatk_get-booking-data', async (req, res) => {
+    try {
+        // Validasi session
+        if (!req.session.user || !req.session.user.userid) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Unauthorized - Session required' 
+            });
+        }
+
+        const { page = 1, limit = 20, q } = req.query;
+        const userid = req.session.user.userid;
+        const lim = Math.min(parseInt(limit) || 20, 100);
+        const off = (parseInt(page) - 1) * lim;
+        
+        console.log(`🔍 [PPATK-GET-BOOKING-DATA] Request from user: ${userid}, page: ${page}`);
+        
+        const params = [userid];
+        let where = `b.userid = $1`;
+        
+        if (q && String(q).trim().length) {
+            params.push(`%${String(q).trim().toLowerCase()}%`);
+            where += ` AND (lower(b.nobooking) LIKE $${params.length} OR lower(b.namawajibpajak) LIKE $${params.length} OR lower(b.namapemilikobjekpajak) LIKE $${params.length})`;
+        }
+        
+        params.push(lim, off);
+        
+        const sql = `
+            SELECT 
+                b.nobooking, b.noppbb, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak, b.npwpwajibpajak,
+                b.status, b.trackstatus, b.updated_at,
+                b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path, b.pdf_dokumen_path,
+                b.file_withstempel_path, b.file_booking_path
+            FROM pat_1_bookingsspd b
+            WHERE ${where}
+            ORDER BY b.updated_at DESC NULLS LAST
+            LIMIT $${params.length-1} OFFSET $${params.length}
+        `;
+        
+        const result = await pool.query(sql, params);
+        
+        console.log(`✅ [PPATK-GET-BOOKING-DATA] Found ${result.rows.length} bookings for user: ${userid}`);
+        
+        return res.json({ 
+            success: true, 
+            page: parseInt(page), 
+            limit: lim, 
+            data: result.rows 
+        });
+    } catch (error) {
+        console.error('❌ [PPATK-GET-BOOKING-DATA] Error:', error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
 // PPATK: daftar berkas yang sudah Diserahkan (untuk unduh berkas tervalidasi)
 app.get('/api/ppatk/lsb_send/rekap/diserahkan', async (req, res) => {
     try {
@@ -219,8 +278,8 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
     }
 });
 
-// Tambahkan validasi lebih ketat
-app.get('/api/ppatk_get-booking-data', async (req, res) => {
+// Endpoint untuk get specific booking data by nobooking
+app.get('/api/ppatk_get-booking-detail', async (req, res) => {
     try {
         // Validasi session
         if (!req.session.user || !req.session.user.userid) {
@@ -249,9 +308,8 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
 
         const userid = req.session.user.userid;
         
-        console.log(`🔍 [PPATK-GET-BOOKING] Request from user: ${userid}, nobooking: ${nobooking}`);
+        console.log(`🔍 [PPATK-GET-BOOKING-DETAIL] Request from user: ${userid}, nobooking: ${nobooking}`);
 
-    try {
         // Query lengkap dengan JOIN ke semua tabel terkait
         const query = `
             SELECT 
@@ -271,7 +329,7 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
         const result = await pool.query(query, [nobooking.trim(), userid]);
         
         if (result.rows.length === 0) {
-            console.log(`❌ [PPATK-GET-BOOKING] No booking found for: ${nobooking} (user: ${userid})`);
+            console.log(`❌ [PPATK-GET-BOOKING-DETAIL] No booking found for: ${nobooking} (user: ${userid})`);
             return res.status(404).json({ 
                 success: false, 
                 message: 'Booking not found or access denied' 
@@ -279,23 +337,15 @@ app.get('/api/ppatk_get-booking-data', async (req, res) => {
         }
 
         const bookingData = result.rows[0];
-        console.log(`✅ [PPATK-GET-BOOKING] Found booking: ${nobooking}`);
+        console.log(`✅ [PPATK-GET-BOOKING-DETAIL] Found booking: ${nobooking}`);
         
         res.json({
             success: true,
             data: bookingData
         });
 
-    } catch (dbError) {
-        console.error(`❌ [PPATK-GET-BOOKING] Database error for ${nobooking}:`, dbError);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Database error occurred' 
-        });
-    }
-
     } catch (error) {
-        console.error(`❌ [PPATK-GET-BOOKING] General error:`, error);
+        console.error(`❌ [PPATK-GET-BOOKING-DETAIL] Error:`, error);
         res.status(500).json({ 
             success: false, 
             message: 'Internal server error' 
