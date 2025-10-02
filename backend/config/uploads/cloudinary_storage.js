@@ -279,6 +279,11 @@ export function extractPublicIdFromUrl(url) {
     // Remove extension if present
     publicId = publicId.replace(/\.\w+$/, '');
     
+    // Remove folder path (everything before the last slash)
+    // e.g., "bappenda/dokumen-sspd/PAT09_Akta_000001_2025_20251002_020829" -> "PAT09_Akta_000001_2025_20251002_020829"
+    const pathParts = publicId.split('/');
+    publicId = pathParts[pathParts.length - 1];
+    
     console.log('✅ [EXTRACT-PUBLIC-ID] Extracted publicId:', publicId);
     return publicId;
   }
