@@ -450,14 +450,14 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { booking_id } = req.body;
+        const { nobooking } = req.body;
         const userid = req.session.user.userid;
 
         // Handle document upload logic here
         res.json({
             success: true,
             message: 'Documents uploaded successfully',
-            booking_id: booking_id
+            nobooking: nobooking
         });
 
     } catch (error) {
@@ -476,10 +476,10 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { booking_id } = req.query;
+        const { nobooking } = req.query;
         const userid = req.session.user.userid;
 
-        if (!booking_id) {
+        if (!nobooking) {
             return res.status(400).json({ success: false, message: 'Booking ID required' });
         }
 
@@ -487,10 +487,10 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
         const query = `
             SELECT akta_tanah_path, sertifikat_tanah_path, pelengkap_path, pdf_dokumen_path, file_withstempel_path, created_at
             FROM pat_1_bookingsspd
-            WHERE booking_id = $1 AND userid = $2
+            WHERE nobooking = $1 AND userid = $2
         `;
         
-        const result = await pool.query(query, [booking_id, userid]);
+        const result = await pool.query(query, [nobooking, userid]);
         
         res.json({
             success: true,
