@@ -531,40 +531,45 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
         
         const row = result.rows[0];
         
-        // Format data untuk frontend
+        // Format data untuk frontend dengan custom filename
         const formattedData = {
             aktaTanah: row.akta_tanah_path ? {
                 fileUrl: row.akta_tanah_path,
                 fileId: row.akta_tanah_file_id,
-                fileName: row.akta_tanah_path.split('/').pop(),
+                fileName: row.akta_tanah_file_id, // ✅ Gunakan file ID sebagai display name
+                customFileName: row.akta_tanah_file_id, // ✅ Custom filename (sementara sama dengan file ID)
                 mimeType: row.akta_tanah_mime_type,
                 size: row.akta_tanah_size
             } : null,
             sertifikatTanah: row.sertifikat_tanah_path ? {
                 fileUrl: row.sertifikat_tanah_path,
                 fileId: row.sertifikat_tanah_file_id,
-                fileName: row.sertifikat_tanah_path.split('/').pop(),
+                fileName: row.sertifikat_tanah_file_id, // ✅ Gunakan file ID sebagai display name
+                customFileName: row.sertifikat_tanah_file_id, // ✅ Custom filename (sementara sama dengan file ID)
                 mimeType: row.sertifikat_tanah_mime_type,
                 size: row.sertifikat_tanah_size
             } : null,
             pelengkap: row.pelengkap_path ? {
                 fileUrl: row.pelengkap_path,
                 fileId: row.pelengkap_file_id,
-                fileName: row.pelengkap_path.split('/').pop(),
+                fileName: row.pelengkap_file_id, // ✅ Gunakan file ID sebagai display name
+                customFileName: row.pelengkap_file_id, // ✅ Custom filename (sementara sama dengan file ID)
                 mimeType: row.pelengkap_mime_type,
                 size: row.pelengkap_size
             } : null,
             pdfDokumen: row.pdf_dokumen_path ? {
                 fileUrl: row.pdf_dokumen_path,
                 fileId: row.pdf_dokumen_file_id,
-                fileName: row.pdf_dokumen_path.split('/').pop(),
+                fileName: row.pdf_dokumen_file_id, // ✅ Gunakan file ID sebagai display name
+                customFileName: row.pdf_dokumen_file_id, // ✅ Custom filename (sementara sama dengan file ID)
                 mimeType: row.pdf_dokumen_mime_type,
                 size: row.pdf_dokumen_size
             } : null,
             fileWithStempel: row.file_withstempel_path ? {
                 fileUrl: row.file_withstempel_path,
                 fileId: row.file_withstempel_file_id,
-                fileName: row.file_withstempel_path.split('/').pop(),
+                fileName: row.file_withstempel_file_id, // ✅ Gunakan file ID sebagai display name
+                customFileName: row.file_withstempel_file_id, // ✅ Custom filename (sementara sama dengan file ID)
                 mimeType: row.file_withstempel_mime_type,
                 size: row.file_withstempel_size
             } : null,
