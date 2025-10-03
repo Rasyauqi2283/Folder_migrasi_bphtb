@@ -600,7 +600,8 @@ export function createUploadcareProxyEndpoint() {
           'Content-Type': response.headers['content-type'] || 'application/octet-stream',
           'Content-Length': response.headers['content-length'],
           'Cache-Control': 'public, max-age=3600',
-          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Origin': req.headers.origin || '*',
+          'Access-Control-Allow-Credentials': 'true',
           'Access-Control-Allow-Methods': 'GET',
           'Access-Control-Allow-Headers': 'Content-Type'
         });
@@ -613,9 +614,11 @@ export function createUploadcareProxyEndpoint() {
       } catch (streamError) {
         console.error('❌ [UPLOADCARE-PROXY] Stream failed:', streamError.message);
         
-        // Fallback to redirect if streaming fails
-        console.log('🔄 [UPLOADCARE-PROXY] Falling back to redirect');
-        res.redirect(publicUrl);
+        // Return error instead of redirect to avoid CORS issues
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to stream file: ' + streamError.message
+        });
       }
 
     } catch (error) {
