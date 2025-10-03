@@ -1661,6 +1661,14 @@ function previewPDF(pdfUrl, fileName) {
             <div class="modal-content" onclick="event.stopPropagation()">
                 <div class="modal-header">
                     <h3>${fileName}</h3>
+                    <div class="preview-options">
+                        <button class="btn-option active" onclick="switchPreviewMode('cdn', '${pdfUrl}')" id="cdnBtn">
+                            <i class="fas fa-cloud"></i> CDN Direct
+                        </button>
+                        <button class="btn-option" onclick="switchPreviewMode('proxy', '${pdfUrl}')" id="proxyBtn">
+                            <i class="fas fa-server"></i> Railway Proxy
+                        </button>
+                    </div>
                     <button class="close-btn" onclick="closePDFPreview()">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1671,7 +1679,7 @@ function previewPDF(pdfUrl, fileName) {
                             <i class="fas fa-spinner fa-spin"></i>
                             <span>Memuat PDF...</span>
                         </div>
-                        <iframe src="${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1" type="application/pdf" width="100%" height="600px" 
+                        <iframe id="pdfFrame" src="${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1" type="application/pdf" width="100%" height="600px" 
                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                                onload="document.getElementById('pdfLoading').style.display='none';"
                                onerror="this.style.display='none'; document.getElementById('pdfLoading').style.display='none'; this.nextElementSibling.style.display='block';" />
@@ -1736,6 +1744,31 @@ function previewPDF(pdfUrl, fileName) {
             border-bottom: 1px solid #eee;
             background: #f8f9fa;
         }
+        .preview-options {
+            display: flex;
+            gap: 10px;
+            margin: 0 20px;
+        }
+        .btn-option {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        .btn-option:hover {
+            background: #f0f0f0;
+        }
+        .btn-option.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .btn-option i {
+            margin-right: 5px;
+        }
         .modal-header h3 {
             margin: 0;
             color: #333;
@@ -1792,6 +1825,41 @@ function previewPDF(pdfUrl, fileName) {
     
     document.head.appendChild(style);
     document.body.appendChild(modal);
+    
+    // Store current URL for switching modes
+    window.currentPreviewUrl = pdfUrl;
+    window.currentPreviewFileName = fileName;
+}
+
+// Function to switch preview mode
+function switchPreviewMode(mode, pdfUrl) {
+    const cdnBtn = document.getElementById('cdnBtn');
+    const proxyBtn = document.getElementById('proxyBtn');
+    const pdfFrame = document.getElementById('pdfFrame');
+    const loading = document.getElementById('pdfLoading');
+    
+    if (!pdfFrame || !loading) {
+        console.error('Preview elements not found');
+        return;
+    }
+    
+    // Update button states
+    cdnBtn.classList.toggle('active', mode === 'cdn');
+    proxyBtn.classList.toggle('active', mode === 'proxy');
+    
+    // Show loading
+    loading.style.display = 'block';
+    
+    if (mode === 'cdn') {
+        // Direct CDN preview
+        console.log(`🔄 [PREVIEW] Switching to CDN mode: ${pdfUrl}`);
+        pdfFrame.src = `${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`;
+    } else if (mode === 'proxy') {
+        // Railway proxy preview
+        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(pdfUrl)}`;
+        console.log(`🔄 [PREVIEW] Switching to Proxy mode: ${proxyUrl}`);
+        pdfFrame.src = proxyUrl;
+    }
 }
 
 // Function to close PDF preview modal

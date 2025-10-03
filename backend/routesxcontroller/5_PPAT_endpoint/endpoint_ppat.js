@@ -593,6 +593,73 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
     }
 });
 
+// Uploadcare Proxy Endpoint for Preview
+app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
+    try {
+        console.log('🔍 [UPLOADCARE-PROXY] Proxy request received');
+        
+        // Check authentication
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { fileUrl } = req.query;
+        
+        if (!fileUrl) {
+            return res.status(400).json({ success: false, message: 'File URL required' });
+        }
+
+        console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${fileUrl}`);
+
+        // Validate that it's an Uploadcare URL
+        if (!fileUrl.includes('ucarecdn.com')) {
+            return res.status(400).json({ success: false, message: 'Invalid file URL' });
+        }
+
+        // Fetch file from Uploadcare
+        const axios = await import('axios');
+        const response = await axios.default.get(fileUrl, {
+            responseType: 'stream',
+            timeout: 30000,
+            headers: {
+                'User-Agent': 'Bappenda-PPAT-Proxy/1.0'
+            }
+        });
+
+        // Set appropriate headers
+        res.set({
+            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+            'Content-Length': response.headers['content-length'],
+            'Cache-Control': 'public, max-age=3600',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        });
+
+        // Pipe the response
+        response.data.pipe(res);
+
+        console.log(`✅ [UPLOADCARE-PROXY] File proxied successfully: ${fileUrl}`);
+
+    } catch (error) {
+        console.error('❌ [UPLOADCARE-PROXY] Proxy failed:', error.message);
+        
+        if (error.response) {
+            res.status(error.response.status).json({
+                success: false,
+                message: `Proxy error: ${error.response.statusText}`,
+                details: error.message
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Proxy service unavailable',
+                details: error.message
+            });
+        }
+    }
+});
+
 // Update track status endpoint
 app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
     try {
