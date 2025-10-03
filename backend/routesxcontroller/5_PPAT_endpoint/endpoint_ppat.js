@@ -257,17 +257,26 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
         
         const userid = req.session.user.userid;
         const {
-            // Data booking utama
+            // Data booking utama (pat_1_bookingsspd)
             noppbb,
             namawajibpajak,
+            alamatwajibpajak,
             namapemilikobjekpajak,
-            npwpwp,
+            alamatpemilikobjekpajak,
+            tanggal,
             tahunajb,
-            nilai_transaksi,
-            nilai_bphtb,
-            tanggal_perolehan,
-            tanggal_pembayaran,
-            nomor_bukti_pembayaran,
+            kabupatenkotawp,
+            kecamatanwp,
+            kelurahandesawp,
+            rtrwwp,
+            npwpwp,
+            kodeposwp,
+            kabupatenkotaop,
+            kecamatanop,
+            kelurahandesaop,
+            rtrwop,
+            npwpop,
+            kodeposop,
             trackstatus = 'Draft',
             
             // Data BPHTB perhitungan (pat_2_bphtb_perhitungan)
@@ -284,6 +293,9 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             jenisPerolehan,
             keterangan,
             nomor_sertifikat,
+            tanggal_perolehan,
+            tanggal_pembayaran,
+            nomor_bukti_pembayaran,
             
             // Data NJOP perhitungan (pat_5_penghitungan_njop)
             luas_tanah,
@@ -323,18 +335,27 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                     userid,
                     noppbb,
                     namawajibpajak,
+                    alamatwajibpajak,
                     namapemilikobjekpajak,
-                    npwpwp,
+                    alamatpemilikobjekpajak,
+                    tanggal,
                     tahunajb,
-                    nilai_transaksi,
-                    nilai_bphtb,
-                    tanggal_perolehan,
-                    tanggal_pembayaran,
-                    nomor_bukti_pembayaran,
+                    kabupatenkotawp,
+                    kecamatanwp,
+                    kelurahandesawp,
+                    rtrwwp,
+                    npwpwp,
+                    kodeposwp,
+                    kabupatenkotaop,
+                    kecamatanop,
+                    kelurahandesaop,
+                    rtrwop,
+                    npwpop,
+                    kodeposop,
                     trackstatus,
                     created_at,
                     updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 RETURNING nobooking
             `;
             
@@ -343,14 +364,23 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 userid,
                 noppbb,
                 namawajibpajak,
+                alamatwajibpajak,
                 namapemilikobjekpajak,
-                npwpwp,
+                alamatpemilikobjekpajak,
+                tanggal,
                 tahunajb,
-                nilai_transaksi,
-                nilai_bphtb,
-                tanggal_perolehan,
-                tanggal_pembayaran,
-                nomor_bukti_pembayaran,
+                kabupatenkotawp,
+                kecamatanwp,
+                kelurahandesawp,
+                rtrwwp,
+                npwpwp,
+                kodeposwp,
+                kabupatenkotaop,
+                kecamatanop,
+                kelurahandesaop,
+                rtrwop,
+                npwpop,
+                kodeposop,
                 trackstatus
             ];
             
