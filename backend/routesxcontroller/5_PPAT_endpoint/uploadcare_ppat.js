@@ -614,10 +614,23 @@ export function createUploadcareProxyEndpoint() {
       } catch (streamError) {
         console.error('❌ [UPLOADCARE-PROXY] Stream failed:', streamError.message);
         
+        // Check if it's a 404 error (file not found)
+        if (streamError.response && streamError.response.status === 404) {
+          console.log('🔍 [UPLOADCARE-PROXY] File not found in Uploadcare CDN');
+          return res.status(404).json({
+            success: false,
+            message: 'File not found in Uploadcare CDN',
+            fileId: targetFileId,
+            fileUrl: fileUrl
+          });
+        }
+        
         // Return error instead of redirect to avoid CORS issues
         return res.status(500).json({
           success: false,
-          message: 'Failed to stream file: ' + streamError.message
+          message: 'Failed to stream file: ' + streamError.message,
+          fileId: targetFileId,
+          fileUrl: fileUrl
         });
       }
 

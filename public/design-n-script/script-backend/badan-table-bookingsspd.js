@@ -3793,6 +3793,13 @@ async function testProxyEndpoint(fileUrl) {
         });
         
         console.log('🧪 [TEST-PROXY] Response status:', response.status);
+        
+        // Consider 404 as "working" (file not found, but proxy is working)
+        if (response.status === 404) {
+            console.log('🧪 [TEST-PROXY] File not found (404) - proxy working but file missing');
+            return true; // Proxy is working, file just doesn't exist
+        }
+        
         return response.ok;
     } catch (error) {
         console.error('🧪 [TEST-PROXY] Error:', error);
