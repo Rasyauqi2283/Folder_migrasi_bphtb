@@ -1189,7 +1189,7 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
         
         // If fileId is provided instead of fileUrl, construct the URL
         if (fileId && !fileUrl) {
-            targetUrl = `https://ucarecdn.com/${fileId}`;
+            targetUrl = `https://44renul14z.ucarecd.net/${fileId}`;
         }
         
         if (!targetUrl) {
