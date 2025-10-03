@@ -353,10 +353,8 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                     rtrwop,
                     npwpop,
                     kodeposop,
-                    trackstatus,
-                    created_at,
-                    updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    trackstatus
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
                 RETURNING nobooking
             `;
             
