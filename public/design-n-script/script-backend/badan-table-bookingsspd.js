@@ -3605,7 +3605,7 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Akta Tanah - ${documentData.aktaTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <button onclick="previewDocument('${documentData.aktaTanah.fileUrl}', 'Akta Tanah')" class="btn-view-doc">
+                    <button onclick="smartPreviewDocument('${documentData.aktaTanah.fileUrl}', 'Akta Tanah')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'akta_tanah')">
@@ -3625,7 +3625,7 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Sertifikat Tanah - ${documentData.sertifikatTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <button onclick="previewDocument('${documentData.sertifikatTanah.fileUrl}', 'Sertifikat Tanah')" class="btn-view-doc">
+                    <button onclick="smartPreviewDocument('${documentData.sertifikatTanah.fileUrl}', 'Sertifikat Tanah')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'sertifikat_tanah')">
@@ -3645,7 +3645,7 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Dokumen Pelengkap - ${documentData.pelengkap.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <button onclick="previewDocument('${documentData.pelengkap.fileUrl}', 'Dokumen Pelengkap')" class="btn-view-doc">
+                    <button onclick="smartPreviewDocument('${documentData.pelengkap.fileUrl}', 'Dokumen Pelengkap')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pelengkap')">
@@ -3665,7 +3665,7 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">PDF Dokumen - ${documentData.pdfDokumen.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <button onclick="previewDocument('${documentData.pdfDokumen.fileUrl}', 'PDF Dokumen')" class="btn-view-doc">
+                    <button onclick="smartPreviewDocument('${documentData.pdfDokumen.fileUrl}', 'PDF Dokumen')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pdf_dokumen')">
@@ -3685,7 +3685,7 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">File dengan Stempel - ${documentData.fileWithStempel.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <button onclick="previewDocument('${documentData.fileWithStempel.fileUrl}', 'File dengan Stempel')" class="btn-view-doc">
+                    <button onclick="smartPreviewDocument('${documentData.fileWithStempel.fileUrl}', 'File dengan Stempel')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'file_withstempel')">
@@ -3781,6 +3781,62 @@ async function previewDocument(fileUrl, documentName) {
     }
 }
 
+// Helper function to extract booking ID from current context
+function getCurrentBookingId() {
+    // Try to get from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get('nobooking');
+    if (bookingId) return bookingId;
+    
+    // Try to get from selected row in table
+    const selectedRow = document.querySelector('#badanUsahaTable tbody tr.selected');
+    if (selectedRow) {
+        return selectedRow.dataset.nobooking;
+    }
+    
+    // Try to get from active document section
+    const activeSection = document.querySelector('.document-section.active');
+    if (activeSection) {
+        return activeSection.id.replace('document-', '');
+    }
+    
+    console.warn('⚠️ [HELPER] Could not determine booking ID from context');
+    return null;
+}
+
+// Helper function to extract document type from file URL
+function getDocumentTypeFromUrl(fileUrl) {
+    if (!fileUrl) return null;
+    
+    // Extract file ID from URL
+    const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
+    if (!fileIdMatch) return null;
+    
+    const fileId = fileIdMatch[1];
+    
+    // Try to determine document type from current context
+    // Check which document section is active or which button was clicked
+    const activeSection = document.querySelector('.document-section.active');
+    if (activeSection) {
+        const sectionId = activeSection.id;
+        if (sectionId.includes('akta')) return 'akta_tanah';
+        if (sectionId.includes('sertifikat')) return 'sertifikat_tanah';
+        if (sectionId.includes('pelengkap')) return 'pelengkap';
+    }
+    
+    // Fallback: try to determine from button context
+    const clickedButton = document.activeElement;
+    if (clickedButton) {
+        const buttonText = clickedButton.textContent.toLowerCase();
+        if (buttonText.includes('akta')) return 'akta_tanah';
+        if (buttonText.includes('sertifikat')) return 'sertifikat_tanah';
+        if (buttonText.includes('pelengkap')) return 'pelengkap';
+    }
+    
+    console.warn('⚠️ [HELPER] Could not determine document type from context');
+    return null;
+}
+
 // Function to test proxy endpoint
 async function testProxyEndpoint(fileUrl) {
     try {
@@ -3804,6 +3860,198 @@ async function testProxyEndpoint(fileUrl) {
     } catch (error) {
         console.error('🧪 [TEST-PROXY] Error:', error);
         return false;
+    }
+}
+
+// Function to find alternative file ID if current one is invalid
+async function findAlternativeFileId(bookingId, documentType) {
+    try {
+        console.log(`🔍 [FIND-ALTERNATIVE] Looking for alternative file ID for ${documentType} in booking ${bookingId}`);
+        
+        // First, try to get latest file info from database
+        const response = await fetch(`/api/ppatk/get-documents?booking_id=${bookingId}`, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch documents: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+            // Map document types to data structure
+            const documentMap = {
+                'akta_tanah': data.data.aktaTanah,
+                'sertifikat_tanah': data.data.sertifikatTanah,
+                'pelengkap': data.data.pelengkap
+            };
+            
+            const documentData = documentMap[documentType];
+            
+            if (documentData && documentData.fileId) {
+                console.log(`🔍 [FIND-ALTERNATIVE] Found file ID in database: ${documentData.fileId}`);
+                
+                // Test if this file ID is valid
+                const testUrl = `https://ucarecdn.com/${documentData.fileId}`;
+                const isValid = await testProxyEndpoint(testUrl);
+                
+                if (isValid) {
+                    console.log(`✅ [FIND-ALTERNATIVE] File ID is valid: ${documentData.fileId}`);
+                    return {
+                        fileId: documentData.fileId,
+                        fileUrl: documentData.fileUrl,
+                        source: 'database'
+                    };
+                } else {
+                    console.log(`❌ [FIND-ALTERNATIVE] File ID in database is also invalid: ${documentData.fileId}`);
+                }
+            }
+        }
+        
+        // If database file ID is also invalid, try to find latest file from Uploadcare
+        console.log(`🔍 [FIND-ALTERNATIVE] Searching for latest file in Uploadcare...`);
+        
+        // This would require Uploadcare API access to search files by metadata
+        // For now, return null and let the user know they need to re-upload
+        console.warn(`⚠️ [FIND-ALTERNATIVE] No valid alternative file found for ${documentType}`);
+        return null;
+        
+    } catch (error) {
+        console.error('❌ [FIND-ALTERNATIVE] Error finding alternative file ID:', error);
+        return null;
+    }
+}
+
+// Function to update database with new file ID
+async function updateDatabaseWithNewFileId(bookingId, documentType, newFileId, newFileUrl) {
+    try {
+        console.log(`🔄 [UPDATE-DB] Updating database with new file ID for ${documentType}: ${newFileId}`);
+        
+        const response = await fetch('/api/ppatk/update-file-id', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nobooking: bookingId,
+                documentType: documentType,
+                fileId: newFileId,
+                fileUrl: newFileUrl
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to update database: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log(`✅ [UPDATE-DB] Database updated successfully for ${documentType}`);
+            return true;
+        } else {
+            console.error(`❌ [UPDATE-DB] Database update failed: ${result.message}`);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ [UPDATE-DB] Error updating database:', error);
+        return false;
+    }
+}
+
+// Smart preview function with auto-sync mechanism
+async function smartPreviewDocument(fileUrl, documentName) {
+    try {
+        console.log('🧠 [SMART-PREVIEW] Starting smart preview:', { fileUrl, documentName });
+        
+        // Extract context information
+        const bookingId = getCurrentBookingId();
+        const documentType = getDocumentTypeFromUrl(fileUrl);
+        
+        if (!bookingId || !documentType) {
+            console.warn('⚠️ [SMART-PREVIEW] Missing context information, falling back to regular preview');
+            return await previewDocument(fileUrl, documentName);
+        }
+        
+        console.log('🧠 [SMART-PREVIEW] Context:', { bookingId, documentType });
+        
+        // Test current file ID
+        const proxyWorking = await testProxyEndpoint(fileUrl);
+        
+        if (proxyWorking) {
+            console.log('✅ [SMART-PREVIEW] Current file ID is valid, proceeding with preview');
+            return await previewDocument(fileUrl, documentName);
+        } else {
+            console.log('🔄 [SMART-PREVIEW] Current file ID is invalid, searching for alternative...');
+            
+            // Find alternative file ID
+            const alternativeFile = await findAlternativeFileId(bookingId, documentType);
+            
+            if (alternativeFile) {
+                console.log('✅ [SMART-PREVIEW] Found alternative file:', alternativeFile);
+                
+                // Update database with new file ID
+                const updateSuccess = await updateDatabaseWithNewFileId(
+                    bookingId, 
+                    documentType, 
+                    alternativeFile.fileId, 
+                    alternativeFile.fileUrl
+                );
+                
+                if (updateSuccess) {
+                    console.log('✅ [SMART-PREVIEW] Database updated, previewing with new file ID');
+                    return await previewDocument(alternativeFile.fileUrl, documentName);
+                } else {
+                    console.warn('⚠️ [SMART-PREVIEW] Database update failed, previewing with alternative file anyway');
+                    return await previewDocument(alternativeFile.fileUrl, documentName);
+                }
+            } else {
+                console.error('❌ [SMART-PREVIEW] No alternative file found');
+                
+                // Show user-friendly error message
+                const errorMessage = `
+                    <div style="padding: 20px; text-align: center; color: #dc3545;">
+                        <h4>Dokumen tidak dapat dimuat</h4>
+                        <p>File ${documentName} tidak ditemukan di Uploadcare CDN.</p>
+                        <p>Silakan upload ulang dokumen ini.</p>
+                        <button onclick="window.close()" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                            Tutup
+                        </button>
+                    </div>
+                `;
+                
+                const newWindow = window.open('', '_blank', 'width=600,height=400');
+                if (newWindow) {
+                    newWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>Error - ${documentName}</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                            </style>
+                        </head>
+                        <body>
+                            ${errorMessage}
+                        </body>
+                        </html>
+                    `);
+                    newWindow.document.close();
+                }
+                
+                return false;
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ [SMART-PREVIEW] Smart preview failed:', error);
+        
+        // Fallback to regular preview
+        console.log('🔄 [SMART-PREVIEW] Falling back to regular preview');
+        return await previewDocument(fileUrl, documentName);
     }
 }
 

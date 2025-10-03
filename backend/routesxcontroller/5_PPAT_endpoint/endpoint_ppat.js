@@ -652,6 +652,108 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
     }
 });
 
+// Endpoint to update file ID in database
+app.post('/api/ppatk/update-file-id', async (req, res) => {
+    try {
+        console.log('🔄 [UPDATE-FILE-ID] Update request received');
+        
+        // Check authentication
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking, documentType, fileId, fileUrl } = req.body;
+        
+        if (!nobooking || !documentType || !fileId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: nobooking, documentType, fileId'
+            });
+        }
+
+        console.log('🔄 [UPDATE-FILE-ID] Updating:', { nobooking, documentType, fileId });
+
+        // Map document types to database columns
+        const columnMap = {
+            'akta_tanah': {
+                fileId: 'akta_tanah_file_id',
+                path: 'akta_tanah_path'
+            },
+            'sertifikat_tanah': {
+                fileId: 'sertifikat_tanah_file_id',
+                path: 'sertifikat_tanah_path'
+            },
+            'pelengkap': {
+                fileId: 'pelengkap_file_id',
+                path: 'pelengkap_path'
+            },
+            'pdf_dokumen': {
+                fileId: 'pdf_dokumen_file_id',
+                path: 'pdf_dokumen_path'
+            },
+            'file_withstempel': {
+                fileId: 'file_withstempel_file_id',
+                path: 'file_withstempel_path'
+            }
+        };
+
+        const columns = columnMap[documentType];
+        if (!columns) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid document type'
+            });
+        }
+
+        // Update database
+        const updateQuery = `
+            UPDATE pat_1_bookingsspd 
+            SET 
+                ${columns.fileId} = $1,
+                ${columns.path} = $2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE nobooking = $3
+        `;
+
+        const updateParams = [fileId, fileUrl || `https://ucarecdn.com/${fileId}`, nobooking];
+        
+        const result = await pool.query(updateQuery, updateParams);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        console.log('✅ [UPDATE-FILE-ID] Database updated successfully:', {
+            nobooking,
+            documentType,
+            fileId,
+            rowsAffected: result.rowCount
+        });
+
+        res.json({
+            success: true,
+            message: 'File ID updated successfully',
+            data: {
+                nobooking,
+                documentType,
+                fileId,
+                fileUrl: fileUrl || `https://ucarecdn.com/${fileId}`
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [UPDATE-FILE-ID] Update failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update file ID',
+            error: error.message
+        });
+    }
+});
+
 // PPATK: Load all booking data for table (untuk frontend table)
 app.get('/api/ppatk/load-all-booking', async (req, res) => {
     try {
