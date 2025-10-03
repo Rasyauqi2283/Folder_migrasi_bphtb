@@ -317,9 +317,47 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             jenis_wajib_pajak
         });
         
-        // Generate nobooking
-        const timestamp = Date.now();
-        const nobooking = `BK${userid}_${timestamp}`;
+        // Get user's ppatk_khusus and generate nobooking
+        const getUserQuery = `
+            SELECT ppatk_khusus 
+            FROM a_2_verified_users 
+            WHERE userid = $1
+        `;
+        
+        const userResult = await pool.query(getUserQuery, [userid]);
+        
+        if (userResult.rows.length === 0) {
+            throw new Error('User not found');
+        }
+        
+        const ppatk_khusus = userResult.rows[0].ppatk_khusus;
+        
+        if (!ppatk_khusus) {
+            throw new Error('User does not have ppatk_khusus assigned');
+        }
+        
+        // Generate sequence number for this year
+        const currentYear = new Date().getFullYear();
+        const sequenceQuery = `
+            SELECT COUNT(*) + 1 as next_sequence 
+            FROM pat_1_bookingsspd 
+            WHERE userid = $1 AND EXTRACT(YEAR FROM created_at) = $2
+        `;
+        
+        const sequenceResult = await pool.query(sequenceQuery, [userid, currentYear]);
+        const sequenceNumber = sequenceResult.rows[0].next_sequence;
+        
+        // Generate nobooking in format: ppatk_khusus_tahun_sequence (6 digits)
+        const formattedSequence = sequenceNumber.toString().padStart(6, '0');
+        const nobooking = `${ppatk_khusus}_${currentYear}_${formattedSequence}`;
+        
+        console.log('📝 [PPATK] Generated nobooking:', {
+            ppatk_khusus,
+            currentYear,
+            sequenceNumber,
+            formattedSequence,
+            nobooking
+        });
         
         console.log('📝 [PPATK] Starting transaction for booking creation...');
         
