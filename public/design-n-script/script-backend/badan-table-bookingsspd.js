@@ -3706,23 +3706,24 @@ function displayUploadedDocuments(bookingId, documentData) {
 }
 
 // Function to preview documents using proxy to avoid sandbox issues
-function previewDocument(fileUrl, documentName) {
+async function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
     
-    // Debug: Test proxy endpoint first
-    testProxyEndpoint(fileUrl).then(proxyWorking => {
+    // Check if it's an Uploadcare URL
+    if (fileUrl.includes('ucarecdn.com')) {
+        // Test proxy endpoint first
+        const proxyWorking = await testProxyEndpoint(fileUrl);
         console.log('🔍 [PREVIEW] Proxy test result:', proxyWorking);
+        
         if (!proxyWorking) {
             console.warn('⚠️ [PREVIEW] Proxy not working, using direct URL');
             window.open(fileUrl, '_blank');
             return;
         }
-    });
-    
-    // Check if it's an Uploadcare URL
-    if (fileUrl.includes('ucarecdn.com')) {
+        
         // Use proxy endpoint to avoid sandbox issues
         const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        console.log('🔍 [PREVIEW] Using proxy URL:', proxyUrl);
         
         // Open in new window with proper iframe sandbox attributes
         const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
@@ -3740,6 +3741,7 @@ function previewDocument(fileUrl, documentName) {
                         .content { height: calc(100vh - 60px); }
                         iframe { width: 100%; height: 100%; border: none; }
                         .error { padding: 20px; text-align: center; color: #dc3545; }
+                        .loading { padding: 20px; text-align: center; color: #6c757d; }
                     </style>
                 </head>
                 <body>
@@ -3747,16 +3749,20 @@ function previewDocument(fileUrl, documentName) {
                         <h3>Preview: ${documentName}</h3>
                     </div>
                     <div class="content">
+                        <div class="loading" id="loading">
+                            <i class="fas fa-spinner fa-spin"></i> Memuat dokumen...
+                        </div>
                         <iframe src="${proxyUrl}" 
                                 title="Document Preview"
-                                onload="console.log('Document loaded successfully')"
-                                onerror="this.nextElementSibling.style.display='block'; this.style.display='none';">
+                                style="display: none;"
+                                onload="document.getElementById('loading').style.display='none'; this.style.display='block'; console.log('Document loaded successfully');"
+                                onerror="document.getElementById('loading').style.display='none'; document.getElementById('error').style.display='block'; console.error('Document failed to load');">
                         </iframe>
-                        <div class="error" style="display:none;">
+                        <div class="error" id="error" style="display:none;">
                             <h4>Dokumen tidak dapat dimuat</h4>
                             <p>Silakan coba lagi atau hubungi administrator.</p>
                             <div style="margin-top: 10px;">
-                                <button onclick="window.location.reload()" style="margin-right: 10px;">Coba Lagi</button>
+                                <button onclick="window.location.reload()" style="margin-right: 10px; background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Coba Lagi</button>
                                 <button onclick="window.open('${fileUrl}', '_blank')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Buka Langsung</button>
                             </div>
                         </div>
