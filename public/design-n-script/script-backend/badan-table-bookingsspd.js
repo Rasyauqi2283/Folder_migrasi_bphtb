@@ -3709,6 +3709,16 @@ function displayUploadedDocuments(bookingId, documentData) {
 function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
     
+    // Debug: Test proxy endpoint first
+    testProxyEndpoint(fileUrl).then(proxyWorking => {
+        console.log('🔍 [PREVIEW] Proxy test result:', proxyWorking);
+        if (!proxyWorking) {
+            console.warn('⚠️ [PREVIEW] Proxy not working, using direct URL');
+            window.open(fileUrl, '_blank');
+            return;
+        }
+    });
+    
     // Check if it's an Uploadcare URL
     if (fileUrl.includes('ucarecdn.com')) {
         // Use proxy endpoint to avoid sandbox issues
@@ -3739,14 +3749,16 @@ function previewDocument(fileUrl, documentName) {
                     <div class="content">
                         <iframe src="${proxyUrl}" 
                                 title="Document Preview"
-                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                                 onload="console.log('Document loaded successfully')"
                                 onerror="this.nextElementSibling.style.display='block'; this.style.display='none';">
                         </iframe>
                         <div class="error" style="display:none;">
                             <h4>Dokumen tidak dapat dimuat</h4>
                             <p>Silakan coba lagi atau hubungi administrator.</p>
-                            <button onclick="window.location.reload()">Coba Lagi</button>
+                            <div style="margin-top: 10px;">
+                                <button onclick="window.location.reload()" style="margin-right: 10px;">Coba Lagi</button>
+                                <button onclick="window.open('${fileUrl}', '_blank')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Buka Langsung</button>
+                            </div>
                         </div>
                     </div>
                 </body>
@@ -3760,6 +3772,25 @@ function previewDocument(fileUrl, documentName) {
     } else {
         // For non-Uploadcare URLs, open directly
         window.open(fileUrl, '_blank');
+    }
+}
+
+// Function to test proxy endpoint
+async function testProxyEndpoint(fileUrl) {
+    try {
+        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        console.log('🧪 [TEST-PROXY] Testing:', proxyUrl);
+        
+        const response = await fetch(proxyUrl, {
+            method: 'HEAD', // Just check if endpoint responds
+            credentials: 'include'
+        });
+        
+        console.log('🧪 [TEST-PROXY] Response status:', response.status);
+        return response.ok;
+    } catch (error) {
+        console.error('🧪 [TEST-PROXY] Error:', error);
+        return false;
     }
 }
 
