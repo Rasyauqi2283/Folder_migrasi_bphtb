@@ -6,7 +6,7 @@ import { pool } from '../../../db.js';
 const UPLOADCARE_CONFIG = {
   publicKey: process.env.UPLOADCARE_PUBLIC_KEY || 'demopublickey',
   secretKey: process.env.UPLOADCARE_SECRET_KEY || 'demosecretkey',
-  cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://ucarecdn.com',
+  cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
   apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
 };
 

@@ -715,7 +715,7 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
             WHERE nobooking = $3
         `;
 
-        const updateParams = [fileId, fileUrl || `https://ucarecdn.com/${fileId}`, nobooking];
+        const updateParams = [fileId, fileUrl || `https://44renul14z.ucarecd.net/${fileId}`, nobooking];
         
         const result = await pool.query(updateQuery, updateParams);
 
@@ -740,7 +740,7 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
                 nobooking,
                 documentType,
                 fileId,
-                fileUrl: fileUrl || `https://ucarecdn.com/${fileId}`
+                fileUrl: fileUrl || `https://44renul14z.ucarecd.net/${fileId}`
             }
         });
 

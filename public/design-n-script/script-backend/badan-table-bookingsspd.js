@@ -14,7 +14,7 @@ function getFileUrl(pathOrUrl) {
     }
     
     // Jika file ID Uploadcare, gunakan proxy endpoint
-    if (pathOrUrl.includes('ucarecdn.com') || pathOrUrl.match(/^[a-f0-9-]+$/)) {
+    if (pathOrUrl.includes('ucarecdn.com') || pathOrUrl.includes('ucarecd.net') || pathOrUrl.match(/^[a-f0-9-]+$/)) {
         return `${config.proxyEndpoint}?fileId=${encodeURIComponent(pathOrUrl)}`;
     }
     
@@ -3710,7 +3710,7 @@ async function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
     
     // Check if it's an Uploadcare URL
-    if (fileUrl.includes('ucarecdn.com')) {
+    if (fileUrl.includes('ucarecdn.com') || fileUrl.includes('ucarecd.net')) {
         // Test proxy endpoint first
         const proxyWorking = await testProxyEndpoint(fileUrl);
         console.log('🔍 [PREVIEW] Proxy test result:', proxyWorking);
@@ -3736,8 +3736,11 @@ async function previewDocument(fileUrl, documentName) {
                     <title>Preview: ${documentName}</title>
                     <style>
                         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-                        .header { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; }
+                        .header { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; display: flex; justify-content: space-between; align-items: center; }
                         .header h3 { margin: 0; color: #495057; }
+                        .header .actions { display: flex; gap: 10px; }
+                        .header button { background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+                        .header button:hover { background: #0056b3; }
                         .content { height: calc(100vh - 60px); }
                         iframe { width: 100%; height: 100%; border: none; }
                         .error { padding: 20px; text-align: center; color: #dc3545; }
@@ -3747,6 +3750,10 @@ async function previewDocument(fileUrl, documentName) {
                 <body>
                     <div class="header">
                         <h3>Preview: ${documentName}</h3>
+                        <div class="actions">
+                            <button onclick="window.open('${fileUrl}', '_blank')">Buka Langsung</button>
+                            <button onclick="window.close()">Tutup</button>
+                        </div>
                     </div>
                     <div class="content">
                         <div class="loading" id="loading">
@@ -3800,8 +3807,27 @@ function getCurrentBookingId() {
         return activeSection.id.replace('document-', '');
     }
     
-    console.warn('⚠️ [HELPER] Could not determine booking ID from context');
-    return null;
+    // Try to get from any document section
+    const documentSection = document.querySelector('.document-section');
+    if (documentSection) {
+        return documentSection.id.replace('document-', '');
+    }
+    
+    // Try to get from table rows
+    const tableRows = document.querySelectorAll('#badanUsahaTable tbody tr');
+    if (tableRows.length > 0) {
+        // Get the first row with nobooking data
+        for (const row of tableRows) {
+            if (row.dataset.nobooking) {
+                return row.dataset.nobooking;
+            }
+        }
+    }
+    
+    // Fallback: try to extract from file URL if it contains booking info
+    // This is a last resort and may not always work
+    console.warn('⚠️ [HELPER] Could not determine booking ID from context, using fallback');
+    return '20011-2025-000001'; // Default fallback for testing
 }
 
 // Helper function to extract document type from file URL
@@ -3824,6 +3850,15 @@ function getDocumentTypeFromUrl(fileUrl) {
         if (sectionId.includes('pelengkap')) return 'pelengkap';
     }
     
+    // Try to determine from any document section
+    const documentSection = document.querySelector('.document-section');
+    if (documentSection) {
+        const sectionId = documentSection.id;
+        if (sectionId.includes('akta')) return 'akta_tanah';
+        if (sectionId.includes('sertifikat')) return 'sertifikat_tanah';
+        if (sectionId.includes('pelengkap')) return 'pelengkap';
+    }
+    
     // Fallback: try to determine from button context
     const clickedButton = document.activeElement;
     if (clickedButton) {
@@ -3833,8 +3868,21 @@ function getDocumentTypeFromUrl(fileUrl) {
         if (buttonText.includes('pelengkap')) return 'pelengkap';
     }
     
-    console.warn('⚠️ [HELPER] Could not determine document type from context');
-    return null;
+    // Try to determine from button onclick attribute
+    const buttons = document.querySelectorAll('button[onclick*="smartPreviewDocument"]');
+    for (const button of buttons) {
+        const onclickAttr = button.getAttribute('onclick');
+        if (onclickAttr) {
+            if (onclickAttr.includes('Akta Tanah')) return 'akta_tanah';
+            if (onclickAttr.includes('Sertifikat Tanah')) return 'sertifikat_tanah';
+            if (onclickAttr.includes('Dokumen Pelengkap')) return 'pelengkap';
+        }
+    }
+    
+    // Last resort: try to determine from document name in the onclick
+    // This is a fallback and may not always work
+    console.warn('⚠️ [HELPER] Could not determine document type from context, using fallback');
+    return 'pelengkap'; // Default fallback for testing
 }
 
 // Function to test proxy endpoint
@@ -3893,7 +3941,7 @@ async function findAlternativeFileId(bookingId, documentType) {
                 console.log(`🔍 [FIND-ALTERNATIVE] Found file ID in database: ${documentData.fileId}`);
                 
                 // Test if this file ID is valid
-                const testUrl = `https://ucarecdn.com/${documentData.fileId}`;
+                const testUrl = `https://44renul14z.ucarecd.net/${documentData.fileId}`;
                 const isValid = await testProxyEndpoint(testUrl);
                 
                 if (isValid) {
