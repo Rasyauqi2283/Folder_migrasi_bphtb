@@ -1084,6 +1084,71 @@ function showAlert(type, message, title = null) {
             height: 60px;
         }
         
+        /* Error States */
+        .file-error {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            color: #721c24;
+            font-size: 14px;
+        }
+        
+        .image-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            color: #6c757d;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .pdf-error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            color: #721c24;
+            text-align: center;
+        }
+        
+        .pdf-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            color: #6c757d;
+        }
+        
+        .video-icon {
+            font-size: 24px;
+            color: #28a745;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
         .btn-view {
             padding: 4px 8px;
             background: #007bff;
@@ -1390,13 +1455,52 @@ function showAlert(type, message, title = null) {
         }
         function updateDocumentDisplay(nobooking, data) {
             // Helper function to create uploaded file display
-            const createUploadedFileDisplay = (type, path, url) => {
+            const createUploadedFileDisplay = (type, fileData) => {
                 const container = document.getElementById(`${type}Container-${nobooking}`);
-                if (!container) return;
+                if (!container || !fileData) return;
 
-                const isPdf = path.toLowerCase().endsWith('.pdf');
-                const fileName = path.split('/').pop();
-                const displayUrl = url || '/' + path;
+                // Gunakan cdnUrl dari Uploadcare dengan validasi
+                const displayUrl = fileData.fileUrl || fileData.url || fileData.publicUrl;
+                const fileName = fileData.fileName || 'Unknown file';
+                const mimeType = fileData.mimeType || '';
+                const fileSize = fileData.size || 0;
+                
+                // Validasi URL
+                if (!displayUrl || displayUrl === 'null' || displayUrl === 'undefined' || !displayUrl.startsWith('http')) {
+                    console.warn(`Invalid display URL for ${type}:`, displayUrl);
+                    container.innerHTML = `
+                        <label>${type === 'aktaTanah' ? 'Akta Tanah' : type === 'sertifikatTanah' ? 'Sertifikat Tanah' : 'Dokumen Pelengkap'}:</label>
+                        <div class="file-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>File tidak tersedia atau URL tidak valid</span>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Deteksi file type yang lebih robust
+                const isPdf = mimeType === 'application/pdf' || 
+                              displayUrl.toLowerCase().endsWith('.pdf') || 
+                              fileName.toLowerCase().endsWith('.pdf');
+                              
+                const isImage = mimeType.startsWith('image/') || 
+                                ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].some(ext => 
+                                    fileName.toLowerCase().endsWith('.' + ext)
+                                );
+                                
+                const isVideo = mimeType.startsWith('video/') || 
+                                ['mp4', 'avi', 'mov', 'wmv'].some(ext => 
+                                    fileName.toLowerCase().endsWith('.' + ext)
+                                );
+
+                // Format file size
+                const formatFileSize = (bytes) => {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
 
                 container.innerHTML = `
                     <label>${type === 'aktaTanah' ? 'Akta Tanah' : type === 'sertifikatTanah' ? 'Sertifikat Tanah' : 'Dokumen Pelengkap'}:</label>
@@ -1405,15 +1509,33 @@ function showAlert(type, message, title = null) {
                             <div class="file-content">
                                 ${isPdf ? 
                                     '<i class="fas fa-file-pdf pdf-icon" aria-hidden="true"></i>' : 
-                                    `<img src="${displayUrl}" class="file-thumbnail" alt="Preview">`}
+                                    isImage ? 
+                                        `<img src="${displayUrl}" class="file-thumbnail" alt="Preview" 
+                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                              onload="this.nextElementSibling.style.display='none';">
+                                         <div class="image-error" style="display:none;">
+                                             <i class="fas fa-image"></i>
+                                             <span>Preview tidak tersedia</span>
+                                         </div>` :
+                                    isVideo ?
+                                        '<i class="fas fa-file-video video-icon" aria-hidden="true"></i>' :
+                                        '<i class="fas fa-file-alt file-icon" aria-hidden="true"></i>'}
                                 <div class="file-details">
-                                    <span class="file-name">${fileName}</span>
-                                    <span class="file-size">(Uploaded)</span>
+                                    <span class="file-name" title="${fileName}">${fileName}</span>
+                                    <span class="file-size">${formatFileSize(fileSize)}</span>
+                                    <span class="file-type">${isPdf ? 'PDF' : isImage ? 'Image' : isVideo ? 'Video' : 'File'}</span>
                                 </div>
                             </div>
-                            <a href="${displayUrl}" target="_blank" class="btn-view" aria-label="Lihat dokumen">
-                                <i class="fas fa-eye"></i> Lihat
-                            </a>
+                            <div class="file-actions">
+                                <a href="${displayUrl}" target="_blank" class="btn-view" aria-label="Lihat dokumen">
+                                    <i class="fas fa-eye"></i> Lihat
+                                </a>
+                                ${isPdf ? `
+                                    <button class="btn-preview" onclick="previewPDF('${displayUrl}', '${fileName}')" aria-label="Preview PDF">
+                                        <i class="fas fa-expand"></i> Preview
+                                    </button>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                     <button class="btn-replace" onclick="replaceFile('${type}', '${nobooking}')" aria-label="Ganti file">
@@ -1436,10 +1558,26 @@ function showAlert(type, message, title = null) {
                 }
             };
 
-            // Update each file type if available
-            if (data.akta_tanah_path) createUploadedFileDisplay('aktaTanah', data.akta_tanah_path, data.akta_tanah_url);
-            if (data.sertifikat_tanah_path) createUploadedFileDisplay('sertifikatTanah', data.sertifikat_tanah_path, data.sertifikat_tanah_url);
-            if (data.pelengkap_path) createUploadedFileDisplay('pelengkap', data.pelengkap_path, data.pelengkap_url);
+            // Update each file type if available using Uploadcare data
+            if (data.fileDetails) {
+                if (data.fileDetails.aktaTanah) createUploadedFileDisplay('aktaTanah', data.fileDetails.aktaTanah);
+                if (data.fileDetails.sertifikatTanah) createUploadedFileDisplay('sertifikatTanah', data.fileDetails.sertifikatTanah);
+                if (data.fileDetails.pelengkap) createUploadedFileDisplay('pelengkap', data.fileDetails.pelengkap);
+            } else {
+                // Fallback untuk data lama
+                if (data.akta_tanah_path) createUploadedFileDisplay('aktaTanah', { 
+                    fileUrl: data.akta_tanah_path, 
+                    fileName: data.akta_tanah_path.split('/').pop() 
+                });
+                if (data.sertifikat_tanah_path) createUploadedFileDisplay('sertifikatTanah', { 
+                    fileUrl: data.sertifikat_tanah_path, 
+                    fileName: data.sertifikat_tanah_path.split('/').pop() 
+                });
+                if (data.pelengkap_path) createUploadedFileDisplay('pelengkap', { 
+                    fileUrl: data.pelengkap_path, 
+                    fileName: data.pelengkap_path.split('/').pop() 
+                });
+            }
         }
         function replaceFile(type, nobooking) {
             const input = document.getElementById(`${type}Input-${nobooking}`);
@@ -1512,6 +1650,156 @@ function showAlert(type, message, title = null) {
                 }
             });
         }
+
+// Function to preview PDF in modal
+function previewPDF(pdfUrl, fileName) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'pdf-preview-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closePDFPreview()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>${fileName}</h3>
+                    <button class="close-btn" onclick="closePDFPreview()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="pdf-container">
+                        <div class="pdf-loading" id="pdfLoading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <span>Memuat PDF...</span>
+                        </div>
+                        <embed src="${pdfUrl}" type="application/pdf" width="100%" height="600px" 
+                               onload="document.getElementById('pdfLoading').style.display='none';"
+                               onerror="this.style.display='none'; document.getElementById('pdfLoading').style.display='none'; this.nextElementSibling.style.display='block';" />
+                        <div class="pdf-error" style="display:none;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h4>PDF tidak dapat dimuat</h4>
+                            <p>File PDF mungkin rusak atau tidak dapat diakses.</p>
+                            <a href="${pdfUrl}" target="_blank" class="btn-download">
+                                <i class="fas fa-download"></i> Download PDF
+                            </a>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <a href="${pdfUrl}" target="_blank" class="btn-download">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button onclick="closePDFPreview()" class="btn-close">
+                            <i class="fas fa-times"></i> Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .pdf-preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+        }
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px;
+        }
+        .close-btn:hover {
+            color: #333;
+        }
+        .modal-body {
+            padding: 0;
+        }
+        .modal-body embed {
+            border: none;
+            display: block;
+        }
+        .modal-actions {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .btn-download, .btn-close {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn-download {
+            background: #007bff;
+            color: white;
+        }
+        .btn-download:hover {
+            background: #0056b3;
+        }
+        .btn-close {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-close:hover {
+            background: #545b62;
+        }
+    `;
+    
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+}
+
+// Function to close PDF preview modal
+function closePDFPreview() {
+    const modal = document.querySelector('.pdf-preview-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
 
         // ======================
         // DRAG & DROP HANDLERS

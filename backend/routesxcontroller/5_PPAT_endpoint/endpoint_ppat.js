@@ -483,18 +483,90 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Booking ID required' });
         }
 
-        // Get documents from database
+        // Get documents from database with Uploadcare information
         const query = `
-            SELECT akta_tanah_path, sertifikat_tanah_path, pelengkap_path, pdf_dokumen_path, file_withstempel_path, created_at
+            SELECT 
+                akta_tanah_path, 
+                akta_tanah_file_id,
+                akta_tanah_mime_type,
+                akta_tanah_size,
+                sertifikat_tanah_path, 
+                sertifikat_tanah_file_id,
+                sertifikat_tanah_mime_type,
+                sertifikat_tanah_size,
+                pelengkap_path, 
+                pelengkap_file_id,
+                pelengkap_mime_type,
+                pelengkap_size,
+                pdf_dokumen_path, 
+                pdf_dokumen_file_id,
+                pdf_dokumen_mime_type,
+                pdf_dokumen_size,
+                file_withstempel_path,
+                file_withstempel_file_id,
+                file_withstempel_mime_type,
+                file_withstempel_size,
+                created_at,
+                updated_at
             FROM pat_1_bookingsspd
             WHERE nobooking = $1 AND userid = $2
         `;
         
         const result = await pool.query(query, [nobooking, userid]);
         
+        if (result.rows.length === 0) {
+            return res.json({
+                success: true,
+                data: null
+            });
+        }
+        
+        const row = result.rows[0];
+        
+        // Format data untuk frontend
+        const formattedData = {
+            aktaTanah: row.akta_tanah_path ? {
+                fileUrl: row.akta_tanah_path,
+                fileId: row.akta_tanah_file_id,
+                fileName: row.akta_tanah_path.split('/').pop(),
+                mimeType: row.akta_tanah_mime_type,
+                size: row.akta_tanah_size
+            } : null,
+            sertifikatTanah: row.sertifikat_tanah_path ? {
+                fileUrl: row.sertifikat_tanah_path,
+                fileId: row.sertifikat_tanah_file_id,
+                fileName: row.sertifikat_tanah_path.split('/').pop(),
+                mimeType: row.sertifikat_tanah_mime_type,
+                size: row.sertifikat_tanah_size
+            } : null,
+            pelengkap: row.pelengkap_path ? {
+                fileUrl: row.pelengkap_path,
+                fileId: row.pelengkap_file_id,
+                fileName: row.pelengkap_path.split('/').pop(),
+                mimeType: row.pelengkap_mime_type,
+                size: row.pelengkap_size
+            } : null,
+            pdfDokumen: row.pdf_dokumen_path ? {
+                fileUrl: row.pdf_dokumen_path,
+                fileId: row.pdf_dokumen_file_id,
+                fileName: row.pdf_dokumen_path.split('/').pop(),
+                mimeType: row.pdf_dokumen_mime_type,
+                size: row.pdf_dokumen_size
+            } : null,
+            fileWithStempel: row.file_withstempel_path ? {
+                fileUrl: row.file_withstempel_path,
+                fileId: row.file_withstempel_file_id,
+                fileName: row.file_withstempel_path.split('/').pop(),
+                mimeType: row.file_withstempel_mime_type,
+                size: row.file_withstempel_size
+            } : null,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        };
+        
         res.json({
             success: true,
-            data: result.rows[0] || null
+            data: formattedData
         });
 
     } catch (error) {

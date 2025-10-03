@@ -19,15 +19,6 @@ console.log('🌐 [UPLOADCARE-STORAGE] Uploadcare Config:', {
   config_status: '✅ COMPLETE'
 });
 
-const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
-// Bungkus buffer dengan Blob agar mimetype ikut dikirim
-const blob = new Blob([fileBuffer], { type: file.mimetype });
-
-// Initialize Uploadcare client
-const uploadClient = new UploadClient({
-  publicKey: UPLOADCARE_CONFIG.publicKey
-});
-
 // Helper function untuk generate folder structure
 function generateFolderStructure(userid, nobooking, docType) {
   const currentYear = new Date().getFullYear();
@@ -39,6 +30,16 @@ function generateFolderStructure(userid, nobooking, docType) {
 // Helper function untuk generate file name
 function generateFileName(userid, docType, sequenceNumber, timestamp) {
   return `${userid}_${docType}_${sequenceNumber}_${timestamp}`;
+}
+
+function getExtensionFromMime(mimetype) {
+  switch (mimetype) {
+    case 'application/pdf': return 'pdf';
+    case 'image/jpeg': return 'jpg';
+    case 'image/png': return 'png';
+    case 'image/gif': return 'gif';
+    default: return ''; // fallback
+  }
 }
 
 // Upload file to Uploadcare
@@ -55,7 +56,9 @@ export async function uploadToUploadcare(file, options = {}) {
     // Generate folder structure and file name
     const folderStructure = generateFolderStructure(userid, nobooking, docType);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = generateFileName(userid, docType, sequenceNumber, timestamp);
+    const ext = getExtensionFromMime(file.mimetype);
+    const fileName = `${generateFileName(userid, docType, sequenceNumber, timestamp)}${ext ? '.' + ext : ''}`;
+    
     
     console.log(`📤 [UPLOADCARE-UPLOAD] Starting upload:`, {
       fileName,
@@ -63,6 +66,11 @@ export async function uploadToUploadcare(file, options = {}) {
       resourceType,
       fileSize: file.size,
       fileType: file.mimetype
+    });
+
+    // Initialize Uploadcare client
+    const uploadClient = new UploadClient({
+      publicKey: UPLOADCARE_CONFIG.publicKey
     });
 
     // Upload file to Uploadcare
@@ -79,6 +87,9 @@ export async function uploadToUploadcare(file, options = {}) {
     
     // Ensure we have a proper Buffer
     const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
+    
+    // Bungkus buffer dengan Blob agar mimetype ikut dikirim
+    const blob = new Blob([fileBuffer], { type: file.mimetype });
     
     // Try with different buffer formats
     console.log(`🔍 [UPLOADCARE-UPLOAD] Attempting upload with buffer...`);
@@ -135,12 +146,13 @@ export async function uploadToUploadcare(file, options = {}) {
     }
 
     console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful:`, {
-      fileId: uploadResult.file,
+      fileId: uploadResult.file || uploadResult.uuid,
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size,
-      mimeType: uploadResult.mimeType,
-      cdnUrl: uploadResult.cdnUrl
+      mimeType: uploadResult.mimeType || file.mimetype,
+      cdnUrl: uploadResult.cdnUrl,
+      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`
     });
 
     return {
@@ -149,9 +161,11 @@ export async function uploadToUploadcare(file, options = {}) {
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size,
-      mimeType: uploadResult.mimeType,
-      fileUrl: uploadResult.cdnUrl,
-      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`,
+      mimeType: uploadResult.mimeType || file.mimetype,
+      fileUrl: uploadResult.cdnUrl, // ✅ selalu kirim ke frontend
+      url: uploadResult.cdnUrl, // ✅ alias untuk kompatibilitas
+      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`, // ✅ versi publik
+      path: `${folderStructure}/${fileName}`, // hanya sebagai referensi internal
       metadata: {
         userid,
         nobooking,
@@ -167,7 +181,13 @@ export async function uploadToUploadcare(file, options = {}) {
     return {
       success: false,
       error: error.message,
-      details: error
+      details: {
+        message: error.message,
+        stack: error.stack,
+        fileName: options.fileName || 'unknown',
+        fileSize: file?.size || 0,
+        fileType: file?.mimetype || 'unknown'
+      }
     };
   }
 }

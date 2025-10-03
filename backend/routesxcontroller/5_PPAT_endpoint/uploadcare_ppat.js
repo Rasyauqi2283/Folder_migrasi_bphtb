@@ -171,6 +171,7 @@ export function createUploadcareUploadHandler() {
                 success: true,
                 fileId: uploadResult.fileId,
                 fileName: uploadResult.fileName,
+                fileUrl: uploadResult.fileUrl,
                 url: uploadResult.url,
                 publicUrl: uploadResult.publicUrl,
                 size: uploadResult.size,
@@ -218,10 +219,10 @@ export function createUploadcareUploadHandler() {
         }
       }
 
-      // Update database with new file URLs
-      const aktaTanahUrl = uploadedFiles.aktaTanah?.publicUrl || null;
-      const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.publicUrl || null;
-      const pelengkapUrl = uploadedFiles.pelengkap?.publicUrl || null;
+      // Update database with new file URLs (use cdnUrl for frontend access)
+      const aktaTanahUrl = uploadedFiles.aktaTanah?.fileUrl || uploadedFiles.aktaTanah?.url || null;
+      const sertifikatTanahUrl = uploadedFiles.sertifikatTanah?.fileUrl || uploadedFiles.sertifikatTanah?.url || null;
+      const pelengkapUrl = uploadedFiles.pelengkap?.fileUrl || uploadedFiles.pelengkap?.url || null;
 
       console.log('💾 [UPLOADCARE-UPLOAD] Updating database with new URLs:', {
         aktaTanah: aktaTanahUrl,
@@ -232,11 +233,35 @@ export function createUploadcareUploadHandler() {
       const updateResult = await pool.query(
         `UPDATE pat_1_bookingsspd 
          SET akta_tanah_path = $1, 
-             sertifikat_tanah_path = $2, 
-             pelengkap_path = $3, 
+             akta_tanah_file_id = $2,
+             akta_tanah_mime_type = $3,
+             akta_tanah_size = $4,
+             sertifikat_tanah_path = $5, 
+             sertifikat_tanah_file_id = $6,
+             sertifikat_tanah_mime_type = $7,
+             sertifikat_tanah_size = $8,
+             pelengkap_path = $9,
+             pelengkap_file_id = $10,
+             pelengkap_mime_type = $11,
+             pelengkap_size = $12,
              updated_at = CURRENT_TIMESTAMP
-         WHERE nobooking = $4 AND userid = $5`,
-        [aktaTanahUrl, sertifikatTanahUrl, pelengkapUrl, nobooking, userid]
+         WHERE nobooking = $13 AND userid = $14`,
+        [
+          aktaTanahUrl, 
+          uploadedFiles.aktaTanah?.fileId || null,
+          uploadedFiles.aktaTanah?.mimeType || null,
+          uploadedFiles.aktaTanah?.size || null,
+          sertifikatTanahUrl, 
+          uploadedFiles.sertifikatTanah?.fileId || null,
+          uploadedFiles.sertifikatTanah?.mimeType || null,
+          uploadedFiles.sertifikatTanah?.size || null,
+          pelengkapUrl,
+          uploadedFiles.pelengkap?.fileId || null,
+          uploadedFiles.pelengkap?.mimeType || null,
+          uploadedFiles.pelengkap?.size || null,
+          nobooking, 
+          userid
+        ]
       );
 
       if (updateResult.rowCount > 0) {
@@ -248,17 +273,35 @@ export function createUploadcareUploadHandler() {
           data: {
             nobooking,
             uploadedFiles: Object.keys(uploadedFiles),
-            // URLs untuk review
+            // URLs untuk review (menggunakan cdnUrl)
             reviewUrls: {
-              aktaTanah: uploadedFiles.aktaTanah?.publicUrl,
-              sertifikatTanah: uploadedFiles.sertifikatTanah?.publicUrl,
-              pelengkap: uploadedFiles.pelengkap?.publicUrl
+              aktaTanah: uploadedFiles.aktaTanah?.fileUrl || uploadedFiles.aktaTanah?.url,
+              sertifikatTanah: uploadedFiles.sertifikatTanah?.fileUrl || uploadedFiles.sertifikatTanah?.url,
+              pelengkap: uploadedFiles.pelengkap?.fileUrl || uploadedFiles.pelengkap?.url
             },
-            // File IDs untuk internal access
-            fileIds: {
-              aktaTanah: uploadedFiles.aktaTanah?.fileId,
-              sertifikatTanah: uploadedFiles.sertifikatTanah?.fileId,
-              pelengkap: uploadedFiles.pelengkap?.fileId
+            // File details untuk frontend preview
+            fileDetails: {
+              aktaTanah: uploadedFiles.aktaTanah ? {
+                fileId: uploadedFiles.aktaTanah.fileId,
+                fileName: uploadedFiles.aktaTanah.fileName,
+                fileUrl: uploadedFiles.aktaTanah.fileUrl || uploadedFiles.aktaTanah.url,
+                mimeType: uploadedFiles.aktaTanah.mimeType,
+                size: uploadedFiles.aktaTanah.size
+              } : null,
+              sertifikatTanah: uploadedFiles.sertifikatTanah ? {
+                fileId: uploadedFiles.sertifikatTanah.fileId,
+                fileName: uploadedFiles.sertifikatTanah.fileName,
+                fileUrl: uploadedFiles.sertifikatTanah.fileUrl || uploadedFiles.sertifikatTanah.url,
+                mimeType: uploadedFiles.sertifikatTanah.mimeType,
+                size: uploadedFiles.sertifikatTanah.size
+              } : null,
+              pelengkap: uploadedFiles.pelengkap ? {
+                fileId: uploadedFiles.pelengkap.fileId,
+                fileName: uploadedFiles.pelengkap.fileName,
+                fileUrl: uploadedFiles.pelengkap.fileUrl || uploadedFiles.pelengkap.url,
+                mimeType: uploadedFiles.pelengkap.mimeType,
+                size: uploadedFiles.pelengkap.size
+              } : null
             },
             // Metadata untuk review
             reviewInfo: {
@@ -413,10 +456,23 @@ export function createUploadcarePDFUploadHandler() {
 
       console.log(`✅ [UPLOADCARE-PDF] PDF accessibility confirmed`);
 
-      // Update database
+      // Update database with complete metadata
       const updateResult = await pool.query(
-        'UPDATE pat_1_bookingsspd SET pdf_dokumen_path = $1, updated_at = CURRENT_TIMESTAMP WHERE nobooking = $2 AND userid = $3',
-        [uploadResult.publicUrl, nobooking, userid]
+        `UPDATE pat_1_bookingsspd 
+         SET pdf_dokumen_path = $1, 
+             pdf_dokumen_file_id = $2,
+             pdf_dokumen_mime_type = $3,
+             pdf_dokumen_size = $4,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE nobooking = $5 AND userid = $6`,
+        [
+          uploadResult.fileUrl,  // Gunakan fileUrl (cdnUrl) bukan publicUrl
+          uploadResult.fileId,
+          uploadResult.mimeType,
+          uploadResult.size,
+          nobooking, 
+          userid
+        ]
       );
 
       if (updateResult.rowCount > 0) {
@@ -428,7 +484,7 @@ export function createUploadcarePDFUploadHandler() {
           data: {
             nobooking,
             // URLs untuk review
-            reviewUrl: uploadResult.publicUrl,
+            reviewUrl: uploadResult.fileUrl,
             fileId: uploadResult.fileId,
             // Metadata untuk review
             reviewInfo: {
