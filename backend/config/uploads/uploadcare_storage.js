@@ -177,9 +177,20 @@ export async function uploadToUploadcare(file, options = {}) {
       throw new Error('No file ID returned from upload');
     }
 
-    // Generate URLs
-    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${fileId}`;
-    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${fileId}`;
+    // Generate URLs - Standardize format dengan Uploadcare
+    // Clean file ID (remove ~1 suffix if present)
+    const cleanFileId = fileId.replace(/~.*$/, '');
+    
+    // Use standard Uploadcare CDN format
+    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`;
+    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`;
+    
+    console.log(`🔍 [UPLOADCARE-URL] URL generation:`, {
+      originalFileId: fileId,
+      cleanFileId: cleanFileId,
+      cdnUrl: cdnUrl,
+      publicUrl: publicUrl
+    });
 
     console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful:`, {
       fileId: fileId,
@@ -193,7 +204,8 @@ export async function uploadToUploadcare(file, options = {}) {
 
     return {
       success: true,
-      fileId: fileId,
+      fileId: cleanFileId, // ✅ gunakan clean file ID
+      originalFileId: fileId, // ✅ simpan original untuk reference
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size || file.size,
@@ -255,18 +267,22 @@ export async function getFileInfo(fileId) {
       isReady: fileInfo.isReady
     });
 
+    // Clean file ID untuk konsistensi
+    const cleanFileId = fileInfo.uuid.replace(/~.*$/, '');
+    
     return {
       success: true,
       fileInfo: {
-        fileId: fileInfo.uuid,
+        fileId: cleanFileId, // ✅ gunakan clean file ID
+        originalFileId: fileInfo.uuid, // ✅ simpan original untuk reference
         fileName: fileInfo.originalFilename,
         size: fileInfo.size,
         mimeType: fileInfo.mimeType,
         isStored: fileInfo.isStored,
         isImage: fileInfo.isImage,
         isReady: fileInfo.isReady,
-        url: `${UPLOADCARE_CONFIG.cdnBase}/${fileInfo.uuid}`,
-        publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${fileInfo.uuid}`
+        url: `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`,
+        publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`
       }
     };
 
@@ -510,7 +526,10 @@ export function generatePublicUrl(fileId, options = {}) {
       format = 'auto'
     } = options;
 
-    let url = `${UPLOADCARE_CONFIG.cdnBase}/${fileId}`;
+    // Clean file ID untuk konsistensi
+    const cleanFileId = fileId.replace(/~.*$/, '');
+    
+    let url = `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`;
     
     // Add transformations if specified
     const transformations = [];
@@ -520,7 +539,7 @@ export function generatePublicUrl(fileId, options = {}) {
     if (format !== 'auto') transformations.push(`-/format/${format}/`);
     
     if (transformations.length > 0) {
-      url = `${UPLOADCARE_CONFIG.cdnBase}/${transformations.join('')}${fileId}`;
+      url = `${UPLOADCARE_CONFIG.cdnBase}/${transformations.join('')}${cleanFileId}`;
     }
 
     console.log(`🔗 [UPLOADCARE-URL] Generated public URL: ${url}`);
