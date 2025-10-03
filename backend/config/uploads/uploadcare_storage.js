@@ -26,9 +26,21 @@ function generateFolderStructure(userid, nobooking, docType) {
   return `bappenda/sspd/${currentYear}/${userid}/${nobooking}/${docType}`;
 }
 
-// Helper function untuk generate file name
-function generateFileName(userid, docType, sequenceNumber, timestamp) {
-  return `${userid}_${docType}_${sequenceNumber}_${timestamp}`;
+// Helper function untuk generate file name - CUSTOM FORMAT
+function generateFileName(userid, docType, sequenceNumber, timestamp, nobooking) {
+  // Format: userid_dokumenp_ppatk_khusus_nobooking_timestamp
+  const customFileName = `${userid}_${docType}_${sequenceNumber}_${nobooking}_${timestamp}`;
+  
+  console.log(`🔍 [FILENAME-GENERATOR] Custom filename generated:`, {
+    userid,
+    docType,
+    sequenceNumber,
+    nobooking,
+    timestamp,
+    customFileName
+  });
+  
+  return customFileName;
 }
 
 function getExtensionFromMime(mimetype) {
@@ -56,14 +68,19 @@ export async function uploadToUploadcare(file, options = {}) {
     const folderStructure = generateFolderStructure(userid, nobooking, docType);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const ext = getExtensionFromMime(file.mimetype);
-    const fileName = `${generateFileName(userid, docType, sequenceNumber, timestamp)}${ext ? '.' + ext : ''}`;
+    
+    // Generate custom filename dengan format yang disepakati
+    const customFileName = generateFileName(userid, docType, sequenceNumber, timestamp, nobooking);
+    const fileName = `${customFileName}${ext ? '.' + ext : ''}`;
     
     console.log(`📤 [UPLOADCARE-UPLOAD] Starting upload:`, {
+      customFileName,
       fileName,
       folderStructure,
       resourceType,
       fileSize: file.size,
-      fileType: file.mimetype
+      fileType: file.mimetype,
+      format: 'userid_docType_sequenceNumber_nobooking_timestamp'
     });
 
     // Initialize Uploadcare client
@@ -206,7 +223,8 @@ export async function uploadToUploadcare(file, options = {}) {
       success: true,
       fileId: cleanFileId, // ✅ gunakan clean file ID
       originalFileId: fileId, // ✅ simpan original untuk reference
-      fileName: fileName,
+      fileName: fileName, // ✅ filename dengan extension
+      customFileName: customFileName, // ✅ custom filename tanpa extension
       folder: folderStructure,
       size: uploadResult.size || file.size,
       mimeType: uploadResult.mimeType || file.mimetype,
@@ -220,7 +238,8 @@ export async function uploadToUploadcare(file, options = {}) {
         docType,
         sequenceNumber,
         resourceType,
-        uploadDate: new Date().toISOString()
+        uploadDate: new Date().toISOString(),
+        namingFormat: 'userid_docType_sequenceNumber_nobooking_timestamp'
       }
     };
 
