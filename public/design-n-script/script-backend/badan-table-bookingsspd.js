@@ -1671,7 +1671,8 @@ function previewPDF(pdfUrl, fileName) {
                             <i class="fas fa-spinner fa-spin"></i>
                             <span>Memuat PDF...</span>
                         </div>
-                        <embed src="${pdfUrl}" type="application/pdf" width="100%" height="600px" 
+                        <iframe src="${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1" type="application/pdf" width="100%" height="600px" 
+                               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
                                onload="document.getElementById('pdfLoading').style.display='none';"
                                onerror="this.style.display='none'; document.getElementById('pdfLoading').style.display='none'; this.nextElementSibling.style.display='block';" />
                         <div class="pdf-error" style="display:none;">
@@ -3479,10 +3480,14 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
 // Function to load uploaded documents for a specific booking
 async function loadUploadedDocuments(bookingId) {
     try {
+        console.log(`🔍 [LOAD-DOCUMENTS] Loading documents for booking: ${bookingId}`);
+        
         const response = await fetch(`/api/ppatk/get-documents?booking_id=${bookingId}`, {
             method: 'GET',
             credentials: 'include'
         });
+        
+        console.log(`🔍 [LOAD-DOCUMENTS] Response status: ${response.status}`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -3490,10 +3495,18 @@ async function loadUploadedDocuments(bookingId) {
         
         const data = await response.json();
         
-        if (data.success && data.data.length > 0) {
-            return data.data[0]; // Return the most recent document set
+        console.log(`🔍 [LOAD-DOCUMENTS] Response data:`, data);
+        
+        if (data.success && data.data) {
+            console.log(`✅ [LOAD-DOCUMENTS] Documents loaded successfully:`, {
+                aktaTanah: data.data.aktaTanah ? 'Present' : 'Null',
+                sertifikatTanah: data.data.sertifikatTanah ? 'Present' : 'Null',
+                pelengkap: data.data.pelengkap ? 'Present' : 'Null'
+            });
+            return data.data;
         }
         
+        console.log(`⚠️ [LOAD-DOCUMENTS] No documents found or data is null`);
         return null;
     } catch (error) {
         console.error('Error loading uploaded documents:', error);

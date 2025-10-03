@@ -476,10 +476,13 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = req.query;
+        const { nobooking, booking_id } = req.query;
         const userid = req.session.user.userid;
 
-        if (!nobooking) {
+        // Support both parameter names for compatibility
+        const bookingId = nobooking || booking_id;
+
+        if (!bookingId) {
             return res.status(400).json({ success: false, message: 'Booking ID required' });
         }
 
@@ -512,9 +515,14 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             WHERE nobooking = $1 AND userid = $2
         `;
         
-        const result = await pool.query(query, [nobooking, userid]);
+        console.log(`🔍 [GET-DOCUMENTS] Querying for booking: ${bookingId}, user: ${userid}`);
+        
+        const result = await pool.query(query, [bookingId, userid]);
+        
+        console.log(`🔍 [GET-DOCUMENTS] Query result: ${result.rows.length} rows found`);
         
         if (result.rows.length === 0) {
+            console.log(`⚠️ [GET-DOCUMENTS] No documents found for booking: ${bookingId}`);
             return res.json({
                 success: true,
                 data: null
@@ -563,6 +571,13 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
+        
+        console.log(`✅ [GET-DOCUMENTS] Returning formatted data:`, {
+            aktaTanah: formattedData.aktaTanah ? 'Present' : 'Null',
+            sertifikatTanah: formattedData.sertifikatTanah ? 'Present' : 'Null',
+            pelengkap: formattedData.pelengkap ? 'Present' : 'Null',
+            pdfDokumen: formattedData.pdfDokumen ? 'Present' : 'Null'
+        });
         
         res.json({
             success: true,
