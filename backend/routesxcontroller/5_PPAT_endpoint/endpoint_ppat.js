@@ -257,6 +257,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
         
         const userid = req.session.user.userid;
         const {
+            // Data booking utama
             noppbb,
             namawajibpajak,
             namapemilikobjekpajak,
@@ -267,7 +268,29 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             tanggal_perolehan,
             tanggal_pembayaran,
             nomor_bukti_pembayaran,
-            trackstatus = 'Draft'
+            trackstatus = 'Draft',
+            
+            // Data BPHTB perhitungan (pat_2_bphtb_perhitungan)
+            nilaiPerolehanObjekPajakTidakKenaPajak,
+            bphtb_yangtelah_dibayar,
+            
+            // Data objek pajak (pat_4_objek_pajak)
+            hargatransaksi,
+            letaktanahdanbangunan,
+            rt_rwobjekpajak,
+            kecamatanlp,
+            kelurahandesalp,
+            status_kepemilikan,
+            jenisPerolehan,
+            keterangan,
+            nomor_sertifikat,
+            
+            // Data NJOP perhitungan (pat_5_penghitungan_njop)
+            luas_tanah,
+            njop_tanah,
+            luas_bangunan,
+            njop_bangunan,
+            total_njoppbb
         } = req.body;
         
         console.log('📝 [PPATK] Booking data received:', {
@@ -286,9 +309,36 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
         const timestamp = Date.now();
         const nobooking = `BK${userid}_${timestamp}`;
         
-        // Insert booking data
-        const insertQuery = `
-            INSERT INTO pat_1_bookingsspd (
+        console.log('📝 [PPATK] Starting transaction for booking creation...');
+        
+        // Start transaction
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            // 1. Insert booking data (parent table)
+            const insertBookingQuery = `
+                INSERT INTO pat_1_bookingsspd (
+                    nobooking,
+                    userid,
+                    noppbb,
+                    namawajibpajak,
+                    namapemilikobjekpajak,
+                    npwpwp,
+                    tahunajb,
+                    nilai_transaksi,
+                    nilai_bphtb,
+                    tanggal_perolehan,
+                    tanggal_pembayaran,
+                    nomor_bukti_pembayaran,
+                    trackstatus,
+                    created_at,
+                    updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING nobooking
+            `;
+            
+            const bookingParams = [
                 nobooking,
                 userid,
                 noppbb,
@@ -301,50 +351,161 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 tanggal_perolehan,
                 tanggal_pembayaran,
                 nomor_bukti_pembayaran,
-                trackstatus,
-                created_at,
-                updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            RETURNING nobooking
-        `;
-        
-        const insertParams = [
-            nobooking,
-            userid,
-            noppbb,
-            namawajibpajak,
-            namapemilikobjekpajak,
-            npwpwp,
-            tahunajb,
-            nilai_transaksi,
-            nilai_bphtb,
-            tanggal_perolehan,
-            tanggal_pembayaran,
-            nomor_bukti_pembayaran,
-            trackstatus
-        ];
-        
-        const result = await pool.query(insertQuery, insertParams);
-        
-        if (result.rows.length === 0) {
-            throw new Error('Failed to create booking');
-        }
-        
-        console.log('✅ [PPATK] Booking created successfully:', {
-            nobooking: result.rows[0].nobooking,
-            userid
-        });
-        
-        res.json({
-            success: true,
-            message: 'Booking dan perhitungan BPHTB berhasil dibuat',
-            nobooking: result.rows[0].nobooking,
-            data: {
-                nobooking: result.rows[0].nobooking,
+                trackstatus
+            ];
+            
+            const bookingResult = await client.query(insertBookingQuery, bookingParams);
+            
+            if (bookingResult.rows.length === 0) {
+                throw new Error('Failed to create booking');
+            }
+            
+            console.log('✅ [PPATK] Booking created:', bookingResult.rows[0].nobooking);
+            
+            // 2. Insert BPHTB perhitungan (pat_2_bphtb_perhitungan)
+            if (nilaiPerolehanObjekPajakTidakKenaPajak !== undefined) {
+                const insertBphtbQuery = `
+                    INSERT INTO pat_2_bphtb_perhitungan (
+                        nilaiperolehanobjekpajaktidakkenapajak,
+                        bphtb_yangtelah_dibayar,
+                        nobooking
+                    ) VALUES ($1, $2, $3)
+                    RETURNING calculationid
+                `;
+                
+                const bphtbParams = [
+                    nilaiPerolehanObjekPajakTidakKenaPajak,
+                    bphtb_yangtelah_dibayar || 0,
+                    nobooking
+                ];
+                
+                const bphtbResult = await client.query(insertBphtbQuery, bphtbParams);
+                console.log('✅ [PPATK] BPHTB perhitungan created:', bphtbResult.rows[0].calculationid);
+            }
+            
+            // 3. Insert objek pajak (pat_4_objek_pajak)
+            if (letaktanahdanbangunan !== undefined) {
+                const insertObjekQuery = `
+                    INSERT INTO pat_4_objek_pajak (
+                        letaktanahdanbangunan,
+                        rt_rwobjekpajak,
+                        status_kepemilikan,
+                        keterangan,
+                        nomor_sertifikat,
+                        tanggal_perolehan,
+                        tanggal_pembayaran,
+                        nomor_bukti_pembayaran,
+                        nobooking,
+                        harga_transaksi,
+                        kelurahandesalp,
+                        kecamatanlp,
+                        jenis_perolehan
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    RETURNING id
+                `;
+                
+                const objekParams = [
+                    letaktanahdanbangunan,
+                    rt_rwobjekpajak || '',
+                    status_kepemilikan || 'Milik Pribadi',
+                    keterangan || '',
+                    nomor_sertifikat || '',
+                    tanggal_perolehan || '',
+                    tanggal_pembayaran || '',
+                    nomor_bukti_pembayaran || '',
+                    nobooking,
+                    hargatransaksi || '',
+                    kelurahandesalp || '',
+                    kecamatanlp || '',
+                    jenisPerolehan || ''
+                ];
+                
+                const objekResult = await client.query(insertObjekQuery, objekParams);
+                console.log('✅ [PPATK] Objek pajak created:', objekResult.rows[0].id);
+            }
+            
+            // 4. Insert NJOP perhitungan (pat_5_penghitungan_njop)
+            if (luas_tanah !== undefined && njop_tanah !== undefined) {
+                const insertNjopQuery = `
+                    INSERT INTO pat_5_penghitungan_njop (
+                        nobooking,
+                        luas_tanah,
+                        njop_tanah,
+                        luas_bangunan,
+                        njop_bangunan,
+                        total_njoppbb,
+                        created_at,
+                        updated_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    RETURNING id
+                `;
+                
+                const njopParams = [
+                    nobooking,
+                    luas_tanah,
+                    njop_tanah,
+                    luas_bangunan || 0,
+                    njop_bangunan || 0,
+                    total_njoppbb || 0
+                ];
+                
+                const njopResult = await client.query(insertNjopQuery, njopParams);
+                console.log('✅ [PPATK] NJOP perhitungan created:', njopResult.rows[0].id);
+            }
+            
+            // 5. Insert tanda tangan placeholder (pat_6_sign)
+            const insertSignQuery = `
+                INSERT INTO pat_6_sign (
+                    nobooking,
+                    userid,
+                    nama
+                ) VALUES ($1, $2, $3)
+                RETURNING id
+            `;
+            
+            const signParams = [
+                nobooking,
+                userid,
+                namawajibpajak || 'Nama Wajib Pajak'
+            ];
+            
+            const signResult = await client.query(insertSignQuery, signParams);
+            console.log('✅ [PPATK] Sign placeholder created:', signResult.rows[0].id);
+            
+            // Commit transaction
+            await client.query('COMMIT');
+            
+            console.log('✅ [PPATK] All booking data created successfully:', {
+                nobooking,
                 userid,
                 trackstatus
-            }
-        });
+            });
+            
+            res.json({
+                success: true,
+                message: 'Booking dan semua data terkait berhasil dibuat',
+                nobooking: nobooking,
+                data: {
+                    nobooking,
+                    userid,
+                    trackstatus,
+                    tables_created: [
+                        'pat_1_bookingsspd',
+                        'pat_2_bphtb_perhitungan',
+                        'pat_4_objek_pajak',
+                        'pat_5_penghitungan_njop',
+                        'pat_6_sign'
+                    ]
+                }
+            });
+            
+        } catch (error) {
+            // Rollback transaction on error
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
         
     } catch (error) {
         console.error('❌ [PPATK] Create booking failed:', error);
