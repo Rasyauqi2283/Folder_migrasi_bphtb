@@ -531,17 +531,31 @@ export function createUploadcarePDFUploadHandler() {
 export function createUploadcareProxyEndpoint() {
   return async (req, res) => {
     try {
-      const { fileId, width, height, quality, format } = req.query;
+      const { fileId, fileUrl, width, height, quality, format } = req.query;
 
-      if (!fileId) {
+      let targetFileId = fileId;
+      
+      // If fileUrl is provided, extract fileId from it
+      if (fileUrl && !fileId) {
+        if (fileUrl.includes('ucarecdn.com/')) {
+          // Extract fileId from URL like https://ucarecdn.com/fileId/
+          const urlParts = fileUrl.split('ucarecdn.com/');
+          if (urlParts.length > 1) {
+            targetFileId = urlParts[1].split('/')[0].split('?')[0];
+          }
+        }
+      }
+
+      if (!targetFileId) {
         return res.status(400).json({
           success: false,
-          message: 'Missing fileId parameter'
+          message: 'Missing fileId parameter or invalid fileUrl'
         });
       }
 
       console.log(`🔗 [UPLOADCARE-PROXY] Proxying file request:`, {
-        fileId,
+        fileId: targetFileId,
+        fileUrl,
         width,
         height,
         quality,
@@ -549,7 +563,7 @@ export function createUploadcareProxyEndpoint() {
       });
 
       // Generate public URL with transformations
-      const publicUrl = generatePublicUrl(fileId, {
+      const publicUrl = generatePublicUrl(targetFileId, {
         width: width ? parseInt(width) : undefined,
         height: height ? parseInt(height) : undefined,
         quality: quality || 'auto',
