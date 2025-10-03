@@ -64,13 +64,10 @@ import cors from 'cors';
 import morgan from 'morgan';
 import winston from 'winston';
 import path from 'path';
-import bcrypt from 'bcrypt';
-import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import fs from 'fs';
 import cron from 'node-cron';
 import { fileURLToPath } from 'url';
-import multer from 'multer';
 //Generator PDF
 import registerGeneratePdfBooking from './backend/services/Generator_PDF/generatepdfbooking_ppat.js';
 import registerGeneratePdfCheckPeneliti from './backend/services/Generator_PDF/generatepdfcheck_peneliti.js';
@@ -106,7 +103,6 @@ import passwordResetRouter from './backend/endpoint_session/password_service.js'
 import profileRouter from './backend/routesxcontroller/2_profile/profile_endpoint.js';
 import notificationRouter from './backend/routesxcontroller/3_notification/notification_routes.js';
 import { triggerNotificationByStatus } from './backend/routesxcontroller/3_notification/notification_service.js';
-import { sendNotificationToLtb } from './backend/routesxcontroller/3_notification/notification_wrapper.js';
 import adminRouter from './backend/routesxcontroller/4_admin/adminRoutes.js';
 import notificationWarehouseRouter from './backend/routesxcontroller/4_admin/notification_warehouse_routes.js';
 import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
@@ -114,11 +110,9 @@ import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/
 import bsreAuthRouter from './backend/routesxcontroller/8_bsre/bsre_auth_routes.js';
 import bsreCertRouter from './backend/routesxcontroller/8_bsre/bsre_certificate_routes.js';
 import bsreValidationRouter from './backend/routesxcontroller/8_bsre/bsre_validation_routes.js';
-import { saveQrToPublic } from './backend/utils/qrcode.js';
 import { buildValidasiPdf } from './backend/services/GeneratorPDF_withKEY/generatepdfvalidasi_key.js';
 
 // App part (core & api couriers)
-import axios from 'axios';
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
