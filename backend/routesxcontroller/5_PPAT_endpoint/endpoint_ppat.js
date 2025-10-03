@@ -453,24 +453,66 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 console.log('✅ [PPATK] NJOP perhitungan created:', njopResult.rows[0].id);
             }
             
-            // 5. Insert tanda tangan placeholder (pat_6_sign)
+            // 5. Insert tanda tangan dengan path dari user profile (pat_6_sign)
+            // Ambil tanda tangan user dari a_2_verified_users
+            const getUserSignatureQuery = `
+                SELECT 
+                    nama,
+                    tanda_tangan_path,
+                    tanda_tangan_mime,
+                    divisi
+                FROM a_2_verified_users 
+                WHERE userid = $1
+            `;
+            
+            const userSignatureResult = await client.query(getUserSignatureQuery, [userid]);
+            
+            if (userSignatureResult.rows.length === 0) {
+                throw new Error('User not found in a_2_verified_users');
+            }
+            
+            const userData = userSignatureResult.rows[0];
+            const userNama = userData.nama || namawajibpajak || 'Nama User';
+            const userSignaturePath = userData.tanda_tangan_path;
+            const userSignatureMime = userData.tanda_tangan_mime;
+            const userDivisi = userData.divisi;
+            
+            console.log('📝 [PPATK] User signature data:', {
+                userid,
+                nama: userNama,
+                divisi: userDivisi,
+                has_signature: !!userSignaturePath,
+                signature_path: userSignaturePath,
+                signature_mime: userSignatureMime
+            });
+            
+            // Insert tanda tangan dengan path dari user profile
             const insertSignQuery = `
                 INSERT INTO pat_6_sign (
                     nobooking,
                     userid,
-                    nama
-                ) VALUES ($1, $2, $3)
+                    nama,
+                    path_ttd_ppatk
+                ) VALUES ($1, $2, $3, $4)
                 RETURNING id
             `;
             
             const signParams = [
                 nobooking,
                 userid,
-                namawajibpajak || 'Nama Wajib Pajak'
+                userNama,
+                userSignaturePath // Path tanda tangan dari user profile
             ];
             
             const signResult = await client.query(insertSignQuery, signParams);
-            console.log('✅ [PPATK] Sign placeholder created:', signResult.rows[0].id);
+            console.log('✅ [PPATK] Sign record created with user signature:', {
+                id: signResult.rows[0].id,
+                nobooking,
+                userid,
+                nama: userNama,
+                path_ttd_ppatk: userSignaturePath,
+                divisi: userDivisi
+            });
             
             // Commit transaction
             await client.query('COMMIT');
