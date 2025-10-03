@@ -1199,7 +1199,7 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
         console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${targetUrl}`);
 
         // Validate that it's an Uploadcare URL or file ID
-        if (!targetUrl.includes('ucarecdn.com') && !targetUrl.match(/^[a-f0-9-]+$/)) {
+        if (!targetUrl.includes('ucarecdn.com') && !targetUrl.includes('ucarecd.net') && !targetUrl.match(/^[a-f0-9-]+$/)) {
             return res.status(400).json({ success: false, message: 'Invalid file URL or ID' });
         }
 
