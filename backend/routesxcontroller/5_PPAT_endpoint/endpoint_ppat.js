@@ -390,7 +390,11 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 throw new Error('Failed to create booking');
             }
             
-            console.log('✅ [PPATK] Booking created:', bookingResult.rows[0].nobooking);
+            const createdNobooking = bookingResult.rows[0].nobooking;
+            console.log('✅ [PPATK] Booking created:', createdNobooking);
+            
+            // Use the nobooking returned from database
+            const finalNobooking = createdNobooking;
             
             // 2. Insert BPHTB perhitungan (pat_2_bphtb_perhitungan)
             if (nilaiPerolehanObjekPajakTidakKenaPajak !== undefined) {
@@ -406,7 +410,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 const bphtbParams = [
                     nilaiPerolehanObjekPajakTidakKenaPajak,
                     bphtb_yangtelah_dibayar || 0,
-                    nobooking
+                    finalNobooking
                 ];
                 
                 const bphtbResult = await client.query(insertBphtbQuery, bphtbParams);
@@ -443,7 +447,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                     tanggal_perolehan || '',
                     tanggal_pembayaran || '',
                     nomor_bukti_pembayaran || '',
-                    nobooking,
+                    finalNobooking,
                     hargatransaksi || '',
                     kelurahandesalp || '',
                     kecamatanlp || '',
@@ -471,7 +475,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 `;
                 
                 const njopParams = [
-                    nobooking,
+                    finalNobooking,
                     luas_tanah,
                     njop_tanah,
                     luas_bangunan || 0,
@@ -528,7 +532,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             `;
             
             const signParams = [
-                nobooking,
+                finalNobooking,
                 userid,
                 userNama,
                 userSignaturePath // Path tanda tangan dari user profile
@@ -537,7 +541,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             const signResult = await client.query(insertSignQuery, signParams);
             console.log('✅ [PPATK] Sign record created with user signature:', {
                 id: signResult.rows[0].id,
-                nobooking,
+                nobooking: finalNobooking,
                 userid,
                 nama: userNama,
                 path_ttd_ppatk: userSignaturePath,
@@ -548,7 +552,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             await client.query('COMMIT');
             
             console.log('✅ [PPATK] All booking data created successfully:', {
-                nobooking,
+                nobooking: finalNobooking,
                 userid,
                 trackstatus
             });
@@ -556,9 +560,9 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             res.json({
                 success: true,
                 message: 'Booking dan semua data terkait berhasil dibuat',
-                nobooking: nobooking,
+                nobooking: finalNobooking,
                 data: {
-                    nobooking,
+                    nobooking: finalNobooking,
                     userid,
                     trackstatus,
                     tables_created: [
