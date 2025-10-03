@@ -3587,6 +3587,8 @@ function displayUploadedDocuments(bookingId, documentData) {
     const documentSection = document.getElementById(`document-${bookingId}`);
     if (!documentSection) return;
     
+    console.log('📝 [DISPLAY-DOCUMENTS] Received document data:', documentData);
+    
     // Create uploaded documents display
     let uploadedDocsHTML = `
         <div class="uploaded-documents-section">
@@ -3594,18 +3596,19 @@ function displayUploadedDocuments(bookingId, documentData) {
             <div class="uploaded-docs-grid">
     `;
     
-    if (documentData.documents.document1) {
+    // Check for aktaTanah document
+    if (documentData.aktaTanah) {
         uploadedDocsHTML += `
             <div class="uploaded-doc-item">
                 <div class="doc-info">
                     <i class="fas fa-file-pdf doc-icon"></i>
-                    <span class="doc-name">${documentData.documents.document1.name}</span>
+                    <span class="doc-name">Akta Tanah - ${documentData.aktaTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.documents.document1.url}" target="_blank" class="btn-view-doc">
+                    <a href="${documentData.aktaTanah.fileUrl}" target="_blank" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </a>
-                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'document1')">
+                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'akta_tanah')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
                 </div>
@@ -3613,18 +3616,79 @@ function displayUploadedDocuments(bookingId, documentData) {
         `;
     }
     
-    if (documentData.documents.document2) {
+    // Check for sertifikatTanah document
+    if (documentData.sertifikatTanah) {
         uploadedDocsHTML += `
             <div class="uploaded-doc-item">
                 <div class="doc-info">
                     <i class="fas fa-file-pdf doc-icon"></i>
-                    <span class="doc-name">${documentData.documents.document2.name}</span>
+                    <span class="doc-name">Sertifikat Tanah - ${documentData.sertifikatTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.documents.document2.url}" target="_blank" class="btn-view-doc">
+                    <a href="${documentData.sertifikatTanah.fileUrl}" target="_blank" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
                     </a>
-                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'document2')">
+                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'sertifikat_tanah')">
+                        <i class="fas fa-sync-alt"></i> Ganti
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Check for pelengkap document
+    if (documentData.pelengkap) {
+        uploadedDocsHTML += `
+            <div class="uploaded-doc-item">
+                <div class="doc-info">
+                    <i class="fas fa-file-pdf doc-icon"></i>
+                    <span class="doc-name">Dokumen Pelengkap - ${documentData.pelengkap.fileName || 'Document'}</span>
+                </div>
+                <div class="doc-actions">
+                    <a href="${documentData.pelengkap.fileUrl}" target="_blank" class="btn-view-doc">
+                        <i class="fas fa-eye"></i> Lihat
+                    </a>
+                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pelengkap')">
+                        <i class="fas fa-sync-alt"></i> Ganti
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Check for pdfDokumen document
+    if (documentData.pdfDokumen) {
+        uploadedDocsHTML += `
+            <div class="uploaded-doc-item">
+                <div class="doc-info">
+                    <i class="fas fa-file-pdf doc-icon"></i>
+                    <span class="doc-name">PDF Dokumen - ${documentData.pdfDokumen.fileName || 'Document'}</span>
+                </div>
+                <div class="doc-actions">
+                    <a href="${documentData.pdfDokumen.fileUrl}" target="_blank" class="btn-view-doc">
+                        <i class="fas fa-eye"></i> Lihat
+                    </a>
+                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pdf_dokumen')">
+                        <i class="fas fa-sync-alt"></i> Ganti
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Check for fileWithStempel document
+    if (documentData.fileWithStempel) {
+        uploadedDocsHTML += `
+            <div class="uploaded-doc-item">
+                <div class="doc-info">
+                    <i class="fas fa-file-pdf doc-icon"></i>
+                    <span class="doc-name">File dengan Stempel - ${documentData.fileWithStempel.fileName || 'Document'}</span>
+                </div>
+                <div class="doc-actions">
+                    <a href="${documentData.fileWithStempel.fileUrl}" target="_blank" class="btn-view-doc">
+                        <i class="fas fa-eye"></i> Lihat
+                    </a>
+                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'file_withstempel')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
                 </div>
