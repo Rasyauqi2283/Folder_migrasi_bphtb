@@ -1197,10 +1197,25 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
         }
 
         console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${targetUrl}`);
+        console.log(`🔍 [UPLOADCARE-PROXY] URL validation:`, {
+            targetUrl,
+            hasUcarecdn: targetUrl.includes('ucarecdn.com'),
+            hasUcarecd: targetUrl.includes('ucarecd.net'),
+            isFileId: targetUrl.match(/^[a-f0-9-]+$/)
+        });
 
         // Validate that it's an Uploadcare URL or file ID
-        if (!targetUrl.includes('ucarecdn.com') && !targetUrl.includes('ucarecd.net') && !targetUrl.match(/^[a-f0-9-]+$/)) {
-            return res.status(400).json({ success: false, message: 'Invalid file URL or ID' });
+        const isValidUploadcareUrl = targetUrl.includes('ucarecdn.com') || 
+                                   targetUrl.includes('ucarecd.net') || 
+                                   targetUrl.match(/^[a-f0-9-]+$/);
+        
+        if (!isValidUploadcareUrl) {
+            console.log(`❌ [UPLOADCARE-PROXY] Invalid URL format: ${targetUrl}`);
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid file URL or ID',
+                details: `URL must be Uploadcare CDN URL or file ID. Received: ${targetUrl}`
+            });
         }
 
         // Fetch file from Uploadcare

@@ -3831,7 +3831,7 @@ function getCurrentBookingId() {
 }
 
 // Helper function to extract document type from file URL
-function getDocumentTypeFromUrl(fileUrl) {
+function getDocumentTypeFromUrl(fileUrl, documentName = null) {
     if (!fileUrl) return null;
     
     // Extract file ID from URL
@@ -3839,6 +3839,16 @@ function getDocumentTypeFromUrl(fileUrl) {
     if (!fileIdMatch) return null;
     
     const fileId = fileIdMatch[1];
+    
+    // First priority: use documentName if provided
+    if (documentName) {
+        const name = documentName.toLowerCase();
+        if (name.includes('akta')) return 'akta_tanah';
+        if (name.includes('sertifikat')) return 'sertifikat_tanah';
+        if (name.includes('pelengkap')) return 'pelengkap';
+        if (name.includes('pdf dokumen')) return 'pdf_dokumen';
+        if (name.includes('stempel')) return 'file_withstempel';
+    }
     
     // Try to determine document type from current context
     // Check which document section is active or which button was clicked
@@ -4017,7 +4027,7 @@ async function smartPreviewDocument(fileUrl, documentName) {
         
         // Extract context information
         const bookingId = getCurrentBookingId();
-        const documentType = getDocumentTypeFromUrl(fileUrl);
+        const documentType = getDocumentTypeFromUrl(fileUrl, documentName);
         
         if (!bookingId || !documentType) {
             console.warn('⚠️ [SMART-PREVIEW] Missing context information, falling back to regular preview');
