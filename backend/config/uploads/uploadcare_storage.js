@@ -1,7 +1,6 @@
-// Uploadcare Storage Configuration
+// Uploadcare Storage Configuration - FIXED VERSION
 import { UploadClient } from '@uploadcare/upload-client';
 import { pool } from '../../../db.js';
-import blob from 'buffer';
 
 // Uploadcare Configuration
 const UPLOADCARE_CONFIG = {
@@ -42,7 +41,7 @@ function getExtensionFromMime(mimetype) {
   }
 }
 
-// Upload file to Uploadcare
+// Upload file to Uploadcare - FIXED VERSION
 export async function uploadToUploadcare(file, options = {}) {
   try {
     const {
@@ -59,7 +58,6 @@ export async function uploadToUploadcare(file, options = {}) {
     const ext = getExtensionFromMime(file.mimetype);
     const fileName = `${generateFileName(userid, docType, sequenceNumber, timestamp)}${ext ? '.' + ext : ''}`;
     
-    
     console.log(`📤 [UPLOADCARE-UPLOAD] Starting upload:`, {
       fileName,
       folderStructure,
@@ -73,31 +71,25 @@ export async function uploadToUploadcare(file, options = {}) {
       publicKey: UPLOADCARE_CONFIG.publicKey
     });
 
-    // Upload file to Uploadcare
-    // Convert file buffer to proper format for Uploadcare
-    // Ensure buffer is properly formatted as binary data
+    // Ensure we have a proper Buffer
+    const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
+    
     console.log(`🔍 [UPLOADCARE-UPLOAD] File buffer info:`, {
-      bufferType: typeof file.buffer,
-      bufferLength: file.buffer?.length,
-      bufferIsBuffer: Buffer.isBuffer(file.buffer),
+      bufferType: typeof fileBuffer,
+      bufferLength: fileBuffer.length,
+      bufferIsBuffer: Buffer.isBuffer(fileBuffer),
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size
     });
     
-    // Ensure we have a proper Buffer
-    const fileBuffer = Buffer.isBuffer(file.buffer) ? file.buffer : Buffer.from(file.buffer);
-    
-    // Bungkus buffer dengan Blob agar mimetype ikut dikirim
-    const blob = new Blob([fileBuffer], { type: file.mimetype });
-    
-    // Try with different buffer formats
-    console.log(`🔍 [UPLOADCARE-UPLOAD] Attempting upload with buffer...`);
-    
     let uploadResult;
+    
+    // Method 1: Try uploadFileGroup (WORKING METHOD)
     try {
-      // Try with buffer directly
-      uploadResult = await uploadClient.uploadFile(blob, {
+      console.log(`🔍 [UPLOADCARE-UPLOAD] Attempting upload with uploadFileGroup...`);
+      
+      uploadResult = await uploadClient.uploadFileGroup([fileBuffer], {
         fileName: fileName,
         metadata: {
           folder: folderStructure,
@@ -108,20 +100,47 @@ export async function uploadToUploadcare(file, options = {}) {
           resourceType: resourceType,
           uploadDate: new Date().toISOString()
         },
-        store: true,
-        secureSignature: true,
-        secureExpire: Math.floor(Date.now() / 1000) + 3600
+        store: true
       });
       
-      console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful with buffer`);
+      console.log(`✅ [UPLOADCARE-UPLOAD] uploadFileGroup successful`);
       
-    } catch (bufferError) {
-      console.log(`⚠️ [UPLOADCARE-UPLOAD] Buffer upload failed:`, bufferError.message);
+    } catch (groupError) {
+      console.log(`⚠️ [UPLOADCARE-UPLOAD] uploadFileGroup failed:`, groupError.message);
       
-      // Try with Uint8Array
+      // Method 2: Try fromUrl with temporary server (FALLBACK)
       try {
-        const uint8Array = new Uint8Array(fileBuffer);
-        uploadResult = await uploadClient.uploadFile(uint8Array, {
+        console.log(`🔍 [UPLOADCARE-UPLOAD] Attempting fallback with fromUrl...`);
+        
+        // Create temporary HTTP server to serve the file
+        const http = await import('http');
+        const server = http.createServer((req, res) => {
+          if (req.url === '/temp-file') {
+            res.writeHead(200, {
+              'Content-Type': file.mimetype,
+              'Content-Length': fileBuffer.length,
+              'Content-Disposition': `attachment; filename="${fileName}"`
+            });
+            res.end(fileBuffer);
+          } else {
+            res.writeHead(404);
+            res.end('Not found');
+          }
+        });
+        
+        // Start server on random port
+        const serverPromise = new Promise((resolve, reject) => {
+          server.listen(0, (err) => {
+            if (err) reject(err);
+            else resolve(server.address().port);
+          });
+        });
+        
+        const port = await serverPromise;
+        const fileUrl = `http://localhost:${port}/temp-file`;
+        
+        // Upload from URL
+        uploadResult = await uploadClient.fromUrl(fileUrl, {
           fileName: fileName,
           metadata: {
             folder: folderStructure,
@@ -132,39 +151,56 @@ export async function uploadToUploadcare(file, options = {}) {
             resourceType: resourceType,
             uploadDate: new Date().toISOString()
           },
-          store: true,
-          secureSignature: true,
-          secureExpire: Math.floor(Date.now() / 1000) + 3600
+          store: true
         });
         
-        console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful with Uint8Array`);
+        // Close server
+        server.close();
         
-      } catch (uint8Error) {
-        console.log(`⚠️ [UPLOADCARE-UPLOAD] Uint8Array upload failed:`, uint8Error.message);
-        throw new Error(`All upload methods failed: ${bufferError.message}, ${uint8Error.message}`);
+        console.log(`✅ [UPLOADCARE-UPLOAD] fromUrl fallback successful`);
+        
+      } catch (urlError) {
+        console.log(`⚠️ [UPLOADCARE-UPLOAD] fromUrl fallback failed:`, urlError.message);
+        throw new Error(`All upload methods failed: ${groupError.message}, ${urlError.message}`);
       }
     }
 
+    // Extract file ID from result
+    let fileId;
+    if (uploadResult.file) {
+      fileId = uploadResult.file;
+    } else if (uploadResult.uuid) {
+      fileId = uploadResult.uuid;
+    } else if (uploadResult.files && uploadResult.files.length > 0) {
+      fileId = uploadResult.files[0];
+    } else {
+      throw new Error('No file ID returned from upload');
+    }
+
+    // Generate URLs
+    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${fileId}`;
+    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${fileId}`;
+
     console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful:`, {
-      fileId: uploadResult.file || uploadResult.uuid,
+      fileId: fileId,
       fileName: fileName,
       folder: folderStructure,
-      size: uploadResult.size,
+      size: uploadResult.size || file.size,
       mimeType: uploadResult.mimeType || file.mimetype,
-      cdnUrl: uploadResult.cdnUrl,
-      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`
+      cdnUrl: cdnUrl,
+      publicUrl: publicUrl
     });
 
     return {
       success: true,
-      fileId: uploadResult.file || uploadResult.uuid,
+      fileId: fileId,
       fileName: fileName,
       folder: folderStructure,
-      size: uploadResult.size,
+      size: uploadResult.size || file.size,
       mimeType: uploadResult.mimeType || file.mimetype,
-      fileUrl: uploadResult.cdnUrl, // ✅ selalu kirim ke frontend
-      url: uploadResult.cdnUrl, // ✅ alias untuk kompatibilitas
-      publicUrl: `${UPLOADCARE_CONFIG.cdnBase}/${uploadResult.file || uploadResult.uuid}`, // ✅ versi publik
+      fileUrl: cdnUrl, // ✅ selalu kirim ke frontend
+      url: cdnUrl, // ✅ alias untuk kompatibilitas
+      publicUrl: publicUrl, // ✅ versi publik
       path: `${folderStructure}/${fileName}`, // hanya sebagai referensi internal
       metadata: {
         userid,
