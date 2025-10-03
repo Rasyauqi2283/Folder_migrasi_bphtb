@@ -312,7 +312,6 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
             namapemilikobjekpajak,
             npwpwp,
             tahunajb,
-            nilai_bphtb,
             trackstatus
         });
         
