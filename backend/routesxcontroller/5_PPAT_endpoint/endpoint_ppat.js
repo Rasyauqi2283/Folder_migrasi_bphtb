@@ -476,10 +476,31 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                     RETURNING id
                 `;
                 
+                // Normalize status_kepemilikan to match constraint values
+                let normalizedStatusKepemilikan = 'Milik Pribadi'; // default
+                if (status_kepemilikan) {
+                    const statusMap = {
+                        'milik_pribadi': 'Milik Pribadi',
+                        'milik_bersama': 'Milik Bersama',
+                        'sewa': 'Sewa',
+                        'hak_guna_bangunan': 'Hak Guna Bangunan',
+                        'Milik Pribadi': 'Milik Pribadi',
+                        'Milik Bersama': 'Milik Bersama',
+                        'Sewa': 'Sewa',
+                        'Hak Guna Bangunan': 'Hak Guna Bangunan'
+                    };
+                    normalizedStatusKepemilikan = statusMap[status_kepemilikan] || 'Milik Pribadi';
+                }
+                
+                console.log('📝 [PPATK] Status kepemilikan mapping:', {
+                    original: status_kepemilikan,
+                    normalized: normalizedStatusKepemilikan
+                });
+                
                 const objekParams = [
                     letaktanahdanbangunan,
                     rt_rwobjekpajak || '',
-                    status_kepemilikan || 'Milik Pribadi',
+                    normalizedStatusKepemilikan,
                     keterangan || '',
                     nomor_sertifikat || '',
                     tanggal_perolehan || '',
