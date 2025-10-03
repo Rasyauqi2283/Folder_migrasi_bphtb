@@ -531,6 +531,11 @@ export function createUploadcarePDFUploadHandler() {
 export function createUploadcareProxyEndpoint() {
   return async (req, res) => {
     try {
+      // Check authentication
+      if (!req.session || !req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
       const { fileId, fileUrl, width, height, quality, format } = req.query;
 
       let targetFileId = fileId;
@@ -577,8 +582,41 @@ export function createUploadcareProxyEndpoint() {
         });
       }
 
-      // Redirect to Uploadcare CDN
-      res.redirect(publicUrl);
+      // Instead of redirecting, stream the file content to avoid sandbox issues
+      console.log(`📤 [UPLOADCARE-PROXY] Streaming file from: ${publicUrl}`);
+      
+      try {
+        const axios = await import('axios');
+        const response = await axios.default.get(publicUrl, {
+          responseType: 'stream',
+          timeout: 30000,
+          headers: {
+            'User-Agent': 'Bappenda-PPAT-Proxy/1.0'
+          }
+        });
+
+        // Set appropriate headers for the file
+        res.set({
+          'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+          'Content-Length': response.headers['content-length'],
+          'Cache-Control': 'public, max-age=3600',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        });
+
+        // Pipe the response stream to client
+        response.data.pipe(res);
+
+        console.log(`✅ [UPLOADCARE-PROXY] File streamed successfully: ${publicUrl}`);
+
+      } catch (streamError) {
+        console.error('❌ [UPLOADCARE-PROXY] Stream failed:', streamError.message);
+        
+        // Fallback to redirect if streaming fails
+        console.log('🔄 [UPLOADCARE-PROXY] Falling back to redirect');
+        res.redirect(publicUrl);
+      }
 
     } catch (error) {
       console.error('❌ [UPLOADCARE-PROXY] Proxy failed:', error);
