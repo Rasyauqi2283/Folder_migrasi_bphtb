@@ -242,6 +242,120 @@ app.get('/api/uploadcare-health-check', async (req, res) => {
     }
 });
 
+// PPATK: Create booking and BPHTB calculation
+app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
+    try {
+        console.log('📝 [PPATK] Creating booking and BPHTB calculation...');
+        
+        // Check authentication
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Unauthorized' 
+            });
+        }
+        
+        const userid = req.session.user.userid;
+        const {
+            noppbb,
+            namawajibpajak,
+            namapemilikobjekpajak,
+            npwpwp,
+            tahunajb,
+            nilai_transaksi,
+            nilai_bphtb,
+            tanggal_perolehan,
+            tanggal_pembayaran,
+            nomor_bukti_pembayaran,
+            trackstatus = 'Draft'
+        } = req.body;
+        
+        console.log('📝 [PPATK] Booking data received:', {
+            userid,
+            noppbb,
+            namawajibpajak,
+            namapemilikobjekpajak,
+            npwpwp,
+            tahunajb,
+            nilai_transaksi,
+            nilai_bphtb,
+            trackstatus
+        });
+        
+        // Generate nobooking
+        const timestamp = Date.now();
+        const nobooking = `BK${userid}_${timestamp}`;
+        
+        // Insert booking data
+        const insertQuery = `
+            INSERT INTO pat_1_bookingsspd (
+                nobooking,
+                userid,
+                noppbb,
+                namawajibpajak,
+                namapemilikobjekpajak,
+                npwpwp,
+                tahunajb,
+                nilai_transaksi,
+                nilai_bphtb,
+                tanggal_perolehan,
+                tanggal_pembayaran,
+                nomor_bukti_pembayaran,
+                trackstatus,
+                created_at,
+                updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING nobooking
+        `;
+        
+        const insertParams = [
+            nobooking,
+            userid,
+            noppbb,
+            namawajibpajak,
+            namapemilikobjekpajak,
+            npwpwp,
+            tahunajb,
+            nilai_transaksi,
+            nilai_bphtb,
+            tanggal_perolehan,
+            tanggal_pembayaran,
+            nomor_bukti_pembayaran,
+            trackstatus
+        ];
+        
+        const result = await pool.query(insertQuery, insertParams);
+        
+        if (result.rows.length === 0) {
+            throw new Error('Failed to create booking');
+        }
+        
+        console.log('✅ [PPATK] Booking created successfully:', {
+            nobooking: result.rows[0].nobooking,
+            userid
+        });
+        
+        res.json({
+            success: true,
+            message: 'Booking dan perhitungan BPHTB berhasil dibuat',
+            nobooking: result.rows[0].nobooking,
+            data: {
+                nobooking: result.rows[0].nobooking,
+                userid,
+                trackstatus
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ [PPATK] Create booking failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal membuat booking dan perhitungan BPHTB',
+            error: error.message
+        });
+    }
+});
+
 // PPATK: Load all booking data for table (untuk frontend table)
 app.get('/api/ppatk/load-all-booking', async (req, res) => {
     try {
