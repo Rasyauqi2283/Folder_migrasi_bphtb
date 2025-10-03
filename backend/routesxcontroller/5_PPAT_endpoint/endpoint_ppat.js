@@ -5,6 +5,8 @@ import axios from 'axios';
 import { pool } from '../../../db.js';
 // Import Uploadcare routes
 import uploadcareRoutes from './uploadcare_routes.js';
+// Import Railway signature routes
+import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
@@ -23,6 +25,67 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
 // ===== UPLOADCARE ENDPOINTS SETUP =====
 // Setup Uploadcare endpoints
 app.use('/api/ppatk', uploadcareRoutes);
+
+// ===== RAILWAY SIGNATURE ENDPOINTS SETUP =====
+// Setup Railway signature endpoints
+app.use('/api/railway-signature', railwaySignatureRoutes);
+
+// Legacy endpoint for frontend compatibility
+app.get('/api/check-my-signature', async (req, res) => {
+    try {
+        console.log('🔍 [LEGACY-SIGNATURE-API] Checking signature status');
+        
+        // Check authentication
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Unauthorized' 
+            });
+        }
+        
+        const userid = req.session.user.userid;
+        
+        // Query database for signature
+        const result = await pool.query(
+            `SELECT tanda_tangan_path, tanda_tangan_mime 
+             FROM a_2_verified_users 
+             WHERE userid = $1`,
+            [userid]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found',
+                has_signature: false 
+            });
+        }
+        
+        const user = result.rows[0];
+        const hasSignature = !!(user.tanda_tangan_path);
+        
+        console.log(`✅ [LEGACY-SIGNATURE-API] Signature status for ${userid}:`, {
+            hasSignature,
+            path: user.tanda_tangan_path,
+            mimeType: user.tanda_tangan_mime
+        });
+        
+        res.json({
+            success: true,
+            has_signature: hasSignature,
+            signature_path: user.tanda_tangan_path,
+            signature_mime: user.tanda_tangan_mime
+        });
+        
+    } catch (error) {
+        console.error('❌ [LEGACY-SIGNATURE-API] Check signature error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to check signature status',
+            error: error.message
+        });
+    }
+});
 
 // Test endpoint untuk debugging Uploadcare
 app.get('/api/test-uploadcare-proxy', (req, res) => {
