@@ -259,7 +259,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
         const {
             // Data booking utama (pat_1_bookingsspd)
             noppbb,
-            jenis_wajib_pajak = 'badan_usaha',
+            jenis_wajib_pajak = 'Badan Usaha',
             namawajibpajak,
             alamatwajibpajak,
             namapemilikobjekpajak,
@@ -383,8 +383,7 @@ app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
                 rtrwop,
                 npwpop,
                 kodeposop,
-                trackstatus,
-                jenis_wajib_pajak
+                trackstatus
             ];
             
             const bookingResult = await client.query(insertBookingQuery, bookingParams);
