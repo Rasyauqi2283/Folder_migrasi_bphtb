@@ -3605,9 +3605,9 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Akta Tanah - ${documentData.aktaTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.aktaTanah.fileUrl}" target="_blank" class="btn-view-doc">
+                    <button onclick="previewDocument('${documentData.aktaTanah.fileUrl}', 'Akta Tanah')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
-                    </a>
+                    </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'akta_tanah')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
@@ -3625,9 +3625,9 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Sertifikat Tanah - ${documentData.sertifikatTanah.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.sertifikatTanah.fileUrl}" target="_blank" class="btn-view-doc">
+                    <button onclick="previewDocument('${documentData.sertifikatTanah.fileUrl}', 'Sertifikat Tanah')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
-                    </a>
+                    </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'sertifikat_tanah')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
@@ -3645,9 +3645,9 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">Dokumen Pelengkap - ${documentData.pelengkap.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.pelengkap.fileUrl}" target="_blank" class="btn-view-doc">
+                    <button onclick="previewDocument('${documentData.pelengkap.fileUrl}', 'Dokumen Pelengkap')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
-                    </a>
+                    </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pelengkap')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
@@ -3665,9 +3665,9 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">PDF Dokumen - ${documentData.pdfDokumen.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.pdfDokumen.fileUrl}" target="_blank" class="btn-view-doc">
+                    <button onclick="previewDocument('${documentData.pdfDokumen.fileUrl}', 'PDF Dokumen')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
-                    </a>
+                    </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pdf_dokumen')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
@@ -3685,9 +3685,9 @@ function displayUploadedDocuments(bookingId, documentData) {
                     <span class="doc-name">File dengan Stempel - ${documentData.fileWithStempel.fileName || 'Document'}</span>
                 </div>
                 <div class="doc-actions">
-                    <a href="${documentData.fileWithStempel.fileUrl}" target="_blank" class="btn-view-doc">
+                    <button onclick="previewDocument('${documentData.fileWithStempel.fileUrl}', 'File dengan Stempel')" class="btn-view-doc">
                         <i class="fas fa-eye"></i> Lihat
-                    </a>
+                    </button>
                     <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'file_withstempel')">
                         <i class="fas fa-sync-alt"></i> Ganti
                     </button>
@@ -3703,6 +3703,64 @@ function displayUploadedDocuments(bookingId, documentData) {
     
     // Insert uploaded documents section at the beginning
     documentSection.insertAdjacentHTML('afterbegin', uploadedDocsHTML);
+}
+
+// Function to preview documents using proxy to avoid sandbox issues
+function previewDocument(fileUrl, documentName) {
+    console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
+    
+    // Check if it's an Uploadcare URL
+    if (fileUrl.includes('ucarecdn.com')) {
+        // Use proxy endpoint to avoid sandbox issues
+        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        
+        // Open in new window with proper iframe sandbox attributes
+        const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        
+        if (newWindow) {
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Preview: ${documentName}</title>
+                    <style>
+                        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+                        .header { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #dee2e6; }
+                        .header h3 { margin: 0; color: #495057; }
+                        .content { height: calc(100vh - 60px); }
+                        iframe { width: 100%; height: 100%; border: none; }
+                        .error { padding: 20px; text-align: center; color: #dc3545; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h3>Preview: ${documentName}</h3>
+                    </div>
+                    <div class="content">
+                        <iframe src="${proxyUrl}" 
+                                title="Document Preview"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+                                onload="console.log('Document loaded successfully')"
+                                onerror="this.nextElementSibling.style.display='block'; this.style.display='none';">
+                        </iframe>
+                        <div class="error" style="display:none;">
+                            <h4>Dokumen tidak dapat dimuat</h4>
+                            <p>Silakan coba lagi atau hubungi administrator.</p>
+                            <button onclick="window.location.reload()">Coba Lagi</button>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            newWindow.document.close();
+        } else {
+            // Fallback: direct link
+            window.open(fileUrl, '_blank');
+        }
+    } else {
+        // For non-Uploadcare URLs, open directly
+        window.open(fileUrl, '_blank');
+    }
 }
 
 // Function to populate booking dropdown

@@ -1081,22 +1081,29 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { fileUrl } = req.query;
+        const { fileUrl, fileId } = req.query;
         
-        if (!fileUrl) {
-            return res.status(400).json({ success: false, message: 'File URL required' });
+        let targetUrl = fileUrl;
+        
+        // If fileId is provided instead of fileUrl, construct the URL
+        if (fileId && !fileUrl) {
+            targetUrl = `https://ucarecdn.com/${fileId}`;
+        }
+        
+        if (!targetUrl) {
+            return res.status(400).json({ success: false, message: 'File URL or File ID required' });
         }
 
-        console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${fileUrl}`);
+        console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${targetUrl}`);
 
-        // Validate that it's an Uploadcare URL
-        if (!fileUrl.includes('ucarecdn.com')) {
-            return res.status(400).json({ success: false, message: 'Invalid file URL' });
+        // Validate that it's an Uploadcare URL or file ID
+        if (!targetUrl.includes('ucarecdn.com') && !targetUrl.match(/^[a-f0-9-]+$/)) {
+            return res.status(400).json({ success: false, message: 'Invalid file URL or ID' });
         }
 
         // Fetch file from Uploadcare
         const axios = await import('axios');
-        const response = await axios.default.get(fileUrl, {
+        const response = await axios.default.get(targetUrl, {
             responseType: 'stream',
             timeout: 30000,
             headers: {
@@ -1117,7 +1124,7 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
         // Pipe the response
         response.data.pipe(res);
 
-        console.log(`✅ [UPLOADCARE-PROXY] File proxied successfully: ${fileUrl}`);
+        console.log(`✅ [UPLOADCARE-PROXY] File proxied successfully: ${targetUrl}`);
 
     } catch (error) {
         console.error('❌ [UPLOADCARE-PROXY] Proxy failed:', error.message);
