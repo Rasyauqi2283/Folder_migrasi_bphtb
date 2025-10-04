@@ -4,7 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
 // Import Uploadcare routes
-import uploadcareRoutes from './uploadcare_routes.js';
+// import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
 // Import Railway signature routes
 import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
 const router = express.Router();
@@ -24,7 +24,7 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
     console.log('  - uploadDocumentMiddleware:', uploadDocumentMiddleware && typeof uploadDocumentMiddleware.fields === 'function' ? '✅ Available' : '❌ Not available');
 // ===== UPLOADCARE ENDPOINTS SETUP =====
 // Setup Uploadcare endpoints
-app.use('/api/ppatk', uploadcareRoutes);
+// app.use('/api/ppatk', uploadcareRoutes); // Disabled - using robust proxy endpoint instead
 
 // ===== RAILWAY SIGNATURE ENDPOINTS SETUP =====
 // Setup Railway signature endpoints

@@ -542,9 +542,11 @@ export function createUploadcareProxyEndpoint() {
       
       // If fileUrl is provided, extract fileId from it
       if (fileUrl && !fileId) {
-        if (fileUrl.includes('ucarecdn.com/')) {
-          // Extract fileId from URL like https://ucarecdn.com/fileId/
-          const urlParts = fileUrl.split('ucarecdn.com/');
+        if (fileUrl.includes('ucarecdn.com/') || fileUrl.includes('ucarecd.net/')) {
+          // Extract fileId from URL like https://ucarecdn.com/fileId/ or https://44renul14z.ucarecd.net/fileId
+          const urlParts = fileUrl.split('ucarecdn.com/').length > 1 
+            ? fileUrl.split('ucarecdn.com/')
+            : fileUrl.split('ucarecd.net/');
           if (urlParts.length > 1) {
             targetFileId = urlParts[1].split('/')[0].split('?')[0];
           }

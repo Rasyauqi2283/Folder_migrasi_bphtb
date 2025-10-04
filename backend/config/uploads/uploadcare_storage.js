@@ -18,6 +18,12 @@ console.log('🌐 [UPLOADCARE-STORAGE] Uploadcare Config:', {
   config_status: '✅ COMPLETE'
 });
 
+console.log('🔍 [UPLOADCARE-STORAGE] Environment Variables:', {
+  UPLOADCARE_CDN_BASE: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
+  UPLOADCARE_PUBLIC_KEY: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
+  UPLOADCARE_SECRET_KEY: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET'
+});
+
 // Helper function untuk generate folder structure
 function generateFolderStructure(userid, nobooking, docType) {
   const currentYear = new Date().getFullYear();
