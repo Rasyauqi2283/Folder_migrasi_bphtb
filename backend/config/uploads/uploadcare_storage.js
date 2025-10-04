@@ -214,10 +214,14 @@ export async function uploadToUploadcare(file, options = {}) {
       publicUrl: publicUrl
     });
 
-    // Validate file accessibility after upload
+    // Validate file accessibility after upload (with delay for CDN propagation)
     console.log(`🔍 [UPLOADCARE-VALIDATION] Validating file accessibility...`);
     try {
       const axios = await import('axios');
+      
+      // Wait 5 seconds for CDN propagation (Uploadcare recommendation)
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
       const validationResponse = await axios.default.head(cdnUrl, {
         timeout: 10000,
         validateStatus: () => true // Accept any status
