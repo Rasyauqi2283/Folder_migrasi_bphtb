@@ -1339,94 +1339,105 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
     }
 });
 
-// Uploadcare Proxy Endpoint for Preview
+// Uploadcare Proxy Endpoint for Preview - ROBUST VERSION
+// Konfigurasi
+const REQUIRE_AUTH = true; // Enable session auth
+const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
+
+// 🔹 Utility untuk bangun URL Uploadcare
+function buildUploadcareUrl(fileUrl, fileId) {
+    if (fileUrl) return fileUrl;
+    if (fileId) return `${DEFAULT_CDN}/${fileId}`;
+    return null;
+}
+
+// 🔹 HEAD request (cek file tersedia atau tidak)
+app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
+    try {
+        if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
+            return res.sendStatus(401);
+        }
+
+        const { fileUrl, fileId } = req.query;
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId);
+        if (!targetUrl) return res.sendStatus(400);
+
+        console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
+
+        const axios = await import('axios');
+        const response = await axios.default.head(targetUrl, { timeout: 5000 });
+
+        // Forward beberapa header penting
+        if (response.headers['content-type']) {
+            res.set('Content-Type', response.headers['content-type']);
+        }
+        if (response.headers['content-length']) {
+            res.set('Content-Length', response.headers['content-length']);
+        }
+
+        return res.sendStatus(200);
+    } catch (err) {
+        console.error('❌ [UPLOADCARE-PROXY HEAD] Error:', err.message);
+        return res.sendStatus(404);
+    }
+});
+
+// 🔹 GET request (stream file ke client)
 app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
     try {
-        console.log('🔍 [UPLOADCARE-PROXY] Proxy request received');
-        
-        // Check authentication
-        if (!req.session || !req.session.user) {
+        if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
         const { fileUrl, fileId } = req.query;
-        
-        let targetUrl = fileUrl;
-        
-        // If fileId is provided instead of fileUrl, construct the URL
-        if (fileId && !fileUrl) {
-            targetUrl = `https://44renul14z.ucarecd.net/${fileId}`;
-        }
-        
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId);
+
         if (!targetUrl) {
             return res.status(400).json({ success: false, message: 'File URL or File ID required' });
         }
 
-        console.log(`🔍 [UPLOADCARE-PROXY] Proxying file: ${targetUrl}`);
-        console.log(`🔍 [UPLOADCARE-PROXY] URL validation:`, {
-            targetUrl,
-            hasUcarecdn: targetUrl.includes('ucarecdn.com'),
-            hasUcarecd: targetUrl.includes('ucarecd.net'),
-            isFileId: targetUrl.match(/^[a-f0-9-]+$/)
-        });
+        console.log(`🔍 [UPLOADCARE-PROXY GET] Proxying file: ${targetUrl}`);
 
-        // Validate that it's an Uploadcare URL or file ID
-        const isValidUploadcareUrl = targetUrl.includes('ucarecdn.com') || 
-                                   targetUrl.includes('ucarecd.net') || 
-                                   targetUrl.match(/^[a-f0-9-]+$/);
-        
-        if (!isValidUploadcareUrl) {
-            console.log(`❌ [UPLOADCARE-PROXY] Invalid URL format: ${targetUrl}`);
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Invalid file URL or ID',
-                details: `URL must be Uploadcare CDN URL or file ID. Received: ${targetUrl}`
-            });
-        }
-
-        // Fetch file from Uploadcare
         const axios = await import('axios');
         const response = await axios.default.get(targetUrl, {
             responseType: 'stream',
             timeout: 30000,
-            headers: {
-                'User-Agent': 'Bappenda-PPAT-Proxy/1.0'
-            }
+            headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
         });
 
-        // Set appropriate headers
+        // Set header dari Uploadcare ke response kita
         res.set({
             'Content-Type': response.headers['content-type'] || 'application/octet-stream',
-            'Content-Length': response.headers['content-length'],
+            'Content-Length': response.headers['content-length'] || undefined,
             'Cache-Control': 'public, max-age=3600',
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Methods': 'GET, HEAD',
             'Access-Control-Allow-Headers': 'Content-Type'
         });
 
-        // Pipe the response
+        // Pipe stream ke client
         response.data.pipe(res);
 
-        console.log(`✅ [UPLOADCARE-PROXY] File proxied successfully: ${targetUrl}`);
+        console.log(`✅ [UPLOADCARE-PROXY GET] Success: ${targetUrl}`);
+    } catch (err) {
+        console.error('❌ [UPLOADCARE-PROXY GET] Proxy failed:', err.message);
 
-    } catch (error) {
-        console.error('❌ [UPLOADCARE-PROXY] Proxy failed:', error.message);
-        
-        if (error.response) {
-            res.status(error.response.status).json({
+        if (err.response) {
+            return res.status(err.response.status).json({
                 success: false,
-                message: `Proxy error: ${error.response.statusText}`,
-                details: error.message
+                message: `Proxy error: ${err.response.statusText}`,
+                details: err.message
             });
         } else {
-            res.status(500).json({
+            return res.status(500).json({
                 success: false,
                 message: 'Proxy service unavailable',
-                details: error.message
+                details: err.message
             });
         }
     }
 });
+
 
 // Update track status endpoint
 app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {

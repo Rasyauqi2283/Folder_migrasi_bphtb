@@ -3682,8 +3682,14 @@ async function previewDocument(fileUrl, documentName) {
             return;
         }
         
-        // Use proxy endpoint to avoid sandbox issues
-        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        // Use proxy endpoint to avoid sandbox issues - ROBUST VERSION
+        const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
+        const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        
+        const proxyUrl = fileId 
+            ? `/api/ppatk/uploadcare-proxy?fileId=${fileId}`
+            : `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+            
         console.log('🔍 [PREVIEW] Using proxy URL:', proxyUrl);
         
         // Open in new window with proper iframe sandbox attributes
@@ -3857,14 +3863,22 @@ function getDocumentTypeFromUrl(fileUrl, documentName = null) {
     return 'pelengkap'; // Default fallback for testing
 }
 
-// Function to test proxy endpoint
+// Function to test proxy endpoint - ROBUST VERSION
 async function testProxyEndpoint(fileUrl) {
     try {
-        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        // Extract file ID from URL for more efficient testing
+        const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
+        const fileId = fileIdMatch ? fileIdMatch[1] : null;
+        
+        // Use fileId if available, otherwise use full URL
+        const proxyUrl = fileId 
+            ? `/api/ppatk/uploadcare-proxy?fileId=${fileId}`
+            : `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+            
         console.log('🧪 [TEST-PROXY] Testing:', proxyUrl);
         
         const response = await fetch(proxyUrl, {
-            method: 'HEAD', // Just check if endpoint responds
+            method: 'HEAD', // Use HEAD request for efficiency
             credentials: 'include'
         });
         
