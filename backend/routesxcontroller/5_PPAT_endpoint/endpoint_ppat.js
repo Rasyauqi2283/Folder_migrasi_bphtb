@@ -1130,92 +1130,149 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                     mimeType: file.mimetype
                 });
 
-                // Upload to Uploadcare
-                const uploadResult = await uploadToUploadcare(file, {
-                    userid: userid,
-                    nobooking: bookingId,
-                    docType: documentType,
-                    sequenceNumber: 1,
-                    resourceType: 'auto'
-                });
+                // 🔄 TRANSACTIONAL UPLOAD - Prevent race conditions
+                const client = await pool.connect();
+                let uploadResult = null;
+                
+                try {
+                    await client.query('BEGIN');
+                    console.log(`🔄 [UPLOAD-DOCUMENTS] Transaction started for ${documentType}`);
 
-                if (!uploadResult.success) {
-                    throw new Error(uploadResult.message || 'Upload to Uploadcare failed');
-                }
+                    // 1. Upload to Uploadcare first
+                    uploadResult = await uploadToUploadcare(file, {
+                        userid: userid,
+                        nobooking: bookingId,
+                        docType: documentType,
+                        sequenceNumber: 1,
+                        resourceType: 'auto'
+                    });
 
-                console.log(`✅ [UPLOAD-DOCUMENTS] Upload successful:`, uploadResult);
-
-                // Update database with new file information
-                const columnMap = {
-                    'akta_tanah': {
-                        fileId: 'akta_tanah_file_id',
-                        path: 'akta_tanah_path',
-                        mimeType: 'akta_tanah_mime_type',
-                        size: 'akta_tanah_size'
-                    },
-                    'sertifikat_tanah': {
-                        fileId: 'sertifikat_tanah_file_id',
-                        path: 'sertifikat_tanah_path',
-                        mimeType: 'sertifikat_tanah_mime_type',
-                        size: 'sertifikat_tanah_size'
-                    },
-                    'pelengkap': {
-                        fileId: 'pelengkap_file_id',
-                        path: 'pelengkap_path',
-                        mimeType: 'pelengkap_mime_type',
-                        size: 'pelengkap_size'
+                    if (!uploadResult.success) {
+                        throw new Error(uploadResult.message || 'Upload to Uploadcare failed');
                     }
-                };
 
-                const columns = columnMap[documentType];
-                if (!columns) {
-                    throw new Error('Invalid document type');
-                }
+                    console.log(`✅ [UPLOAD-DOCUMENTS] Upload successful:`, {
+                        fileId: uploadResult.fileId,
+                        fileUrl: uploadResult.fileUrl
+                    });
 
-                const updateQuery = `
-                    UPDATE pat_1_bookingsspd 
-                    SET 
-                        ${columns.fileId} = $1,
-                        ${columns.path} = $2,
-                        ${columns.mimeType} = $3,
-                        ${columns.size} = $4,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE nobooking = $5 AND userid = $6
-                `;
+                    // 2. Validate file accessibility before database update
+                    console.log(`🔍 [UPLOAD-DOCUMENTS] Validating file accessibility...`);
+                    try {
+                        const axios = await import('axios');
+                        const validationResponse = await axios.default.head(uploadResult.fileUrl, {
+                            timeout: 10000,
+                            validateStatus: () => true
+                        });
+                        
+                        if (validationResponse.status !== 200) {
+                            throw new Error(`File not accessible after upload. Status: ${validationResponse.status}`);
+                        }
+                        
+                        console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed: ${uploadResult.fileId}`);
+                    } catch (validationError) {
+                        console.error(`❌ [UPLOAD-DOCUMENTS] File validation failed:`, validationError.message);
+                        throw new Error(`File validation failed: ${validationError.message}`);
+                    }
 
-                const updateParams = [
-                    uploadResult.fileId,
-                    uploadResult.fileUrl,
-                    file.mimetype,
-                    file.size,
-                    bookingId,
-                    userid
-                ];
+                    // 3. Update database with new file information
+                    const columnMap = {
+                        'akta_tanah': {
+                            fileId: 'akta_tanah_file_id',
+                            path: 'akta_tanah_path',
+                            mimeType: 'akta_tanah_mime_type',
+                            size: 'akta_tanah_size'
+                        },
+                        'sertifikat_tanah': {
+                            fileId: 'sertifikat_tanah_file_id',
+                            path: 'sertifikat_tanah_path',
+                            mimeType: 'sertifikat_tanah_mime_type',
+                            size: 'sertifikat_tanah_size'
+                        },
+                        'pelengkap': {
+                            fileId: 'pelengkap_file_id',
+                            path: 'pelengkap_path',
+                            mimeType: 'pelengkap_mime_type',
+                            size: 'pelengkap_size'
+                        }
+                    };
 
-                const updateResult = await pool.query(updateQuery, updateParams);
+                    const columns = columnMap[documentType];
+                    if (!columns) {
+                        throw new Error('Invalid document type');
+                    }
 
-                if (updateResult.rowCount === 0) {
-                    throw new Error('Booking not found or no permission to update');
-                }
+                    const updateQuery = `
+                        UPDATE pat_1_bookingsspd 
+                        SET 
+                            ${columns.fileId} = $1,
+                            ${columns.path} = $2,
+                            ${columns.mimeType} = $3,
+                            ${columns.size} = $4,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE nobooking = $5 AND userid = $6
+                    `;
 
-                console.log(`✅ [UPLOAD-DOCUMENTS] Database updated successfully:`, {
-                    documentType,
-                    fileId: uploadResult.fileId,
-                    rowsAffected: updateResult.rowCount
-                });
+                    const updateParams = [
+                        uploadResult.fileId,
+                        uploadResult.fileUrl,
+                        file.mimetype,
+                        file.size,
+                        bookingId,
+                        userid
+                    ];
 
-        res.json({
-            success: true,
-                    message: 'Document uploaded and database updated successfully',
-                    data: {
+                    const updateResult = await client.query(updateQuery, updateParams);
+
+                    if (updateResult.rowCount === 0) {
+                        throw new Error('Booking not found or no permission to update');
+                    }
+
+                    // 4. Commit transaction
+                    await client.query('COMMIT');
+                    console.log(`✅ [UPLOAD-DOCUMENTS] Transaction committed successfully`);
+
+                    console.log(`✅ [UPLOAD-DOCUMENTS] Database updated successfully:`, {
                         documentType,
                         fileId: uploadResult.fileId,
-                        fileUrl: uploadResult.fileUrl,
-                        fileName: file.originalname,
-                        fileSize: file.size,
-                        mimeType: file.mimetype
+                        rowsAffected: updateResult.rowCount
+                    });
+
+                    res.json({
+                        success: true,
+                        message: 'Document uploaded and database updated successfully',
+                        data: {
+                            documentType,
+                            fileId: uploadResult.fileId,
+                            fileUrl: uploadResult.fileUrl,
+                            fileName: file.originalname,
+                            fileSize: file.size,
+                            mimeType: file.mimetype
+                        }
+                    });
+
+                } catch (transactionError) {
+                    // 5. Rollback transaction on any error
+                    await client.query('ROLLBACK');
+                    console.error(`❌ [UPLOAD-DOCUMENTS] Transaction rolled back:`, transactionError.message);
+                    
+                    // If upload succeeded but database failed, we have an orphaned file
+                    if (uploadResult && uploadResult.success) {
+                        console.warn(`⚠️ [UPLOAD-DOCUMENTS] Orphaned file detected: ${uploadResult.fileId}`);
+                        
+                        // Attempt to cleanup orphaned file
+                        try {
+                            const { cleanupOrphanedFile } = await import('../../config/uploads/uploadcare_storage.js');
+                            await cleanupOrphanedFile(uploadResult.fileId);
+                        } catch (cleanupError) {
+                            console.error(`❌ [UPLOAD-DOCUMENTS] Orphaned file cleanup failed:`, cleanupError.message);
+                        }
                     }
-                });
+                    
+                    throw transactionError;
+                } finally {
+                    client.release();
+                }
 
             } catch (uploadError) {
                 console.error('❌ [UPLOAD-DOCUMENTS] Upload processing failed:', uploadError);
@@ -1510,6 +1567,119 @@ app.post('/api/ppatk/ltb-process', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'LTB process failed: ' + error.message
+        });
+    }
+});
+
+// File synchronization verification endpoint
+app.get('/api/ppatk/verify-file-sync', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.query;
+        const userid = req.session.user.userid;
+
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'NoBooking required' });
+        }
+
+        console.log(`🔍 [VERIFY-SYNC] Verifying file sync for booking: ${nobooking}`);
+
+        // Get file information from database
+        const query = `
+            SELECT 
+                akta_tanah_file_id,
+                akta_tanah_path,
+                sertifikat_tanah_file_id,
+                sertifikat_tanah_path,
+                pelengkap_file_id,
+                pelengkap_path
+            FROM pat_1_bookingsspd
+            WHERE nobooking = $1 AND userid = $2
+        `;
+
+        const result = await pool.query(query, [nobooking, userid]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        const row = result.rows[0];
+        const verificationResults = {};
+
+        // Verify each file type
+        const fileTypes = [
+            { type: 'akta_tanah', fileId: row.akta_tanah_file_id, path: row.akta_tanah_path },
+            { type: 'sertifikat_tanah', fileId: row.sertifikat_tanah_file_id, path: row.sertifikat_tanah_path },
+            { type: 'pelengkap', fileId: row.pelengkap_file_id, path: row.pelengkap_path }
+        ];
+
+        for (const fileType of fileTypes) {
+            if (!fileType.fileId) {
+                verificationResults[fileType.type] = {
+                    status: 'not_uploaded',
+                    message: 'File not uploaded'
+                };
+                continue;
+            }
+
+            try {
+                // Test file accessibility
+                const axios = await import('axios');
+                const response = await axios.default.head(fileType.path, {
+                    timeout: 5000,
+                    validateStatus: () => true
+                });
+
+                if (response.status === 200) {
+                    verificationResults[fileType.type] = {
+                        status: 'synchronized',
+                        message: 'File is accessible',
+                        fileId: fileType.fileId,
+                        path: fileType.path
+                    };
+                } else {
+                    verificationResults[fileType.type] = {
+                        status: 'out_of_sync',
+                        message: `File not accessible (Status: ${response.status})`,
+                        fileId: fileType.fileId,
+                        path: fileType.path
+                    };
+                }
+            } catch (error) {
+                verificationResults[fileType.type] = {
+                    status: 'out_of_sync',
+                    message: `File verification failed: ${error.message}`,
+                    fileId: fileType.fileId,
+                    path: fileType.path
+                };
+            }
+        }
+
+        console.log(`✅ [VERIFY-SYNC] Verification completed for ${nobooking}`);
+
+        res.json({
+            success: true,
+            message: 'File synchronization verification completed',
+            data: {
+                nobooking,
+                verificationResults,
+                summary: {
+                    total: Object.keys(verificationResults).length,
+                    synchronized: Object.values(verificationResults).filter(r => r.status === 'synchronized').length,
+                    outOfSync: Object.values(verificationResults).filter(r => r.status === 'out_of_sync').length,
+                    notUploaded: Object.values(verificationResults).filter(r => r.status === 'not_uploaded').length
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [VERIFY-SYNC] Verification failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'File synchronization verification failed: ' + error.message
         });
     }
 });

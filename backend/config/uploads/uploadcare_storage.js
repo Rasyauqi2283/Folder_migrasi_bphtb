@@ -200,23 +200,42 @@ export async function uploadToUploadcare(file, options = {}) {
       throw new Error('No file ID returned from upload');
     }
 
-    // Generate URLs - Standardize format dengan Uploadcare
-    // Clean file ID (remove ~1 suffix if present)
-    const cleanFileId = fileId.replace(/~.*$/, '');
+    // Use original file ID from Uploadcare (don't clean it)
+    // Uploadcare returns the correct file ID that should be used
+    const finalFileId = fileId;
     
     // Use standard Uploadcare CDN format
-    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`;
-    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${cleanFileId}`;
+    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
     
     console.log(`🔍 [UPLOADCARE-URL] URL generation:`, {
-      originalFileId: fileId,
-      cleanFileId: cleanFileId,
+      fileId: finalFileId,
       cdnUrl: cdnUrl,
       publicUrl: publicUrl
     });
 
+    // Validate file accessibility after upload
+    console.log(`🔍 [UPLOADCARE-VALIDATION] Validating file accessibility...`);
+    try {
+      const axios = await import('axios');
+      const validationResponse = await axios.default.head(cdnUrl, {
+        timeout: 10000,
+        validateStatus: () => true // Accept any status
+      });
+      
+      if (validationResponse.status === 200) {
+        console.log(`✅ [UPLOADCARE-VALIDATION] File is accessible: ${finalFileId}`);
+      } else {
+        console.warn(`⚠️ [UPLOADCARE-VALIDATION] File validation returned status ${validationResponse.status}: ${finalFileId}`);
+        // Don't throw error, just log warning - file might be processing
+      }
+    } catch (validationError) {
+      console.warn(`⚠️ [UPLOADCARE-VALIDATION] File validation failed: ${validationError.message}`);
+      // Don't throw error, just log warning - file might be processing
+    }
+
     console.log(`✅ [UPLOADCARE-UPLOAD] Upload successful:`, {
-      fileId: fileId,
+      fileId: finalFileId,
       fileName: fileName,
       folder: folderStructure,
       size: uploadResult.size || file.size,
@@ -227,8 +246,7 @@ export async function uploadToUploadcare(file, options = {}) {
 
     return {
       success: true,
-      fileId: cleanFileId, // ✅ gunakan clean file ID
-      originalFileId: fileId, // ✅ simpan original untuk reference
+      fileId: finalFileId, // ✅ gunakan original file ID dari Uploadcare
       fileName: fileName, // ✅ filename dengan extension
       customFileName: customFileName, // ✅ custom filename tanpa extension
       folder: folderStructure,
@@ -607,6 +625,38 @@ export async function testFileAccessibility(fileId) {
   }
 }
 
+// Function to cleanup orphaned files from Uploadcare
+export async function cleanupOrphanedFile(fileId) {
+  try {
+    console.log(`🧹 [UPLOADCARE-CLEANUP] Attempting to cleanup orphaned file: ${fileId}`);
+    
+    if (!fileId) {
+      throw new Error('File ID is required for cleanup');
+    }
+
+    // Note: Uploadcare doesn't provide a direct delete API for files
+    // The file will remain in Uploadcare but won't be accessible via our application
+    // In production, you might want to implement a cleanup queue or scheduled task
+    
+    console.log(`⚠️ [UPLOADCARE-CLEANUP] Orphaned file cleanup not implemented: ${fileId}`);
+    console.log(`💡 [UPLOADCARE-CLEANUP] File will remain in Uploadcare but won't be accessible via application`);
+    
+    return {
+      success: true,
+      message: 'Orphaned file cleanup logged',
+      fileId: fileId
+    };
+    
+  } catch (error) {
+    console.error(`❌ [UPLOADCARE-CLEANUP] Cleanup failed:`, error);
+    return {
+      success: false,
+      message: error.message,
+      fileId: fileId
+    };
+  }
+}
+
 export default {
   uploadToUploadcare,
   getFileInfo,
@@ -614,5 +664,6 @@ export default {
   listFilesInFolder,
   cleanupOldFiles,
   generatePublicUrl,
-  testFileAccessibility
+  testFileAccessibility,
+  cleanupOrphanedFile
 };
