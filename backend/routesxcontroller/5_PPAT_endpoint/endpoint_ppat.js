@@ -1027,14 +1027,14 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { booking_id } = req.body;
+        const { nobooking, documentType } = req.body;
         const userid = req.session.user.userid;
 
-        if (!booking_id) {
+        if (!nobooking) {
             return res.status(400).json({ success: false, message: 'Booking ID required' });
         }
 
-        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${booking_id}, user: ${userid}`);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${nobooking}, user: ${userid}`);
 
         // Import uploadcare functions
         const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
@@ -1073,7 +1073,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 // Upload to Uploadcare
                 const uploadResult = await uploadToUploadcare(file, {
                     userid: userid,
-                    nobooking: booking_id,
+                    nobooking: nobooking,
                     docType: documentType,
                     sequenceNumber: 1,
                     resourceType: 'auto'
@@ -1140,7 +1140,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                     uploadResult.fileUrl,
                     file.mimetype,
                     file.size,
-                    booking_id,
+                    nobooking,
                     userid
                 ];
 
