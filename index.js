@@ -232,7 +232,16 @@ console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
 .filter(Boolean));
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
-// Body parsers must come before API routes
+// Register PPATK endpoints BEFORE body parsers (for multipart/form-data support)
+registerPPATKEndpoints({
+  app,
+  pool,
+  logger,
+  morganMiddleware,
+  triggerNotificationByStatus
+});
+
+// Body parsers must come after PPATK endpoints
 app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
 app.use('/api/v1/auth', authRoutes);
@@ -486,19 +495,7 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
   }
 }
 
-// Register PPATK endpoints (modularized)
-registerPPATKEndpoints({
-  app,
-  pool,
-  logger,
-  morganMiddleware,
-  // Local storage removed
-  uploadTTD,
-  uploadDocumentMiddleware,
-  PAT3_DISABLED,
-  triggerNotificationByStatus,
-  upsertBankVerification
-});
+// PPATK endpoints already registered above (before body parsers)
 
 function requireBankRole(req) {
   if (!req.session.user) return 'Unauthorized';

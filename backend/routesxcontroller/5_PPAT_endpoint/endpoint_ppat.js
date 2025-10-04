@@ -1034,7 +1034,8 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             'content-type': req.headers['content-type'],
             'content-length': req.headers['content-length']
         });
-        console.log(`📤 [UPLOAD-DOCUMENTS] Request body:`, req.body);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Request body before multer:`, req.body);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Request body keys:`, Object.keys(req.body || {}));
 
         // Import uploadcare functions
         const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
@@ -1111,7 +1112,14 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
 
                 if (!documentType) {
                     console.error('❌ [UPLOAD-DOCUMENTS] No valid document type found');
-                    return res.status(400).json({ success: false, message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap' });
+                    console.error('❌ [UPLOAD-DOCUMENTS] Available body keys after multer:', Object.keys(req.body || {}));
+                    console.error('❌ [UPLOAD-DOCUMENTS] Expected document types: akta_tanah, sertifikat_tanah, pelengkap');
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap',
+                        received: Object.keys(req.body || {}),
+                        expected: ['akta_tanah', 'sertifikat_tanah', 'pelengkap']
+                    });
                 }
 
                 console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {

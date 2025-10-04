@@ -4137,13 +4137,23 @@ async function replaceUploadedDocument(bookingId, documentType) {
             formData.append(documentType, 'true'); // Add document type indicator
             formData.append('nobooking', bookingId);
             
+            console.log('📤 [FRONTEND] Sending FormData:', {
+                file: file.name,
+                documentType: documentType,
+                bookingId: bookingId
+            });
+            
             const response = await fetch('/api/ppatk/upload-documents', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
             });
             
+            console.log('📤 [FRONTEND] Response status:', response.status);
+            console.log('📤 [FRONTEND] Response headers:', Object.fromEntries(response.headers.entries()));
+            
             const data = await response.json();
+            console.log('📤 [FRONTEND] Response data:', data);
             
             if (data.success) {
                 showAlert('success', 'Dokumen berhasil diperbarui!');
