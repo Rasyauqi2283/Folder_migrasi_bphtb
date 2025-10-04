@@ -204,9 +204,22 @@ export async function uploadToUploadcare(file, options = {}) {
     // Uploadcare returns the correct file ID that should be used
     const finalFileId = fileId;
     
-    // Use standard Uploadcare CDN format
-    const cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
-    const publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+    // Generate proper Uploadcare URLs based on file type
+    let cdnUrl, publicUrl;
+    
+    if (file.mimetype.startsWith('image/')) {
+      // For images, use preview URL for better compatibility
+      cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}/-/preview/1000x1000/`;
+      publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}/-/preview/1000x1000/`;
+    } else if (file.mimetype === 'application/pdf') {
+      // For PDFs, use direct URL
+      cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+      publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+    } else {
+      // For other files, use direct URL
+      cdnUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+      publicUrl = `${UPLOADCARE_CONFIG.cdnBase}/${finalFileId}`;
+    }
     
     console.log(`🔍 [UPLOADCARE-URL] URL generation:`, {
       fileId: finalFileId,

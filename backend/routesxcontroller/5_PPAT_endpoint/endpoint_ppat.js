@@ -1321,6 +1321,129 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
     }
 });
 
+// Update file URL endpoint - Generate proper Uploadcare URLs
+app.post('/api/ppatk/update-file-urls', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.body;
+        const userid = req.session.user.userid;
+
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'NoBooking required' });
+        }
+
+        console.log(`🔧 [UPDATE-FILE-URLS] Updating URLs for booking: ${nobooking}, user: ${userid}`);
+
+        // Get current file data from database
+        const query = `
+            SELECT 
+                nobooking,
+                akta_tanah_file_id, akta_tanah_path, akta_tanah_mime_type,
+                sertifikat_tanah_file_id, sertifikat_tanah_path, sertifikat_tanah_mime_type,
+                pelengkap_file_id, pelengkap_path, pelengkap_mime_type
+            FROM pat_1_bookingsspd 
+            WHERE nobooking = $1 AND userid = $2
+        `;
+
+        const result = await pool.query(query, [nobooking, userid]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        const bookingData = result.rows[0];
+        const updates = [];
+        const updateParams = [];
+        let paramIndex = 1;
+
+        // Helper function to generate proper URL
+        const generateProperUrl = (fileId, mimeType) => {
+            if (!fileId) return null;
+            
+            if (mimeType && mimeType.startsWith('image/')) {
+                return `https://44renul14z.ucarecd.net/${fileId}/-/preview/1000x1000/`;
+            } else {
+                return `https://44renul14z.ucarecd.net/${fileId}`;
+            }
+        };
+
+        // Check and update akta_tanah
+        if (bookingData.akta_tanah_file_id) {
+            const newUrl = generateProperUrl(bookingData.akta_tanah_file_id, bookingData.akta_tanah_mime_type);
+            if (newUrl && newUrl !== bookingData.akta_tanah_path) {
+                updates.push(`akta_tanah_path = $${paramIndex}`);
+                updateParams.push(newUrl);
+                paramIndex++;
+                console.log(`🔧 [UPDATE-FILE-URLS] Akta Tanah URL: ${bookingData.akta_tanah_path} → ${newUrl}`);
+            }
+        }
+
+        // Check and update sertifikat_tanah
+        if (bookingData.sertifikat_tanah_file_id) {
+            const newUrl = generateProperUrl(bookingData.sertifikat_tanah_file_id, bookingData.sertifikat_tanah_mime_type);
+            if (newUrl && newUrl !== bookingData.sertifikat_tanah_path) {
+                updates.push(`sertifikat_tanah_path = $${paramIndex}`);
+                updateParams.push(newUrl);
+                paramIndex++;
+                console.log(`🔧 [UPDATE-FILE-URLS] Sertifikat Tanah URL: ${bookingData.sertifikat_tanah_path} → ${newUrl}`);
+            }
+        }
+
+        // Check and update pelengkap
+        if (bookingData.pelengkap_file_id) {
+            const newUrl = generateProperUrl(bookingData.pelengkap_file_id, bookingData.pelengkap_mime_type);
+            if (newUrl && newUrl !== bookingData.pelengkap_path) {
+                updates.push(`pelengkap_path = $${paramIndex}`);
+                updateParams.push(newUrl);
+                paramIndex++;
+                console.log(`🔧 [UPDATE-FILE-URLS] Pelengkap URL: ${bookingData.pelengkap_path} → ${newUrl}`);
+            }
+        }
+
+        if (updates.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'All URLs are already up to date',
+                data: { updated: 0 }
+            });
+        }
+
+        // Add updated_at and final parameters
+        updates.push(`updated_at = CURRENT_TIMESTAMP`);
+        updateParams.push(nobooking, userid);
+
+        const updateQuery = `
+            UPDATE pat_1_bookingsspd 
+            SET ${updates.join(', ')}
+            WHERE nobooking = $${paramIndex} AND userid = $${paramIndex + 1}
+        `;
+
+        const updateResult = await pool.query(updateQuery, updateParams);
+
+        console.log(`✅ [UPDATE-FILE-URLS] Updated ${updates.length - 1} URLs for booking: ${nobooking}`);
+
+        res.json({
+            success: true,
+            message: `Updated ${updates.length - 1} file URLs successfully`,
+            data: {
+                nobooking,
+                updated: updates.length - 1,
+                updatedAt: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [UPDATE-FILE-URLS] Update failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Update failed: ' + error.message
+        });
+    }
+});
+
 // Get documents endpoint
 app.get('/api/ppatk/get-documents', async (req, res) => {
     try {

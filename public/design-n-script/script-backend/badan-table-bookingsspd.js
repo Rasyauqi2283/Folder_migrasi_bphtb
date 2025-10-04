@@ -1200,7 +1200,8 @@ function showAlert(type, message, title = null) {
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
             apiEndpoint: '/api/ppatk/upload-documents',  // ✅ Uploadcare multiple files
             proxyEndpoint: '/api/ppatk/uploadcare-proxy',  // ✅ Uploadcare proxy
-            healthEndpoint: '/api/ppatk/uploadcare-health'  // ✅ Uploadcare health check
+            healthEndpoint: '/api/ppatk/uploadcare-health',  // ✅ Uploadcare health check
+            updateUrlEndpoint: '/api/ppatk/update-file-urls'  // ✅ Update file URLs
         };
 
         function initializeFileUploads() {
@@ -1417,6 +1418,12 @@ function showAlert(type, message, title = null) {
                     updateDocumentDisplay(selectedNoBooking, result.data);
                     resetFileInputs(selectedNoBooking);
                     
+                    // Update file URLs to proper format
+                    const updateResult = await updateFileUrls(selectedNoBooking);
+                    if (updateResult && updateResult.updated > 0) {
+                        console.log(`✅ [UPLOAD] Updated ${updateResult.updated} file URLs`);
+                    }
+                    
                     // Reload after a short delay to show success message
                     setTimeout(() => {
                         location.reload();
@@ -1615,6 +1622,35 @@ function showAlert(type, message, title = null) {
                 input.click();
             }
         }
+        // Function to update file URLs to proper Uploadcare format
+        async function updateFileUrls(nobooking) {
+            try {
+                console.log(`🔧 [UPDATE-URLS] Updating file URLs for booking: ${nobooking}`);
+                
+                const response = await fetch(config.updateUrlEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ nobooking })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log(`✅ [UPDATE-URLS] URLs updated successfully:`, result.data);
+                    return result.data;
+                } else {
+                    console.error(`❌ [UPDATE-URLS] Update failed:`, result.message);
+                    return null;
+                }
+            } catch (error) {
+                console.error(`❌ [UPDATE-URLS] Update error:`, error);
+                return null;
+            }
+        }
+
         function resetFileInputs(nobooking) {
             const inputs = [
                 `aktaTanahInput-${nobooking}`,
