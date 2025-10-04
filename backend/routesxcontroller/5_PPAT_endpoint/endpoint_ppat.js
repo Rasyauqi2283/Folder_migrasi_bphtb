@@ -1427,7 +1427,7 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
 
 // Uploadcare Proxy Endpoint for Preview - ROBUST VERSION
 // Konfigurasi
-const REQUIRE_AUTH = true; // Enable session auth
+const REQUIRE_AUTH = false; // Disable session auth for debugging
 const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
 
 // 🔹 Utility untuk bangun URL Uploadcare
