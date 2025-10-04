@@ -3474,7 +3474,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         
         // Add booking_id if provided
         if (bookingId) {
-            formData.append('booking_id', bookingId);
+            formData.append('nobooking', bookingId);
             console.log('Booking ID added:', bookingId);
         }
         
@@ -3550,7 +3550,7 @@ async function loadUploadedDocuments(bookingId) {
     try {
         console.log(`🔍 [LOAD-DOCUMENTS] Loading documents for booking: ${bookingId}`);
         
-        const response = await fetch(`/api/ppatk/get-documents?booking_id=${bookingId}`, {
+        const response = await fetch(`/api/ppatk/get-documents?nobooking=${bookingId}`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -3889,7 +3889,7 @@ async function findAlternativeFileId(bookingId, documentType) {
         console.log(`🔍 [FIND-ALTERNATIVE] Looking for alternative file ID for ${documentType} in booking ${bookingId}`);
         
         // First, try to get latest file info from database
-        const response = await fetch(`/api/ppatk/get-documents?booking_id=${bookingId}`, {
+        const response = await fetch(`/api/ppatk/get-documents?nobooking=${bookingId}`, {
             credentials: 'include'
         });
         
@@ -4135,7 +4135,7 @@ async function replaceUploadedDocument(bookingId, documentType) {
             const formData = new FormData();
             formData.append('file', file); // Changed from documentType to 'file'
             formData.append(documentType, 'true'); // Add document type indicator
-            formData.append('booking_id', bookingId);
+            formData.append('nobooking', bookingId);
             
             const response = await fetch('/api/ppatk/upload-documents', {
                 method: 'POST',

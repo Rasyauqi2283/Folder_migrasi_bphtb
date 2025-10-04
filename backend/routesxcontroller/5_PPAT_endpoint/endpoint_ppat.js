@@ -1022,11 +1022,11 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
         const { booking_id, nobooking, documentType } = req.body;
         const userid = req.session.user.userid;
 
-        // Support both parameter names for compatibility
-        const bookingId = booking_id || nobooking;
+        // Use nobooking as the primary identifier (business key)
+        const bookingId = nobooking || booking_id;
 
         if (!bookingId) {
-            return res.status(400).json({ success: false, message: 'Booking ID required' });
+            return res.status(400).json({ success: false, message: 'NoBooking required' });
         }
 
         console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${bookingId}, user: ${userid}`);
@@ -1235,11 +1235,11 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
         const { nobooking, booking_id } = req.query;
         const userid = req.session.user.userid;
 
-        // Support both parameter names for compatibility
+        // Use nobooking as the primary identifier (business key)
         const bookingId = nobooking || booking_id;
 
         if (!bookingId) {
-            return res.status(400).json({ success: false, message: 'Booking ID required' });
+            return res.status(400).json({ success: false, message: 'NoBooking required' });
         }
 
         // Get documents from database with Uploadcare information
