@@ -1021,22 +1021,165 @@ app.post('/api/ppatk/upload-signatures', async (req, res) => {
 // Upload documents endpoint
 app.post('/api/ppatk/upload-documents', async (req, res) => {
     try {
+        console.log('📤 [UPLOAD-DOCUMENTS] Upload request received');
+        
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = req.body;
+        const { booking_id } = req.body;
         const userid = req.session.user.userid;
 
-        // Handle document upload logic here
-        res.json({
-            success: true,
-            message: 'Documents uploaded successfully',
-            nobooking: nobooking
+        if (!booking_id) {
+            return res.status(400).json({ success: false, message: 'Booking ID required' });
+        }
+
+        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${booking_id}, user: ${userid}`);
+
+        // Import uploadcare functions
+        const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
+        
+        // Handle file uploads using multer
+        const multer = await import('multer');
+        const upload = multer.default({ storage: multer.default.memoryStorage() });
+        
+        // Process single file upload
+        upload.single('file')(req, res, async (err) => {
+            if (err) {
+                console.error('❌ [UPLOAD-DOCUMENTS] Multer error:', err);
+                return res.status(400).json({ success: false, message: 'File upload error: ' + err.message });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ success: false, message: 'No file uploaded' });
+            }
+
+            try {
+                const file = req.file;
+                const documentType = Object.keys(req.body).find(key => 
+                    ['akta_tanah', 'sertifikat_tanah', 'pelengkap', 'pdf_dokumen', 'file_withstempel'].includes(key)
+                );
+
+                if (!documentType) {
+                    return res.status(400).json({ success: false, message: 'Invalid document type' });
+                }
+
+                console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {
+                    fileName: file.originalname,
+                    fileSize: file.size,
+                    mimeType: file.mimetype
+                });
+
+                // Upload to Uploadcare
+                const uploadResult = await uploadToUploadcare(file, {
+                    userid: userid,
+                    nobooking: booking_id,
+                    docType: documentType,
+                    sequenceNumber: 1,
+                    resourceType: 'auto'
+                });
+
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.message || 'Upload to Uploadcare failed');
+                }
+
+                console.log(`✅ [UPLOAD-DOCUMENTS] Upload successful:`, uploadResult);
+
+                // Update database with new file information
+                const columnMap = {
+                    'akta_tanah': {
+                        fileId: 'akta_tanah_file_id',
+                        path: 'akta_tanah_path',
+                        mimeType: 'akta_tanah_mime_type',
+                        size: 'akta_tanah_size'
+                    },
+                    'sertifikat_tanah': {
+                        fileId: 'sertifikat_tanah_file_id',
+                        path: 'sertifikat_tanah_path',
+                        mimeType: 'sertifikat_tanah_mime_type',
+                        size: 'sertifikat_tanah_size'
+                    },
+                    'pelengkap': {
+                        fileId: 'pelengkap_file_id',
+                        path: 'pelengkap_path',
+                        mimeType: 'pelengkap_mime_type',
+                        size: 'pelengkap_size'
+                    },
+                    'pdf_dokumen': {
+                        fileId: 'pdf_dokumen_file_id',
+                        path: 'pdf_dokumen_path',
+                        mimeType: 'pdf_dokumen_mime_type',
+                        size: 'pdf_dokumen_size'
+                    },
+                    'file_withstempel': {
+                        fileId: 'file_withstempel_file_id',
+                        path: 'file_withstempel_path',
+                        mimeType: 'file_withstempel_mime_type',
+                        size: 'file_withstempel_size'
+                    }
+                };
+
+                const columns = columnMap[documentType];
+                if (!columns) {
+                    throw new Error('Invalid document type');
+                }
+
+                const updateQuery = `
+                    UPDATE pat_1_bookingsspd 
+                    SET 
+                        ${columns.fileId} = $1,
+                        ${columns.path} = $2,
+                        ${columns.mimeType} = $3,
+                        ${columns.size} = $4,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE nobooking = $5 AND userid = $6
+                `;
+
+                const updateParams = [
+                    uploadResult.fileId,
+                    uploadResult.fileUrl,
+                    file.mimetype,
+                    file.size,
+                    booking_id,
+                    userid
+                ];
+
+                const updateResult = await pool.query(updateQuery, updateParams);
+
+                if (updateResult.rowCount === 0) {
+                    throw new Error('Booking not found or no permission to update');
+                }
+
+                console.log(`✅ [UPLOAD-DOCUMENTS] Database updated successfully:`, {
+                    documentType,
+                    fileId: uploadResult.fileId,
+                    rowsAffected: updateResult.rowCount
+                });
+
+                res.json({
+                    success: true,
+                    message: 'Document uploaded and database updated successfully',
+                    data: {
+                        documentType,
+                        fileId: uploadResult.fileId,
+                        fileUrl: uploadResult.fileUrl,
+                        fileName: file.originalname,
+                        fileSize: file.size,
+                        mimeType: file.mimetype
+                    }
+                });
+
+            } catch (uploadError) {
+                console.error('❌ [UPLOAD-DOCUMENTS] Upload processing failed:', uploadError);
+                res.status(500).json({
+                    success: false,
+                    message: 'Upload processing failed: ' + uploadError.message
+                });
+            }
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Upload documents failed:', error);
+        console.error('❌ [UPLOAD-DOCUMENTS] Upload documents failed:', error);
         res.status(500).json({
             success: false,
             message: 'Upload documents failed: ' + error.message

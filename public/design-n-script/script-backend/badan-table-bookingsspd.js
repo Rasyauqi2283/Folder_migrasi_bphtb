@@ -4172,7 +4172,8 @@ async function replaceUploadedDocument(bookingId, documentType) {
             showAlert('info', 'Mengupload dokumen baru...');
             
             const formData = new FormData();
-            formData.append(documentType, file);
+            formData.append('file', file); // Changed from documentType to 'file'
+            formData.append(documentType, 'true'); // Add document type indicator
             formData.append('booking_id', bookingId);
             
             const response = await fetch('/api/ppatk/upload-documents', {
