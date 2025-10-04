@@ -1039,8 +1039,8 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
         const upload = multer.default({ 
             storage: multer.default.memoryStorage(),
             limits: {
-                fileSize: 50 * 1024 * 1024, // 50MB limit
-                files: 1 // Single file
+                fileSize: 50 * 1024 * 1024, // 50MB limit per file
+                files: 3 // Maximum 3 files (aktaTanah, sertifikatTanah, pelengkap)
             },
             fileFilter: (req, file, cb) => {
                 // Allow images and PDFs
@@ -1061,7 +1061,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             }
         });
         
-        // Process single file upload
+        // Process multiple file upload
         upload.fields([
             { name: 'aktaTanah', maxCount: 1 },
             { name: 'sertifikatTanah', maxCount: 1 },
