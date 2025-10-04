@@ -1198,10 +1198,11 @@ function showAlert(type, message, title = null) {
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk/uploadcare-upload',  // ✅ Uploadcare multiple files
+            apiEndpoint: '/api/ppatk/upload-document',  // ✅ Uploadcare multiple files
             pdfEndpoint: '/api/ppatk/uploadcare-pdf-upload',  // ✅ Uploadcare single PDF
             proxyEndpoint: '/api/ppatk/uploadcare-proxy',  // ✅ Uploadcare proxy
-            healthEndpoint: '/api/ppatk/uploadcare-health'  // ✅ Uploadcare health check
+            healthEndpoint: '/api/ppatk/uploadcare-health-check',  // ✅ Uploadcare health check
+            healthCheck: '/api/ppatk/uploadcare-health'  // ✅ Uploadcare health check
         };
 
         function initializeFileUploads() {
