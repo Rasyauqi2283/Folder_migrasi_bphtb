@@ -1027,41 +1027,99 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking, documentType } = req.body;
+        const { booking_id, nobooking, documentType } = req.body;
         const userid = req.session.user.userid;
 
-        if (!nobooking) {
+        // Support both parameter names for compatibility
+        const bookingId = booking_id || nobooking;
+
+        if (!bookingId) {
             return res.status(400).json({ success: false, message: 'Booking ID required' });
         }
 
-        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${nobooking}, user: ${userid}`);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${bookingId}, user: ${userid}`);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Request headers:`, {
+            'content-type': req.headers['content-type'],
+            'content-length': req.headers['content-length']
+        });
+        console.log(`📤 [UPLOAD-DOCUMENTS] Request body:`, req.body);
 
         // Import uploadcare functions
         const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
         
         // Handle file uploads using multer
         const multer = await import('multer');
-        const upload = multer.default({ storage: multer.default.memoryStorage() });
+        const upload = multer.default({ 
+            storage: multer.default.memoryStorage(),
+            limits: {
+                fileSize: 50 * 1024 * 1024, // 50MB limit
+                files: 1 // Single file
+            },
+            fileFilter: (req, file, cb) => {
+                // Allow images and PDFs
+                const allowedTypes = [
+                    'image/jpeg',
+                    'image/jpg', 
+                    'image/png',
+                    'image/gif',
+                    'image/webp',
+                    'application/pdf'
+                ];
+                
+                if (allowedTypes.includes(file.mimetype)) {
+                    cb(null, true);
+                } else {
+                    cb(new Error(`File type ${file.mimetype} not allowed`), false);
+                }
+            }
+        });
         
         // Process single file upload
         upload.single('file')(req, res, async (err) => {
             if (err) {
                 console.error('❌ [UPLOAD-DOCUMENTS] Multer error:', err);
-                return res.status(400).json({ success: false, message: 'File upload error: ' + err.message });
+                console.error('❌ [UPLOAD-DOCUMENTS] Error details:', {
+                    code: err.code,
+                    message: err.message,
+                    field: err.field
+                });
+                
+                if (err.code === 'LIMIT_FILE_SIZE') {
+                    return res.status(400).json({ success: false, message: 'File too large. Maximum size is 50MB.' });
+                } else if (err.code === 'LIMIT_FILE_COUNT') {
+                    return res.status(400).json({ success: false, message: 'Too many files. Only one file allowed.' });
+                } else {
+                    return res.status(400).json({ success: false, message: 'File upload error: ' + err.message });
+                }
             }
 
+            console.log(`📤 [UPLOAD-DOCUMENTS] Multer processing completed. File:`, req.file ? 'Present' : 'Missing');
+            console.log(`📤 [UPLOAD-DOCUMENTS] Request body after multer:`, req.body);
+
             if (!req.file) {
+                console.error('❌ [UPLOAD-DOCUMENTS] No file in request');
                 return res.status(400).json({ success: false, message: 'No file uploaded' });
             }
 
             try {
                 const file = req.file;
+                console.log(`📤 [UPLOAD-DOCUMENTS] File details:`, {
+                    fieldname: file.fieldname,
+                    originalname: file.originalname,
+                    mimetype: file.mimetype,
+                    size: file.size
+                });
+
                 const documentType = Object.keys(req.body).find(key => 
                     ['akta_tanah', 'sertifikat_tanah', 'pelengkap', 'pdf_dokumen', 'file_withstempel'].includes(key)
                 );
 
+                console.log(`📤 [UPLOAD-DOCUMENTS] Document type detected:`, documentType);
+                console.log(`📤 [UPLOAD-DOCUMENTS] Available body keys:`, Object.keys(req.body));
+
                 if (!documentType) {
-                    return res.status(400).json({ success: false, message: 'Invalid document type' });
+                    console.error('❌ [UPLOAD-DOCUMENTS] No valid document type found');
+                    return res.status(400).json({ success: false, message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap, pdf_dokumen, file_withstempel' });
                 }
 
                 console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {
@@ -1073,7 +1131,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 // Upload to Uploadcare
                 const uploadResult = await uploadToUploadcare(file, {
                     userid: userid,
-                    nobooking: nobooking,
+                    nobooking: bookingId,
                     docType: documentType,
                     sequenceNumber: 1,
                     resourceType: 'auto'
@@ -1140,7 +1198,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                     uploadResult.fileUrl,
                     file.mimetype,
                     file.size,
-                    nobooking,
+                    bookingId,
                     userid
                 ];
 
