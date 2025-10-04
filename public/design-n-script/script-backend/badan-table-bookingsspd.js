@@ -3656,45 +3656,6 @@ function displayUploadedDocuments(bookingId, documentData) {
         `;
     }
     
-    // Check for pdfDokumen document
-    if (documentData.pdfDokumen) {
-        uploadedDocsHTML += `
-            <div class="uploaded-doc-item">
-                <div class="doc-info">
-                    <i class="fas fa-file-pdf doc-icon"></i>
-                    <span class="doc-name">PDF Dokumen - ${documentData.pdfDokumen.fileName || 'Document'}</span>
-                </div>
-                <div class="doc-actions">
-                    <button onclick="smartPreviewDocument('${documentData.pdfDokumen.fileUrl}', 'PDF Dokumen')" class="btn-view-doc">
-                        <i class="fas fa-eye"></i> Lihat
-                    </button>
-                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'pdf_dokumen')">
-                        <i class="fas fa-sync-alt"></i> Ganti
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Check for fileWithStempel document
-    if (documentData.fileWithStempel) {
-        uploadedDocsHTML += `
-            <div class="uploaded-doc-item">
-                <div class="doc-info">
-                    <i class="fas fa-file-pdf doc-icon"></i>
-                    <span class="doc-name">File dengan Stempel - ${documentData.fileWithStempel.fileName || 'Document'}</span>
-                </div>
-                <div class="doc-actions">
-                    <button onclick="smartPreviewDocument('${documentData.fileWithStempel.fileUrl}', 'File dengan Stempel')" class="btn-view-doc">
-                        <i class="fas fa-eye"></i> Lihat
-                    </button>
-                    <button class="btn-replace-doc" onclick="replaceUploadedDocument('${bookingId}', 'file_withstempel')">
-                        <i class="fas fa-sync-alt"></i> Ganti
-                    </button>
-                </div>
-            </div>
-        `;
-    }
     
     uploadedDocsHTML += `
             </div>

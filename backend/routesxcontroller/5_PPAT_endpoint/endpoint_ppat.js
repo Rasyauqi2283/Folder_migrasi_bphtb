@@ -686,14 +686,6 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
             'pelengkap': {
                 fileId: 'pelengkap_file_id',
                 path: 'pelengkap_path'
-            },
-            'pdf_dokumen': {
-                fileId: 'pdf_dokumen_file_id',
-                path: 'pdf_dokumen_path'
-            },
-            'file_withstempel': {
-                fileId: 'file_withstempel_file_id',
-                path: 'file_withstempel_path'
             }
         };
 
@@ -1111,7 +1103,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 });
 
                 const documentType = Object.keys(req.body).find(key => 
-                    ['akta_tanah', 'sertifikat_tanah', 'pelengkap', 'pdf_dokumen', 'file_withstempel'].includes(key)
+                    ['akta_tanah', 'sertifikat_tanah', 'pelengkap'].includes(key)
                 );
 
                 console.log(`📤 [UPLOAD-DOCUMENTS] Document type detected:`, documentType);
@@ -1119,7 +1111,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
 
                 if (!documentType) {
                     console.error('❌ [UPLOAD-DOCUMENTS] No valid document type found');
-                    return res.status(400).json({ success: false, message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap, pdf_dokumen, file_withstempel' });
+                    return res.status(400).json({ success: false, message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap' });
                 }
 
                 console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {
@@ -1162,18 +1154,6 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                         path: 'pelengkap_path',
                         mimeType: 'pelengkap_mime_type',
                         size: 'pelengkap_size'
-                    },
-                    'pdf_dokumen': {
-                        fileId: 'pdf_dokumen_file_id',
-                        path: 'pdf_dokumen_path',
-                        mimeType: 'pdf_dokumen_mime_type',
-                        size: 'pdf_dokumen_size'
-                    },
-                    'file_withstempel': {
-                        fileId: 'file_withstempel_file_id',
-                        path: 'file_withstempel_path',
-                        mimeType: 'file_withstempel_mime_type',
-                        size: 'file_withstempel_size'
                     }
                 };
 
@@ -1214,8 +1194,8 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                     rowsAffected: updateResult.rowCount
                 });
 
-                res.json({
-                    success: true,
+        res.json({
+            success: true,
                     message: 'Document uploaded and database updated successfully',
                     data: {
                         documentType,
@@ -1277,14 +1257,6 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
                 pelengkap_file_id,
                 pelengkap_mime_type,
                 pelengkap_size,
-                pdf_dokumen_path, 
-                pdf_dokumen_file_id,
-                pdf_dokumen_mime_type,
-                pdf_dokumen_size,
-                file_withstempel_path,
-                file_withstempel_file_id,
-                file_withstempel_mime_type,
-                file_withstempel_size,
                 created_at,
                 updated_at
             FROM pat_1_bookingsspd
@@ -1333,22 +1305,6 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
                 mimeType: row.pelengkap_mime_type,
                 size: row.pelengkap_size
             } : null,
-            pdfDokumen: row.pdf_dokumen_path ? {
-                fileUrl: row.pdf_dokumen_path,
-                fileId: row.pdf_dokumen_file_id,
-                fileName: row.pdf_dokumen_file_id, // ✅ Gunakan file ID sebagai display name
-                customFileName: row.pdf_dokumen_file_id, // ✅ Custom filename (sementara sama dengan file ID)
-                mimeType: row.pdf_dokumen_mime_type,
-                size: row.pdf_dokumen_size
-            } : null,
-            fileWithStempel: row.file_withstempel_path ? {
-                fileUrl: row.file_withstempel_path,
-                fileId: row.file_withstempel_file_id,
-                fileName: row.file_withstempel_file_id, // ✅ Gunakan file ID sebagai display name
-                customFileName: row.file_withstempel_file_id, // ✅ Custom filename (sementara sama dengan file ID)
-                mimeType: row.file_withstempel_mime_type,
-                size: row.file_withstempel_size
-            } : null,
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
@@ -1356,8 +1312,7 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
         console.log(`✅ [GET-DOCUMENTS] Returning formatted data:`, {
             aktaTanah: formattedData.aktaTanah ? 'Present' : 'Null',
             sertifikatTanah: formattedData.sertifikatTanah ? 'Present' : 'Null',
-            pelengkap: formattedData.pelengkap ? 'Present' : 'Null',
-            pdfDokumen: formattedData.pdfDokumen ? 'Present' : 'Null'
+            pelengkap: formattedData.pelengkap ? 'Present' : 'Null'
         });
         
         res.json({
