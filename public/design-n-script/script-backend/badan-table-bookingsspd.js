@@ -3761,6 +3761,7 @@ async function previewDocument(fileUrl, documentName) {
                         </div>
                         <iframe src="${proxyUrl}" 
                                 title="Document Preview"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
                                 style="display: none;"
                                 onload="document.getElementById('loading').style.display='none'; this.style.display='block'; console.log('Document loaded successfully');"
                                 onerror="document.getElementById('loading').style.display='none'; document.getElementById('error').style.display='block'; console.error('Document failed to load');">
