@@ -173,7 +173,7 @@ app.post('/api/cleanup-old-files', async (req, res) => {
     }
 });
 
-// Uploadcare health check endpoint
+// Uploadcare health check endpoint (legacy path)
 app.get('/api/uploadcare-health-check', async (req, res) => {
     try {
         console.log('🔍 [UPLOADCARE-HEALTH] Starting health check...');
@@ -224,7 +224,88 @@ app.get('/api/uploadcare-health-check', async (req, res) => {
             environment: {
                 nodeEnv: process.env.NODE_ENV,
                 uploadcarePublicKey: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
-                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET'
+                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET',
+                uploadcareCdnBase: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
+                uploadcareApiBase: process.env.UPLOADCARE_API_BASE || 'NOT_SET'
+            },
+            configuration: {
+                cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
+                apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
+            }
+        };
+
+        console.log('✅ [UPLOADCARE-HEALTH] Health check completed:', healthStatus);
+
+        res.json(healthStatus);
+
+    } catch (error) {
+        console.error('❌ [UPLOADCARE-HEALTH] Health check failed:', error);
+        res.status(500).json({
+            status: 'unhealthy',
+            timestamp: new Date().toISOString(),
+            error: error.message
+        });
+    }
+});
+
+// Uploadcare health check endpoint (PPATK path - for frontend compatibility)
+app.get('/api/ppatk/uploadcare-health', async (req, res) => {
+    try {
+        console.log('🔍 [UPLOADCARE-HEALTH] Starting health check...');
+        
+        // Test 1: Check environment variables
+        const envCheck = {
+            publicKey: !!process.env.UPLOADCARE_PUBLIC_KEY,
+            secretKey: !!process.env.UPLOADCARE_SECRET_KEY,
+            cdnBase: !!process.env.UPLOADCARE_CDN_BASE,
+            apiBase: !!process.env.UPLOADCARE_API_BASE
+        };
+
+        // Test 2: Check if Uploadcare client can be initialized
+        let clientTest = false;
+        try {
+            const { UploadClient } = await import('@uploadcare/upload-client');
+            const testClient = new UploadClient({
+                publicKey: process.env.UPLOADCARE_PUBLIC_KEY || 'test'
+            });
+            clientTest = !!testClient;
+            console.log('✅ [UPLOADCARE-HEALTH] Client initialization test passed');
+        } catch (err) {
+            console.error('❌ [UPLOADCARE-HEALTH] Client initialization test failed:', err.message);
+        }
+
+        // Test 3: Check if we can make a simple request to Uploadcare
+        let uploadcareReachability = false;
+        try {
+            const testUrl = 'https://ucarecdn.com/test';
+            const response = await axios.get(testUrl, { 
+                timeout: 5000,
+                validateStatus: () => true // Accept any status
+            });
+            uploadcareReachability = response.status !== 0; // If we get any response, Uploadcare is reachable
+            console.log('✅ [UPLOADCARE-HEALTH] Uploadcare reachability test:', response.status);
+        } catch (err) {
+            console.error('❌ [UPLOADCARE-HEALTH] Uploadcare reachability test failed:', err.message);
+        }
+
+        const healthStatus = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            tests: {
+                clientInitialization: clientTest,
+                environmentVariables: envCheck,
+                uploadcareReachability: uploadcareReachability
+            },
+            environment: {
+                nodeEnv: process.env.NODE_ENV,
+                uploadcarePublicKey: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
+                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET',
+                uploadcareCdnBase: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
+                uploadcareApiBase: process.env.UPLOADCARE_API_BASE || 'NOT_SET'
+            },
+            configuration: {
+                cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
+                apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
             }
         };
 
