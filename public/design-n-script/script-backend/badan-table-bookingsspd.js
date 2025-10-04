@@ -1625,15 +1625,15 @@ function showAlert(type, message, title = null) {
         // Function to update file URLs to proper Uploadcare format
         async function updateFileUrls(nobooking) {
             try {
-                console.log(`🔧 [UPDATE-URLS] Updating file URLs for booking: ${nobooking}`);
+                console.log(`🔧 [UPDATE-URLS] Updating file URLs for user`);
                 
                 const response = await fetch(config.updateUrlEndpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    credentials: 'include',
-                    body: JSON.stringify({ nobooking })
+                    credentials: 'include'
+                    // No body needed - endpoint gets nobooking from database
                 });
 
                 const result = await response.json();
