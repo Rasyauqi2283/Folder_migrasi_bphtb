@@ -1019,23 +1019,11 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { booking_id, nobooking, documentType } = req.body;
-        const userid = req.session.user.userid;
-
-        // Use nobooking as the primary identifier (business key)
-        const bookingId = nobooking || booking_id;
-
-        if (!bookingId) {
-            return res.status(400).json({ success: false, message: 'NoBooking required' });
-        }
-
-        console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${bookingId}, user: ${userid}`);
+        console.log(`📤 [UPLOAD-DOCUMENTS] Upload request received`);
         console.log(`📤 [UPLOAD-DOCUMENTS] Request headers:`, {
             'content-type': req.headers['content-type'],
             'content-length': req.headers['content-length']
         });
-        console.log(`📤 [UPLOAD-DOCUMENTS] Request body before multer:`, req.body);
-        console.log(`📤 [UPLOAD-DOCUMENTS] Request body keys:`, Object.keys(req.body || {}));
 
         // Import uploadcare functions
         const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
@@ -1093,6 +1081,20 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 console.error('❌ [UPLOAD-DOCUMENTS] No file in request');
                 return res.status(400).json({ success: false, message: 'No file uploaded' });
             }
+
+            // Extract parameters after multer processes the FormData
+            const { booking_id, nobooking, documentType } = req.body;
+            const userid = req.session.user.userid;
+
+            // Use nobooking as the primary identifier (business key)
+            const bookingId = nobooking || booking_id;
+
+            if (!bookingId) {
+                console.error('❌ [UPLOAD-DOCUMENTS] No booking ID found in request body');
+                return res.status(400).json({ success: false, message: 'NoBooking required' });
+            }
+
+            console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${bookingId}, user: ${userid}`);
 
             try {
                 const file = req.file;
