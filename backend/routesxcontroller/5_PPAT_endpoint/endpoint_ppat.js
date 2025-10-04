@@ -1062,7 +1062,11 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
         });
         
         // Process single file upload
-        upload.single('file')(req, res, async (err) => {
+        upload.fields([
+            { name: 'aktaTanah', maxCount: 1 },
+            { name: 'sertifikatTanah', maxCount: 1 },
+            { name: 'pelengkap', maxCount: 1 }
+        ])(req, res, async (err) => {
             if (err) {
                 console.error('❌ [UPLOAD-DOCUMENTS] Multer error:', err);
                 console.error('❌ [UPLOAD-DOCUMENTS] Error details:', {
@@ -1080,17 +1084,17 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 }
             }
 
-            console.log(`📤 [UPLOAD-DOCUMENTS] Multer processing completed. File:`, req.file ? 'Present' : 'Missing');
+            console.log(`📤 [UPLOAD-DOCUMENTS] Multer processing completed. Files:`, req.files ? Object.keys(req.files).length : 0);
             console.log(`📤 [UPLOAD-DOCUMENTS] Request body after multer:`, req.body);
 
-            if (!req.file) {
-                console.error('❌ [UPLOAD-DOCUMENTS] No file in request');
-                return res.status(400).json({ success: false, message: 'No file uploaded' });
+            if (!req.files || Object.keys(req.files).length === 0) {
+                console.error('❌ [UPLOAD-DOCUMENTS] No files in request');
+                return res.status(400).json({ success: false, message: 'No files uploaded' });
             }
 
             // Extract parameters after multer processes the FormData
-            const { booking_id, nobooking, documentType } = req.body;
-        const userid = req.session.user.userid;
+            const { booking_id, nobooking } = req.body;
+            const userid = req.session.user.userid;
 
             // Use nobooking as the primary identifier (business key)
             const bookingId = nobooking || booking_id;
@@ -1101,40 +1105,38 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
             }
 
             console.log(`📤 [UPLOAD-DOCUMENTS] Processing upload for booking: ${bookingId}, user: ${userid}`);
+            console.log(`📤 [UPLOAD-DOCUMENTS] Files received:`, Object.keys(req.files));
 
             try {
-                const file = req.file;
-                console.log(`📤 [UPLOAD-DOCUMENTS] File details:`, {
-                    fieldname: file.fieldname,
-                    originalname: file.originalname,
-                    mimetype: file.mimetype,
-                    size: file.size
-                });
+                // Process each uploaded file
+                const uploadResults = [];
+                const fileTypes = ['aktaTanah', 'sertifikatTanah', 'pelengkap'];
+                
+                for (const fileType of fileTypes) {
+                    if (req.files[fileType] && req.files[fileType][0]) {
+                        const file = req.files[fileType][0];
+                        console.log(`📤 [UPLOAD-DOCUMENTS] Processing ${fileType}:`, {
+                            fieldname: file.fieldname,
+                            originalname: file.originalname,
+                            mimetype: file.mimetype,
+                            size: file.size
+                        });
 
-                const documentType = Object.keys(req.body).find(key => 
-                    ['akta_tanah', 'sertifikat_tanah', 'pelengkap'].includes(key)
-                );
+                        // Map frontend field names to backend document types
+                        const documentTypeMap = {
+                            'aktaTanah': 'akta_tanah',
+                            'sertifikatTanah': 'sertifikat_tanah',
+                            'pelengkap': 'pelengkap'
+                        };
+                        
+                        const documentType = documentTypeMap[fileType];
+                        console.log(`📤 [UPLOAD-DOCUMENTS] Document type mapped: ${fileType} -> ${documentType}`);
 
-                console.log(`📤 [UPLOAD-DOCUMENTS] Document type detected:`, documentType);
-                console.log(`📤 [UPLOAD-DOCUMENTS] Available body keys:`, Object.keys(req.body));
-
-                if (!documentType) {
-                    console.error('❌ [UPLOAD-DOCUMENTS] No valid document type found');
-                    console.error('❌ [UPLOAD-DOCUMENTS] Available body keys after multer:', Object.keys(req.body || {}));
-                    console.error('❌ [UPLOAD-DOCUMENTS] Expected document types: akta_tanah, sertifikat_tanah, pelengkap');
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: 'Invalid document type. Available types: akta_tanah, sertifikat_tanah, pelengkap',
-                        received: Object.keys(req.body || {}),
-                        expected: ['akta_tanah', 'sertifikat_tanah', 'pelengkap']
-                    });
-                }
-
-                console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {
-                    fileName: file.originalname,
-                    fileSize: file.size,
-                    mimeType: file.mimetype
-                });
+                        console.log(`📤 [UPLOAD-DOCUMENTS] Uploading ${documentType}:`, {
+                            fileName: file.originalname,
+                            fileSize: file.size,
+                            mimeType: file.mimetype
+                        });
 
                 // 🔄 TRANSACTIONAL UPLOAD - Prevent race conditions
                 const client = await pool.connect();
@@ -1244,41 +1246,57 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                         rowsAffected: updateResult.rowCount
                     });
 
-        res.json({
-            success: true,
-                        message: 'Document uploaded and database updated successfully',
-                        data: {
+                        // Store result for this file
+                        uploadResults.push({
                             documentType,
                             fileId: uploadResult.fileId,
                             fileUrl: uploadResult.fileUrl,
                             fileName: file.originalname,
                             fileSize: file.size,
                             mimeType: file.mimetype
-                        }
-                    });
+                        });
 
-                } catch (transactionError) {
-                    // 5. Rollback transaction on any error
-                    await client.query('ROLLBACK');
-                    console.error(`❌ [UPLOAD-DOCUMENTS] Transaction rolled back:`, transactionError.message);
-                    
-                    // If upload succeeded but database failed, we have an orphaned file
-                    if (uploadResult && uploadResult.success) {
-                        console.warn(`⚠️ [UPLOAD-DOCUMENTS] Orphaned file detected: ${uploadResult.fileId}`);
+                    } catch (transactionError) {
+                        // 5. Rollback transaction on any error
+                        await client.query('ROLLBACK');
+                        console.error(`❌ [UPLOAD-DOCUMENTS] Transaction rolled back for ${documentType}:`, transactionError.message);
                         
-                        // Attempt to cleanup orphaned file
-                        try {
-                            const { cleanupOrphanedFile } = await import('../../config/uploads/uploadcare_storage.js');
-                            await cleanupOrphanedFile(uploadResult.fileId);
-                        } catch (cleanupError) {
-                            console.error(`❌ [UPLOAD-DOCUMENTS] Orphaned file cleanup failed:`, cleanupError.message);
+                        // If upload succeeded but database failed, we have an orphaned file
+                        if (uploadResult && uploadResult.success) {
+                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] Orphaned file detected: ${uploadResult.fileId}`);
+                            
+                            // Attempt to cleanup orphaned file
+                            try {
+                                const { cleanupOrphanedFile } = await import('../../config/uploads/uploadcare_storage.js');
+                                await cleanupOrphanedFile(uploadResult.fileId);
+                            } catch (cleanupError) {
+                                console.error(`❌ [UPLOAD-DOCUMENTS] Orphaned file cleanup failed:`, cleanupError.message);
+                            }
                         }
+                        
+                        throw transactionError;
+                    } finally {
+                        client.release();
                     }
-                    
-                    throw transactionError;
-                } finally {
-                    client.release();
                 }
+            }
+
+            // Return results for all uploaded files
+            if (uploadResults.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No valid files were processed'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: `${uploadResults.length} document(s) uploaded and database updated successfully`,
+                data: {
+                    uploadResults,
+                    totalFiles: uploadResults.length
+                }
+            });
 
             } catch (uploadError) {
                 console.error('❌ [UPLOAD-DOCUMENTS] Upload processing failed:', uploadError);
