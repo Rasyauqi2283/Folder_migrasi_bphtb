@@ -232,8 +232,9 @@ export async function uploadToUploadcare(file, options = {}) {
     try {
       const axios = await import('axios');
       
-      // Wait 5 seconds for CDN propagation (Uploadcare recommendation)
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      // Wait 3.5 seconds for CDN propagation (Uploadcare recommendation)
+      // This delay helps avoid false 404 errors due to CDN cache not being available yet
+      await new Promise(resolve => setTimeout(resolve, 3500));
       
       const validationResponse = await axios.default.head(cdnUrl, {
         timeout: 10000,
@@ -674,6 +675,49 @@ export async function cleanupOrphanedFile(fileId) {
   }
 }
 
+// 🧩 Validasi Otomatis dengan Proxy Endpoint
+export async function validateFileWithProxy(fileId, backendBase = 'https://bphtb-bappenda.up.railway.app') {
+  try {
+    console.log(`🧩 [VALIDATE-PROXY] Starting proxy validation for file: ${fileId}`);
+    
+    const axios = await import('axios');
+    const proxyUrl = `${backendBase}/api/ppatk/uploadcare-proxy`;
+    
+    // Gunakan endpoint HEAD untuk validasi cepat
+    const validate = await axios.default.head(proxyUrl, {
+      params: { fileId: fileId },
+      timeout: 10000,
+      validateStatus: () => true // Accept any status
+    });
+    
+    if (validate.status === 200) {
+      console.log(`✅ [VALIDATE-PROXY] File sudah siap di CDN: ${fileId}`);
+      return {
+        success: true,
+        message: 'File sudah siap di CDN',
+        status: validate.status,
+        ready: true
+      };
+    } else {
+      console.log(`⚠️ [VALIDATE-PROXY] File belum siap, tapi upload sukses: ${fileId}`);
+      return {
+        success: false,
+        message: 'File belum siap, tapi upload sukses',
+        status: validate.status,
+        ready: false
+      };
+    }
+  } catch (error) {
+    console.warn(`⚠️ [VALIDATE-PROXY] Validation failed: ${error.message}`);
+    return {
+      success: false,
+      message: 'Validation failed',
+      error: error.message,
+      ready: false
+    };
+  }
+}
+
 export default {
   uploadToUploadcare,
   getFileInfo,
@@ -682,5 +726,6 @@ export default {
   cleanupOldFiles,
   generatePublicUrl,
   testFileAccessibility,
-  cleanupOrphanedFile
+  cleanupOrphanedFile,
+  validateFileWithProxy
 };

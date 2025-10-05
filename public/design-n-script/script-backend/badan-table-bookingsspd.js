@@ -1419,10 +1419,25 @@ function showAlert(type, message, title = null) {
                     resetFileInputs(selectedNoBooking);
                     
                     // Update file URLs to proper format
-                    const updateResult = await updateFileUrls(selectedNoBooking);
-                    if (updateResult && updateResult.updated > 0) {
-                        console.log(`✅ [UPLOAD] Updated ${updateResult.updated} file URLs`);
+                const updateResult = await updateFileUrls(selectedNoBooking);
+                if (updateResult && updateResult.updated > 0) {
+                    console.log(`✅ [UPLOAD] Updated ${updateResult.updated} file URLs`);
+                }
+
+                // 🧩 Validate uploaded files using proxy endpoint
+                console.log(`🧩 [UPLOAD] Starting proxy validation for uploaded files`);
+                for (const upload of uploadResults) {
+                    if (upload.success && upload.fileId) {
+                        console.log(`🧩 [UPLOAD] Validating file: ${upload.fileId}`);
+                        const validationResult = await validateFileWithProxyFrontend(upload.fileId);
+                        
+                        if (validationResult.ready) {
+                            console.log(`✅ [UPLOAD] File validation passed via proxy: ${upload.fileId}`);
+                        } else {
+                            console.warn(`⚠️ [UPLOAD] File validation via proxy failed: ${validationResult.message}`);
+                        }
                     }
+                }
                     
                     // Reload after a short delay to show success message
                     setTimeout(() => {
@@ -1648,6 +1663,48 @@ function showAlert(type, message, title = null) {
             } catch (error) {
                 console.error(`❌ [UPDATE-URLS] Update error:`, error);
                 return null;
+            }
+        }
+
+        // 🧩 Function to validate file with proxy endpoint (Frontend Integration)
+        async function validateFileWithProxyFrontend(fileId) {
+            try {
+                console.log(`🧩 [VALIDATE-PROXY-FRONTEND] Starting proxy validation for file: ${fileId}`);
+                
+                const proxyUrl = `/api/ppatk/uploadcare-proxy?fileId=${fileId}`;
+                
+                // Use HEAD request for validation (faster than GET)
+                const response = await fetch(proxyUrl, {
+                    method: 'HEAD',
+                    credentials: 'include',
+                    timeout: 10000
+                });
+                
+                if (response.status === 200) {
+                    console.log(`✅ [VALIDATE-PROXY-FRONTEND] File sudah siap di CDN: ${fileId}`);
+                    return {
+                        success: true,
+                        message: 'File sudah siap di CDN',
+                        status: response.status,
+                        ready: true
+                    };
+                } else {
+                    console.log(`⚠️ [VALIDATE-PROXY-FRONTEND] File belum siap, tapi upload sukses: ${fileId}`);
+                    return {
+                        success: false,
+                        message: 'File belum siap, tapi upload sukses',
+                        status: response.status,
+                        ready: false
+                    };
+                }
+            } catch (error) {
+                console.warn(`⚠️ [VALIDATE-PROXY-FRONTEND] Validation failed: ${error.message}`);
+                return {
+                    success: false,
+                    message: 'Validation failed',
+                    error: error.message,
+                    ready: false
+                };
             }
         }
 
@@ -3712,7 +3769,11 @@ async function previewDocument(fileUrl, documentName) {
         console.log('🔍 [PREVIEW] Proxy test result:', proxyWorking);
         
         if (!proxyWorking) {
-            console.warn('⚠️ [PREVIEW] Proxy not working, using direct URL');
+            console.warn('⚠️ [PREVIEW] Proxy not working after retries, using direct URL');
+            // Show user-friendly message
+            if (window.universalAlert) {
+                window.universalAlert.show('warning', 'File mungkin belum tersedia di CDN. Membuka URL langsung...', 'Info');
+            }
             window.open(fileUrl, '_blank');
             return;
         }
@@ -3898,8 +3959,8 @@ function getDocumentTypeFromUrl(fileUrl, documentName = null) {
     return 'pelengkap'; // Default fallback for testing
 }
 
-// Function to test proxy endpoint - ROBUST VERSION
-async function testProxyEndpoint(fileUrl) {
+// Function to test proxy endpoint - ROBUST VERSION with RETRY MECHANISM
+async function testProxyEndpoint(fileUrl, maxAttempts = 3) {
     try {
         // Extract file ID from URL for more efficient testing
         const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
@@ -3912,22 +3973,56 @@ async function testProxyEndpoint(fileUrl) {
             
         console.log('🧪 [TEST-PROXY] Testing:', proxyUrl);
         
-        const response = await fetch(proxyUrl, {
-            method: 'HEAD', // Use HEAD request for efficiency
-            credentials: 'include'
-        });
+        let attempts = 0;
+        let lastError = null;
         
-        console.log('🧪 [TEST-PROXY] Response status:', response.status);
-        
-        // Consider 404 as "working" (file not found, but proxy is working)
-        if (response.status === 404) {
-            console.log('🧪 [TEST-PROXY] File not found (404) - proxy working but file missing');
-            return true; // Proxy is working, file just doesn't exist
+        // Retry mechanism dengan maksimal 3 attempts
+        while (attempts < maxAttempts) {
+            try {
+                attempts++;
+                console.log(`🔄 [TEST-PROXY] Attempt ${attempts}/${maxAttempts}: ${proxyUrl}`);
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'HEAD', // Use HEAD request for efficiency
+                    credentials: 'include',
+                    timeout: 10000
+                });
+                
+                console.log(`🧪 [TEST-PROXY] Response status: ${response.status}`);
+                
+                // Success cases
+                if (response.status === 200) {
+                    console.log(`✅ [TEST-PROXY] Success on attempt ${attempts}`);
+                    return true;
+                }
+                
+                // Consider 404 as "working" (file not found, but proxy is working)
+                if (response.status === 404) {
+                    console.log('🧪 [TEST-PROXY] File not found (404) - proxy working but file missing');
+                    return true; // Proxy is working, file just doesn't exist
+                }
+                
+                // For other status codes, try again
+                lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+                
+            } catch (error) {
+                lastError = error;
+                console.warn(`⚠️ [TEST-PROXY] Attempt ${attempts} failed: ${error.message}`);
+            }
+            
+            // If not the last attempt, wait before retry
+            if (attempts < maxAttempts) {
+                console.log(`⏳ [TEST-PROXY] Waiting 2 seconds before retry...`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
         }
         
-        return response.ok;
+        // All attempts failed
+        console.error(`❌ [TEST-PROXY] All attempts failed after ${attempts} tries: ${lastError?.message}`);
+        return false;
+        
     } catch (error) {
-        console.error('🧪 [TEST-PROXY] Error:', error);
+        console.error('❌ [TEST-PROXY] Error:', error);
         return false;
     }
 }

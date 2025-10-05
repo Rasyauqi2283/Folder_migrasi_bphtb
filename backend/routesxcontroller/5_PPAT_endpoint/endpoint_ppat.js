@@ -42,7 +42,7 @@ app.get('/api/check-my-signature', async (req, res) => {
                 message: 'Unauthorized' 
             });
         }
-        
+
         const userid = req.session.user.userid;
         
         // Query database for signature
@@ -87,167 +87,6 @@ app.get('/api/check-my-signature', async (req, res) => {
     }
 });
 
-// Test endpoint untuk debugging Uploadcare
-app.get('/api/test-uploadcare-proxy', (req, res) => {
-    res.json({ 
-        success: true, 
-        message: 'Uploadcare proxy test endpoint working',
-        timestamp: new Date().toISOString(),
-        service: 'uploadcare'
-    });
-});
-
-// Endpoint untuk membersihkan proxy path yang tidak valid (Uploadcare)
-app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
-    try {
-        console.log('🧹 [CLEANUP] Starting cleanup of invalid proxy paths...');
-        
-        if (!req.session || !req.session.user) {
-            return res.status(401).json({ success: false, message: 'Unauthorized' });
-        }
-
-        const userid = req.session.user.userid;
-        
-        // Simple cleanup - just return success for now
-        res.json({
-            success: true,
-            message: 'Cleanup completed - Uploadcare integration active',
-            cleaned: 0,
-            errors: []
-        });
-        
-    } catch (error) {
-        console.error('❌ [CLEANUP] Cleanup failed:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Cleanup failed: ' + error.message
-        });
-    }
-});
-
-// Endpoint untuk manual cleanup file lama di Uploadcare
-app.post('/api/cleanup-old-files', async (req, res) => {
-    try {
-        console.log('🧹 [CLEANUP] Starting manual cleanup of old files...');
-        
-        if (!req.session || !req.session.user) {
-            return res.status(401).json({ success: false, message: 'Unauthorized' });
-        }
-
-        const { userid, docType, sequenceNumber, nobooking } = req.body;
-        
-        if (!userid || !docType || !sequenceNumber) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Missing required fields: userid, docType, sequenceNumber'
-            });
-        }
-
-        // Import cleanup function from Uploadcare storage
-        const { cleanupOldFiles } = await import('../../config/uploads/uploadcare_storage.js');
-        
-        const currentYear = new Date().getFullYear();
-        const cleanupResult = await cleanupOldFiles(
-            userid,
-            docType,
-            sequenceNumber,
-            currentYear,
-            nobooking,
-            2 // Keep latest 2 files
-        );
-
-        console.log(`✅ [CLEANUP] Manual cleanup completed:`, cleanupResult);
-
-        res.json({
-            success: true,
-            message: 'Manual cleanup completed',
-            result: cleanupResult
-        });
-        
-    } catch (error) {
-        console.error('❌ [CLEANUP] Manual cleanup failed:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Manual cleanup failed: ' + error.message
-        });
-    }
-});
-
-// Uploadcare health check endpoint (PPATK path)
-app.get('/api/ppatk/uploadcare-health', async (req, res) => {
-    try {
-        console.log('🔍 [UPLOADCARE-HEALTH] Starting health check...');
-        
-        // Test 1: Check environment variables
-        const envCheck = {
-            publicKey: !!process.env.UPLOADCARE_PUBLIC_KEY,
-            secretKey: !!process.env.UPLOADCARE_SECRET_KEY,
-            cdnBase: !!process.env.UPLOADCARE_CDN_BASE,
-            apiBase: !!process.env.UPLOADCARE_API_BASE
-        };
-
-        // Test 2: Check if Uploadcare client can be initialized
-        let clientTest = false;
-        try {
-            const { UploadClient } = await import('@uploadcare/upload-client');
-            const testClient = new UploadClient({
-                publicKey: process.env.UPLOADCARE_PUBLIC_KEY || 'test'
-            });
-            clientTest = !!testClient;
-            console.log('✅ [UPLOADCARE-HEALTH] Client initialization test passed');
-        } catch (err) {
-            console.error('❌ [UPLOADCARE-HEALTH] Client initialization test failed:', err.message);
-        }
-
-        // Test 3: Check if we can make a simple request to Uploadcare
-        let uploadcareReachability = false;
-        try {
-            const testUrl = 'https://44renul14z.ucarecd.net/test';
-            const response = await axios.get(testUrl, { 
-                timeout: 5000,
-                validateStatus: () => true // Accept any status
-            });
-            uploadcareReachability = response.status !== 0; // If we get any response, Uploadcare is reachable
-            console.log('✅ [UPLOADCARE-HEALTH] Uploadcare reachability test:', response.status);
-        } catch (err) {
-            console.error('❌ [UPLOADCARE-HEALTH] Uploadcare reachability test failed:', err.message);
-        }
-
-        const healthStatus = {
-            status: 'healthy',
-            timestamp: new Date().toISOString(),
-            tests: {
-                clientInitialization: clientTest,
-                environmentVariables: envCheck,
-                uploadcareReachability: uploadcareReachability
-            },
-            environment: {
-                nodeEnv: process.env.NODE_ENV,
-                uploadcarePublicKey: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
-                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET',
-                uploadcareCdnBase: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
-                uploadcareApiBase: process.env.UPLOADCARE_API_BASE || 'NOT_SET'
-            },
-            configuration: {
-                cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
-                apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
-            }
-        };
-
-        console.log('✅ [UPLOADCARE-HEALTH] Health check completed:', healthStatus);
-
-        res.json(healthStatus);
-
-    } catch (error) {
-        console.error('❌ [UPLOADCARE-HEALTH] Health check failed:', error);
-        res.status(500).json({
-            status: 'unhealthy',
-            timestamp: new Date().toISOString(),
-            error: error.message
-        });
-    }
-});
-
 // Note: Create booking endpoint moved to create_booking_endpoint.js
 // This endpoint uses JSON body and must be registered AFTER express.json() middleware
 
@@ -264,8 +103,8 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
         const { nobooking, documentType, fileId, fileUrl } = req.body;
         
         if (!nobooking || !documentType || !fileId) {
-            return res.status(400).json({
-                success: false,
+            return res.status(400).json({ 
+                success: false, 
                 message: 'Missing required fields: nobooking, documentType, fileId'
             });
         }
@@ -291,7 +130,7 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
         const columns = columnMap[documentType];
         if (!columns) {
             return res.status(400).json({
-                success: false,
+            success: false,
                 message: 'Invalid document type'
             });
         }
@@ -687,7 +526,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
 
             // Extract parameters after multer processes the FormData
             const { booking_id, nobooking } = req.body;
-            const userid = req.session.user.userid;
+        const userid = req.session.user.userid;
 
             // Use nobooking as the primary identifier (business key)
             const bookingId = nobooking || booking_id;
@@ -763,17 +602,16 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                         const axios = await import('axios');
                         
                         // Wait 5 seconds for CDN propagation (Uploadcare recommendation)
-                        await new Promise(resolve => setTimeout(resolve, 5000));
+                        // 2. Validate file accessibility using proxy endpoint (recommended approach)
+                        console.log(`🧩 [UPLOAD-DOCUMENTS] Starting proxy validation for: ${uploadResult.fileId}`);
                         
-                        const validationResponse = await axios.default.head(uploadResult.fileUrl, {
-                            timeout: 10000,
-                            validateStatus: () => true
-                        });
+                        const { validateFileWithProxy } = await import('../../config/uploads/uploadcare_storage.js');
+                        const validationResult = await validateFileWithProxy(uploadResult.fileId);
                         
-                        if (validationResponse.status === 200) {
-                            console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed: ${uploadResult.fileId}`);
+                        if (validationResult.ready) {
+                            console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed via proxy: ${uploadResult.fileId}`);
                         } else {
-                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] File validation returned status ${validationResponse.status}: ${uploadResult.fileId}`);
+                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] File validation via proxy failed: ${validationResult.message}`);
                             // Don't throw error, just log warning - file might be processing
                         }
                     } catch (validationError) {
@@ -887,7 +725,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                 });
             }
 
-          res.json({
+        res.json({
             success: true,
                 message: `${uploadResults.length} document(s) uploaded and database updated successfully`,
                 data: {
@@ -1164,9 +1002,10 @@ const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
 // 🔹 Utility untuk bangun URL Uploadcare
 function buildUploadcareUrl(fileUrl, fileId) {
     if (fileUrl) return fileUrl;
-    if (fileId) return `${DEFAULT_CDN}/${fileId}`;
+    if (fileId) return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
     return null;
 }
+  
 
 
 // 🔹 HEAD request (cek file tersedia atau tidak)
@@ -1182,21 +1021,59 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
 
         console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
 
+        // Add small delay to avoid false 404 due to CDN cache not being available yet
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
         const axios = await import('axios');
-        const response = await axios.default.head(targetUrl, { timeout: 5000 });
-
-        // Forward beberapa header penting
-        if (response.headers['content-type']) {
-            res.set('Content-Type', response.headers['content-type']);
+        let attempts = 0;
+        let success = false;
+        let lastError = null;
+        
+        // Retry mechanism dengan maksimal 3 attempts
+        while (attempts < 3 && !success) {
+            try {
+                attempts++;
+                console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/3: ${targetUrl}`);
+                
+                const response = await axios.default.head(targetUrl, { timeout: 5000 });
+                
+                if (response.status === 200) {
+                    success = true;
+                    console.log(`✅ [UPLOADCARE-PROXY HEAD] Success on attempt ${attempts}: ${targetUrl}`);
+                    
+                    // Forward beberapa header penting
+                    if (response.headers['content-type']) {
+                        res.set('Content-Type', response.headers['content-type']);
+                    }
+                    if (response.headers['content-length']) {
+                        res.set('Content-Length', response.headers['content-length']);
+                    }
+                    
+                    return res.sendStatus(200);
+                }
+            } catch (error) {
+                lastError = error;
+                console.warn(`⚠️ [UPLOADCARE-PROXY HEAD] Attempt ${attempts} failed: ${error.message}`);
+                
+                // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                if (attempts < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
         }
-        if (response.headers['content-length']) {
-            res.set('Content-Length', response.headers['content-length']);
-        }
-
-        return res.sendStatus(200);
+        
+        // Jika semua attempts gagal
+        console.error(`❌ [UPLOADCARE-PROXY HEAD] All attempts failed after ${attempts} tries: ${lastError?.message}`);
+        return res.status(404).json({
+            success: false,
+            message: "File belum tersedia di CDN (mungkin baru diupload, coba lagi nanti)."
+        });
     } catch (err) {
         console.error('❌ [UPLOADCARE-PROXY HEAD] Error:', err.message);
-        return res.sendStatus(404);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error during file validation."
+        });
     }
 });
 
@@ -1216,27 +1093,61 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
 
         console.log(`🔍 [UPLOADCARE-PROXY GET] Proxying file: ${targetUrl}`);
 
+        // Add small delay to avoid false 404 due to CDN cache not being available yet
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
         const axios = await import('axios');
-        const response = await axios.default.get(targetUrl, {
-            responseType: 'stream',
-            timeout: 30000,
-            headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
+        let attempts = 0;
+        let success = false;
+        let lastError = null;
+        
+        // Retry mechanism dengan maksimal 3 attempts
+        while (attempts < 3 && !success) {
+            try {
+                attempts++;
+                console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/3: ${targetUrl}`);
+                
+                const response = await axios.default.get(targetUrl, {
+                    responseType: 'stream',
+                    timeout: 30000,
+                    headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
+                });
+
+                if (response.status === 200) {
+                    success = true;
+                    console.log(`✅ [UPLOADCARE-PROXY GET] Success on attempt ${attempts}: ${targetUrl}`);
+                    
+                    // Set header dari Uploadcare ke response kita
+                    res.set({
+                        'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+                        'Content-Length': response.headers['content-length'] || undefined,
+                        'Cache-Control': 'public, max-age=3600',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Methods': 'GET, HEAD',
+                        'Access-Control-Allow-Headers': 'Content-Type'
+                    });
+
+                    // Pipe stream ke client
+                    response.data.pipe(res);
+                    return;
+                }
+            } catch (error) {
+                lastError = error;
+                console.warn(`⚠️ [UPLOADCARE-PROXY GET] Attempt ${attempts} failed: ${error.message}`);
+                
+                // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                if (attempts < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+        }
+        
+        // Jika semua attempts gagal
+        console.error(`❌ [UPLOADCARE-PROXY GET] All attempts failed after ${attempts} tries: ${lastError?.message}`);
+        return res.status(404).json({
+            success: false,
+            message: "File belum tersedia di CDN (mungkin baru diupload, coba lagi nanti)."
         });
-
-        // Set header dari Uploadcare ke response kita
-        res.set({
-            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
-            'Content-Length': response.headers['content-length'] || undefined,
-            'Cache-Control': 'public, max-age=3600',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, HEAD',
-            'Access-Control-Allow-Headers': 'Content-Type'
-        });
-
-        // Pipe stream ke client
-        response.data.pipe(res);
-
-        console.log(`✅ [UPLOADCARE-PROXY GET] Success: ${targetUrl}`);
     } catch (err) {
         console.error('❌ [UPLOADCARE-PROXY GET] Proxy failed:', err.message);
 
@@ -1253,6 +1164,167 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
                 details: err.message
             });
         }
+    }
+});
+
+// Test endpoint untuk debugging Uploadcare
+app.get('/api/test-uploadcare-proxy', (req, res) => {
+    res.json({ 
+        success: true, 
+        message: 'Uploadcare proxy test endpoint working',
+        timestamp: new Date().toISOString(),
+        service: 'uploadcare'
+    });
+});
+
+// Endpoint untuk membersihkan proxy path yang tidak valid (Uploadcare)
+app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
+    try {
+        console.log('🧹 [CLEANUP] Starting cleanup of invalid proxy paths...');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        
+        // Simple cleanup - just return success for now
+        res.json({
+            success: true,
+            message: 'Cleanup completed - Uploadcare integration active',
+            cleaned: 0,
+            errors: []
+        });
+        
+    } catch (error) {
+        console.error('❌ [CLEANUP] Cleanup failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Cleanup failed: ' + error.message
+        });
+    }
+});
+
+// Endpoint untuk manual cleanup file lama di Uploadcare
+app.post('/api/cleanup-old-files', async (req, res) => {
+    try {
+        console.log('🧹 [CLEANUP] Starting manual cleanup of old files...');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { userid, docType, sequenceNumber, nobooking } = req.body;
+        
+        if (!userid || !docType || !sequenceNumber) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required fields: userid, docType, sequenceNumber'
+            });
+        }
+
+        // Import cleanup function from Uploadcare storage
+        const { cleanupOldFiles } = await import('../../config/uploads/uploadcare_storage.js');
+        
+        const currentYear = new Date().getFullYear();
+        const cleanupResult = await cleanupOldFiles(
+            userid,
+            docType,
+            sequenceNumber,
+            currentYear,
+            nobooking,
+            2 // Keep latest 2 files
+        );
+
+        console.log(`✅ [CLEANUP] Manual cleanup completed:`, cleanupResult);
+
+        res.json({
+            success: true,
+            message: 'Manual cleanup completed',
+            result: cleanupResult
+        });
+        
+    } catch (error) {
+        console.error('❌ [CLEANUP] Manual cleanup failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Manual cleanup failed: ' + error.message
+        });
+    }
+});
+
+// Uploadcare health check endpoint (PPATK path)
+app.get('/api/ppatk/uploadcare-health', async (req, res) => {
+    try {
+        console.log('🔍 [UPLOADCARE-HEALTH] Starting health check...');
+        
+        // Test 1: Check environment variables
+        const envCheck = {
+            publicKey: !!process.env.UPLOADCARE_PUBLIC_KEY,
+            secretKey: !!process.env.UPLOADCARE_SECRET_KEY,
+            cdnBase: !!process.env.UPLOADCARE_CDN_BASE,
+            apiBase: !!process.env.UPLOADCARE_API_BASE
+        };
+
+        // Test 2: Check if Uploadcare client can be initialized
+        let clientTest = false;
+        try {
+            const { UploadClient } = await import('@uploadcare/upload-client');
+            const testClient = new UploadClient({
+                publicKey: process.env.UPLOADCARE_PUBLIC_KEY || 'test'
+            });
+            clientTest = !!testClient;
+            console.log('✅ [UPLOADCARE-HEALTH] Client initialization test passed');
+        } catch (err) {
+            console.error('❌ [UPLOADCARE-HEALTH] Client initialization test failed:', err.message);
+        }
+
+        // Test 3: Check if we can make a simple request to Uploadcare
+        let uploadcareReachability = false;
+        try {
+            const testUrl = 'https://44renul14z.ucarecd.net/test';
+            const response = await axios.get(testUrl, { 
+                timeout: 5000,
+                validateStatus: () => true // Accept any status
+            });
+            uploadcareReachability = response.status !== 0; // If we get any response, Uploadcare is reachable
+            console.log('✅ [UPLOADCARE-HEALTH] Uploadcare reachability test:', response.status);
+        } catch (err) {
+            console.error('❌ [UPLOADCARE-HEALTH] Uploadcare reachability test failed:', err.message);
+        }
+
+        const healthStatus = {
+            status: 'healthy',
+            timestamp: new Date().toISOString(),
+            tests: {
+                clientInitialization: clientTest,
+                environmentVariables: envCheck,
+                uploadcareReachability: uploadcareReachability
+            },
+            environment: {
+                nodeEnv: process.env.NODE_ENV,
+                uploadcarePublicKey: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
+                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET',
+                uploadcareCdnBase: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
+                uploadcareApiBase: process.env.UPLOADCARE_API_BASE || 'NOT_SET'
+            },
+            configuration: {
+                cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
+                apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
+            }
+        };
+
+        console.log('✅ [UPLOADCARE-HEALTH] Health check completed:', healthStatus);
+
+        res.json(healthStatus);
+
+    } catch (error) {
+        console.error('❌ [UPLOADCARE-HEALTH] Health check failed:', error);
+        res.status(500).json({
+            status: 'unhealthy',
+            timestamp: new Date().toISOString(),
+            error: error.message
+        });
     }
 });
 
