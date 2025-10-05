@@ -202,7 +202,7 @@ app.get('/api/ppatk/uploadcare-health', async (req, res) => {
         // Test 3: Check if we can make a simple request to Uploadcare
         let uploadcareReachability = false;
         try {
-            const testUrl = 'https://ucarecdn.com/test';
+            const testUrl = 'https://44renul14z.ucarecd.net/test';
             const response = await axios.get(testUrl, { 
                 timeout: 5000,
                 validateStatus: () => true // Accept any status
