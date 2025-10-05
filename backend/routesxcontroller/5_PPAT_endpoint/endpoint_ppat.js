@@ -999,17 +999,31 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
 const REQUIRE_AUTH = false; // Disable session auth for debugging
 const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
 
-// 🔹 Utility untuk bangun URL Uploadcare
+// 🔹 Utility untuk bangun URL Uploadcare dengan fallback strategy
 function buildUploadcareUrl(fileUrl, fileId, mimeType) {
-    if (fileUrl) return fileUrl;
+    if (fileUrl) {
+        // Jika ada fileUrl, coba konversi ke custom domain
+        if (fileUrl.includes('ucarecdn.com')) {
+            const fileIdFromUrl = fileUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
+            if (fileIdFromUrl) {
+                const cleanFileId = fileIdFromUrl[1];
+                if (mimeType && mimeType.startsWith('image/')) {
+                    return `${DEFAULT_CDN}/${cleanFileId}/-/preview/1000x1000/`;
+                } else {
+                    return `${DEFAULT_CDN}/${cleanFileId}`;
+                }
+            }
+        }
+        return fileUrl;
+    }
   
     if (fileId) {
-      if (mimeType && mimeType.startsWith('image/')) {
-        return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
-      } else {
-        // Untuk PDF atau selain image → jangan pakai preview, langsung file
-        return `${DEFAULT_CDN}/${fileId}`;
-      }
+        if (mimeType && mimeType.startsWith('image/')) {
+            return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
+        } else {
+            // Untuk PDF atau selain image → jangan pakai preview, langsung file
+            return `${DEFAULT_CDN}/${fileId}`;
+        }
     }
     return null;
 }
@@ -1038,37 +1052,59 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
         let success = false;
         let lastError = null;
         
-        // Retry mechanism dengan maksimal 3 attempts
-        while (attempts < 3 && !success) {
-            try {
-                attempts++;
-                console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/3: ${targetUrl}`);
-                
-                const response = await axios.default.head(targetUrl, { timeout: 5000 });
-                
-                if (response.status === 200) {
-                    success = true;
-                    console.log(`✅ [UPLOADCARE-PROXY HEAD] Success on attempt ${attempts}: ${targetUrl}`);
+        // Try custom domain first, then fallback to direct Uploadcare URL
+        const urlsToTry = [targetUrl];
+        
+        // Add fallback URL if target is custom domain
+        if (targetUrl.includes('44renul14z.ucarecd.net')) {
+            const fileIdMatch = targetUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
+            if (fileIdMatch) {
+                const fileId = fileIdMatch[1];
+                const fallbackUrl = `https://ucarecdn.com/${fileId}`;
+                urlsToTry.push(fallbackUrl);
+                console.log(`🔄 [UPLOADCARE-PROXY HEAD] Added fallback URL: ${fallbackUrl}`);
+            }
+        }
+        
+        // Retry mechanism dengan maksimal 3 attempts per URL
+        for (const urlToTry of urlsToTry) {
+            attempts = 0;
+            success = false;
+            
+            while (attempts < 3 && !success) {
+                try {
+                    attempts++;
+                    console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/3: ${urlToTry}`);
                     
-                    // Forward beberapa header penting
-                    if (response.headers['content-type']) {
-                        res.set('Content-Type', response.headers['content-type']);
-                    }
-                    if (response.headers['content-length']) {
-                        res.set('Content-Length', response.headers['content-length']);
-                    }
+                    const response = await axios.default.head(urlToTry, { timeout: 5000 });
                     
-                    return res.sendStatus(200);
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`⚠️ [UPLOADCARE-PROXY HEAD] Attempt ${attempts} failed: ${error.message}`);
-                
-                // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
-                if (attempts < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    if (response.status === 200) {
+                        success = true;
+                        console.log(`✅ [UPLOADCARE-PROXY HEAD] Success on attempt ${attempts}: ${urlToTry}`);
+                        
+                        // Forward beberapa header penting
+                        if (response.headers['content-type']) {
+                            res.set('Content-Type', response.headers['content-type']);
+                        }
+                        if (response.headers['content-length']) {
+                            res.set('Content-Length', response.headers['content-length']);
+                        }
+                        
+                        return res.sendStatus(200);
+                    }
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`⚠️ [UPLOADCARE-PROXY HEAD] Attempt ${attempts} failed: ${error.message}`);
+                    
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                    if (attempts < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    }
                 }
             }
+            
+            // If this URL worked, break out of the URL loop
+            if (success) break;
         }
         
         // Jika semua attempts gagal
@@ -1111,45 +1147,68 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
         let success = false;
         let lastError = null;
         
-        // Retry mechanism dengan maksimal 3 attempts
-        while (attempts < 3 && !success) {
-            try {
-                attempts++;
-                console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/3: ${targetUrl}`);
-                
-                const response = await axios.default.get(targetUrl, {
-                    responseType: 'stream',
-                    timeout: 30000,
-                    headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
-                });
-
-                if (response.status === 200) {
-                    success = true;
-                    console.log(`✅ [UPLOADCARE-PROXY GET] Success on attempt ${attempts}: ${targetUrl}`);
+        // Try custom domain first, then fallback to direct Uploadcare URL
+        const urlsToTry = [targetUrl];
+        
+        // Add fallback URL if target is custom domain
+        if (targetUrl.includes('44renul14z.ucarecd.net')) {
+            const fileIdMatch = targetUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
+            if (fileIdMatch) {
+                const fileId = fileIdMatch[1];
+                const fallbackUrl = `https://ucarecdn.com/${fileId}`;
+                urlsToTry.push(fallbackUrl);
+                console.log(`🔄 [UPLOADCARE-PROXY GET] Added fallback URL: ${fallbackUrl}`);
+            }
+        }
+        
+        // Retry mechanism dengan maksimal 3 attempts per URL
+        for (const urlToTry of urlsToTry) {
+            attempts = 0;
+            success = false;
+            
+            while (attempts < 3 && !success) {
+                try {
+                    attempts++;
+                    console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/3: ${urlToTry}`);
                     
-                    // Set header dari Uploadcare ke response kita
-                    res.set({
-                        'Content-Type': response.headers['content-type'] || 'application/octet-stream',
-                        'Content-Length': response.headers['content-length'] || undefined,
-                        'Cache-Control': 'public, max-age=3600',
-                        'Access-Control-Allow-Origin': '*',
-                        'Access-Control-Allow-Methods': 'GET, HEAD',
-                        'Access-Control-Allow-Headers': 'Content-Type'
+                    const response = await axios.default.get(urlToTry, {
+                        responseType: 'stream',
+                        timeout: 30000,
+                        headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
                     });
 
-                    // Pipe stream ke client
-                    response.data.pipe(res);
-                    return;
-                }
-            } catch (error) {
-                lastError = error;
-                console.warn(`⚠️ [UPLOADCARE-PROXY GET] Attempt ${attempts} failed: ${error.message}`);
-                
-                // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
-                if (attempts < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    if (response.status === 200) {
+                        success = true;
+                        console.log(`✅ [UPLOADCARE-PROXY GET] Success on attempt ${attempts}: ${urlToTry}`);
+                        
+                        // Set header dari Uploadcare ke response kita
+                        res.set({
+                            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
+                            'Content-Length': response.headers['content-length'] || undefined,
+                            'Cache-Control': 'public, max-age=3600',
+                            'Content-Disposition': 'inline',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Methods': 'GET, HEAD',
+                            'Access-Control-Allow-Headers': 'Content-Type'
+                        });
+
+                        // Pipe stream ke client
+                        response.data.pipe(res);
+                        return;
+                    }
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`⚠️ [UPLOADCARE-PROXY GET] Attempt ${attempts} failed: ${error.message}`);
+                    
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
+                    if (attempts < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    }
                 }
             }
+            
+            // If this URL worked, break out of the URL loop
+            if (success) break;
         }
         
         // Jika semua attempts gagal

@@ -1426,6 +1426,10 @@ function showAlert(type, message, title = null) {
 
                 // 🧩 Validate uploaded files using proxy endpoint
                 console.log(`🧩 [UPLOAD] Starting proxy validation for uploaded files`);
+                
+                // Extract upload results from backend response
+                const uploadResults = result.uploadResults || [];
+                
                 for (const upload of uploadResults) {
                     if (upload.success && upload.fileId) {
                         console.log(`🧩 [UPLOAD] Validating file: ${upload.fileId}`);
