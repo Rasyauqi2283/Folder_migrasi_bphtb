@@ -676,17 +676,20 @@ export async function cleanupOrphanedFile(fileId) {
 }
 
 // 🧩 Validasi Otomatis dengan Proxy Endpoint
-export async function validateFileWithProxy(fileId, backendBase = 'https://bphtb-bappenda.up.railway.app') {
+export async function validateFileWithProxy(fileId, mimeType = null, backendBase = 'https://bphtb-bappenda.up.railway.app') {
   try {
     console.log(`🧩 [VALIDATE-PROXY] Starting proxy validation for file: ${fileId}`);
     
     const axios = await import('axios');
     const proxyUrl = `${backendBase}/api/ppatk/uploadcare-proxy`;
     
-    // Gunakan endpoint HEAD untuk validasi cepat
+    // Gunakan endpoint HEAD untuk validasi cepat dengan mimeType
     const validate = await axios.default.head(proxyUrl, {
-      params: { fileId: fileId },
-      timeout: 10000,
+      params: { 
+        fileId: fileId,
+        mimeType: mimeType // Include mimeType for proper URL generation
+      },
+      timeout: 30000, // Increased timeout for 15s delay
       validateStatus: () => true // Accept any status
     });
     

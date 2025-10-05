@@ -606,7 +606,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                         console.log(`🧩 [UPLOAD-DOCUMENTS] Starting proxy validation for: ${uploadResult.fileId}`);
                         
                         const { validateFileWithProxy } = await import('../../config/uploads/uploadcare_storage.js');
-                        const validationResult = await validateFileWithProxy(uploadResult.fileId);
+                        const validationResult = await validateFileWithProxy(uploadResult.fileId, uploadResult.mimeType);
                         
                         if (validationResult.ready) {
                             console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed via proxy: ${uploadResult.fileId}`);
@@ -1000,9 +1000,17 @@ const REQUIRE_AUTH = false; // Disable session auth for debugging
 const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
 
 // 🔹 Utility untuk bangun URL Uploadcare
-function buildUploadcareUrl(fileUrl, fileId) {
+function buildUploadcareUrl(fileUrl, fileId, mimeType) {
     if (fileUrl) return fileUrl;
-    if (fileId) return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
+  
+    if (fileId) {
+      if (mimeType && mimeType.startsWith('image/')) {
+        return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
+      } else {
+        // Untuk PDF atau selain image → jangan pakai preview, langsung file
+        return `${DEFAULT_CDN}/${fileId}`;
+      }
+    }
     return null;
 }
   
@@ -1015,14 +1023,15 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.sendStatus(401);
         }
 
-        const { fileUrl, fileId } = req.query;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId);
+        const { fileUrl, fileId, mimeType } = req.query;
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType);
         if (!targetUrl) return res.sendStatus(400);
 
         console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
 
-        // Add small delay to avoid false 404 due to CDN cache not being available yet
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Add delay to ensure CDN is fully ready (15 seconds)
+        console.log(`⏳ [UPLOADCARE-PROXY HEAD] Waiting 15 seconds for CDN propagation...`);
+        await new Promise(resolve => setTimeout(resolve, 15000));
 
         const axios = await import('axios');
         let attempts = 0;
@@ -1057,7 +1066,7 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
                 
                 // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
                 if (attempts < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
             }
         }
@@ -1084,8 +1093,8 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { fileUrl, fileId } = req.query;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId);
+        const { fileUrl, fileId, mimeType } = req.query;
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType);
 
         if (!targetUrl) {
             return res.status(400).json({ success: false, message: 'File URL or File ID required' });
@@ -1093,8 +1102,9 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
 
         console.log(`🔍 [UPLOADCARE-PROXY GET] Proxying file: ${targetUrl}`);
 
-        // Add small delay to avoid false 404 due to CDN cache not being available yet
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Add delay to ensure CDN is fully ready (15 seconds)
+        console.log(`⏳ [UPLOADCARE-PROXY GET] Waiting 15 seconds for CDN propagation...`);
+        await new Promise(resolve => setTimeout(resolve, 15000));
 
         const axios = await import('axios');
         let attempts = 0;
@@ -1137,7 +1147,7 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
                 
                 // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
                 if (attempts < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
             }
         }

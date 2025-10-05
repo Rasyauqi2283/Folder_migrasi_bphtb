@@ -1429,7 +1429,7 @@ function showAlert(type, message, title = null) {
                 for (const upload of uploadResults) {
                     if (upload.success && upload.fileId) {
                         console.log(`🧩 [UPLOAD] Validating file: ${upload.fileId}`);
-                        const validationResult = await validateFileWithProxyFrontend(upload.fileId);
+                        const validationResult = await validateFileWithProxyFrontend(upload.fileId, upload.mimeType);
                         
                         if (validationResult.ready) {
                             console.log(`✅ [UPLOAD] File validation passed via proxy: ${upload.fileId}`);
@@ -1667,17 +1667,17 @@ function showAlert(type, message, title = null) {
         }
 
         // 🧩 Function to validate file with proxy endpoint (Frontend Integration)
-        async function validateFileWithProxyFrontend(fileId) {
+        async function validateFileWithProxyFrontend(fileId, mimeType = null) {
             try {
                 console.log(`🧩 [VALIDATE-PROXY-FRONTEND] Starting proxy validation for file: ${fileId}`);
                 
-                const proxyUrl = `/api/ppatk/uploadcare-proxy?fileId=${fileId}`;
+                const proxyUrl = `/api/ppatk/uploadcare-proxy?fileId=${fileId}${mimeType ? `&mimeType=${encodeURIComponent(mimeType)}` : ''}`;
                 
                 // Use HEAD request for validation (faster than GET)
                 const response = await fetch(proxyUrl, {
                     method: 'HEAD',
                     credentials: 'include',
-                    timeout: 10000
+                    timeout: 35000 // Increased timeout for 15s delay + retries
                 });
                 
                 if (response.status === 200) {
