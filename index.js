@@ -106,6 +106,7 @@ import { triggerNotificationByStatus } from './backend/routesxcontroller/3_notif
 import adminRouter from './backend/routesxcontroller/4_admin/adminRoutes.js';
 import notificationWarehouseRouter from './backend/routesxcontroller/4_admin/notification_warehouse_routes.js';
 import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
+import registerCreateBookingEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/create_booking_endpoint.js';
 // Import BSRE routes
 import bsreAuthRouter from './backend/routesxcontroller/8_bsre/bsre_auth_routes.js';
 import bsreCertRouter from './backend/routesxcontroller/8_bsre/bsre_certificate_routes.js';
@@ -244,6 +245,13 @@ registerPPATKEndpoints({
 // Body parsers must come after PPATK endpoints
 app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
+
+// Register JSON-based PPATK endpoints AFTER body parsers
+registerCreateBookingEndpoints({
+  app,
+  pool,
+  logger
+});
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/faqs', faqRoutes);
