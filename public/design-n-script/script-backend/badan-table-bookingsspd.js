@@ -4043,6 +4043,7 @@ async function findAlternativeFileId(bookingId, documentType) {
         
         const data = await response.json();
         
+        
         if (data.success && data.data) {
             // Map document types to data structure
             const documentMap = {
