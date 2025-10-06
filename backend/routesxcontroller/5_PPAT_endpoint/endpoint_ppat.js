@@ -1000,30 +1000,62 @@ const REQUIRE_AUTH = false; // Disable session auth for debugging
 const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
 
 // 🔹 Utility untuk bangun URL Uploadcare dengan fallback strategy
-function buildUploadcareUrl(fileUrl, fileId, mimeType) {
+function buildUploadcareUrl(fileUrl, fileId, mimeType, strategy = 'default', nthIndex = 0) {
     if (fileUrl) {
         // Jika ada fileUrl, coba konversi ke custom domain
         if (fileUrl.includes('ucarecdn.com')) {
             const fileIdFromUrl = fileUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
             if (fileIdFromUrl) {
-                const cleanFileId = fileIdFromUrl[1];
-                if (mimeType && mimeType.startsWith('image/')) {
-                    return `${DEFAULT_CDN}/${cleanFileId}/-/preview/1000x1000/`;
-                } else {
-                    return `${DEFAULT_CDN}/${cleanFileId}`;
+                const originalId = fileIdFromUrl[1];
+                const groupMatch = originalId.match(/^([a-f0-9-]{36})~(\d+)$/);
+                const cleanId = groupMatch ? groupMatch[1] : originalId;
+
+                if (strategy === 'clean-file') {
+                    // Gunakan UUID file tanpa suffix ~n
+                    return mimeType && mimeType.startsWith('image/')
+                        ? `${DEFAULT_CDN}/${cleanId}/-/preview/1000x1000/`
+                        : `${DEFAULT_CDN}/${cleanId}`;
                 }
+
+                if (strategy === 'group-nth') {
+                    const index = Number.isFinite(nthIndex) ? nthIndex : 0;
+                    // Akses anggota grup pertama (nth/0) secara default
+                    return mimeType && mimeType.startsWith('image/')
+                        ? `${DEFAULT_CDN}/${originalId}/nth/${index}/-/preview/1000x1000/`
+                        : `${DEFAULT_CDN}/${originalId}/nth/${index}/`;
+                }
+
+                // default behavior (pertahankan id apa adanya)
+                return mimeType && mimeType.startsWith('image/')
+                    ? `${DEFAULT_CDN}/${originalId}/-/preview/1000x1000/`
+                    : `${DEFAULT_CDN}/${originalId}`;
             }
         }
         return fileUrl;
     }
   
     if (fileId) {
-        if (mimeType && mimeType.startsWith('image/')) {
-            return `${DEFAULT_CDN}/${fileId}/-/preview/1000x1000/`;
-        } else {
-            // Untuk PDF atau selain image → jangan pakai preview, langsung file
-            return `${DEFAULT_CDN}/${fileId}`;
+        const idStr = String(fileId);
+        const groupMatch = idStr.match(/^([a-f0-9-]{36})~(\d+)$/);
+        const cleanId = groupMatch ? groupMatch[1] : idStr;
+
+        if (strategy === 'clean-file') {
+            return mimeType && mimeType.startsWith('image/')
+                ? `${DEFAULT_CDN}/${cleanId}/-/preview/1000x1000/`
+                : `${DEFAULT_CDN}/${cleanId}`;
         }
+
+        if (strategy === 'group-nth' && groupMatch) {
+            const index = Number.isFinite(nthIndex) ? nthIndex : 0;
+            return mimeType && mimeType.startsWith('image/')
+                ? `${DEFAULT_CDN}/${idStr}/nth/${index}/-/preview/1000x1000/`
+                : `${DEFAULT_CDN}/${idStr}/nth/${index}/`;
+        }
+
+        // default behavior
+        return mimeType && mimeType.startsWith('image/')
+            ? `${DEFAULT_CDN}/${idStr}/-/preview/1000x1000/`
+            : `${DEFAULT_CDN}/${idStr}`;
     }
     return null;
 }
@@ -1037,8 +1069,9 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.sendStatus(401);
         }
 
-        const { fileUrl, fileId, mimeType } = req.query;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType);
+        const { fileUrl, fileId, mimeType, strategy = 'default', nth } = req.query;
+        const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
         if (!targetUrl) return res.sendStatus(400);
 
         console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
@@ -1129,8 +1162,9 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { fileUrl, fileId, mimeType } = req.query;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType);
+        const { fileUrl, fileId, mimeType, strategy = 'default', nth } = req.query;
+        const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
+        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
 
         if (!targetUrl) {
             return res.status(400).json({ success: false, message: 'File URL or File ID required' });
