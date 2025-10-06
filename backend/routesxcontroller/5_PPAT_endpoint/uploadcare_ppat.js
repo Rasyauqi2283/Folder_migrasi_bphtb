@@ -13,7 +13,7 @@ import { pool } from '../../../db.js';
 // Multer configuration for memory storage
 const storage = multer.memoryStorage();
 
-const upload = multer({
+const uploadcare = multer({
   storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
@@ -647,4 +647,4 @@ export function createUploadcareProxyEndpoint() {
   };
 }
 // Export multer middleware
-export { upload };
+export { uploadcare };

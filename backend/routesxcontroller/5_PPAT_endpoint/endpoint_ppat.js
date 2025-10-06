@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-import { upload } from './uploadcare_ppat.js';
+import { createUploadcareUploadHandler } from './uploadcare_ppat.js';
 import {uploadDocumentMiddleware} from '../../../backend/config/multer.js';
 // Import Uploadcare routes
 // import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
@@ -12,9 +12,10 @@ import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
 // pilih upload mode
 const useUploadcare = process.env.USE_UPLOADCARE === 'true';
 
-export const uploadHandler = useUploadcare
+// ✅ Pilih handler upload (Uploadcare vs Local)
+const uploadHandler = useUploadcare
   ? createUploadcareUploadHandler()
-  : [uploadDocumentMiddleware.single('document'), uploadHandler];
+  : uploadDocumentMiddleware.single('document');
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
