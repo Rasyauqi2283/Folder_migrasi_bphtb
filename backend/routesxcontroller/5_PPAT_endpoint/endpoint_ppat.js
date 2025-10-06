@@ -1043,9 +1043,9 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
 
         console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
 
-        // Add delay to ensure CDN is fully ready (15 seconds)
-        console.log(`⏳ [UPLOADCARE-PROXY HEAD] Waiting 15 seconds for CDN propagation...`);
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // Add delay to ensure CDN is fully ready (50 seconds)
+        console.log(`⏳ [UPLOADCARE-PROXY HEAD] Waiting 50 seconds for CDN propagation...`);
+        await new Promise(resolve => setTimeout(resolve, 50000));
 
         const axios = await import('axios');
         let attempts = 0;
@@ -1066,15 +1066,15 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
             }
         }
         
-        // Retry mechanism dengan maksimal 3 attempts per URL
+        // Retry mechanism dengan maksimal 5 attempts per URL
         for (const urlToTry of urlsToTry) {
             attempts = 0;
             success = false;
             
-            while (attempts < 3 && !success) {
+            while (attempts < 5 && !success) {
                 try {
                     attempts++;
-                    console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/3: ${urlToTry}`);
+                    console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/5: ${urlToTry}`);
                     
                     const response = await axios.default.head(urlToTry, { timeout: 5000 });
                     
@@ -1096,9 +1096,9 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
                     lastError = error;
                     console.warn(`⚠️ [UPLOADCARE-PROXY HEAD] Attempt ${attempts} failed: ${error.message}`);
                     
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
-                    if (attempts < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry (10 detik)
+                    if (attempts < 5) {
+                        await new Promise(resolve => setTimeout(resolve, 10000));
                     }
                 }
             }
@@ -1138,9 +1138,9 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
 
         console.log(`🔍 [UPLOADCARE-PROXY GET] Proxying file: ${targetUrl}`);
 
-        // Add delay to ensure CDN is fully ready (15 seconds)
-        console.log(`⏳ [UPLOADCARE-PROXY GET] Waiting 15 seconds for CDN propagation...`);
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // Add delay to ensure CDN is fully ready (50 seconds)
+        console.log(`⏳ [UPLOADCARE-PROXY GET] Waiting 50 seconds for CDN propagation...`);
+        await new Promise(resolve => setTimeout(resolve, 50000));
 
         const axios = await import('axios');
         let attempts = 0;
@@ -1161,15 +1161,15 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
             }
         }
         
-        // Retry mechanism dengan maksimal 3 attempts per URL
+        // Retry mechanism dengan maksimal 5 attempts per URL
         for (const urlToTry of urlsToTry) {
             attempts = 0;
             success = false;
             
-            while (attempts < 3 && !success) {
+            while (attempts < 5 && !success) {
                 try {
                     attempts++;
-                    console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/3: ${urlToTry}`);
+                    console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/5: ${urlToTry}`);
                     
                     const response = await axios.default.get(urlToTry, {
                         responseType: 'stream',
@@ -1200,9 +1200,9 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
                     lastError = error;
                     console.warn(`⚠️ [UPLOADCARE-PROXY GET] Attempt ${attempts} failed: ${error.message}`);
                     
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry
-                    if (attempts < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 5000));
+                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry (10 detik)
+                    if (attempts < 5) {
+                        await new Promise(resolve => setTimeout(resolve, 10000));
                     }
                 }
             }
