@@ -3,10 +3,18 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
+import { upload } from './uploadcare_ppat.js';
+import {uploadDocumentMiddleware} from '../../../config/multer.js';
 // Import Uploadcare routes
 // import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
 // Import Railway signature routes
 import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
+// pilih upload mode
+const useUploadcare = process.env.USE_UPLOADCARE === 'true';
+
+export const uploadHandler = useUploadcare
+  ? createUploadcareUploadHandler()
+  : [uploadDocumentMiddleware.single('document'), uploadHandler];
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
@@ -449,7 +457,7 @@ app.post('/api/ppatk/upload-signatures', async (req, res) => {
 });
 
 // Upload documents endpoint
-app.post('/api/ppatk/upload-documents', async (req, res) => {
+app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
     try {
         console.log('📤 [UPLOAD-DOCUMENTS] Upload request received');
         

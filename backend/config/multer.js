@@ -173,7 +173,7 @@ export const uploadDocumentMiddleware = multer({
     storage: uploadDocumentStorage,
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB
-        files: 2 // Maksimal 2 file
+        files: 3 // Maksimal 2 file
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = [
