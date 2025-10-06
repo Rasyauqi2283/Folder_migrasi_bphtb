@@ -4,7 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
 import { upload } from './uploadcare_ppat.js';
-import {uploadDocumentMiddleware} from '../../../config/multer.js';
+import {uploadDocumentMiddleware} from '../../../backend/config/multer.js';
 // Import Uploadcare routes
 // import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
 // Import Railway signature routes
