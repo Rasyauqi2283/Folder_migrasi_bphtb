@@ -1069,7 +1069,7 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.sendStatus(401);
         }
 
-        const { fileUrl, fileId, mimeType, strategy = 'default', nth } = req.query;
+        const { fileUrl, fileId, mimeType, strategy = 'clean-file', nth } = req.query;
         const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
         const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
         if (!targetUrl) return res.sendStatus(400);
@@ -1162,7 +1162,7 @@ app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { fileUrl, fileId, mimeType, strategy = 'default', nth } = req.query;
+        const { fileUrl, fileId, mimeType, strategy = 'clean-file', nth } = req.query;
         const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
         const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
 

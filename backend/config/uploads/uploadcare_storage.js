@@ -687,10 +687,11 @@ export async function validateFileWithProxy(fileId, mimeType = null, backendBase
     const validate = await axios.default.head(proxyUrl, {
       params: { 
         fileId: fileId,
-        mimeType: mimeType // Include mimeType for proper URL generation
+        mimeType: mimeType,
+        strategy: 'clean-file'
       },
-      timeout: 30000, // Increased timeout for 15s delay
-      validateStatus: () => true // Accept any status
+      timeout: 120000,
+      validateStatus: () => true
     });
     
     if (validate.status === 200) {
