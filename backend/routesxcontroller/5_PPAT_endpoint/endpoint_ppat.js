@@ -1492,7 +1492,7 @@ app.post('/api/ppatk/ltb-process', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = req.body;
+        const nobooking  = result.rows[0]?.nobooking;
         const userid = req.session.user.userid;
 
         if (!nobooking) {
@@ -1522,7 +1522,7 @@ app.get('/api/ppatk/verify-file-sync', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = req.query;
+        const { nobooking } = result.rows[0]?.nobooking;
         const userid = req.session.user.userid;
 
         if (!nobooking) {
