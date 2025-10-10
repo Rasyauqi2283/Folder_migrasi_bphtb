@@ -1,4 +1,3 @@
-// /backend/routesxcontroller/5_PPAT_endpoint/uploadcare_ppat.js
 // Uploadcare PPAT Upload Handler
 import multer from 'multer';
 import { 
@@ -13,7 +12,7 @@ import { pool } from '../../../db.js';
 // Multer configuration for memory storage
 const storage = multer.memoryStorage();
 
-const uploadcare = multer({
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
@@ -646,5 +645,6 @@ export function createUploadcareProxyEndpoint() {
     }
   };
 }
+
 // Export multer middleware
-export { uploadcare };
+export { upload };

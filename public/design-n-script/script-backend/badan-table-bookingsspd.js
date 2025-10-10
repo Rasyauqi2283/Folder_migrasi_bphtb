@@ -3,19 +3,19 @@
 
 // ===== HELPER FUNCTIONS untuk URL handling =====
 /**
- * Get proper file URL - support Uploadcare URLs
+ * Get proper file URL - support Railway storage URLs
  */
 function getFileUrl(pathOrUrl) {
     if (!pathOrUrl) return '';
     
-    // Jika sudah URL lengkap (Uploadcare), return as-is
+    // Jika sudah URL lengkap, return as-is
     if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
         return pathOrUrl;
     }
     
-    // Jika file ID Uploadcare, gunakan proxy endpoint
-    if (pathOrUrl.includes('ucarecdn.com') || pathOrUrl.includes('ucarecd.net') || pathOrUrl.match(/^[a-f0-9-]+$/)) {
-        return `${config.proxyEndpoint}?fileId=${encodeURIComponent(pathOrUrl)}`;
+    // Jika relative path Railway storage, gunakan proxy endpoint
+    if (pathOrUrl.includes('/') && !pathOrUrl.startsWith('http')) {
+        return `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(pathOrUrl)}`;
     }
     
     // Jika local path, tambahkan prefix /
@@ -1431,14 +1431,14 @@ function showAlert(type, message, title = null) {
                 const uploadResults = result.uploadResults || [];
                 
                 for (const upload of uploadResults) {
-                    if (upload.success && upload.fileId) {
-                        console.log(`🧩 [UPLOAD] Validating file: ${upload.fileId}`);
-                        const validationResult = await validateFileWithProxyFrontend(upload.fileId, upload.mimeType);
+                    if (upload.success && upload.relativePath) {
+                        console.log(`🧩 [UPLOAD] Validating file: ${upload.relativePath}`);
+                        const validationResult = await validateFileWithRailwayFrontend(upload.relativePath, upload.mimeType);
                         
                         if (validationResult.ready) {
-                            console.log(`✅ [UPLOAD] File validation passed via proxy: ${upload.fileId}`);
+                            console.log(`✅ [UPLOAD] File validation passed via Railway: ${upload.relativePath}`);
                         } else {
-                            console.warn(`⚠️ [UPLOAD] File validation via proxy failed: ${validationResult.message}`);
+                            console.warn(`⚠️ [UPLOAD] File validation via Railway failed: ${validationResult.message}`);
                         }
                     }
                 }
@@ -1671,38 +1671,38 @@ function showAlert(type, message, title = null) {
         }
 
         // 🧩 Function to validate file with proxy endpoint (Frontend Integration)
-        async function validateFileWithProxyFrontend(fileId, mimeType = null) {
+        async function validateFileWithRailwayFrontend(relativePath, mimeType = null) {
             try {
-                console.log(`🧩 [VALIDATE-PROXY-FRONTEND] Starting proxy validation for file: ${fileId}`);
+                console.log(`🧩 [VALIDATE-RAILWAY-FRONTEND] Starting Railway validation for file: ${relativePath}`);
                 
-                const proxyUrl = `/api/ppatk/uploadcare-proxy?fileId=${fileId}${mimeType ? `&mimeType=${encodeURIComponent(mimeType)}` : ''}`;
+                const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
                 
                 // Use HEAD request for validation (faster than GET)
                 const response = await fetch(proxyUrl, {
                     method: 'HEAD',
                     credentials: 'include',
-                    timeout: 35000 // Increased timeout for 15s delay + retries
+                    timeout: 10000 // Railway storage is immediate, shorter timeout
                 });
                 
                 if (response.status === 200) {
-                    console.log(`✅ [VALIDATE-PROXY-FRONTEND] File sudah siap di CDN: ${fileId}`);
+                    console.log(`✅ [VALIDATE-RAILWAY-FRONTEND] File sudah tersedia di Railway: ${relativePath}`);
                     return {
                         success: true,
-                        message: 'File sudah siap di CDN',
+                        message: 'File sudah tersedia di Railway',
                         status: response.status,
                         ready: true
                     };
                 } else {
-                    console.log(`⚠️ [VALIDATE-PROXY-FRONTEND] File belum siap, tapi upload sukses: ${fileId}`);
+                    console.log(`⚠️ [VALIDATE-RAILWAY-FRONTEND] File tidak ditemukan: ${relativePath}`);
                     return {
                         success: false,
-                        message: 'File belum siap, tapi upload sukses',
+                        message: 'File tidak ditemukan di Railway',
                         status: response.status,
                         ready: false
                     };
                 }
             } catch (error) {
-                console.warn(`⚠️ [VALIDATE-PROXY-FRONTEND] Validation failed: ${error.message}`);
+                console.warn(`⚠️ [VALIDATE-RAILWAY-FRONTEND] Validation failed: ${error.message}`);
                 return {
                     success: false,
                     message: 'Validation failed',

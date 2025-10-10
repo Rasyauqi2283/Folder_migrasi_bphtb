@@ -3,19 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-import { createUploadcareUploadHandler } from './uploadcare_ppat.js';
-import {uploadDocumentMiddleware} from '../../../backend/config/multer.js';
 // Import Uploadcare routes
 // import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
 // Import Railway signature routes
 import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
-// pilih upload mode
-const useUploadcare = process.env.USE_UPLOADCARE === 'true';
-
-// ✅ Pilih handler upload (Uploadcare vs Local)
-const uploadHandler = useUploadcare
-  ? createUploadcareUploadHandler()
-  : uploadDocumentMiddleware.single('document');
 const router = express.Router();
 
 export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
@@ -458,7 +449,7 @@ app.post('/api/ppatk/upload-signatures', async (req, res) => {
 });
 
 // Upload documents endpoint
-app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
+app.post('/api/ppatk/upload-documents', async (req, res) => {
     try {
         console.log('📤 [UPLOAD-DOCUMENTS] Upload request received');
         
@@ -472,8 +463,8 @@ app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
             'content-length': req.headers['content-length']
         });
 
-        // Import uploadcare functions
-        const { uploadToUploadcare } = await import('../../config/uploads/uploadcare_storage.js');
+        // Import Railway storage functions
+        const { uploadToRailway } = await import('../../config/uploads/railway_storage.js');
         
         // Handle file uploads using multer
         const multer = await import('multer');
@@ -587,45 +578,40 @@ app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
                     await client.query('BEGIN');
                     console.log(`🔄 [UPLOAD-DOCUMENTS] Transaction started for ${documentType}`);
 
-                    // 1. Upload to Uploadcare first
-                    uploadResult = await uploadToUploadcare(file, {
+                    // 1. Upload to Railway storage first
+                    uploadResult = await uploadToRailway(file, {
                         userid: userid,
                         nobooking: bookingId,
                         docType: documentType,
-                        sequenceNumber: 1,
-                        resourceType: 'auto'
+                        sequenceNumber: 1
                     });
 
                     if (!uploadResult.success) {
-                        throw new Error(uploadResult.message || 'Upload to Uploadcare failed');
+                        throw new Error(uploadResult.error || 'Upload to Railway storage failed');
                     }
 
                     console.log(`✅ [UPLOAD-DOCUMENTS] Upload successful:`, {
-                        fileId: uploadResult.fileId,
+                        relativePath: uploadResult.relativePath,
                         fileUrl: uploadResult.fileUrl
                     });
 
-                    // 2. Validate file accessibility before database update (with retry)
+                    // 2. Validate file accessibility (Railway storage is immediate)
                     console.log(`🔍 [UPLOAD-DOCUMENTS] Validating file accessibility...`);
                     try {
-                        const axios = await import('axios');
+                        console.log(`🧩 [UPLOAD-DOCUMENTS] Starting Railway validation for: ${uploadResult.relativePath}`);
                         
-                        // Wait 5 seconds for CDN propagation (Uploadcare recommendation)
-                        // 2. Validate file accessibility using proxy endpoint (recommended approach)
-                        console.log(`🧩 [UPLOAD-DOCUMENTS] Starting proxy validation for: ${uploadResult.fileId}`);
-                        
-                        const { validateFileWithProxy } = await import('../../config/uploads/uploadcare_storage.js');
-                        const validationResult = await validateFileWithProxy(uploadResult.fileId, uploadResult.mimeType);
+                        const { validateFileWithRailway } = await import('../../config/uploads/railway_storage.js');
+                        const validationResult = await validateFileWithRailway(uploadResult.relativePath, uploadResult.mimeType);
                         
                         if (validationResult.ready) {
-                            console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed via proxy: ${uploadResult.fileId}`);
+                            console.log(`✅ [UPLOAD-DOCUMENTS] File validation passed: ${uploadResult.relativePath}`);
                         } else {
-                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] File validation via proxy failed: ${validationResult.message}`);
-                            // Don't throw error, just log warning - file might be processing
+                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] File validation failed: ${validationResult.message}`);
+                            // For Railway storage, this should not happen, but log warning
                         }
                     } catch (validationError) {
                         console.warn(`⚠️ [UPLOAD-DOCUMENTS] File validation failed: ${validationError.message}`);
-                        // Don't throw error, just log warning - file might be processing
+                        // For Railway storage, this should not happen, but log warning
                     }
 
                     // 3. Update database with new file information
@@ -667,10 +653,10 @@ app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
                     `;
 
                     const updateParams = [
-                        uploadResult.fileId,
+                        uploadResult.relativePath, // Use relativePath as fileId for Railway storage
                         uploadResult.fileUrl,
-                        file.mimetype,
-                        file.size,
+                        uploadResult.mimeType, // Use mimeType from upload result
+                        uploadResult.size, // Use size from upload result
                         bookingId,
                         userid
                     ];
@@ -687,18 +673,19 @@ app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
 
                     console.log(`✅ [UPLOAD-DOCUMENTS] Database updated successfully:`, {
                         documentType,
-                        fileId: uploadResult.fileId,
+                        relativePath: uploadResult.relativePath,
                         rowsAffected: updateResult.rowCount
                     });
 
                         // Store result for this file
                         uploadResults.push({
                             documentType,
-                            fileId: uploadResult.fileId,
+                            relativePath: uploadResult.relativePath,
                             fileUrl: uploadResult.fileUrl,
-                            fileName: file.originalname,
-                            fileSize: file.size,
-                            mimeType: file.mimetype
+                            fileName: uploadResult.fileName,
+                            fileSize: uploadResult.size,
+                            mimeType: uploadResult.mimeType,
+                            success: true
                         });
 
                     } catch (transactionError) {
@@ -761,7 +748,7 @@ app.post('/api/ppatk/upload-documents', uploadHandler, async (req, res) => {
     }
 });
 
-// Update file URL endpoint - Generate proper Uploadcare URLs
+// Update file URL endpoint - Railway storage URLs are stable, no update needed
 app.post('/api/ppatk/update-file-urls', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
@@ -770,123 +757,18 @@ app.post('/api/ppatk/update-file-urls', async (req, res) => {
 
         const userid = req.session.user.userid;
 
-        console.log(`🔧 [UPDATE-FILE-URLS] Updating URLs for user: ${userid}`);
+        console.log(`🔧 [UPDATE-FILE-URLS] Railway storage URLs are stable, no update needed for user: ${userid}`);
 
-        // Get all bookings for this user that have files
-        const query = `
-            SELECT 
-                nobooking,
-                akta_tanah_file_id, akta_tanah_path, akta_tanah_mime_type,
-                sertifikat_tanah_file_id, sertifikat_tanah_path, sertifikat_tanah_mime_type,
-                pelengkap_file_id, pelengkap_path, pelengkap_mime_type
-            FROM pat_1_bookingsspd 
-            WHERE userid = $1 
-            AND (
-                akta_tanah_file_id IS NOT NULL 
-                OR sertifikat_tanah_file_id IS NOT NULL 
-                OR pelengkap_file_id IS NOT NULL
-            )
-            ORDER BY created_at DESC
-        `;
-
-        const result = await pool.query(query, [userid]);
-
-        if (result.rows.length === 0) {
-            return res.json({ 
-                success: true, 
-                message: 'No bookings with files found',
-                data: { updated: 0, bookings: 0 }
-            });
-        }
-
-        let totalUpdated = 0;
-        const updateResults = [];
-
-        // Process each booking
-        for (const bookingData of result.rows) {
-            const nobooking = bookingData.nobooking;
-            const updates = [];
-            const updateParams = [];
-            let paramIndex = 1;
-
-            // Helper function to generate proper URL
-            const generateProperUrl = (fileId, mimeType) => {
-                if (!fileId) return null;
-                
-                if (mimeType && mimeType.startsWith('image/')) {
-                    return `https://44renul14z.ucarecd.net/${fileId}/-/preview/1000x1000/`;
-                } else {
-                    return `https://44renul14z.ucarecd.net/${fileId}`;
-                }
-            };
-
-            // Check and update akta_tanah
-            if (bookingData.akta_tanah_file_id) {
-                const newUrl = generateProperUrl(bookingData.akta_tanah_file_id, bookingData.akta_tanah_mime_type);
-                if (newUrl && newUrl !== bookingData.akta_tanah_path) {
-                    updates.push(`akta_tanah_path = $${paramIndex}`);
-                    updateParams.push(newUrl);
-                    paramIndex++;
-                    console.log(`🔧 [UPDATE-FILE-URLS] Akta Tanah URL: ${bookingData.akta_tanah_path} → ${newUrl}`);
-                }
-            }
-
-            // Check and update sertifikat_tanah
-            if (bookingData.sertifikat_tanah_file_id) {
-                const newUrl = generateProperUrl(bookingData.sertifikat_tanah_file_id, bookingData.sertifikat_tanah_mime_type);
-                if (newUrl && newUrl !== bookingData.sertifikat_tanah_path) {
-                    updates.push(`sertifikat_tanah_path = $${paramIndex}`);
-                    updateParams.push(newUrl);
-                    paramIndex++;
-                    console.log(`🔧 [UPDATE-FILE-URLS] Sertifikat Tanah URL: ${bookingData.sertifikat_tanah_path} → ${newUrl}`);
-                }
-            }
-
-            // Check and update pelengkap
-            if (bookingData.pelengkap_file_id) {
-                const newUrl = generateProperUrl(bookingData.pelengkap_file_id, bookingData.pelengkap_mime_type);
-                if (newUrl && newUrl !== bookingData.pelengkap_path) {
-                    updates.push(`pelengkap_path = $${paramIndex}`);
-                    updateParams.push(newUrl);
-                    paramIndex++;
-                    console.log(`🔧 [UPDATE-FILE-URLS] Pelengkap URL: ${bookingData.pelengkap_path} → ${newUrl}`);
-                }
-            }
-
-            if (updates.length > 0) {
-                // Add updated_at and final parameters
-                updates.push(`updated_at = CURRENT_TIMESTAMP`);
-                updateParams.push(nobooking, userid);
-
-                const updateQuery = `
-                    UPDATE pat_1_bookingsspd 
-                    SET ${updates.join(', ')}
-                    WHERE nobooking = $${paramIndex} AND userid = $${paramIndex + 1}
-                `;
-
-                const updateResult = await pool.query(updateQuery, updateParams);
-                const updatedCount = updates.length - 1; // Exclude updated_at
-                totalUpdated += updatedCount;
-
-                console.log(`✅ [UPDATE-FILE-URLS] Updated ${updatedCount} URLs for booking: ${nobooking}`);
-                
-                updateResults.push({
-                    nobooking,
-                    updated: updatedCount
-                });
-            }
-        }
-
-        console.log(`✅ [UPDATE-FILE-URLS] Total updated ${totalUpdated} URLs across ${result.rows.length} bookings`);
-
+        // Railway storage URLs are stable and don't need updating
         res.json({
             success: true,
-            message: `Updated ${totalUpdated} file URLs across ${result.rows.length} bookings successfully`,
+            message: 'Railway storage URLs are stable - no updates needed',
             data: {
-                totalUpdated,
-                totalBookings: result.rows.length,
-                updateResults,
-                updatedAt: new Date().toISOString()
+                totalUpdated: 0,
+                totalBookings: 0,
+                updateResults: [],
+                updatedAt: new Date().toISOString(),
+                note: 'Railway storage uses stable local URLs that don\'t require updates'
             }
         });
 
@@ -1004,159 +886,51 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
 });
 
 // Uploadcare Proxy Endpoint for Preview - ROBUST VERSION
-// Konfigurasi
+// Konfigurasi Railway Storage
 const REQUIRE_AUTH = false; // Disable session auth for debugging
-const DEFAULT_CDN = 'https://44renul14z.ucarecd.net'; // CDN utama Uploadcare
-
-// 🔹 Utility untuk bangun URL Uploadcare dengan fallback strategy
-function buildUploadcareUrl(fileUrl, fileId, mimeType, strategy = 'default', nthIndex = 0) {
-    if (fileUrl) {
-        // Jika ada fileUrl, coba konversi ke custom domain
-        if (fileUrl.includes('ucarecdn.com')) {
-            const fileIdFromUrl = fileUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
-            if (fileIdFromUrl) {
-                const originalId = fileIdFromUrl[1];
-                const groupMatch = originalId.match(/^([a-f0-9-]{36})~(\d+)$/);
-                const cleanId = groupMatch ? groupMatch[1] : originalId;
-
-                if (strategy === 'clean-file') {
-                    // Gunakan UUID file tanpa suffix ~n
-                    return mimeType && mimeType.startsWith('image/')
-                        ? `${DEFAULT_CDN}/${cleanId}/-/preview/1000x1000/`
-                        : `${DEFAULT_CDN}/${cleanId}`;
-                }
-
-                if (strategy === 'group-nth') {
-                    const index = Number.isFinite(nthIndex) ? nthIndex : 0;
-                    // Akses anggota grup pertama (nth/0) secara default
-                    return mimeType && mimeType.startsWith('image/')
-                        ? `${DEFAULT_CDN}/${originalId}/nth/${index}/-/preview/1000x1000/`
-                        : `${DEFAULT_CDN}/${originalId}/nth/${index}/`;
-                }
-
-                // default behavior (pertahankan id apa adanya)
-                return mimeType && mimeType.startsWith('image/')
-                    ? `${DEFAULT_CDN}/${originalId}/-/preview/1000x1000/`
-                    : `${DEFAULT_CDN}/${originalId}`;
-            }
-        }
-        return fileUrl;
-    }
-  
-    if (fileId) {
-        const idStr = String(fileId);
-        const groupMatch = idStr.match(/^([a-f0-9-]{36})~(\d+)$/);
-        const cleanId = groupMatch ? groupMatch[1] : idStr;
-
-        if (strategy === 'clean-file') {
-            return mimeType && mimeType.startsWith('image/')
-                ? `${DEFAULT_CDN}/${cleanId}/-/preview/1000x1000/`
-                : `${DEFAULT_CDN}/${cleanId}`;
-        }
-
-        if (strategy === 'group-nth' && groupMatch) {
-            const index = Number.isFinite(nthIndex) ? nthIndex : 0;
-            return mimeType && mimeType.startsWith('image/')
-                ? `${DEFAULT_CDN}/${idStr}/nth/${index}/-/preview/1000x1000/`
-                : `${DEFAULT_CDN}/${idStr}/nth/${index}/`;
-        }
-
-        // default behavior
-        return mimeType && mimeType.startsWith('image/')
-            ? `${DEFAULT_CDN}/${idStr}/-/preview/1000x1000/`
-            : `${DEFAULT_CDN}/${idStr}`;
-    }
-    return null;
-}
   
 
 
-// 🔹 HEAD request (cek file tersedia atau tidak)
-app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
+// 🔹 HEAD request (cek file tersedia atau tidak) - Railway Storage
+app.head('/api/ppatk/file-proxy', async (req, res) => {
     try {
         if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
             return res.sendStatus(401);
         }
 
-        const { fileUrl, fileId, mimeType, strategy = 'clean-file', nth } = req.query;
-        const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
-        if (!targetUrl) return res.sendStatus(400);
-
-        console.log(`🔍 [UPLOADCARE-PROXY HEAD] Checking: ${targetUrl}`);
-
-        // Add delay to ensure CDN is fully ready (50 seconds)
-        console.log(`⏳ [UPLOADCARE-PROXY HEAD] Waiting 50 seconds for CDN propagation...`);
-        await new Promise(resolve => setTimeout(resolve, 50000));
-
-        const axios = await import('axios');
-        let attempts = 0;
-        let success = false;
-        let lastError = null;
+        const { relativePath } = req.query;
         
-        // Try custom domain first, then fallback to direct Uploadcare URL
-        const urlsToTry = [targetUrl];
-        
-        // Add fallback URL if target is custom domain
-        if (targetUrl.includes('44renul14z.ucarecd.net')) {
-            const fileIdMatch = targetUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
-            if (fileIdMatch) {
-                const fileId = fileIdMatch[1];
-                const fallbackUrl = `https://ucarecdn.com/${fileId}`;
-                urlsToTry.push(fallbackUrl);
-                console.log(`🔄 [UPLOADCARE-PROXY HEAD] Added fallback URL: ${fallbackUrl}`);
-            }
+        if (!relativePath) {
+            console.error('❌ [RAILWAY-PROXY HEAD] No relativePath provided');
+            return res.sendStatus(400);
         }
+
+        console.log(`🔍 [RAILWAY-PROXY HEAD] Checking file: ${relativePath}`);
+
+        // Import Railway storage functions
+        const { validateFileWithRailway } = await import('../../config/uploads/railway_storage.js');
         
-        // Retry mechanism dengan maksimal 5 attempts per URL
-        for (const urlToTry of urlsToTry) {
-            attempts = 0;
-            success = false;
+        // Validate file accessibility
+        const validationResult = await validateFileWithRailway(relativePath);
+        
+        if (validationResult.success && validationResult.ready) {
+            console.log(`✅ [RAILWAY-PROXY HEAD] File is accessible: ${relativePath}`);
             
-            while (attempts < 5 && !success) {
-                try {
-                    attempts++;
-                    console.log(`🔄 [UPLOADCARE-PROXY HEAD] Attempt ${attempts}/5: ${urlToTry}`);
-                    
-                    const response = await axios.default.head(urlToTry, { timeout: 5000 });
-                    
-                    if (response.status === 200) {
-                        success = true;
-                        console.log(`✅ [UPLOADCARE-PROXY HEAD] Success on attempt ${attempts}: ${urlToTry}`);
-                        
-                        // Forward beberapa header penting
-                        if (response.headers['content-type']) {
-                            res.set('Content-Type', response.headers['content-type']);
-                        }
-                        if (response.headers['content-length']) {
-                            res.set('Content-Length', response.headers['content-length']);
-                        }
-                        
-                        return res.sendStatus(200);
-                    }
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`⚠️ [UPLOADCARE-PROXY HEAD] Attempt ${attempts} failed: ${error.message}`);
-                    
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry (10 detik)
-                    if (attempts < 5) {
-                        await new Promise(resolve => setTimeout(resolve, 10000));
-                    }
-                }
-            }
+            // Set appropriate headers for Railway storage
+            res.set('Content-Type', validationResult.mimeType || 'application/octet-stream');
+            res.set('X-File-Path', relativePath);
+            res.set('X-Storage-Type', 'railway');
             
-            // If this URL worked, break out of the URL loop
-            if (success) break;
+            return res.sendStatus(200);
+        } else {
+            console.warn(`⚠️ [RAILWAY-PROXY HEAD] File not accessible: ${relativePath}`);
+            return res.status(404).json({
+                success: false,
+                message: "File tidak ditemukan di Railway storage."
+            });
         }
-        
-        // Jika semua attempts gagal
-        console.error(`❌ [UPLOADCARE-PROXY HEAD] All attempts failed after ${attempts} tries: ${lastError?.message}`);
-        return res.status(404).json({
-            success: false,
-            message: "File belum tersedia di CDN (mungkin baru diupload, coba lagi nanti)."
-        });
     } catch (err) {
-        console.error('❌ [UPLOADCARE-PROXY HEAD] Error:', err.message);
+        console.error('❌ [RAILWAY-PROXY HEAD] Error:', err.message);
         return res.status(500).json({
             success: false,
             message: "Internal server error during file validation."
@@ -1164,128 +938,96 @@ app.head('/api/ppatk/uploadcare-proxy', async (req, res) => {
     }
 });
 
-// 🔹 GET request (stream file ke client)
-app.get('/api/ppatk/uploadcare-proxy', async (req, res) => {
+// 🔹 GET request (stream file ke client) - Railway Storage
+app.get('/api/ppatk/file-proxy', async (req, res) => {
     try {
         if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { fileUrl, fileId, mimeType, strategy = 'clean-file', nth } = req.query;
-        const nthIndex = Number.isFinite(Number(nth)) ? Number(nth) : 0;
-        const targetUrl = buildUploadcareUrl(fileUrl, fileId, mimeType, strategy, nthIndex);
-
-        if (!targetUrl) {
-            return res.status(400).json({ success: false, message: 'File URL or File ID required' });
+        const { relativePath } = req.query;
+        
+        if (!relativePath) {
+            return res.status(400).json({ success: false, message: 'Relative path required' });
         }
 
-        console.log(`🔍 [UPLOADCARE-PROXY GET] Proxying file: ${targetUrl}`);
+        console.log(`🔍 [RAILWAY-PROXY GET] Proxying file: ${relativePath}`);
 
-        // Add delay to ensure CDN is fully ready (50 seconds)
-        console.log(`⏳ [UPLOADCARE-PROXY GET] Waiting 50 seconds for CDN propagation...`);
-        await new Promise(resolve => setTimeout(resolve, 50000));
+        // Import Railway storage functions
+        const { getFileInfo } = await import('../../config/uploads/railway_storage.js');
+        const fs = await import('fs');
+        const path = await import('path');
+        
+        // Get file info
+        const fileInfo = await getFileInfo(relativePath);
+        
+        if (!fileInfo.success || !fileInfo.fileInfo.isReady) {
+            console.warn(`⚠️ [RAILWAY-PROXY GET] File not found: ${relativePath}`);
+            return res.status(404).json({
+                success: false,
+                message: "File tidak ditemukan di Railway storage."
+            });
+        }
+        
+        // Create file stream from Railway storage
+        const fullPath = path.join(process.cwd(), 'backend', 'storage', 'ppatk', relativePath);
+        
+        if (!fs.existsSync(fullPath)) {
+            console.error(`❌ [RAILWAY-PROXY GET] Physical file not found: ${fullPath}`);
+            return res.status(404).json({
+                success: false,
+                message: "File tidak ditemukan di storage."
+            });
+        }
+        
+        console.log(`✅ [RAILWAY-PROXY GET] Streaming file: ${fullPath}`);
+        
+        // Set appropriate headers
+        res.set({
+            'Content-Type': fileInfo.fileInfo.mimeType || 'application/octet-stream',
+            'Content-Length': fileInfo.fileInfo.size,
+            'Cache-Control': 'public, max-age=3600',
+            'Content-Disposition': 'inline',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'X-File-Path': relativePath,
+            'X-Storage-Type': 'railway'
+        });
 
-        const axios = await import('axios');
-        let attempts = 0;
-        let success = false;
-        let lastError = null;
+        // Stream file to client
+        const fileStream = fs.createReadStream(fullPath);
+        fileStream.pipe(res);
         
-        // Try custom domain first, then fallback to direct Uploadcare URL
-        const urlsToTry = [targetUrl];
-        
-        // Add fallback URL if target is custom domain
-        if (targetUrl.includes('44renul14z.ucarecd.net')) {
-            const fileIdMatch = targetUrl.match(/([a-f0-9-]{36}[~]?\d*)/);
-            if (fileIdMatch) {
-                const fileId = fileIdMatch[1];
-                const fallbackUrl = `https://ucarecdn.com/${fileId}`;
-                urlsToTry.push(fallbackUrl);
-                console.log(`🔄 [UPLOADCARE-PROXY GET] Added fallback URL: ${fallbackUrl}`);
+        fileStream.on('error', (error) => {
+            console.error(`❌ [RAILWAY-PROXY GET] Stream error: ${error.message}`);
+            if (!res.headersSent) {
+                res.status(500).json({
+                    success: false,
+                    message: "Error streaming file."
+                });
             }
-        }
-        
-        // Retry mechanism dengan maksimal 5 attempts per URL
-        for (const urlToTry of urlsToTry) {
-            attempts = 0;
-            success = false;
-            
-            while (attempts < 5 && !success) {
-                try {
-                    attempts++;
-                    console.log(`🔄 [UPLOADCARE-PROXY GET] Attempt ${attempts}/5: ${urlToTry}`);
-                    
-                    const response = await axios.default.get(urlToTry, {
-                        responseType: 'stream',
-                        timeout: 30000,
-                        headers: { 'User-Agent': 'Bappenda-PPAT-Proxy/1.0' }
-                    });
-
-                    if (response.status === 200) {
-                        success = true;
-                        console.log(`✅ [UPLOADCARE-PROXY GET] Success on attempt ${attempts}: ${urlToTry}`);
-                        
-                        // Set header dari Uploadcare ke response kita
-                        res.set({
-                            'Content-Type': response.headers['content-type'] || 'application/octet-stream',
-                            'Content-Length': response.headers['content-length'] || undefined,
-                            'Cache-Control': 'public, max-age=3600',
-                            'Content-Disposition': 'inline',
-                            'Access-Control-Allow-Origin': '*',
-                            'Access-Control-Allow-Methods': 'GET, HEAD',
-                            'Access-Control-Allow-Headers': 'Content-Type'
-                        });
-
-                        // Pipe stream ke client
-                        response.data.pipe(res);
-                        return;
-                    }
-                } catch (error) {
-                    lastError = error;
-                    console.warn(`⚠️ [UPLOADCARE-PROXY GET] Attempt ${attempts} failed: ${error.message}`);
-                    
-                    // Jika bukan attempt terakhir, tunggu sebentar sebelum retry (10 detik)
-                    if (attempts < 5) {
-                        await new Promise(resolve => setTimeout(resolve, 10000));
-                    }
-                }
-            }
-            
-            // If this URL worked, break out of the URL loop
-            if (success) break;
-        }
-        
-        // Jika semua attempts gagal
-        console.error(`❌ [UPLOADCARE-PROXY GET] All attempts failed after ${attempts} tries: ${lastError?.message}`);
-        return res.status(404).json({
-            success: false,
-            message: "File belum tersedia di CDN (mungkin baru diupload, coba lagi nanti)."
         });
     } catch (err) {
-        console.error('❌ [UPLOADCARE-PROXY GET] Proxy failed:', err.message);
+        console.error('❌ [RAILWAY-PROXY GET] Proxy failed:', err.message);
 
-        if (err.response) {
-            return res.status(err.response.status).json({
-                success: false,
-                message: `Proxy error: ${err.response.statusText}`,
-                details: err.message
-            });
-        } else {
+        if (!res.headersSent) {
             return res.status(500).json({
                 success: false,
-                message: 'Proxy service unavailable',
+                message: 'Railway proxy service error',
                 details: err.message
             });
         }
     }
 });
 
-// Test endpoint untuk debugging Uploadcare
-app.get('/api/test-uploadcare-proxy', (req, res) => {
+// Test endpoint untuk debugging Railway storage
+app.get('/api/test-railway-proxy', (req, res) => {
     res.json({ 
         success: true, 
-        message: 'Uploadcare proxy test endpoint working',
+        message: 'Railway storage proxy test endpoint working',
         timestamp: new Date().toISOString(),
-        service: 'uploadcare'
+        service: 'railway-storage'
     });
 });
 
@@ -1492,18 +1234,23 @@ app.post('/api/ppatk/ltb-process', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const nobooking  = result.rows[0]?.nobooking;
         const userid = req.session.user.userid;
 
-        if (!nobooking) {
-            return res.status(400).json({ success: false, message: 'No booking required' });
+        // 🔹 Contoh query database (sesuaikan nama tabel)
+        const query = `SELECT nobooking FROM pat_1_bookingsspd WHERE userid = $1 ORDER BY created_at DESC LIMIT 1`;
+        const result = await pool.query(query, [userid]); // <-- ini definisi 'result'
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'No booking found for this user' });
         }
 
-        // Handle LTB process logic here
+        const nobooking = result.rows[0].nobooking;
+
+        // Lanjutkan proses LTB
         res.json({
             success: true,
             message: 'LTB process completed successfully',
-            nobooking: nobooking
+            nobooking
         });
 
     } catch (error) {
@@ -1515,6 +1262,7 @@ app.post('/api/ppatk/ltb-process', async (req, res) => {
     }
 });
 
+
 // File synchronization verification endpoint
 app.get('/api/ppatk/verify-file-sync', async (req, res) => {
     try {
@@ -1522,7 +1270,7 @@ app.get('/api/ppatk/verify-file-sync', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = result.rows[0]?.nobooking;
+        const { nobooking } = req.query;
         const userid = req.session.user.userid;
 
         if (!nobooking) {
