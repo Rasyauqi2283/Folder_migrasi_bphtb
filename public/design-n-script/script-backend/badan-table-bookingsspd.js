@@ -2465,6 +2465,13 @@ function openScheduleModal(nobooking){
                         <button id="qmSchedule" class="qm-option">Tentukan Tanggal</button>
                     </div>
                 </div>
+                <div class="qm-confirm" id="qmConfirm" style="display:none">
+                    <div class="qm-confirm-text" id="qmConfirmText"></div>
+                    <div class="qm-confirm-actions">
+                        <button id="qmYes" class="qm-option primary">Iya</button>
+                        <button id="qmNo" class="qm-option">Batal</button>
+                    </div>
+                </div>
                 <div id="qmStatus" class="qm-status"></div>
             </div>
         </div>`;
@@ -2519,26 +2526,52 @@ function openScheduleModal(nobooking){
         const todayIso = iso(new Date());
         fetchQuota(todayIso);
 
-        overlay.querySelector('#qmSendNow').onclick = async () => {
+        const confirmBox = overlay.querySelector('#qmConfirm');
+        const confirmText = overlay.querySelector('#qmConfirmText');
+        const btnYes = overlay.querySelector('#qmYes');
+        const btnNo = overlay.querySelector('#qmNo');
+        let pendingAction = null; // {type:'now'|'tomorrow'|'date', date}
+
+        function showConfirm(msg, action){
+            confirmText.textContent = msg;
+            pendingAction = action;
+            confirmBox.style.display = 'block';
+        }
+
+        btnNo.onclick = ()=>{ confirmBox.style.display = 'none'; pendingAction = null; setStatus(''); };
+        btnYes.onclick = async () => {
+            if(!pendingAction) return;
             try{
                 setStatus('Memproses...');
-                const r = await fetch('/api/ppatk/send-now',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking})});
-                const j = await r.json();
-                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengirim'); }
-                setStatus('Berhasil dikirim.');
+                if (pendingAction.type === 'now') {
+                    const url = `/api/ppatk/send-now?nobooking=${encodeURIComponent(nobooking)}`;
+                    const r = await fetch(url,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking})});
+                    const j = await r.json();
+                    if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengirim'); }
+                } else {
+                    const yyyy_mm_dd = pendingAction.date;
+                    const url = `/api/ppatk/schedule-send?nobooking=${encodeURIComponent(nobooking)}&scheduled_for=${encodeURIComponent(yyyy_mm_dd)}`;
+                    const r = await fetch(url,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
+                    const j = await r.json();
+                    if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
+                }
+                setStatus('Berhasil.');
                 setTimeout(()=>location.reload(),800);
+            }catch(e){ setStatus(e.message,'error'); }
+        };
+
+        overlay.querySelector('#qmSendNow').onclick = async () => {
+            try{
+                const d = await fetchQuota(todayIso);
+                showConfirm(`Kirim sekarang? Kuota hari ini ${d.used}/${d.limit}.`, {type:'now'});
             }catch(e){ setStatus(e.message,'error'); }
         };
 
         overlay.querySelector('#qmSendTomorrow').onclick = async () => {
             try{
                 const yyyy_mm_dd = iso(tomorrow);
-                setStatus('Menjadwalkan...');
-                const r = await fetch('/api/ppatk/schedule-send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
-                const j = await r.json();
-                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
-                setStatus('Berhasil dijadwalkan.');
-                setTimeout(()=>location.reload(),800);
+                const d = await fetchQuota(yyyy_mm_dd);
+                showConfirm(`Jadwalkan besok (${overlay.querySelector('#qmTomorrow').textContent})? Kuota ${d.used}/${d.limit}.`, {type:'tomorrow', date: yyyy_mm_dd});
             }catch(e){ setStatus(e.message,'error'); }
         };
 
@@ -2546,12 +2579,8 @@ function openScheduleModal(nobooking){
             try{
                 const yyyy_mm_dd = dateInput.value;
                 if(!yyyy_mm_dd){ setStatus('Pilih tanggal terlebih dahulu','error'); return; }
-                setStatus('Menjadwalkan...');
-                const r = await fetch('/api/ppatk/schedule-send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
-                const j = await r.json();
-                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
-                setStatus('Berhasil dijadwalkan.');
-                setTimeout(()=>location.reload(),800);
+                const d = await fetchQuota(yyyy_mm_dd);
+                showConfirm(`Jadwalkan tanggal ${yyyy_mm_dd}? Kuota ${d.used}/${d.limit}.`, {type:'date', date: yyyy_mm_dd});
             }catch(e){ setStatus(e.message,'error'); }
         };
 
