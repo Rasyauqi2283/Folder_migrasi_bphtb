@@ -1068,8 +1068,16 @@ app.get('/api/ppatk/quota', async (req, res) => {
         }
 
         const dateParam = req.query.date;
-        const targetDate = dateParam ? new Date(dateParam) : new Date();
-        const yyyy_mm_dd = targetDate.toISOString().slice(0,10);
+        const normalizeDate = (s) => {
+            if (!s) {
+                const d = new Date();
+                return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0,10);
+            }
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // already normalized
+            const d = new Date(s);
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0,10);
+        };
+        const yyyy_mm_dd = normalizeDate(dateParam);
 
         const q = await pool.query(
             `SELECT quota_date, used_count, limit_count FROM ppatk_daily_quota WHERE quota_date = $1`,
@@ -1093,7 +1101,7 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
         const userid = req.session.user.userid;
         // Defensive parsing: accept body or query fallback
         let nobooking = (req.body && req.body.nobooking) || req.query.nobooking;
-        const scheduled_for = (req.body && req.body.scheduled_for) || req.query.scheduled_for;
+        let scheduled_for = (req.body && req.body.scheduled_for) || req.query.scheduled_for;
         if (!req.body) {
             console.warn('⚠️ [QUOTA] schedule-send: req.body is undefined, headers=', req.headers);
         }
@@ -1101,6 +1109,13 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
         if (!nobooking) {
             const last = await pool.query(`SELECT nobooking FROM pat_1_bookingsspd WHERE userid=$1 ORDER BY created_at DESC LIMIT 1`, [userid]);
             nobooking = last.rows[0]?.nobooking;
+        }
+        // Normalize scheduled_for to YYYY-MM-DD (no TZ shift)
+        if (scheduled_for) {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(scheduled_for) === false) {
+                const d = new Date(scheduled_for);
+                scheduled_for = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0,10);
+            }
         }
         if (!nobooking || !scheduled_for) {
             return res.status(400).json({ success: false, message: 'nobooking and scheduled_for are required' });
