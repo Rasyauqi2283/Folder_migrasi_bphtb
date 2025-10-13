@@ -3745,13 +3745,14 @@ function displayUploadedDocuments(bookingId, documentData) {
 async function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
     
+    // Use getFileUrl() to properly handle Railway storage paths
+    const processedUrl = getFileUrl(fileUrl);
+    console.log('🔍 [PREVIEW] Processed URL:', processedUrl);
+    
     // Check if it's a Railway storage URL (relative path)
-    if (fileUrl.includes('/storage/ppatk/') || (!fileUrl.startsWith('http') && fileUrl.includes('/'))) {
+    if (processedUrl.includes('/api/ppatk/file-proxy')) {
         // Use Railway storage proxy endpoint
-        const relativePath = fileUrl.replace('/storage/ppatk/', '');
-        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
-        
-        console.log('🔍 [PREVIEW] Using Railway proxy URL:', proxyUrl);
+        console.log('🔍 [PREVIEW] Using Railway proxy URL:', processedUrl);
         
         // Open in new window with proper iframe sandbox attributes
         const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
@@ -3787,7 +3788,7 @@ async function previewDocument(fileUrl, documentName) {
                         <div class="loading" id="loading">
                             <i class="fas fa-spinner fa-spin"></i> Memuat dokumen...
                         </div>
-                        <iframe src="${proxyUrl}" 
+                        <iframe src="${processedUrl}" 
                                 title="Document Preview"
                                 sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-popups"
                                 style="display: none;"
@@ -3799,7 +3800,7 @@ async function previewDocument(fileUrl, documentName) {
                             <p>Silakan coba lagi atau hubungi administrator.</p>
                             <div style="margin-top: 10px;">
                                 <button onclick="window.location.reload()" style="margin-right: 10px; background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Coba Lagi</button>
-                                <button onclick="window.open('${fileUrl}', '_blank')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Buka Langsung</button>
+                                <button onclick="window.open('${processedUrl}', '_blank')" style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Buka Langsung</button>
                             </div>
                         </div>
                     </div>
@@ -3809,11 +3810,11 @@ async function previewDocument(fileUrl, documentName) {
             newWindow.document.close();
         } else {
             // Fallback: direct link
-            window.open(fileUrl, '_blank');
+            window.open(processedUrl, '_blank');
         }
     } else {
         // For other URLs (HTTP/HTTPS), open directly
-        window.open(fileUrl, '_blank');
+        window.open(processedUrl, '_blank');
     }
 }
 
@@ -4241,12 +4242,16 @@ async function replaceUploadedDocument(bookingId, documentType) {
             showAlert('info', 'Mengupload dokumen baru...');
             
             const formData = new FormData();
-            formData.append('file', file); // Changed from documentType to 'file'
-            formData.append(documentType, 'true'); // Add document type indicator
+            // Map documentType to correct field name for multer
+            const fieldName = documentType === 'akta_tanah' ? 'aktaTanah' : 
+                             documentType === 'sertifikat_tanah' ? 'sertifikatTanah' : 
+                             documentType === 'pelengkap' ? 'pelengkap' : documentType;
+            formData.append(fieldName, file);
             formData.append('nobooking', bookingId);
             
             console.log('📤 [FRONTEND] Sending FormData:', {
                 file: file.name,
+                fieldName: fieldName,
                 documentType: documentType,
                 bookingId: bookingId
             });
