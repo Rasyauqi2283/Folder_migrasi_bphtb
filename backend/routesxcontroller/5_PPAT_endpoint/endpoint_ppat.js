@@ -695,12 +695,15 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
                         
                         // If upload succeeded but database failed, we have an orphaned file
                         if (uploadResult && uploadResult.success) {
-                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] Orphaned file detected: ${uploadResult.fileId}`);
+                            console.warn(`⚠️ [UPLOAD-DOCUMENTS] Orphaned file detected: ${uploadResult.relativePath || uploadResult.fileId}`);
                             
-                            // Attempt to cleanup orphaned file
+                            // Attempt to cleanup orphaned file (Railway storage)
                             try {
-                                const { cleanupOrphanedFile } = await import('../../config/uploads/uploadcare_storage.js');
-                                await cleanupOrphanedFile(uploadResult.fileId);
+                                const { deleteFromRailway } = await import('../../config/uploads/railway_storage.js');
+                                if (uploadResult.relativePath) {
+                                    await deleteFromRailway(uploadResult.relativePath);
+                                    console.log(`🧹 [UPLOAD-DOCUMENTS] Cleaned up orphaned file: ${uploadResult.relativePath}`);
+                                }
                             } catch (cleanupError) {
                                 console.error(`❌ [UPLOAD-DOCUMENTS] Orphaned file cleanup failed:`, cleanupError.message);
                             }
@@ -1077,8 +1080,8 @@ app.post('/api/cleanup-old-files', async (req, res) => {
             });
         }
 
-        // Import cleanup function from Uploadcare storage
-        const { cleanupOldFiles } = await import('../../config/uploads/uploadcare_storage.js');
+        // Import cleanup function from Railway storage
+        const { cleanupOldFiles } = await import('../../config/uploads/railway_storage.js');
         
         const currentYear = new Date().getFullYear();
         const cleanupResult = await cleanupOldFiles(
