@@ -3,8 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { pool } from '../../../db.js';
-// Import Uploadcare routes
-// import uploadcareRoutes from './uploadcare_routes.js'; // Disabled - using robust proxy endpoint instead
+// Uploadcare routes removed - using Railway storage only
 // Import Railway signature routes
 import railwaySignatureRoutes from './RailwaySignatureRoutes.js';
 const router = express.Router();
@@ -22,9 +21,8 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
     console.log('🔧 [PPATK] Middleware status:');
     console.log('  - uploadTTD:', uploadTTD && typeof uploadTTD.fields === 'function' ? '✅ Available' : '❌ Not available');
     console.log('  - uploadDocumentMiddleware:', uploadDocumentMiddleware && typeof uploadDocumentMiddleware.fields === 'function' ? '✅ Available' : '❌ Not available');
-// ===== UPLOADCARE ENDPOINTS SETUP =====
-// Setup Uploadcare endpoints
-// app.use('/api/ppatk', uploadcareRoutes); // Disabled - using robust proxy endpoint instead
+// ===== UPLOADCARE ENDPOINTS REMOVED =====
+// Uploadcare endpoints removed - using Railway storage only
 
 // ===== RAILWAY SIGNATURE ENDPOINTS SETUP =====
 // Setup Railway signature endpoints
@@ -801,7 +799,7 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
             return res.status(400).json({ success: false, message: 'NoBooking required' });
         }
 
-        // Get documents from database with Uploadcare information
+        // Get documents from database with Railway storage information
         const query = `
             SELECT 
                 akta_tanah_path, 
@@ -888,7 +886,7 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
     }
 });
 
-// Uploadcare Proxy Endpoint for Preview - ROBUST VERSION
+// Railway Storage Proxy Endpoint for Preview
 // Konfigurasi Railway Storage
 const REQUIRE_AUTH = false; // Disable session auth for debugging
   
@@ -1034,7 +1032,7 @@ app.get('/api/test-railway-proxy', (req, res) => {
     });
 });
 
-// Endpoint untuk membersihkan proxy path yang tidak valid (Uploadcare)
+// Endpoint untuk membersihkan proxy path yang tidak valid (Railway Storage)
 app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
     try {
         console.log('🧹 [CLEANUP] Starting cleanup of invalid proxy paths...');
@@ -1048,7 +1046,7 @@ app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
         // Simple cleanup - just return success for now
         res.json({
             success: true,
-            message: 'Cleanup completed - Uploadcare integration active',
+            message: 'Cleanup completed - Railway storage integration active',
             cleaned: 0,
             errors: []
         });
@@ -1062,7 +1060,7 @@ app.post('/api/cleanup-invalid-proxy-paths', async (req, res) => {
     }
 });
 
-// Endpoint untuk manual cleanup file lama di Uploadcare
+// Endpoint untuk manual cleanup file lama di Railway Storage
 app.post('/api/cleanup-old-files', async (req, res) => {
     try {
         console.log('🧹 [CLEANUP] Starting manual cleanup of old files...');
@@ -1110,73 +1108,42 @@ app.post('/api/cleanup-old-files', async (req, res) => {
     }
 });
 
-// Uploadcare health check endpoint (PPATK path)
-app.get('/api/ppatk/uploadcare-health', async (req, res) => {
+// Railway Storage health check endpoint (PPATK path)
+app.get('/api/ppatk/railway-health', async (req, res) => {
     try {
-        console.log('🔍 [UPLOADCARE-HEALTH] Starting health check...');
+        console.log('🔍 [RAILWAY-HEALTH] Starting health check...');
         
-        // Test 1: Check environment variables
-        const envCheck = {
-            publicKey: !!process.env.UPLOADCARE_PUBLIC_KEY,
-            secretKey: !!process.env.UPLOADCARE_SECRET_KEY,
-            cdnBase: !!process.env.UPLOADCARE_CDN_BASE,
-            apiBase: !!process.env.UPLOADCARE_API_BASE
-        };
-
-        // Test 2: Check if Uploadcare client can be initialized
-        let clientTest = false;
-        try {
-            const { UploadClient } = await import('@uploadcare/upload-client');
-            const testClient = new UploadClient({
-                publicKey: process.env.UPLOADCARE_PUBLIC_KEY || 'test'
-            });
-            clientTest = !!testClient;
-            console.log('✅ [UPLOADCARE-HEALTH] Client initialization test passed');
-        } catch (err) {
-            console.error('❌ [UPLOADCARE-HEALTH] Client initialization test failed:', err.message);
-        }
-
-        // Test 3: Check if we can make a simple request to Uploadcare
-        let uploadcareReachability = false;
-        try {
-            const testUrl = 'https://44renul14z.ucarecd.net/test';
-            const response = await axios.get(testUrl, { 
-                timeout: 5000,
-                validateStatus: () => true // Accept any status
-            });
-            uploadcareReachability = response.status !== 0; // If we get any response, Uploadcare is reachable
-            console.log('✅ [UPLOADCARE-HEALTH] Uploadcare reachability test:', response.status);
-        } catch (err) {
-            console.error('❌ [UPLOADCARE-HEALTH] Uploadcare reachability test failed:', err.message);
-        }
+        // Test 1: Check if storage directory exists
+        const fs = await import('fs');
+        const path = await import('path');
+        const storagePath = path.join(process.cwd(), 'backend', 'storage', 'ppatk');
+        
+        const storageExists = fs.existsSync(storagePath);
+        const storageWritable = storageExists && fs.accessSync ? true : false;
 
         const healthStatus = {
             status: 'healthy',
             timestamp: new Date().toISOString(),
             tests: {
-                clientInitialization: clientTest,
-                environmentVariables: envCheck,
-                uploadcareReachability: uploadcareReachability
+                storageDirectory: storageExists,
+                storageWritable: storageWritable
             },
             environment: {
                 nodeEnv: process.env.NODE_ENV,
-                uploadcarePublicKey: process.env.UPLOADCARE_PUBLIC_KEY ? 'SET' : 'NOT_SET',
-                uploadcareSecretKey: process.env.UPLOADCARE_SECRET_KEY ? 'SET' : 'NOT_SET',
-                uploadcareCdnBase: process.env.UPLOADCARE_CDN_BASE || 'NOT_SET',
-                uploadcareApiBase: process.env.UPLOADCARE_API_BASE || 'NOT_SET'
+                storagePath: storagePath
             },
             configuration: {
-                cdnBase: process.env.UPLOADCARE_CDN_BASE || 'https://44renul14z.ucarecd.net',
-                apiBase: process.env.UPLOADCARE_API_BASE || 'https://api.uploadcare.com'
+                storageType: 'local-filesystem',
+                basePath: storagePath
             }
         };
 
-        console.log('✅ [UPLOADCARE-HEALTH] Health check completed:', healthStatus);
+        console.log('✅ [RAILWAY-HEALTH] Health check completed:', healthStatus);
 
         res.json(healthStatus);
 
     } catch (error) {
-        console.error('❌ [UPLOADCARE-HEALTH] Health check failed:', error);
+        console.error('❌ [RAILWAY-HEALTH] Health check failed:', error);
         res.status(500).json({
             status: 'unhealthy',
             timestamp: new Date().toISOString(),

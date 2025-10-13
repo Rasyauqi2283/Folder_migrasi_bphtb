@@ -13,9 +13,11 @@ function getFileUrl(pathOrUrl) {
         return pathOrUrl;
     }
     
-    // Jika relative path Railway storage, gunakan proxy endpoint
+    // Jika Railway storage path, gunakan proxy endpoint
     if (pathOrUrl.includes('/') && !pathOrUrl.startsWith('http')) {
-        return `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(pathOrUrl)}`;
+        // Strip /storage/ppatk/ prefix untuk mendapatkan relative path
+        const relativePath = pathOrUrl.replace(/^\/storage\/ppatk\//, '');
+        return `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
     }
     
     // Jika local path, tambahkan prefix /
@@ -1193,14 +1195,13 @@ function showAlert(type, message, title = null) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // ======================
-        // GLOBAL CONFIGURATION uploadcare
+        // GLOBAL CONFIGURATION Railway Storage
         // ======================
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk/upload-documents',  // ✅ Uploadcare multiple files
-            proxyEndpoint: '/api/ppatk/uploadcare-proxy',  // ✅ Uploadcare proxy
-            healthEndpoint: '/api/ppatk/uploadcare-health',  // ✅ Uploadcare health check
+            apiEndpoint: '/api/ppatk/upload-documents',  // ✅ Railway storage multiple files
+            proxyEndpoint: '/api/ppatk/file-proxy',  // ✅ Railway storage proxy
             updateUrlEndpoint: '/api/ppatk/update-file-urls'  // ✅ Update file URLs
         };
 
@@ -1329,7 +1330,7 @@ function showAlert(type, message, title = null) {
         }
         async function uploadFiles(selectedNoBooking) {
             // Confirm before upload
-            if (!confirm('Anda yakin ingin mengupload dokumen ke Uploadcare?')) {
+            if (!confirm('Anda yakin ingin mengupload dokumen?')) {
                 return;
             }
 
@@ -1351,20 +1352,8 @@ function showAlert(type, message, title = null) {
                 }
             }
 
-            // Check Uploadcare health first
-            try {
-                const healthResponse = await fetch(config.healthEndpoint, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (!healthResponse.ok) {
-                    showStatus("Uploadcare service tidak tersedia. Silakan coba lagi nanti.", 'error', selectedNoBooking);
-                    return;
-                }
-            } catch (healthError) {
-                console.warn('Health check failed, proceeding with upload:', healthError);
-            }
+            // Railway storage is always available (local filesystem)
+            console.log('✅ [UPLOAD] Railway storage is ready for upload');
 
             // Prepare form data
             const formData = new FormData();
@@ -1379,9 +1368,9 @@ function showAlert(type, message, title = null) {
             try {
                 // UI updates
                 btnUpload.disabled = true;
-                btnUpload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload ke Uploadcare...';
+                btnUpload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload dokumen...';
                 progressBar.style.display = 'block';
-                showStatus("Mengupload dokumen ke Uploadcare...", 'info', selectedNoBooking);
+                showStatus("Mengupload dokumen...", 'info', selectedNoBooking);
 
                 // Upload with progress tracking
                 const xhr = new XMLHttpRequest();
@@ -1408,7 +1397,7 @@ function showAlert(type, message, title = null) {
                 const result = await response.json();
 
                 if (result.success) {
-                    showStatus("Dokumen berhasil diupload ke Uploadcare!", 'success', selectedNoBooking);
+                    showStatus("Dokumen berhasil diupload!", 'success', selectedNoBooking);
                     
                     // Log cleanup results if available
                     if (result.cleanup_status) {
@@ -1448,12 +1437,12 @@ function showAlert(type, message, title = null) {
                         location.reload();
                     }, 1500);
                 } else {
-                    showStatus(result.message || "Gagal mengupload dokumen ke Uploadcare", 'error', selectedNoBooking);
+                    showStatus(result.message || "Gagal mengupload dokumen", 'error', selectedNoBooking);
                 }
             } catch (error) {
-                console.error('Uploadcare upload error:', error);
+                console.error('Upload error:', error);
                 
-                let errorMessage = "Terjadi kesalahan saat mengupload ke Uploadcare.";
+                let errorMessage = "Terjadi kesalahan saat mengupload dokumen.";
                 
                 if (error.message.includes('HTTP 413')) {
                     errorMessage = "File terlalu besar. Maksimal 5MB per file.";
@@ -1484,7 +1473,7 @@ function showAlert(type, message, title = null) {
                 const container = document.getElementById(`${type}Container-${nobooking}`);
                 if (!container || !fileData) return;
 
-                // Gunakan cdnUrl dari Uploadcare dengan validasi
+                // Gunakan fileUrl dari Railway storage dengan validasi
                 const displayUrl = fileData.fileUrl || fileData.url || fileData.publicUrl;
                 const fileName = fileData.fileName || 'Unknown file';
                 const mimeType = fileData.mimeType || '';
@@ -1583,7 +1572,7 @@ function showAlert(type, message, title = null) {
                 }
             };
 
-            // Update each file type if available using Uploadcare data
+            // Update each file type if available using Railway storage data
             if (data.fileDetails) {
                 if (data.fileDetails.aktaTanah) createUploadedFileDisplay('aktaTanah', data.fileDetails.aktaTanah);
                 if (data.fileDetails.sertifikatTanah) createUploadedFileDisplay('sertifikatTanah', data.fileDetails.sertifikatTanah);
@@ -1641,7 +1630,7 @@ function showAlert(type, message, title = null) {
                 input.click();
             }
         }
-        // Function to update file URLs to proper Uploadcare format
+        // Function to update file URLs to proper Railway storage format
         async function updateFileUrls(nobooking) {
             try {
                 console.log(`🔧 [UPDATE-URLS] Updating file URLs for user`);
@@ -1951,8 +1940,9 @@ function switchPreviewMode(mode, pdfUrl) {
         console.log(`🔄 [PREVIEW] Switching to CDN mode: ${pdfUrl}`);
         pdfFrame.src = `${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`;
     } else if (mode === 'proxy') {
-        // Railway proxy preview
-        const proxyUrl = `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(pdfUrl)}`;
+        // Railway storage proxy preview
+        const relativePath = pdfUrl.replace('/storage/ppatk/', '');
+        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
         console.log(`🔄 [PREVIEW] Switching to Proxy mode: ${proxyUrl}`);
         pdfFrame.src = proxyUrl;
     }
@@ -3537,24 +3527,13 @@ function setupDocumentPreview(inputId, previewContainerId, previewImageId) {
     }
 }
 
-// Upload dokumen ke Uploadcare
+// Upload dokumen ke Railway storage
 async function uploadDocuments(doc1, doc2, bookingId = null) {
     try {
-        console.log('Menyiapkan data dokumen untuk upload ke Uploadcare...');
+        console.log('Menyiapkan data dokumen untuk upload ke Railway storage...');
         
-        // Check Uploadcare health first
-        try {
-            const healthResponse = await fetch(config.healthEndpoint, {
-                method: 'GET',
-                credentials: 'include'
-            });
-            
-            if (!healthResponse.ok) {
-                throw new Error('Uploadcare service tidak tersedia');
-            }
-        } catch (healthError) {
-            console.warn('Health check failed, proceeding with upload:', healthError);
-        }
+        // Railway storage is always available (local filesystem)
+        console.log('✅ Railway storage is ready for upload');
         
         const formData = new FormData();
         
@@ -3574,9 +3553,9 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
             console.log('Booking ID added:', bookingId);
         }
         
-        console.log('Mengirim request dokumen ke Uploadcare...');
+        console.log('Mengirim request dokumen ke Railway storage...');
         
-        const response = await fetch('/api/ppatk/uploadcare-pdf-upload', {
+        const response = await fetch('/api/ppatk/upload-documents', {
             method: 'POST',
             credentials: 'include',
             body: formData,
@@ -3590,7 +3569,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         console.log('Response data:', data);
         
         if (!response.ok) {
-            let errorMessage = data.message || 'Gagal mengupload dokumen ke Uploadcare';
+            let errorMessage = data.message || 'Gagal mengupload dokumen';
             
             // Handle specific error codes
             if (data.error_code === 'MISSING_REQUIRED_DOCUMENT') {
@@ -3599,8 +3578,8 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
                 errorMessage = 'Data user tidak ditemukan. Silakan login ulang.';
             } else if (data.error_code === 'DATABASE_ERROR') {
                 errorMessage = 'Error database. Silakan coba lagi.';
-            } else if (data.error_code === 'UPLOADCARE_ERROR') {
-                errorMessage = 'Error Uploadcare service. Silakan coba lagi.';
+            } else if (data.error_code === 'STORAGE_ERROR') {
+                errorMessage = 'Error storage service. Silakan coba lagi.';
             } else if (response.status === 413) {
                 errorMessage = 'File terlalu besar. Maksimal 5MB per file.';
             } else if (response.status === 415) {
@@ -3610,7 +3589,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
             throw new Error(errorMessage);
         }
         
-        showAlert('success', 'Dokumen berhasil diupload ke Uploadcare!');
+        showAlert('success', 'Dokumen berhasil diupload!');
         
         // Log cleanup results if available
         if (data.cleanup_status) {
@@ -3626,15 +3605,15 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         
         return data;
     } catch (error) {
-        console.error('Uploadcare Document Upload Error:', error);
+        console.error('Document Upload Error:', error);
         
         // Handle network errors
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            showAlert('error', 'Tidak dapat terhubung ke Uploadcare. Periksa koneksi internet Anda.');
-        } else if (error.message.includes('Uploadcare service tidak tersedia')) {
-            showAlert('error', 'Uploadcare service tidak tersedia. Silakan coba lagi nanti.');
+            showAlert('error', 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
+        } else if (error.message.includes('service tidak tersedia')) {
+            showAlert('error', 'Storage service tidak tersedia. Silakan coba lagi nanti.');
         } else {
-            showAlert('error', error.message || 'Terjadi kesalahan saat mengupload dokumen ke Uploadcare');
+            showAlert('error', error.message || 'Terjadi kesalahan saat mengupload dokumen');
         }
         
         throw error;
@@ -3766,31 +3745,13 @@ function displayUploadedDocuments(bookingId, documentData) {
 async function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Opening document:', { fileUrl, documentName });
     
-    // Check if it's an Uploadcare URL
-    if (fileUrl.includes('ucarecdn.com') || fileUrl.includes('ucarecd.net')) {
-        // Test proxy endpoint first
-        const proxyWorking = await testProxyEndpoint(fileUrl);
-        console.log('🔍 [PREVIEW] Proxy test result:', proxyWorking);
+    // Check if it's a Railway storage URL (relative path)
+    if (fileUrl.includes('/storage/ppatk/') || (!fileUrl.startsWith('http') && fileUrl.includes('/'))) {
+        // Use Railway storage proxy endpoint
+        const relativePath = fileUrl.replace('/storage/ppatk/', '');
+        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
         
-        if (!proxyWorking) {
-            console.warn('⚠️ [PREVIEW] Proxy not working after retries, using direct URL');
-            // Show user-friendly message
-            if (window.universalAlert) {
-                window.universalAlert.show('warning', 'File mungkin belum tersedia di CDN. Membuka URL langsung...', 'Info');
-            }
-            window.open(fileUrl, '_blank');
-            return;
-        }
-        
-        // Use proxy endpoint to avoid sandbox issues - ROBUST VERSION
-        const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
-        const fileId = fileIdMatch ? fileIdMatch[1] : null;
-        
-        const proxyUrl = fileId 
-            ? `/api/ppatk/uploadcare-proxy?fileId=${fileId}`
-            : `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
-            
-        console.log('🔍 [PREVIEW] Using proxy URL:', proxyUrl);
+        console.log('🔍 [PREVIEW] Using Railway proxy URL:', proxyUrl);
         
         // Open in new window with proper iframe sandbox attributes
         const newWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
@@ -3851,7 +3812,7 @@ async function previewDocument(fileUrl, documentName) {
             window.open(fileUrl, '_blank');
         }
     } else {
-        // For non-Uploadcare URLs, open directly
+        // For other URLs (HTTP/HTTPS), open directly
         window.open(fileUrl, '_blank');
     }
 }
@@ -3970,10 +3931,9 @@ async function testProxyEndpoint(fileUrl, maxAttempts = 3) {
         const fileIdMatch = fileUrl.match(/([a-f0-9-]{36})/);
         const fileId = fileIdMatch ? fileIdMatch[1] : null;
         
-        // Use fileId if available, otherwise use full URL
-        const proxyUrl = fileId 
-            ? `/api/ppatk/uploadcare-proxy?fileId=${fileId}`
-            : `/api/ppatk/uploadcare-proxy?fileUrl=${encodeURIComponent(fileUrl)}`;
+        // Use Railway storage proxy endpoint
+        const relativePath = fileUrl.replace('/storage/ppatk/', '');
+        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
             
         console.log('🧪 [TEST-PROXY] Testing:', proxyUrl);
         
@@ -4078,11 +4038,10 @@ async function findAlternativeFileId(bookingId, documentType) {
             }
         }
         
-        // If database file ID is also invalid, try to find latest file from Uploadcare
-        console.log(`🔍 [FIND-ALTERNATIVE] Searching for latest file in Uploadcare...`);
+        // If database file ID is also invalid, no alternative available for Railway storage
+        console.log(`🔍 [FIND-ALTERNATIVE] No alternative files available for Railway storage...`);
         
-        // This would require Uploadcare API access to search files by metadata
-        // For now, return null and let the user know they need to re-upload
+        // Railway storage doesn't have file versioning, so no alternatives
         console.warn(`⚠️ [FIND-ALTERNATIVE] No valid alternative file found for ${documentType}`);
         return null;
         
@@ -4184,7 +4143,7 @@ async function smartPreviewDocument(fileUrl, documentName) {
                 const errorMessage = `
                     <div style="padding: 20px; text-align: center; color: #dc3545;">
                         <h4>Dokumen tidak dapat dimuat</h4>
-                        <p>File ${documentName} tidak ditemukan di Uploadcare CDN.</p>
+                        <p>File ${documentName} tidak ditemukan di storage.</p>
                         <p>Silakan upload ulang dokumen ini.</p>
                         <button onclick="window.close()" style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
                             Tutup
