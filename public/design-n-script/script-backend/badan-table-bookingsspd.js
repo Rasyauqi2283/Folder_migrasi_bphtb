@@ -89,8 +89,22 @@ async function loadTableData(page = 1) {
                 sendButton.textContent = 'Kirim ke Bappenda';
                 sendButton.classList.add('btn-send-to-ltb');
                 sendButton.dataset.nobooking = item.nobooking;
-                const isDraft = (item.trackstatus || '').toLowerCase() === 'draft';
-                if (!isDraft) {
+                const status = (item.trackstatus || '').toLowerCase();
+                const isDraft = status === 'draft';
+                const isPending = status === 'pending';
+                const isDikirim = status === 'dikirim';
+                
+                if (isDikirim) {
+                    sendButton.disabled = true;
+                    sendButton.textContent = 'Sudah Dikirim';
+                    sendButton.title = 'Booking sudah dikirim ke Bappenda';
+                    try { sendButton.style.opacity = '0.5'; sendButton.style.cursor = 'not-allowed'; } catch(_) {}
+                } else if (isPending) {
+                    sendButton.disabled = true;
+                    sendButton.textContent = 'Menunggu Kirim';
+                    sendButton.title = 'Booking dalam antrian pengiriman';
+                    try { sendButton.style.opacity = '0.5'; sendButton.style.cursor = 'not-allowed'; } catch(_) {}
+                } else if (!isDraft) {
                     sendButton.disabled = true;
                     sendButton.title = 'Aksi dinonaktifkan: status bukan Draft';
                     try { sendButton.style.opacity = '0.5'; sendButton.style.cursor = 'not-allowed'; } catch(_) {}

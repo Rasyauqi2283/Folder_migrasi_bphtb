@@ -1122,10 +1122,15 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
             return res.status(400).json({ success: false, message: 'nobooking and scheduled_for are required' });
         }
 
-        // Validate booking ownership & status
+        // Validate booking ownership & status (only allow Draft or Pending to be rescheduled)
         const b = await pool.query(`SELECT nobooking, userid, trackstatus FROM pat_1_bookingsspd WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
         if (b.rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+        const currentStatus = b.rows[0].trackstatus;
+        if (currentStatus && !['Draft', 'Pending'].includes(currentStatus)) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ success: false, message: `Booking sudah dalam status ${currentStatus}, tidak dapat dijadwalkan ulang` });
         }
 
         await client.query('BEGIN');
@@ -1143,9 +1148,12 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Kuota penuh untuk tanggal tersebut' });
         }
 
-        // Insert queue (unique nobooking)
+        // Insert queue (unique nobooking) and update status to Pending
         await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for) VALUES ($1,$2,$3)
-                            ON CONFLICT (nobooking) DO NOTHING`, [nobooking, userid, scheduled_for]);
+                            ON CONFLICT (nobooking) DO UPDATE SET scheduled_for=$3, status='queued'`, [nobooking, userid, scheduled_for]);
+        
+        // Update booking status to Pending
+        await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Pending', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
 
         // Increment quota
         const upd = await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1 RETURNING used_count, limit_count`, [scheduled_for]);
@@ -1195,11 +1203,16 @@ app.post('/api/ppatk/send-now', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Kuota hari ini penuh' });
         }
 
-        // Validate booking ownership
-        const b = await client.query(`SELECT nobooking FROM pat_1_bookingsspd WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
+        // Validate booking ownership & status (only allow Draft or Pending to be sent now)
+        const b = await client.query(`SELECT nobooking, trackstatus FROM pat_1_bookingsspd WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
         if (b.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+        const currentStatus = b.rows[0].trackstatus;
+        if (currentStatus && !['Draft', 'Pending'].includes(currentStatus)) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ success: false, message: `Booking sudah dalam status ${currentStatus}, tidak dapat dikirim` });
         }
 
         await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for, status, sent_at)
@@ -1208,7 +1221,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 
         await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1`, [today]);
 
-        // Example: mark booking as submitted (optional, adjust to your workflow)
+        // Mark booking as submitted immediately (send-now)
         await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Dikirim', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
 
         await client.query('COMMIT');
@@ -1235,6 +1248,76 @@ app.get('/api/ppatk/my-schedules', async (req, res) => {
     } catch (e) {
         console.error('❌ [QUOTA] My schedules failed:', e);
         res.status(500).json({ success: false, message: 'My schedules failed' });
+    }
+});
+
+// Process pending queue (for cron/worker during business hours 09:00-16:00)
+app.post('/api/ppatk/process-pending-queue', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const today = new Date().toISOString().slice(0,10);
+        const currentHour = new Date().getHours();
+        
+        // Check if within business hours (9 AM to 4 PM)
+        if (currentHour < 9 || currentHour >= 16) {
+            return res.json({ 
+                success: true, 
+                message: 'Outside business hours (09:00-16:00)', 
+                processed: 0,
+                currentHour 
+            });
+        }
+
+        await client.query('BEGIN');
+
+        // Get pending bookings for today
+        const pending = await client.query(`
+            SELECT sq.id, sq.nobooking, sq.userid, sq.scheduled_for
+            FROM ppatk_send_queue sq
+            WHERE sq.scheduled_for = $1 AND sq.status = 'queued'
+            ORDER BY sq.requested_at ASC
+            LIMIT 10
+        `, [today]);
+
+        let processed = 0;
+        for (const item of pending.rows) {
+            try {
+                // Update queue status to sent
+                await client.query(`
+                    UPDATE ppatk_send_queue 
+                    SET status='sent', sent_at=now() 
+                    WHERE id=$1
+                `, [item.id]);
+
+                // Update booking status to Dikirim
+                await client.query(`
+                    UPDATE pat_1_bookingsspd 
+                    SET trackstatus='Dikirim', updated_at=now() 
+                    WHERE nobooking=$1 AND userid=$2
+                `, [item.nobooking, item.userid]);
+
+                processed++;
+                console.log(`✅ [PROCESS-QUEUE] Processed: ${item.nobooking} for user ${item.userid}`);
+            } catch (itemError) {
+                console.error(`❌ [PROCESS-QUEUE] Failed to process ${item.nobooking}:`, itemError);
+            }
+        }
+
+        await client.query('COMMIT');
+        res.json({ 
+            success: true, 
+            message: `Processed ${processed} pending bookings`, 
+            processed,
+            currentHour,
+            date: today
+        });
+
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('❌ [PROCESS-QUEUE] Process failed:', e);
+        res.status(500).json({ success: false, message: 'Process failed' });
+    } finally {
+        client.release();
     }
 });
 
