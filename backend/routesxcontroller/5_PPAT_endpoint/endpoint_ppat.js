@@ -1091,7 +1091,17 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
         const userid = req.session.user.userid;
-        const { nobooking, scheduled_for } = req.body;
+        // Defensive parsing: accept body or query fallback
+        let nobooking = (req.body && req.body.nobooking) || req.query.nobooking;
+        const scheduled_for = (req.body && req.body.scheduled_for) || req.query.scheduled_for;
+        if (!req.body) {
+            console.warn('⚠️ [QUOTA] schedule-send: req.body is undefined, headers=', req.headers);
+        }
+        // Fallback: jika nobooking tidak dikirim, ambil booking terbaru milik user (paling akhir dibuat)
+        if (!nobooking) {
+            const last = await pool.query(`SELECT nobooking FROM pat_1_bookingsspd WHERE userid=$1 ORDER BY created_at DESC LIMIT 1`, [userid]);
+            nobooking = last.rows[0]?.nobooking;
+        }
         if (!nobooking || !scheduled_for) {
             return res.status(400).json({ success: false, message: 'nobooking and scheduled_for are required' });
         }
@@ -1144,7 +1154,15 @@ app.post('/api/ppatk/send-now', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
         const userid = req.session.user.userid;
-        const { nobooking } = req.body;
+        let nobooking = (req.body && req.body.nobooking) || req.query.nobooking;
+        if (!req.body) {
+            console.warn('⚠️ [QUOTA] send-now: req.body is undefined, headers=', req.headers);
+        }
+        // Fallback: jika nobooking tidak dikirim, gunakan booking terbaru milik user
+        if (!nobooking) {
+            const last = await pool.query(`SELECT nobooking FROM pat_1_bookingsspd WHERE userid=$1 ORDER BY created_at DESC LIMIT 1`, [userid]);
+            nobooking = last.rows[0]?.nobooking;
+        }
         if (!nobooking) return res.status(400).json({ success: false, message: 'nobooking required' });
 
         const today = new Date().toISOString().slice(0,10);
