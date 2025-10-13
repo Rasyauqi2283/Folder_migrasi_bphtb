@@ -28,6 +28,33 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
 // Setup Railway signature endpoints
 app.use('/api/railway-signature', railwaySignatureRoutes);
 
+    // ===== QUOTA TABLES INIT (idempotent) =====
+    (async () => {
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS ppatk_daily_quota (
+                    quota_date date PRIMARY KEY,
+                    used_count int NOT NULL DEFAULT 0,
+                    limit_count int NOT NULL DEFAULT 80,
+                    updated_at timestamp NOT NULL DEFAULT now()
+                );
+                CREATE TABLE IF NOT EXISTS ppatk_send_queue (
+                    id bigserial PRIMARY KEY,
+                    nobooking varchar(100) NOT NULL,
+                    userid varchar(50) NOT NULL,
+                    scheduled_for date NOT NULL,
+                    requested_at timestamp NOT NULL DEFAULT now(),
+                    status varchar(20) NOT NULL DEFAULT 'queued',
+                    sent_at timestamp,
+                    UNIQUE (nobooking)
+                );
+            `);
+            console.log('✅ [PPATK] Quota tables ensured');
+        } catch (e) {
+            console.error('❌ [PPATK] Quota tables init failed:', e.message);
+        }
+    })();
+
 // Legacy endpoint for frontend compatibility
 app.get('/api/check-my-signature', async (req, res) => {
     try {
@@ -1030,6 +1057,151 @@ app.get('/api/test-railway-proxy', (req, res) => {
         timestamp: new Date().toISOString(),
         service: 'railway-storage'
     });
+});
+
+// ===== QUOTA ENDPOINTS =====
+// Get daily quota summary
+app.get('/api/ppatk/quota', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const dateParam = req.query.date;
+        const targetDate = dateParam ? new Date(dateParam) : new Date();
+        const yyyy_mm_dd = targetDate.toISOString().slice(0,10);
+
+        const q = await pool.query(
+            `SELECT quota_date, used_count, limit_count FROM ppatk_daily_quota WHERE quota_date = $1`,
+            [yyyy_mm_dd]
+        );
+        const row = q.rows[0] || { quota_date: yyyy_mm_dd, used_count: 0, limit_count: 80 };
+        res.json({ success: true, data: { date: row.quota_date, used: row.used_count, limit: row.limit_count, remaining: Math.max(0, row.limit_count - row.used_count) } });
+    } catch (e) {
+        console.error('❌ [QUOTA] Get quota failed:', e);
+        res.status(500).json({ success: false, message: 'Get quota failed' });
+    }
+});
+
+// Schedule send with quota enforcement
+app.post('/api/ppatk/schedule-send', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const userid = req.session.user.userid;
+        const { nobooking, scheduled_for } = req.body;
+        if (!nobooking || !scheduled_for) {
+            return res.status(400).json({ success: false, message: 'nobooking and scheduled_for are required' });
+        }
+
+        // Validate booking ownership & status
+        const b = await pool.query(`SELECT nobooking, userid, trackstatus FROM pat_1_bookingsspd WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
+        if (b.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        await client.query('BEGIN');
+
+        // Upsert quota row
+        await client.query(`INSERT INTO ppatk_daily_quota (quota_date, used_count, limit_count)
+                            VALUES ($1, 0, 80)
+                            ON CONFLICT (quota_date) DO NOTHING`, [scheduled_for]);
+
+        // Check quota
+        const q = await client.query(`SELECT used_count, limit_count FROM ppatk_daily_quota WHERE quota_date=$1 FOR UPDATE`, [scheduled_for]);
+        const { used_count, limit_count } = q.rows[0];
+        if (used_count >= limit_count) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ success: false, message: 'Kuota penuh untuk tanggal tersebut' });
+        }
+
+        // Insert queue (unique nobooking)
+        await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for) VALUES ($1,$2,$3)
+                            ON CONFLICT (nobooking) DO NOTHING`, [nobooking, userid, scheduled_for]);
+
+        // Increment quota
+        const upd = await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1 RETURNING used_count, limit_count`, [scheduled_for]);
+
+        await client.query('COMMIT');
+        const u = upd.rows[0];
+        res.json({ success: true, message: 'Scheduled', data: { scheduled_for, used: u.used_count, limit: u.limit_count, remaining: Math.max(0, u.limit_count - u.used_count) } });
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('❌ [QUOTA] Schedule failed:', e);
+        res.status(500).json({ success: false, message: 'Schedule failed' });
+    } finally {
+        client.release();
+    }
+});
+
+// Send now = schedule for today then mark as sent immediately (still counting quota)
+app.post('/api/ppatk/send-now', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const userid = req.session.user.userid;
+        const { nobooking } = req.body;
+        if (!nobooking) return res.status(400).json({ success: false, message: 'nobooking required' });
+
+        const today = new Date().toISOString().slice(0,10);
+
+        await client.query('BEGIN');
+
+        await client.query(`INSERT INTO ppatk_daily_quota (quota_date, used_count, limit_count)
+                            VALUES ($1, 0, 80)
+                            ON CONFLICT (quota_date) DO NOTHING`, [today]);
+        const q = await client.query(`SELECT used_count, limit_count FROM ppatk_daily_quota WHERE quota_date=$1 FOR UPDATE`, [today]);
+        const { used_count, limit_count } = q.rows[0];
+        if (used_count >= limit_count) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ success: false, message: 'Kuota hari ini penuh' });
+        }
+
+        // Validate booking ownership
+        const b = await client.query(`SELECT nobooking FROM pat_1_bookingsspd WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
+        if (b.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for, status, sent_at)
+                            VALUES ($1,$2,$3,'sent', now())
+                            ON CONFLICT (nobooking) DO UPDATE SET status='sent', sent_at=now(), scheduled_for=$3`, [nobooking, userid, today]);
+
+        await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1`, [today]);
+
+        // Example: mark booking as submitted (optional, adjust to your workflow)
+        await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Dikirim', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'Dikirim sekarang (kuota dihitung)', data: { date: today } });
+    } catch (e) {
+        await client.query('ROLLBACK');
+        console.error('❌ [QUOTA] Send-now failed:', e);
+        res.status(500).json({ success: false, message: 'Send-now failed' });
+    } finally {
+        client.release();
+    }
+});
+
+// My schedules
+app.get('/api/ppatk/my-schedules', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+        const userid = req.session.user.userid;
+        const r = await pool.query(`SELECT id, nobooking, scheduled_for, status, requested_at, sent_at
+                                    FROM ppatk_send_queue WHERE userid=$1 ORDER BY scheduled_for, requested_at`, [userid]);
+        res.json({ success: true, data: r.rows });
+    } catch (e) {
+        console.error('❌ [QUOTA] My schedules failed:', e);
+        res.status(500).json({ success: false, message: 'My schedules failed' });
+    }
 });
 
 // Endpoint untuk membersihkan proxy path yang tidak valid (Railway Storage)

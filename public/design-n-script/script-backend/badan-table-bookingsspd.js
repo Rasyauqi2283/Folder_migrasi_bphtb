@@ -97,7 +97,7 @@ async function loadTableData(page = 1) {
                 }
                 sendButton.onclick = () => {
                     if (sendButton.disabled) return;
-                    sendToLtb(item.nobooking);
+                    openScheduleModal(item.nobooking);
                 };
 
                 cellkirim.appendChild(sendButton);
@@ -2439,6 +2439,133 @@ document.addEventListener('DOMContentLoaded', function() {
 // Panggil fungsi saat halaman dimuat
 window.onload = loadTableData;
 //////////////////////////////////////                  //////////////////////////////////////////
+// ======================
+// Scheduling quota modal
+// ======================
+function openScheduleModal(nobooking){
+    try {
+        const overlay = document.createElement('div');
+        overlay.className = 'quota-modal-overlay';
+        overlay.innerHTML = `
+        <div class="quota-modal">
+            <div class="qm-header">
+                <h3>Jadwalkan Pengiriman</h3>
+                <button class="qm-close" aria-label="Tutup">×</button>
+            </div>
+            <div class="qm-body">
+                <div class="qm-counter">
+                    <span id="qmDateLabel">Hari ini</span>
+                    <span id="qmCounter">0/80</span>
+                </div>
+                <div class="qm-options">
+                    <button id="qmSendNow" class="qm-option primary">Kirim Sekarang</button>
+                    <button id="qmSendTomorrow" class="qm-option">Besok (<span id="qmTomorrow"></span>)</button>
+                    <div class="qm-datepick">
+                        <input type="date" id="qmDate" />
+                        <button id="qmSchedule" class="qm-option">Tentukan Tanggal</button>
+                    </div>
+                </div>
+                <div id="qmStatus" class="qm-status"></div>
+            </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+        const close = () => overlay.remove();
+        overlay.querySelector('.qm-close').onclick = close;
+        overlay.onclick = (e)=>{ if (e.target === overlay) close(); };
+
+        // Style (scoped)
+        const style = document.createElement('style');
+        style.textContent = `
+        .quota-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999}
+        .quota-modal{background:#fff;border-radius:8px;min-width:320px;max-width:420px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+        .qm-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee}
+        .qm-header h3{margin:0;font-size:16px}
+        .qm-close{background:transparent;border:none;font-size:20px;cursor:pointer}
+        .qm-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+        .qm-counter{display:flex;align-items:center;justify-content:space-between;font-weight:600}
+        .qm-options{display:flex;flex-direction:column;gap:8px}
+        .qm-option{padding:10px 12px;border:1px solid #ddd;border-radius:6px;background:#f8f9fa;cursor:pointer;text-align:center}
+        .qm-option.primary{background:#007bff;color:#fff;border-color:#007bff}
+        .qm-option:disabled{opacity:.5;cursor:not-allowed}
+        .qm-datepick{display:flex;gap:8px;align-items:center}
+        .qm-status{min-height:18px;color:#555;font-size:12px}
+        `;
+        document.head.appendChild(style);
+
+        // Set tomorrow label
+        const t = new Date();
+        const pad = (n)=>String(n).padStart(2,'0');
+        const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1);
+        overlay.querySelector('#qmTomorrow').textContent = `${pad(tomorrow.getDate())}-${pad(tomorrow.getMonth()+1)}-${tomorrow.getFullYear()}`;
+        const dateInput = overlay.querySelector('#qmDate');
+        dateInput.value = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+
+        const statusEl = overlay.querySelector('#qmStatus');
+        const setStatus = (msg,type='info')=>{ statusEl.textContent = msg; statusEl.style.color = type==='error'?'#c00':'#555'; };
+
+        async function fetchQuota(yyyy_mm_dd){
+            try{
+                const r = await fetch(`/api/ppatk/quota?date=${yyyy_mm_dd}`,{credentials:'include'});
+                const j = await r.json();
+                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengambil kuota'); }
+                const { used, limit } = j.data;
+                overlay.querySelector('#qmCounter').textContent = `${used}/${limit}`;
+                return j.data;
+            }catch(e){ setStatus(e.message,'error'); return { used: 0, limit: 80, remaining:80 }; }
+        }
+
+        function iso(d){ return d.toISOString().slice(0,10); }
+        const todayIso = iso(new Date());
+        fetchQuota(todayIso);
+
+        overlay.querySelector('#qmSendNow').onclick = async () => {
+            try{
+                setStatus('Memproses...');
+                const r = await fetch('/api/ppatk/send-now',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking})});
+                const j = await r.json();
+                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengirim'); }
+                setStatus('Berhasil dikirim.');
+                setTimeout(()=>location.reload(),800);
+            }catch(e){ setStatus(e.message,'error'); }
+        };
+
+        overlay.querySelector('#qmSendTomorrow').onclick = async () => {
+            try{
+                const yyyy_mm_dd = iso(tomorrow);
+                setStatus('Menjadwalkan...');
+                const r = await fetch('/api/ppatk/schedule-send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
+                const j = await r.json();
+                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
+                setStatus('Berhasil dijadwalkan.');
+                setTimeout(()=>location.reload(),800);
+            }catch(e){ setStatus(e.message,'error'); }
+        };
+
+        overlay.querySelector('#qmSchedule').onclick = async () => {
+            try{
+                const yyyy_mm_dd = dateInput.value;
+                if(!yyyy_mm_dd){ setStatus('Pilih tanggal terlebih dahulu','error'); return; }
+                setStatus('Menjadwalkan...');
+                const r = await fetch('/api/ppatk/schedule-send',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
+                const j = await r.json();
+                if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
+                setStatus('Berhasil dijadwalkan.');
+                setTimeout(()=>location.reload(),800);
+            }catch(e){ setStatus(e.message,'error'); }
+        };
+
+        // Update counter saat tanggal berubah
+        dateInput.addEventListener('change', async ()=>{
+            overlay.querySelector('#qmDateLabel').textContent = 'Tanggal terpilih';
+            await fetchQuota(dateInput.value);
+        });
+    } catch(err){
+        console.error('Open schedule modal failed:', err);
+        alert('Gagal membuka jadwal pengiriman');
+    }
+}
+
 // Fungsi untuk navigasi ke halaman form dengan data dari database
 async function gotoform(nobooking) {
     console.log(`[DEBUG] Starting gotoform function with nobooking: ${nobooking}`);
