@@ -420,15 +420,16 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                     kelurahanop = COALESCE($3, kelurahanop),
                     kecamatanopj = COALESCE($4, kecamatanopj),
                     alamat_pemohon = COALESCE($5, alamat_pemohon),
+                    keterangan = COALESCE($6, keterangan),
                     updated_at = now()
                  WHERE nobooking = $1`,
-                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
             );
         } else {
             await pool.query(
-                `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, now(), now())`,
-                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+                `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, now(), now())`,
+                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
             );
         }
 

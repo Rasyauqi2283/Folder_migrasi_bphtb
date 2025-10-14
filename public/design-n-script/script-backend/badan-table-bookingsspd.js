@@ -3002,6 +3002,7 @@ async function gotoform(nobooking) {
                     <h1 class="form-title">Formulir Validasi PPATK - ${nobooking}</h1>
                     
                     <form id="ppatkForm" class="validation-form">
+                        <input type="hidden" id="nobooking" name="nobooking" value="${nobooking}">
                         <!-- Form sections with pre-filled data -->
                         <div class="form-header-decoration">
                             <div class="tax-icon">
@@ -3260,12 +3261,19 @@ async function gotoform(nobooking) {
                                 });
 
                                 // Prepare data
+                                const resolvedNoBooking = (typeof window !== 'undefined' && window.NOBOOKING) ? window.NOBOOKING : (document.getElementById('nobooking')?.value || '').trim();
+
+                                if (!resolvedNoBooking) {
+                                    throw new Error('NoBooking tidak ditemukan di halaman');
+                                }
+
                                 const formData = {
-                                    nobooking: window.NOBOOKING,
+                                    nobooking: resolvedNoBooking,
                                     alamat_pemohon: document.getElementById('alamat_pemohon').value.trim(),
                                     kampungop: document.getElementById('kampungop').value.trim(),
                                     kelurahanop: document.getElementById('kelurahanop').value.trim(),
-                                    kecamatanopj: document.getElementById('kecamatanopj').value.trim()
+                                    kecamatanopj: document.getElementById('kecamatanopj').value.trim(),
+                                    keterangan: (document.getElementById('lainnya')?.value || '').trim()
                                 };
 
                                 // Show loading state
@@ -3274,7 +3282,9 @@ async function gotoform(nobooking) {
                                 saveBtn.disabled = true;
 
                                 // Send to server
-                                const response = await fetch('/api/save-ppatk-additional-data', {
+                                const baseOrigin = (window.opener && !window.opener.closed) ? window.opener.location.origin : window.location.origin;
+                                const apiUrl = \`${'${'}baseOrigin}/api/save-ppatk-additional-data?nobooking=${'${'}encodeURIComponent(resolvedNoBooking)}\`;
+                                const response = await fetch(apiUrl, {
                                     method: 'POST',
                                     credentials: 'include',
                                     headers: {
