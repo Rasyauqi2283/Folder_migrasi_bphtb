@@ -374,14 +374,20 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
         }
 
         const userid = req.session.user.userid;
-        const {
+        const body = req.body || {};
+        let {
             nobooking,
             alamat_pemohon,
             kampungop,
             kelurahanop,
             kecamatanopj,
             keterangan
-        } = req.body || {};
+        } = body;
+
+        // Fallback: allow nobooking via querystring too
+        if (!nobooking) {
+            nobooking = req.query?.nobooking;
+        }
 
         if (!nobooking) {
             return res.status(400).json({ success: false, message: 'nobooking is required' });
