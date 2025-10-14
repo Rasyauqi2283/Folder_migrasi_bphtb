@@ -92,12 +92,12 @@ async function loadTableData(page = 1) {
                 const status = (item.trackstatus || '').toLowerCase();
                 const isDraft = status === 'draft';
                 const isPending = status === 'pending';
-                const isDikirim = status === 'dikirim';
+                const isDiolah = status === 'diolah';
                 
-                if (isDikirim) {
+                if (isDiolah) {
                     sendButton.disabled = true;
-                    sendButton.textContent = 'Sudah Dikirim';
-                    sendButton.title = 'Booking sudah dikirim ke Bappenda';
+                    sendButton.textContent = 'Sedang Diolah';
+                    sendButton.title = 'Booking sudah masuk proses LTB (Diolah)';
                     try { sendButton.style.opacity = '0.5'; sendButton.style.cursor = 'not-allowed'; } catch(_) {}
                 } else if (isPending) {
                     sendButton.disabled = true;
@@ -3564,11 +3564,11 @@ async function fetchDataFromDatabase(nobooking, userInput = {}) {
         
         const result = await response.json();
         
-        if (!result.success || !result.booking) {
+        if (!result.success || !result.data) {
             throw new Error('Data booking tidak ditemukan');
         }
 
-        const bookingData = result.booking;
+        const bookingData = result.data;
 
         // Gabungkan dengan input manual user
         return {
