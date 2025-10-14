@@ -297,7 +297,7 @@ const jenisPerolehanMap = {
     try {
       const nv = String(noValidasi || data.no_validasi || '').trim();
       if (!qrAbsPath && nv) {
-        const base = (process.env.PUBLIC_BASE_URL || 'https://validasi.local').replace(/\/$/, '');
+        const base = (process.env.PUBLIC_BASE_URL || 'https://bphtb-bappenda.up.railway.app').replace(/\/$/, '');
         const payload = `${base}/verify?no_validasi=${encodeURIComponent(nv)}`;
         const saved = await saveQrToPublic({ filename: `validasi_${nv}`, text: payload, size: 256 });
         qrAbsPath = saved.abs;

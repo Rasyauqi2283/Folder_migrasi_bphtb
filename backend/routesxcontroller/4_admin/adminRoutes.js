@@ -25,6 +25,23 @@ const verifyAdmin = (req, res, next) => {
   next();
 };
 
+// Middleware untuk endpoint validasi QR (boleh Admin, Peneliti Validasi, LSB/loket)
+const verifyValidationRoles = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  const userRole = String(req.session.user.divisi || '').trim();
+  const allowed = new Set([
+    'Admin', 'Administrator', 'Super Admin',
+    'Peneliti Validasi',
+    'LSB', 'Loket Serah Berkas'
+  ]);
+  if (!allowed.has(userRole)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Validator role required.' });
+  }
+  next();
+};
+
 // GET /api/admin/test-pending-users - Test endpoint untuk debug
 router.get('/test-pending-users', verifyAdmin, async (req, res) => {
   try {
@@ -585,7 +602,7 @@ router.get('/ppat/user/:userid/diserahkan', verifyAdmin, async (req, res) => {
 // ===== QR CODE VALIDATION ENDPOINTS =====
 
 // GET /api/admin/validate-qr/:no_validasi - Validasi nomor validasi QR code
-router.get('/validate-qr/:no_validasi', verifyAdmin, async (req, res) => {
+router.get('/validate-qr/:no_validasi', verifyValidationRoles, async (req, res) => {
   try {
     const { no_validasi } = req.params;
     const adminUser = req.session.user;
@@ -725,7 +742,7 @@ router.get('/validate-qr/:no_validasi', verifyAdmin, async (req, res) => {
 });
 
 // GET /api/admin/validate-qr-search - Search validasi dengan filter
-router.get('/validate-qr-search', verifyAdmin, async (req, res) => {
+router.get('/validate-qr-search', verifyValidationRoles, async (req, res) => {
   try {
     const { q: search, page = 1, limit = 20, status } = req.query;
     const adminUser = req.session.user;
