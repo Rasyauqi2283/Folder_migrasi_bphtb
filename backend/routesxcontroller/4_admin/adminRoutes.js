@@ -14,12 +14,14 @@ const verifyAdmin = (req, res, next) => {
   if (!req.session || !req.session.user) {
     return res.status(401).json({ success: false, message: 'Unauthorized' });
   }
-  
-  const userRole = req.session.user.divisi;
-  if (userRole !== 'Admin' && userRole !== 'Super Admin') {
+
+  const userRole = String(req.session.user.divisi || '').trim();
+  // Allow common admin role variants
+  const allowed = new Set(['Admin', 'Administrator', 'Super Admin']);
+  if (!allowed.has(userRole)) {
     return res.status(403).json({ success: false, message: 'Access denied. Admin role required.' });
   }
-  
+
   next();
 };
 
