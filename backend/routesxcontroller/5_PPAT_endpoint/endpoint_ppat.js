@@ -316,16 +316,28 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
                 p.nobooking,
                 p.noppbb AS nop,
                 p.namawajibpajak AS nama_wajib_pajak,
+                p.alamatwajibpajak AS alamat_wajib_pajak,
                 p.namapemilikobjekpajak AS atas_nama,
                 p.npwpwp,
                 p.tahunajb,
+                p.kelurahandesawp,
+                p.kecamatanwp,
+                p.kabupatenkotawp,
+                p.kodeposwp,
+                p.kelurahandesaop,
                 p.trackstatus,
                 p.created_at,
                 p.updated_at,
+                o.letaktanahdanbangunan,
+                o.keterangan,
+                pp.luas_tanah,
+                pp.luas_bangunan,
                 u.nama AS nama_pemohon,
                 u.telepon::text AS no_telepon
             FROM pat_1_bookingsspd p
             LEFT JOIN a_2_verified_users u ON u.userid = p.userid
+            LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+            LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
             WHERE p.nobooking = $1 AND p.userid = $2
         `;
         
