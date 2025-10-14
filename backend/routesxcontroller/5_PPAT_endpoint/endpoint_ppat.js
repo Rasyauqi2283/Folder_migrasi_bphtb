@@ -409,34 +409,61 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             }
         }
 
-        // Simpan ke pat_8_validasi_tambahan (berdasarkan nobooking) 
-        // Tabel berisi: nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at
-        const existing = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
-        if (existing.rows.length > 0) {
-            await pool.query(
-                `UPDATE pat_8_validasi_tambahan
-                 SET 
-                    kampungop = COALESCE($2, kampungop),
-                    kelurahanop = COALESCE($3, kelurahanop),
-                    kecamatanopj = COALESCE($4, kecamatanopj),
-                    alamat_pemohon = COALESCE($5, alamat_pemohon),
-                    keterangan = COALESCE($6, keterangan),
-                    updated_at = now()
-                 WHERE nobooking = $1`,
-                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
-            );
-        } else {
-            await pool.query(
-                `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan, created_at, updated_at)
-                 VALUES ($1, $2, $3, $4, $5, $6, now(), now())`,
-                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
-            );
+        // Simpan ke pat_8_validasi_tambahan dengan fallback jika kolom tertentu tidak ada (mis. keterangan)
+        try {
+            const existing = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
+            if (existing.rows.length > 0) {
+                await pool.query(
+                    `UPDATE pat_8_validasi_tambahan
+                     SET 
+                        kampungop = COALESCE($2, kampungop),
+                        kelurahanop = COALESCE($3, kelurahanop),
+                        kecamatanopj = COALESCE($4, kecamatanopj),
+                        alamat_pemohon = COALESCE($5, alamat_pemohon),
+                        keterangan = COALESCE($6, keterangan),
+                        updated_at = now()
+                     WHERE nobooking = $1`,
+                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
+                );
+            } else {
+                await pool.query(
+                    `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6, now(), now())`,
+                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
+                );
+            }
+        } catch (dbErr) {
+            // Jika kolom 'keterangan' tidak ada (42703 undefined_column), retry tanpa kolom tsb
+            if (dbErr && (dbErr.code === '42703' || /column\s+keterangan\s+does\s+not\s+exist/i.test(String(dbErr.message)))) {
+                const existing2 = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
+                if (existing2.rows.length > 0) {
+                    await pool.query(
+                        `UPDATE pat_8_validasi_tambahan
+                         SET 
+                            kampungop = COALESCE($2, kampungop),
+                            kelurahanop = COALESCE($3, kelurahanop),
+                            kecamatanopj = COALESCE($4, kecamatanopj),
+                            alamat_pemohon = COALESCE($5, alamat_pemohon),
+                            updated_at = now()
+                         WHERE nobooking = $1`,
+                        [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+                    );
+                } else {
+                    await pool.query(
+                        `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
+                         VALUES ($1, $2, $3, $4, $5, now(), now())`,
+                        [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+                    );
+                }
+            } else {
+                throw dbErr;
+            }
         }
 
         return res.json({ success: true, message: 'Data berhasil disimpan' });
     } catch (error) {
         console.error('❌ [PPATK] Save additional data failed:', error);
-        return res.status(500).json({ success: false, message: 'Failed to save data', error: error.message });
+        return res.status(500).json({ success: false, message: 'Failed to save data', error: error.message, code: error.code });
     }
 });
 
