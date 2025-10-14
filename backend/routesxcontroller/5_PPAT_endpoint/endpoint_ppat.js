@@ -460,7 +460,14 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             }
         }
 
-        return res.json({ success: true, message: 'Data berhasil disimpan' });
+        // Ambil kembali nilai terbaru untuk verifikasi dan response
+        const verify = await pool.query(
+            `SELECT nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at
+             FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`,
+            [nobooking]
+        );
+
+        return res.json({ success: true, message: 'Data berhasil disimpan', data: verify.rows[0] || null });
     } catch (error) {
         console.error('❌ [PPATK] Save additional data failed:', error);
         return res.status(500).json({ success: false, message: 'Failed to save data', error: error.message, code: error.code });
