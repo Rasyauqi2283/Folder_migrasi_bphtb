@@ -2994,6 +2994,10 @@ async function gotoform(nobooking) {
                 </style>
             </head>
             <body>
+                <script>
+                    // Expose nobooking to this popup context so it's not lost inside nested template strings
+                    window.NOBOOKING = '${nobooking}';
+                </script>
                 <div class="form-wrapper">
                     <h1 class="form-title">Formulir Validasi PPATK - ${nobooking}</h1>
                     
@@ -3257,7 +3261,7 @@ async function gotoform(nobooking) {
 
                                 // Prepare data
                                 const formData = {
-                                    nobooking: '${nobooking}', // Diisi dari template
+                                    nobooking: window.NOBOOKING,
                                     alamat_pemohon: document.getElementById('alamat_pemohon').value.trim(),
                                     kampungop: document.getElementById('kampungop').value.trim(),
                                     kelurahanop: document.getElementById('kelurahanop').value.trim(),
