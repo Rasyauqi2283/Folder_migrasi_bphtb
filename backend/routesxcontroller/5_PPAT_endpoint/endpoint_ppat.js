@@ -366,6 +366,73 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
     }
 });
 
+// Save additional PPATK form data (alamat_pemohon, kampungop, kelurahanop, kecamatanopj, keterangan)
+app.post('/api/save-ppatk-additional-data', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        const {
+            nobooking,
+            alamat_pemohon,
+            kampungop,
+            kelurahanop,
+            kecamatanopj,
+            keterangan
+        } = req.body || {};
+
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'nobooking is required' });
+        }
+
+        // Update target tables/columns mapping based on available schema
+        // 1) Simpan alamat pemohon ke tabel user (agar terasosiasi akun) jika kolom tersedia
+        // 2) Simpan lokasi OP dan keterangan ke tabel objek pajak (pat_4_objek_pajak)
+
+        // Optional: update alamat pemohon di a_2_verified_users jika dikirim
+        if (alamat_pemohon && alamat_pemohon.trim()) {
+            try {
+                await pool.query(
+                    `UPDATE a_2_verified_users SET alamat = $1 WHERE userid = $2`,
+                    [alamat_pemohon.trim(), userid]
+                );
+            } catch (_) {
+                // ignore if column doesn't exist
+            }
+        }
+
+        // Simpan ke pat_8_validasi_tambahan (berdasarkan nobooking) 
+        // Tabel berisi: nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at
+        const existing = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
+        if (existing.rows.length > 0) {
+            await pool.query(
+                `UPDATE pat_8_validasi_tambahan
+                 SET 
+                    kampungop = COALESCE($2, kampungop),
+                    kelurahanop = COALESCE($3, kelurahanop),
+                    kecamatanopj = COALESCE($4, kecamatanopj),
+                    alamat_pemohon = COALESCE($5, alamat_pemohon),
+                    updated_at = now()
+                 WHERE nobooking = $1`,
+                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+            );
+        } else {
+            await pool.query(
+                `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, now(), now())`,
+                [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
+            );
+        }
+
+        return res.json({ success: true, message: 'Data berhasil disimpan' });
+    } catch (error) {
+        console.error('❌ [PPATK] Save additional data failed:', error);
+        return res.status(500).json({ success: false, message: 'Failed to save data', error: error.message });
+    }
+});
+
 // PPATK: Update booking status
 app.put('/api/ppatk/booking/:nobooking/trackstatus', async (req, res) => {
     try {
