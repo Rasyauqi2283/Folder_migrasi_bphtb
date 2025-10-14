@@ -322,11 +322,6 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
                 p.trackstatus,
                 p.created_at,
                 p.updated_at,
-                p.akta_tanah_path,
-                p.sertifikat_tanah_path,
-                p.pelengkap_path,
-                p.pdf_dokumen_path,
-                p.file_withstempel_path,
                 u.nama AS nama_pemohon,
                 u.telepon::text AS no_telepon
             FROM pat_1_bookingsspd p
