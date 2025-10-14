@@ -475,6 +475,43 @@
         </div>
       </div>
 
+            <!-- Scan QR Section -->
+            <div class="validation-card">
+                <div class="card-header">
+                  <h2>📷 Scan QR Code</h2>
+                </div>
+                <div class="card-body">
+                  <div class="search-section">
+            <div id="qrReader" style="width: 100%; max-width: 480px; margin: 0 auto;"></div>
+            <video id="qrVideo" playsinline style="width:100%; max-width:480px; display:none"></video>
+                    <div style="text-align:center; margin-top: 12px;">
+                      <button class="btn-search" onclick="startQrScan()">Mulai Scan</button>
+                      <button class="btn-search" style="margin-left:8px; background:#ef4444" onclick="stopQrScan()">Hentikan</button>
+                    </div>
+                    <p id="qrHint" style="text-align:center; color:#6b7280; margin-top:8px;">Arahkan kamera ke QR pada dokumen.</p>
+                  </div>
+                </div>
+              </div>
+        
+              <!-- Upload Dokumen untuk Scan QR -->
+              <div class="validation-card">
+                <div class="card-header">
+                  <h2>📄 Upload Dokumen untuk Scan QR</h2>
+                </div>
+                <div class="card-body">
+                  <div class="input-group">
+                    <label for="qrFile">Pilih file gambar atau PDF yang memuat QR</label>
+                    <input id="qrFile" type="file" accept="image/png,image/jpeg,application/pdf" />
+                  </div>
+                  <div class="loading" id="fileLoading">
+                    <div class="spinner"></div>
+                    <p>Memproses dokumen...</p>
+                  </div>
+                  <canvas id="qrCanvas" style="max-width:100%; display:none"></canvas>
+          </div>
+        </div>
+      </div>
+
       <!-- Search Section -->
       <div class="validation-card">
         <div class="card-header">
@@ -510,41 +547,7 @@
         </div>
       </div>
 
-      <!-- Scan QR Section -->
-      <div class="validation-card">
-        <div class="card-header">
-          <h2>📷 Scan QR Code</h2>
-        </div>
-        <div class="card-body">
-          <div class="search-section">
-            <div id="qrReader" style="width: 100%; max-width: 480px; margin: 0 auto;"></div>
-            <div style="text-align:center; margin-top: 12px;">
-              <button class="btn-search" onclick="startQrScan()">Mulai Scan</button>
-              <button class="btn-search" style="margin-left:8px; background:#ef4444" onclick="stopQrScan()">Hentikan</button>
-            </div>
-            <p id="qrHint" style="text-align:center; color:#6b7280; margin-top:8px;">Arahkan kamera ke QR pada dokumen.</p>
-          </div>
-        </div>
-      </div>
 
-      <!-- Upload Dokumen untuk Scan QR -->
-      <div class="validation-card">
-        <div class="card-header">
-          <h2>📄 Upload Dokumen untuk Scan QR</h2>
-        </div>
-        <div class="card-body">
-          <div class="input-group">
-            <label for="qrFile">Pilih file gambar atau PDF yang memuat QR</label>
-            <input id="qrFile" type="file" accept="image/png,image/jpeg,application/pdf" />
-          </div>
-          <div class="loading" id="fileLoading">
-            <div class="spinner"></div>
-            <p>Memproses dokumen...</p>
-          </div>
-          <canvas id="qrCanvas" style="max-width:100%; display:none"></canvas>
-        </div>
-      </div>
-    </div>
   </main>
 
   <script>
@@ -905,21 +908,47 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // ===== QR Scanner =====
-    let html5QrCode = null;
+    // ===== QR Scanner (jsQR + getUserMedia) =====
     let qrScanning = false;
+    let qrTimer = null;
+    let qrStream = null;
 
     async function startQrScan() {
       try {
-        if (!window.Html5Qrcode) {
-          await loadQrLib();
-        }
+        await ensureJsQrLoaded();
         if (qrScanning) return;
-        const qrDivId = 'qrReader';
-        html5QrCode = new Html5Qrcode(qrDivId);
-        const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+        const video = document.getElementById('qrVideo');
+        video.style.display = 'block';
+        const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+        qrStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = qrStream;
+        await video.play();
         qrScanning = true;
-        html5QrCode.start({ facingMode: 'environment' }, config, onQrSuccess, onQrError);
+        const canvas = document.getElementById('qrCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const tick = () => {
+          if (!qrScanning) return;
+          const vw = video.videoWidth, vh = video.videoHeight;
+          if (vw && vh) {
+            canvas.width = vw; canvas.height = vh;
+            ctx.drawImage(video, 0, 0, vw, vh);
+            const imageData = ctx.getImageData(0, 0, vw, vh);
+            const res = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+            if (res && res.data) {
+              stopQrScan();
+              const nv = extractNoValidasi(res.data);
+              if (nv) {
+                document.getElementById('noValidasi').value = nv;
+                validateQRCode();
+                return;
+              }
+              showResult('error', 'QR tidak dikenali', 'QR tidak berisi nomor validasi yang valid.');
+              return;
+            }
+          }
+          qrTimer = requestAnimationFrame(tick);
+        };
+        qrTimer = requestAnimationFrame(tick);
       } catch (e) {
         console.error('QR start error:', e);
         showResult('error', 'Kamera tidak tersedia', 'Pastikan browser mengizinkan akses kamera dan situs via HTTPS/localhost.');
@@ -927,30 +956,15 @@
     }
 
     function stopQrScan() {
-      if (html5QrCode && qrScanning) {
-        html5QrCode.stop().then(() => {
-          html5QrCode.clear();
-          qrScanning = false;
-        }).catch(() => {
-          qrScanning = false;
-        });
+      try { if (qrTimer) cancelAnimationFrame(qrTimer); } catch (_) {}
+      qrTimer = null;
+      if (qrStream) {
+        qrStream.getTracks().forEach(t => t.stop());
+        qrStream = null;
       }
-    }
-
-    function onQrSuccess(decodedText) {
-      // Stop after first successful read
-      stopQrScan();
-      const extracted = extractNoValidasi(decodedText);
-      if (!extracted) {
-        showResult('error', 'QR tidak dikenali', 'QR tidak berisi nomor validasi yang valid.');
-        return;
-      }
-      document.getElementById('noValidasi').value = extracted;
-      validateQRCode();
-    }
-
-    function onQrError(_) {
-      // ignore continuous scan errors
+      const video = document.getElementById('qrVideo');
+      if (video) { video.pause(); video.srcObject = null; video.style.display = 'none'; }
+      qrScanning = false;
     }
 
     function extractNoValidasi(text) {
