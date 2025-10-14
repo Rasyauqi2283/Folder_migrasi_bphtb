@@ -580,4 +580,264 @@ router.get('/ppat/user/:userid/diserahkan', verifyAdmin, async (req, res) => {
     }
 });
 
+// ===== QR CODE VALIDATION ENDPOINTS =====
+
+// GET /api/admin/validate-qr/:no_validasi - Validasi nomor validasi QR code
+router.get('/validate-qr/:no_validasi', verifyAdmin, async (req, res) => {
+  try {
+    const { no_validasi } = req.params;
+    const adminUser = req.session.user;
+
+    console.log(`🔍 [ADMIN] QR validation request by ${adminUser.nama} (${adminUser.userid}) for no_validasi: ${no_validasi}`);
+
+    // Validasi format no_validasi (harus alfanumerik dan tidak kosong)
+    if (!no_validasi || typeof no_validasi !== 'string' || no_validasi.trim().length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nomor validasi tidak valid' 
+      });
+    }
+
+    // Query untuk mendapatkan data validasi lengkap
+    const validationQuery = `
+      SELECT 
+        pv.no_validasi,
+        pv.nobooking,
+        pv.no_registrasi,
+        pv.namawajibpajak,
+        pv.namapemilikobjekpajak,
+        pv.status,
+        pv.trackstatus,
+        pv.status_tertampil,
+        pv.keterangan,
+        pv.created_at,
+        pv.updated_at,
+        pv.tanda_tangan_validasi_path,
+        -- Data booking
+        pb.noppbb,
+        pb.tanggal,
+        pb.tahunajb,
+        pb.npwpwp,
+        pb.trackstatus as booking_trackstatus,
+        pb.file_withstempel_path,
+        pb.pdf_dokumen_path,
+        -- Data user PPAT
+        vu.nama as ppat_nama,
+        vu.special_field as ppat_special_field,
+        vu.divisi as ppat_divisi,
+        -- Data peneliti validasi
+        avpv.nama as peneliti_nama,
+        avpv.special_parafv as peneliti_special_parafv,
+        avpv.nip as peneliti_nip,
+        -- Data perhitungan BPHTB
+        bp.bphtb_yangtelah_dibayar,
+        bp.npop,
+        bp.npop_tkp,
+        bp.npop_kp,
+        bp.bphtb
+      FROM pv_1_paraf_validate pv
+      LEFT JOIN pat_1_bookingsspd pb ON pv.nobooking = pb.nobooking
+      LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
+      LEFT JOIN a_2_verified_users avpv ON avpv.tanda_tangan_path = pv.tanda_tangan_validasi_path
+      LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
+      WHERE pv.no_validasi = $1
+      LIMIT 1
+    `;
+
+    const result = await pool.query(validationQuery, [no_validasi.trim()]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Nomor validasi tidak ditemukan dalam sistem',
+        no_validasi: no_validasi
+      });
+    }
+
+    const validationData = result.rows[0];
+
+    // Catat log akses validasi untuk audit trail
+    try {
+      await pool.query(
+        'INSERT INTO log_file_access(admin_name, userid, ip, user_agent, access_time) VALUES($1, $2, $3, $4, NOW())',
+        [
+          adminUser.nama,
+          `QR_VALIDATION_${no_validasi}`,
+          req.ip || req.connection.remoteAddress,
+          req.headers['user-agent'] || 'Unknown'
+        ]
+      );
+      console.log(`📝 [AUDIT] QR validation logged for admin ${adminUser.nama} validating ${no_validasi}`);
+    } catch (logError) {
+      console.error('❌ [AUDIT] Failed to log QR validation access:', logError);
+      // Jangan gagal request jika logging gagal
+    }
+
+    // Format response dengan informasi keaslian
+    const response = {
+      success: true,
+      message: 'Nomor validasi ini asli sesuai ketentuan BAPPENDA Kabupaten Bogor',
+      validation_info: {
+        no_validasi: validationData.no_validasi,
+        status: validationData.status,
+        trackstatus: validationData.trackstatus,
+        status_tertampil: validationData.status_tertampil,
+        keterangan: validationData.keterangan,
+        created_at: validationData.created_at,
+        updated_at: validationData.updated_at
+      },
+      document_info: {
+        nobooking: validationData.nobooking,
+        no_registrasi: validationData.no_registrasi,
+        noppbb: validationData.noppbb,
+        tanggal: validationData.tanggal,
+        tahunajb: validationData.tahunajb,
+        namawajibpajak: validationData.namawajibpajak,
+        namapemilikobjekpajak: validationData.namapemilikobjekpajak,
+        npwpwp: validationData.npwpwp,
+        booking_trackstatus: validationData.booking_trackstatus
+      },
+      ppat_info: {
+        nama: validationData.ppat_nama,
+        special_field: validationData.ppat_special_field,
+        divisi: validationData.ppat_divisi
+      },
+      peneliti_info: {
+        nama: validationData.peneliti_nama,
+        special_parafv: validationData.peneliti_special_parafv,
+        nip: validationData.peneliti_nip
+      },
+      bphtb_info: {
+        bphtb_yangtelah_dibayar: validationData.bphtb_yangtelah_dibayar,
+        npop: validationData.npop,
+        npop_tkp: validationData.npop_tkp,
+        npop_kp: validationData.npop_kp,
+        bphtb: validationData.bphtb
+      },
+      authenticity: {
+        verified: true,
+        verified_by: adminUser.nama,
+        verified_at: new Date().toISOString(),
+        verification_method: 'QR_CODE_VALIDATION',
+        institution: 'BAPPENDA Kabupaten Bogor'
+      }
+    };
+
+    console.log(`✅ [ADMIN] QR validation successful for ${no_validasi} by ${adminUser.nama}`);
+    return res.json(response);
+
+  } catch (error) {
+    console.error('❌ [ADMIN] QR validation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan saat memvalidasi nomor validasi',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// GET /api/admin/validate-qr-search - Search validasi dengan filter
+router.get('/validate-qr-search', verifyAdmin, async (req, res) => {
+  try {
+    const { q: search, page = 1, limit = 20, status } = req.query;
+    const adminUser = req.session.user;
+    const lim = Math.min(parseInt(limit) || 20, 100);
+    const off = (parseInt(page) - 1) * lim;
+
+    console.log(`🔍 [ADMIN] QR search request by ${adminUser.nama} - search: "${search}", status: "${status}"`);
+
+    let whereConditions = [];
+    let queryParams = [];
+    let paramCount = 0;
+
+    // Filter berdasarkan pencarian
+    if (search && search.trim().length > 0) {
+      paramCount++;
+      whereConditions.push(`(
+        pv.no_validasi ILIKE $${paramCount} OR 
+        pv.nobooking ILIKE $${paramCount} OR 
+        pv.namawajibpajak ILIKE $${paramCount} OR
+        pv.namapemilikobjekpajak ILIKE $${paramCount} OR
+        pb.noppbb ILIKE $${paramCount}
+      )`);
+      queryParams.push(`%${search.trim()}%`);
+    }
+
+    // Filter berdasarkan status
+    if (status && status.trim().length > 0) {
+      paramCount++;
+      whereConditions.push(`pv.status = $${paramCount}`);
+      queryParams.push(status.trim());
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Query utama
+    const searchQuery = `
+      SELECT 
+        pv.no_validasi,
+        pv.nobooking,
+        pv.namawajibpajak,
+        pv.namapemilikobjekpajak,
+        pv.status,
+        pv.trackstatus,
+        pv.status_tertampil,
+        pv.created_at,
+        pv.updated_at,
+        pb.noppbb,
+        pb.tanggal,
+        pb.tahunajb,
+        vu.nama as ppat_nama,
+        vu.special_field as ppat_special_field
+      FROM pv_1_paraf_validate pv
+      LEFT JOIN pat_1_bookingsspd pb ON pv.nobooking = pb.nobooking
+      LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
+      ${whereClause}
+      ORDER BY pv.created_at DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+
+    queryParams.push(lim, off);
+    const result = await pool.query(searchQuery, queryParams);
+
+    // Query untuk total count
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM pv_1_paraf_validate pv
+      LEFT JOIN pat_1_bookingsspd pb ON pv.nobooking = pb.nobooking
+      LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
+      ${whereClause}
+    `;
+    const countParams = queryParams.slice(0, -2); // Remove limit and offset
+    const countResult = await pool.query(countQuery, countParams);
+
+    const response = {
+      success: true,
+      data: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: lim,
+        total: parseInt(countResult.rows[0].total),
+        total_pages: Math.ceil(countResult.rows[0].total / lim)
+      },
+      search_params: {
+        search: search || '',
+        status: status || '',
+        admin: adminUser.nama
+      }
+    };
+
+    console.log(`✅ [ADMIN] QR search completed - found ${result.rows.length} results`);
+    return res.json(response);
+
+  } catch (error) {
+    console.error('❌ [ADMIN] QR search error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Terjadi kesalahan saat mencari data validasi',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 export default router;

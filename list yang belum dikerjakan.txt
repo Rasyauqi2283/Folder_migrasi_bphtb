@@ -339,3 +339,5 @@ CATATAN PENTING:
   1. File .env (local development) - JANGAN di-commit ke Git!
   2. Railway Environment Variables (production)
 - File ini hanya dokumentasi struktur, BUKAN tempat menyimpan actual secrets!
+
+iterasi 1= alur normal dengan tanda tangan/paraf dilakukan manual (dalam konteks perlu setiap kali mengirim booking baik ppat, peneliti maupun pejabat bappenda... perlu menyertakan foto tanda tangan bagi setiap booking), iterasi 2= ditambahkannya 3 database untuk local sertifikat dalam penguncian qr code serta tanda tangan di ubah fungsinya menjadi di profile dalam penyimpanan internal yang dapat berlaku dipakai kapan saja dan situasional (artinya pengguna tinggal memakainya secara berulang), iterasi 3= dibuatkannya sistem fungsi kuotasi agar kepegawaian tidak burnout dalam pengerjaan bphtb, karena dibatasinya jumlah booking perhari yang boleh masuk sekitar 80 booking
