@@ -313,22 +313,25 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         
         const query = `
             SELECT 
-                nobooking,
-                noppbb,
-                namawajibpajak,
-                namapemilikobjekpajak,
-                npwpwp,
-                tahunajb,
-                trackstatus,
-                created_at,
-                updated_at,
-                akta_tanah_path,
-                sertifikat_tanah_path,
-                pelengkap_path,
-                pdf_dokumen_path,
-                file_withstempel_path
-            FROM pat_1_bookingsspd 
-            WHERE nobooking = $1 AND userid = $2
+                p.nobooking,
+                p.noppbb AS nop,
+                p.namawajibpajak AS nama_wajib_pajak,
+                p.namapemilikobjekpajak AS atas_nama,
+                p.npwpwp,
+                p.tahunajb,
+                p.trackstatus,
+                p.created_at,
+                p.updated_at,
+                p.akta_tanah_path,
+                p.sertifikat_tanah_path,
+                p.pelengkap_path,
+                p.pdf_dokumen_path,
+                p.file_withstempel_path,
+                u.nama AS nama_pemohon,
+                u.telepon::text AS no_telepon
+            FROM pat_1_bookingsspd p
+            LEFT JOIN a_2_verified_users u ON u.userid = p.userid
+            WHERE p.nobooking = $1 AND p.userid = $2
         `;
         
         const result = await pool.query(query, [nobooking, userid]);
