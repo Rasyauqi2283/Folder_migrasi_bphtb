@@ -3283,7 +3283,8 @@ async function gotoform(nobooking) {
 
                                 // Send to server
                                 const baseOrigin = (window.opener && !window.opener.closed) ? window.opener.location.origin : window.location.origin;
-                                const apiUrl = \`${'${'}baseOrigin}/api/save-ppatk-additional-data?nobooking=${'${'}encodeURIComponent(resolvedNoBooking)}\`;
+                                const apiUrl = baseOrigin + '/api/save-ppatk-additional-data?nobooking=' + encodeURIComponent(resolvedNoBooking);
+                                console.log('[SAVE] nobooking, apiUrl, formData:', { resolvedNoBooking, apiUrl, formData });
                                 const response = await fetch(apiUrl, {
                                     method: 'POST',
                                     credentials: 'include',
