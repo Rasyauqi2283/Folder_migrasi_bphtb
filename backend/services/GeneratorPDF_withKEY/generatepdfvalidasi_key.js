@@ -2,6 +2,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
+import { saveQrToPublic } from '../../utils/qrcode.js';
 
 function formatNumber(num) {
     const n = Number(num || 0);
@@ -291,8 +292,20 @@ const jenisPerolehanMap = {
     doc.text('Cibinong, ' + formatDate(new Date()), rightX, footerY, { align: 'center' });
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
     doc.text(String(pvCn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' }); //<- bagian ini seharusnya pvCn
-    if (qrImageAbsPath && fs.existsSync(qrImageAbsPath)) {
-        doc.image(qrImageAbsPath, rightX + 50, footerY + 35, { width: 100 });
+    // Generate QR jika belum disediakan: payload URL berisi no_validasi agar mudah divalidasi
+    let qrAbsPath = qrImageAbsPath;
+    try {
+      const nv = String(noValidasi || data.no_validasi || '').trim();
+      if (!qrAbsPath && nv) {
+        const base = (process.env.PUBLIC_BASE_URL || 'https://validasi.local').replace(/\/$/, '');
+        const payload = `${base}/verify?no_validasi=${encodeURIComponent(nv)}`;
+        const saved = await saveQrToPublic({ filename: `validasi_${nv}`, text: payload, size: 256 });
+        qrAbsPath = saved.abs;
+      }
+    } catch (_) { /* fallback silent */ }
+
+    if (qrAbsPath && fs.existsSync(qrAbsPath)) {
+        doc.image(qrAbsPath, rightX + 50, footerY + 35, { width: 100 });
     } else {
         doc.text('Tempat QR CODE', rightX, footerY + 30, { align: 'center' });
     }
