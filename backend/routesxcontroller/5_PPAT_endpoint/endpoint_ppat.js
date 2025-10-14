@@ -380,8 +380,7 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             alamat_pemohon,
             kampungop,
             kelurahanop,
-            kecamatanopj,
-            keterangan
+            kecamatanopj
         } = body;
 
         console.log('📥 [PPATK] Save-additional incoming:', {
@@ -389,8 +388,7 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             alamat_pemohon,
             kampungop,
             kelurahanop,
-            kecamatanopj,
-            has_keterangan: typeof keterangan === 'string' ? keterangan.length : (keterangan == null ? null : 'non-string')
+            kecamatanopj
         });
 
         // Fallback: allow nobooking via querystring too
@@ -403,10 +401,6 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
         if (!nobooking) {
             return res.status(400).json({ success: false, message: 'nobooking is required' });
         }
-
-        // Update target tables/columns mapping based on available schema
-        // 1) Simpan alamat pemohon ke tabel user (agar terasosiasi akun) jika kolom tersedia
-        // 2) Simpan lokasi OP dan keterangan ke tabel objek pajak (pat_4_objek_pajak)
 
         // Optional: update alamat pemohon di a_2_verified_users jika dikirim
         if (alamat_pemohon && alamat_pemohon.trim()) {
@@ -424,7 +418,7 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
         try {
             const existing = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
             if (existing.rows.length > 0) {
-                console.log('📝 [PPATK] UPDATE pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan });
+                console.log('📝 [PPATK] UPDATE pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                 await pool.query(
                     `UPDATE pat_8_validasi_tambahan
                      SET 
@@ -432,25 +426,23 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                         kelurahanop = COALESCE($3, kelurahanop),
                         kecamatanopj = COALESCE($4, kecamatanopj),
                         alamat_pemohon = COALESCE($5, alamat_pemohon),
-                        keterangan = COALESCE($6, keterangan),
                         updated_at = now()
                      WHERE nobooking = $1`,
-                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
+                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
                 );
             } else {
-                console.log('🆕 [PPATK] INSERT pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan });
+                console.log('🆕 [PPATK] INSERT pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                 await pool.query(
-                    `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, keterangan, created_at, updated_at)
+                    `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
                      VALUES ($1, $2, $3, $4, $5, $6, now(), now())`,
-                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null, keterangan || null]
+                    [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
                 );
             }
         } catch (dbErr) {
-            // Jika kolom 'keterangan' tidak ada (42703 undefined_column), retry tanpa kolom tsb
             if (dbErr && (dbErr.code === '42703' || /column\s+keterangan\s+does\s+not\s+exist/i.test(String(dbErr.message)))) {
                 const existing2 = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
                 if (existing2.rows.length > 0) {
-                    console.log('📝 [PPATK] UPDATE (fallback no keterangan) with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                    console.log('📝 [PPATK] UPDATE with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                     await pool.query(
                         `UPDATE pat_8_validasi_tambahan
                          SET 
@@ -463,7 +455,7 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                         [nobooking, kampungop || null, kelurahanop || null, kecamatanopj || null, alamat_pemohon || null]
                     );
                 } else {
-                    console.log('🆕 [PPATK] INSERT (fallback no keterangan) with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                    console.log('🆕 [PPATK] INSERT with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                     await pool.query(
                         `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
                          VALUES ($1, $2, $3, $4, $5, now(), now())`,
