@@ -1221,8 +1221,8 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 
         await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1`, [today]);
 
-        // Mark booking as submitted immediately (send-now)
-        await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Dikirim', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
+        // Untuk alur internal: setelah send-now, status masuk ke LTB sebagai 'Diolah'
+        await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
 
         await client.query('COMMIT');
         res.json({ success: true, message: 'Dikirim sekarang (kuota dihitung)', data: { date: today } });
@@ -1289,10 +1289,10 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                     WHERE id=$1
                 `, [item.id]);
 
-                // Update booking status to Dikirim
+                // Setelah antrian diproses oleh sistem, status menjadi 'Diolah' (masuk ke LTB)
                 await client.query(`
                     UPDATE pat_1_bookingsspd 
-                    SET trackstatus='Dikirim', updated_at=now() 
+                    SET trackstatus='Diolah', updated_at=now() 
                     WHERE nobooking=$1 AND userid=$2
                 `, [item.nobooking, item.userid]);
 
