@@ -526,6 +526,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Upload Dokumen untuk Scan QR -->
+      <div class="validation-card">
+        <div class="card-header">
+          <h2>📄 Upload Dokumen untuk Scan QR</h2>
+        </div>
+        <div class="card-body">
+          <div class="input-group">
+            <label for="qrFile">Pilih file gambar atau PDF yang memuat QR</label>
+            <input id="qrFile" type="file" accept="image/png,image/jpeg,application/pdf" />
+          </div>
+          <div class="loading" id="fileLoading">
+            <div class="spinner"></div>
+            <p>Memproses dokumen...</p>
+          </div>
+          <canvas id="qrCanvas" style="max-width:100%; display:none"></canvas>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -967,6 +985,118 @@
         s.onerror = reject;
         document.head.appendChild(s);
       });
+    }
+
+    // ===== Upload and scan from file (image/PDF) =====
+    document.getElementById('qrFile').addEventListener('change', handleFileUpload);
+
+    async function handleFileUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      showFileLoading(true);
+      try {
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        if (ext === 'pdf' || file.type === 'application/pdf') {
+          const imageData = await renderPdfToImageData(file);
+          await decodeFromImageData(imageData);
+        } else if (file.type.startsWith('image/')) {
+          const imageData = await readImageToImageData(file);
+          await decodeFromImageData(imageData);
+        } else {
+          showResult('error', 'Format tidak didukung', 'Pilih gambar (PNG/JPG) atau PDF.');
+        }
+      } catch (err) {
+        console.error('File scan error:', err);
+        showResult('error', 'Gagal memproses dokumen', 'Pastikan QR terlihat jelas.');
+      } finally {
+        showFileLoading(false);
+        // reset input for re-upload
+        e.target.value = '';
+      }
+    }
+
+    function showFileLoading(show) {
+      const ld = document.getElementById('fileLoading');
+      ld.style.display = show ? 'block' : 'none';
+    }
+
+    async function ensureJsQrLoaded() {
+      if (window.jsQR) return;
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensurePdfJsLoaded() {
+      if (window.pdfjsLib) return;
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+        s.onload = () => {
+          // set worker
+          const w = document.createElement('script');
+          w.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+          w.onload = resolve;
+          w.onerror = reject;
+          document.head.appendChild(w);
+        };
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    async function readImageToImageData(file) {
+      await ensureJsQrLoaded();
+      const url = URL.createObjectURL(file);
+      try {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const canvas = document.getElementById('qrCanvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        return imageData;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    async function renderPdfToImageData(file) {
+      await ensureJsQrLoaded();
+      await ensurePdfJsLoaded();
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const page = await pdf.getPage(1);
+      const scale = 2; // higher resolution for QR
+      const viewport = page.getViewport({ scale });
+      const canvas = document.getElementById('qrCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      return imageData;
+    }
+
+    async function decodeFromImageData(imageData) {
+      await ensureJsQrLoaded();
+      const result = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+      if (result && result.data) {
+        const nv = extractNoValidasi(result.data);
+        if (nv) {
+          document.getElementById('noValidasi').value = nv;
+          validateQRCode();
+          return;
+        }
+      }
+      showResult('error', 'QR tidak ditemukan', 'Tidak ditemukan QR valid pada dokumen.');
     }
   </script>
 
