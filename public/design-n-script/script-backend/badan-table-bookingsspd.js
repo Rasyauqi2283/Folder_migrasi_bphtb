@@ -3188,8 +3188,8 @@ async function gotoform(nobooking) {
                                                 <i class="fas fa-edit"></i>
                                                 <label for="lainnya">Keterangan Tambahan</label>
                                             </div>
-                                            <textarea id="lainnya" name="lainnya" rows="3" 
-                                                      class="keterangan-textarea elegant-textarea">${formData.lainnya || ''}</textarea>
+                                        <textarea id="lainnya" name="lainnya" rows="3" 
+                                                      class="keterangan-textarea elegant-textarea">${formData.keterangan || ''}</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -3525,7 +3525,7 @@ function generateFormHTML(data) {
                                         <i class="fas fa-edit"></i>
                                         <label for="lainnya">Keterangan Tambahan</label>
                                     </div>
-                                        <textarea id="lainnya" name="lainnya" rows="3" class="keterangan-textarea elegant-textarea">${data.lainnya || ''}</textarea>
+                                        <textarea id="lainnya" name="lainnya" rows="3" class="keterangan-textarea elegant-textarea">${data.keterangan || ''}</textarea>
                                 </div>
                             </div>
                         </div>
