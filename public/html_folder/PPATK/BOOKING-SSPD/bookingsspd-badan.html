@@ -821,6 +821,10 @@
 
 <!-- Universal Alert System -->
 <script src="../../../design-n-script/script_backend/universal-alert.js"></script>
+
+<!-- 🔔 Enhanced Notification System with Sound -->
+<script src="../../../design-n-script/script-backend/notification-system.js"></script>
+
 <script>
   // Initialize Universal Alert System when DOM is ready
   document.addEventListener('DOMContentLoaded', function() {
@@ -829,7 +833,48 @@
     } else {
       console.warn('Universal Alert System failed to load');
     }
+    
+    // Initialize Notification System
+    if (window.notificationSystem) {
+      console.log('🔔 Notification System initialized with sound alerts');
+      
+      // Add notification controls to the page
+      addNotificationControls();
+    } else {
+      console.warn('🔔 Notification System failed to load');
+    }
   });
+  
+  function addNotificationControls() {
+    // Add notification toggle button to the page
+    const controlsContainer = document.querySelector('.table-controls');
+    if (controlsContainer) {
+      const soundToggleBtn = document.createElement('button');
+      soundToggleBtn.id = 'notification-sound-toggle';
+      soundToggleBtn.innerHTML = '🔊';
+      soundToggleBtn.title = 'Toggle notification sound';
+      soundToggleBtn.style.cssText = `
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+      `;
+      
+      soundToggleBtn.addEventListener('click', () => {
+        if (window.notificationSystem) {
+          const soundEnabled = window.notificationSystem.toggleSound();
+          soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+          soundToggleBtn.title = soundEnabled ? 'Disable notification sound' : 'Enable notification sound';
+        }
+      });
+      
+      controlsContainer.appendChild(soundToggleBtn);
+    }
+  }
 </script>
 </body>
 </html>

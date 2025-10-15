@@ -2250,16 +2250,12 @@ async function sendToLtb(nobooking) {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 detik timeout
 
-            const response = await fetch('/api/ppatk/ltb-process', {
+            // ✅ UPDATED: Use send-now endpoint instead of old ltb-process
+            const response = await fetch(`/api/ppatk/send-now?nobooking=${encodeURIComponent(nobooking)}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    nobooking: nobooking,
-                    trackstatus: 'Diolah',
-                    userid: sessionStorage.getItem('userid') || localStorage.getItem('userid'),
-                    nama: sessionStorage.getItem('nama') || localStorage.getItem('nama')
-                }),
+                body: JSON.stringify({ nobooking }),
                 signal: controller.signal
             });
 
