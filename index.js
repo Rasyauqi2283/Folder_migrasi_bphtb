@@ -433,6 +433,15 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
+    // Ambil nama user bank yang melakukan approve/reject
+    let namaPengecek = null;
+    if (verifiedByUserid) {
+      const userQuery = await client.query('SELECT nama FROM a_2_verified_users WHERE userid = $1', [verifiedByUserid]);
+      namaPengecek = userQuery.rows.length > 0 ? userQuery.rows[0].nama : null;
+      console.log('🏦 [BANK] Nama pengecek:', namaPengecek, 'dari userid:', verifiedByUserid);
+    }
+    
     // ambil data sumber untuk melengkapi jika belum ada
     const src = await client.query(
       `SELECT p.userid, p2.bphtb_yangtelah_dibayar, p4.nomor_bukti_pembayaran, p4.tanggal_perolehan, p4.tanggal_pembayaran
@@ -450,19 +459,20 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
                 SET status_verifikasi = $1::varchar,
                     catatan_bank = $2,
                     verified_by = $3,
+                    nama_pengecek = $4,
                     verified_at = NOW(),
-                    bphtb_yangtelah_dibayar = COALESCE($4, bphtb_yangtelah_dibayar),
-                    nomor_bukti_pembayaran = COALESCE($5, nomor_bukti_pembayaran),
-                    tanggal_perolehan = COALESCE($6, tanggal_perolehan),
-                    tanggal_pembayaran = COALESCE($7, tanggal_pembayaran),
-                    no_registrasi = COALESCE($8, no_registrasi),
+                    bphtb_yangtelah_dibayar = COALESCE($5, bphtb_yangtelah_dibayar),
+                    nomor_bukti_pembayaran = COALESCE($6, nomor_bukti_pembayaran),
+                    tanggal_perolehan = COALESCE($7, tanggal_perolehan),
+                    tanggal_pembayaran = COALESCE($8, tanggal_pembayaran),
+                    no_registrasi = COALESCE($9, no_registrasi),
                     status_dibank = CASE 
                                     WHEN $1::varchar IN ('Disetujui','Ditolak') 
                                         THEN 'Tercheck' 
                                     ELSE COALESCE(status_dibank,'Dicheck') 
                                     END
-                WHERE nobooking = $9`,
-        [statusVerifikasi, catatan || null, verifiedByUserid || null,
+                WHERE nobooking = $10`,
+        [statusVerifikasi, catatan || null, verifiedByUserid || null, namaPengecek,
          s.bphtb_yangtelah_dibayar || null, s.nomor_bukti_pembayaran || null, s.tanggal_perolehan || null, s.tanggal_pembayaran || null,
          noRegistrasi || null, nobooking]
       );
@@ -472,10 +482,10 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
           `INSERT INTO bank_1_cek_hasil_transaksi (
              nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran,
              tanggal_perolehan, tanggal_pembayaran, status_verifikasi, catatan_bank,
-             verified_by, verified_at, no_registrasi, status_dibank
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,'Dicheck')`,
+             verified_by, nama_pengecek, verified_at, no_registrasi, status_dibank
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,'Dicheck')`,
           [nobooking, s.userid || null, s.bphtb_yangtelah_dibayar || null, s.nomor_bukti_pembayaran || null,
-           s.tanggal_perolehan || null, s.tanggal_pembayaran || null, statusVerifikasi, catatan || null, verifiedByUserid || null,
+           s.tanggal_perolehan || null, s.tanggal_pembayaran || null, statusVerifikasi, catatan || null, verifiedByUserid || null, namaPengecek,
            noRegistrasi || null]
         );
       } else {
@@ -483,10 +493,10 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
           `INSERT INTO bank_1_cek_hasil_transaksi (
              nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran,
              tanggal_perolehan, tanggal_pembayaran, status_verifikasi, catatan_bank,
-             verified_by, verified_at, no_registrasi, status_dibank
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),$10,'Tercheck')`,
+             verified_by, nama_pengecek, verified_at, no_registrasi, status_dibank
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),$11,'Tercheck')`,
           [nobooking, s.userid || null, s.bphtb_yangtelah_dibayar || null, s.nomor_bukti_pembayaran || null,
-           s.tanggal_perolehan || null, s.tanggal_pembayaran || null, statusVerifikasi, catatan || null, verifiedByUserid || null,
+           s.tanggal_perolehan || null, s.tanggal_pembayaran || null, statusVerifikasi, catatan || null, verifiedByUserid || null, namaPengecek,
            noRegistrasi || null]
         );
       }
@@ -1580,10 +1590,24 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
                 keterangandihitungSendiri = $5,
                 isiketeranganlainnya = $6,
                 persetujuan = TRUE,
-                pemberi_persetujuan = $7
-            WHERE nobooking = $8
+                pemberi_persetujuan = $7,
+                tanda_tangan_path = $8,
+                ttd_peneliti_mime = $9
+            WHERE nobooking = $10
             RETURNING *;
         `;
+
+        // Ambil tanda tangan path dari a_2_verified_users
+        const tandaTanganQuery = await client.query(
+            'SELECT tanda_tangan_path, tanda_tangan_mime FROM a_2_verified_users WHERE userid = $1',
+            [pemberi_persetujuan]
+        );
+        
+        const tandaTanganData = tandaTanganQuery.rows.length > 0 ? tandaTanganQuery.rows[0] : {};
+        const tandaTanganPath = tandaTanganData.tanda_tangan_path || null;
+        const ttdMime = tandaTanganData.tanda_tangan_mime || 'image/png';
+
+        console.log('[TANDA_TANGAN] Path:', tandaTanganPath, 'MIME:', ttdMime);
 
         const result = await client.query(updateQuery, [
             pemilihan,
@@ -1593,6 +1617,8 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
             keterangandihitungSendiri || null,
             isiketeranganlainnya || null,
             pemberi_persetujuan, // From session - always present
+            tandaTanganPath, // tanda_tangan_path dari a_2_verified_users
+            ttdMime, // ttd_peneliti_mime dari a_2_verified_users
             nobooking
         ]);
 
@@ -1640,6 +1666,39 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
 
     try {
         // 0) Validasi session dan role
+        
+        // 0.1) Validasi data p_1_verifikasi sudah lengkap sebelum transfer ke paraf
+        const verifikasiCheck = await pool.query(`
+            SELECT pemilihan, persetujuan, pemberi_persetujuan, tanda_tangan_path, ttd_peneliti_mime
+            FROM p_1_verifikasi 
+            WHERE nobooking = $1
+        `, [nobooking]);
+        
+        if (verifikasiCheck.rows.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Data verifikasi tidak ditemukan. Silakan lakukan verifikasi terlebih dahulu.' 
+            });
+        }
+        
+        const verifikasiData = verifikasiCheck.rows[0];
+        const missingFields = [];
+        
+        if (!verifikasiData.pemilihan) missingFields.push('pemilihan');
+        if (!verifikasiData.persetujuan) missingFields.push('persetujuan');
+        if (!verifikasiData.pemberi_persetujuan) missingFields.push('pemberi_persetujuan');
+        if (!verifikasiData.tanda_tangan_path) missingFields.push('tanda_tangan_path');
+        if (!verifikasiData.ttd_peneliti_mime) missingFields.push('ttd_peneliti_mime');
+        
+        if (missingFields.length > 0) {
+            console.log('❌ [PARAF VALIDATION] Missing fields:', missingFields);
+            return res.status(400).json({ 
+                success: false, 
+                message: `Data verifikasi belum lengkap. Field yang kosong: ${missingFields.join(', ')}. Silakan simpan verifikasi terlebih dahulu.` 
+            });
+        }
+        
+        console.log('✅ [PARAF VALIDATION] All verification data is complete:', verifikasiData);
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Anda harus login terlebih dahulu' });
         }

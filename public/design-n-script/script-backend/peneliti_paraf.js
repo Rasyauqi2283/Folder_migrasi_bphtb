@@ -291,6 +291,8 @@ function generateDropdownContent(item) {
             <div class="document-info-section">
                 <p><strong>No. Booking:</strong> ${item.nobooking || 'N/A'}</p>
                 <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+                <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
                 ${pesan1}
                 ${pesan2}
             </div>
@@ -298,28 +300,23 @@ function generateDropdownContent(item) {
             <!-- Signature Section -->
             ${hasSignature ? `
                 <div class="signature-section">
-                    <div class="form-check">
-                        <input class="form-check-input" 
-                               type="radio" 
-                               name="ParafVerif-${item.nobooking}" 
-                               id="approve-${item.nobooking}"
-                               value="approve" required>
-                        <label class="form-check-label" for="approve-${item.nobooking}">
+                    <div class="form-group">
+                        <label>
+                            <input type="radio" name="ParafVerif-${item.nobooking}" value="approve" required>
                             Setujui Dokumen
                         </label>
                     </div>
-                    <div class="signature-preview mt-2">
-                        <p class="mb-1"><small>Tanda Tangan Terverifikasi:</small></p>
+                    <div class="signature-preview">
+                        <p>Tanda Tangan Terverifikasi:</p>
                         <img src="${item.tanda_tangan_path}"
                              alt="Tanda Tangan Peneliti"
-                             class="img-thumbnail signature-image"
-                             style="max-height: 100px;"
+                             class="signature-image"
                              onerror="this.onerror=null;this.src='/assets/img/signature-placeholder.png'">
                     </div>
                 </div>
             ` : `
-                <div class="alert alert-warning py-2">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
                     Tidak dapat menyetujui - tanda tangan belum diunggah
                 </div>
             `}

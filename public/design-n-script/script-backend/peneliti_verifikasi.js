@@ -159,6 +159,8 @@ async function loadTableDataPenelitiV() {
                             <!-- Document Info Section -->
                             <div class="document-info-section">
                                 <p><strong>No. Registrasi:</strong> ${item.nobooking || 'N/A'}</p>
+                                <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                                <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
                                 ${pesan1}
                                 ${pesan2}
                             </div>
@@ -172,7 +174,7 @@ async function loadTableDataPenelitiV() {
                                         </label>
                                         <div class="signature-preview">
                                             <p>Tanda Tangan Saat Ini:</p>
-                                            <img src="${item.peneliti_tanda_tangan_path}"  // Langsung gunakan path dari API
+                                            <img src="${item.peneliti_tanda_tangan_path}"
                                                 alt="Tanda Tangan" 
                                                 class="signature-image"
                                                 onerror="this.style.display='none'">
@@ -181,84 +183,109 @@ async function loadTableDataPenelitiV() {
                                 </div>
                             ` : `
                                 <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
                                     Tidak dapat memberikan persetujuan - tanda tangan belum diunggah
                                 </div>
                                 <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
                             `}
 
-                        <!-- Calculation Form Section -->
-                        <div class="calculation-section">
-                            <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
-                            ${item.pemilihan ? `
-                                <div class="form-group">
-                                    <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
-                                    <label>Penghitungan wajib pajak</label>
-                                </div>
-                            <div class="form-group">
-                                <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
-                                <label>STPD kurang bayar</label>
-                                <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
-                                    <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
-                                    <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
-                                </div>
+                            <!-- Calculation Form Section -->
+                            <div class="calculation-section">
+                                <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
+                                ${item.pemilihan ? `
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
+                                            Penghitungan wajib pajak
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
+                                            STPD kurang bayar
+                                        </label>
+                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
+                                            <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
+                                            <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
+                                            Pengurangan dihitung sendiri
+                                        </label>
+                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
+                                            <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
+                                            <span>%</span>
+                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
+                                            Lainnya
+                                        </label>
+                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
+                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
+                                            Penghitungan wajib pajak
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
+                                            STPD kurang bayar
+                                        </label>
+                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
+                                            <input type="text" class="nomorstpd" name="nomorstpd-${item.nobooking}" placeholder="Nomor STPD">
+                                            <input type="date" class="tanggalstpd" name="tanggalstpd-${item.nobooking}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
+                                            Pengurangan dihitung sendiri
+                                        </label>
+                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
+                                            <input type="number" class="angkapersen" name="angkapersen-${item.nobooking}" placeholder="0-100" min="0" max="100" step="0.01">
+                                            <span>%</span>
+                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri-${item.nobooking}" placeholder="Berdasarkan...">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
+                                            Lainnya
+                                        </label>
+                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
+                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya-${item.nobooking}" placeholder="Isikan disini...">
+                                        </div>
+                                    </div>
+                                `}
                             </div>
-                            <div class="form-group">
-                                <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
-                                <label>Pengurangan dihitung sendiri</label>
-                                <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
-                                    <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
-                                    <span>%</span>
-                                    <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
-                                <label>Lainnya</label>
-                                <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
-                                    <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
-                                </div>
-                            </div>
-                        ` : `
-                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
-                            <label>Penghitungan wajib pajak</label>
-                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
-                            <label>STPD kurang bayar</label>
-                            <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
-                                <input type="text" class="nomorstpd" name="nomorstpd-${item.nobooking}" placeholder="Nomor STPD">
-                                <input type="date" class="tanggalstpd" name="tanggalstpd-${item.nobooking}">
-                            </div>
-                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
-                            <label>Pengurangan dihitung sendiri</label>
-                            <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
-                                <input type="number" class="angkapersen" name="angkapersen-${item.nobooking}" placeholder="0-100" min="0" max="100" step="0.01">
-                                <span>%</span>
-                                <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri-${item.nobooking}" placeholder="Berdasarkan...">
-                            </div>
-                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
-                            <label>Lainnya</label>
-                            <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
-                                <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya-${item.nobooking}" placeholder="Isikan disini...">
-                            </div>
-                        `}
-                        </div>
 
-                        <!-- Action Button -->
-                        <div class="action-buttons">
-                            <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
-                                <span class="btn-text">Simpan</span>
-                                <span class="spinner" hidden>
-                                    <i class="fa fa-spinner fa-spin"></i>
-                                </span>
-                            </button>
-                        </div>
-
-                        <!-- Document Links Section -->
-                        <div class="document-links-section">
-                            <h6 class="document-links-title">Dokumen Terkait:</h6>
-                            <div class="document-links-list">
-                                ${generateDocumentLinks(item)}
+                            <!-- Action Button -->
+                            <div class="action-buttons">
+                                <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
+                                    <span class="btn-text">Simpan</span>
+                                    <span class="spinner" hidden>
+                                        <i class="fa fa-spinner fa-spin"></i>
+                                    </span>
+                                </button>
                             </div>
-                        </div>
+
+                            <!-- Document Links Section -->
+                            <div class="document-links-section">
+                                <h6 class="document-links-title">Dokumen Terkait:</h6>
+                                <div class="document-links-list">
+                                    ${generateDocumentLinks(item)}
+                                </div>
+                            </div>
                         </div>
                     `;
                     

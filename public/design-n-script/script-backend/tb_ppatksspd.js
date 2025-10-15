@@ -93,6 +93,8 @@ async function loadTableDataLTB() {
                         <div class="document-info-section">
                             <p><strong>No. Booking:</strong> ${item.nobooking || 'N/A'}</p>
                             <p><strong>Status:</strong> ${item.status || 'N/A'}</p>
+                            <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                            <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
                         </div>
 
                         <!-- Document Links Section -->

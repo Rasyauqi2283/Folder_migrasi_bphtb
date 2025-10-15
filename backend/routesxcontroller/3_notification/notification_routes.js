@@ -22,6 +22,77 @@ async function resolveUserId(userIdRaw) {
     }
 }
 
+// GET /unread - Get unread notifications for current user
+router.get('/unread', async (req, res) => {
+    try {
+        // Get user from session
+        const userIdRaw = req.session?.user?.userid || req.session?.user?.id;
+        const userDivisi = req.session?.user?.divisi;
+        
+        if (!userIdRaw) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'Unauthorized - No session found' 
+            });
+        }
+
+        const userIdResolved = await resolveUserId(userIdRaw);
+        if (!userIdResolved) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid user ID' 
+            });
+        }
+
+        // Get unread notifications
+        const unreadNotifications = await notificationModel.getUnreadNotifications(userIdResolved);
+        
+        // Enrich with metadata
+        const enriched = unreadNotifications.map(n => {
+            const title = String(n.title || '');
+            const message = String(n.message || '');
+            const text = (title + ' ' + message).toLowerCase();
+            
+            let _type = '';
+            if (/(paraf|kasie)/.test(text)) _type = 'paraf_kasie';
+            else if (/(siap dicek|verifikasi)/.test(text)) _type = 'verifikasi';
+            
+            const isPeneliti = String(userDivisi || '').toLowerCase() === 'peneliti';
+            let _badge_label = '';
+            let _badge_class = '';
+            let _target_href = '';
+            
+            if (isPeneliti) {
+                if (_type === 'paraf_kasie') {
+                    _badge_label = 'Paraf Kasie';
+                    _badge_class = 'notif-badge--paraf';
+                    _target_href = '/Peneliti/ParafKasie-sspd/paraf-kasie.html';
+                } else if (_type === 'verifikasi') {
+                    _badge_label = 'Verifikasi';
+                    _badge_class = 'notif-badge--verifikasi';
+                    _target_href = '/Peneliti/Verifikasi_sspd/verifikasi-data.html';
+                }
+            }
+            
+            return { ...n, _type, _badge_label, _badge_class, _target_href };
+        });
+
+        res.json({
+            success: true,
+            notifications: enriched,
+            total_unread: enriched.length
+        });
+
+    } catch (error) {
+        console.error('Get unread notifications error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error',
+            message: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
 // Long polling endpoint
 router.get('/poll', async (req, res) => {
     try {
@@ -228,9 +299,9 @@ router.get('/history', async (req, res) => {
         
         const query = `
             SELECT n.*, b.nobooking, b.namawajibpajak 
-            FROM sys_notifications n
-            JOIN pat_1_bookingsspd b ON n.booking_id = b.bookingid
-            WHERE n.recipient_id = $1
+            FROM notifications n
+            LEFT JOIN pat_1_bookingsspd b ON n.nobooking = b.nobooking
+            WHERE n.userid = $1
             ORDER BY n.created_at DESC
             LIMIT $2 OFFSET $3
         `;

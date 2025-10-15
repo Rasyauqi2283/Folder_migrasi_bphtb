@@ -4,17 +4,18 @@ import { pool } from '../../../db.js';
 export const createNotification = async (notificationData) => {
     try {
     const query = `
-        INSERT INTO sys_notifications 
-        (recipient_id, recipient_divisi, title, message, booking_id)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO notifications 
+        (userid, nobooking, title, message, type, is_read)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
     `;
     const values = [
-        notificationData.recipient_id,
-        notificationData.recipient_divisi,
+        notificationData.userid,
+        notificationData.nobooking,
         notificationData.title,
         notificationData.message,
-        notificationData.booking_id
+        notificationData.type || 'info',
+        notificationData.is_read || false
     ];
     
     const result = await pool.query(query, values);
@@ -28,9 +29,9 @@ export const createNotification = async (notificationData) => {
 export const getUnreadNotifications = async (userId) => {
     const query = `
         SELECT n.*, b.nobooking, b.namawajibpajak 
-        FROM sys_notifications n
-        JOIN pat_1_bookingsspd b ON n.booking_id = b.bookingid
-        WHERE n.recipient_id = $1 AND n.is_read = FALSE
+        FROM notifications n
+        LEFT JOIN pat_1_bookingsspd b ON n.nobooking = b.nobooking
+        WHERE n.userid = $1 AND n.is_read = FALSE
         ORDER BY n.created_at DESC
         LIMIT 10
     `;
@@ -40,7 +41,7 @@ export const getUnreadNotifications = async (userId) => {
 
 export const markAsRead = async (notificationId) => {
     const query = `
-        UPDATE sys_notifications 
+        UPDATE notifications 
         SET is_read = TRUE 
         WHERE id = $1
     `;
@@ -51,9 +52,9 @@ export const markAsRead = async (notificationId) => {
 export const markAsReadByRecipientAndBooking = async (recipientId, bookingId) => {
     try {
         const query = `
-            UPDATE sys_notifications
+            UPDATE notifications
             SET is_read = TRUE
-            WHERE recipient_id = $1 AND booking_id = $2 AND is_read = FALSE
+            WHERE userid = $1 AND nobooking = $2 AND is_read = FALSE
         `;
         await pool.query(query, [recipientId, bookingId]);
         return true;
@@ -66,12 +67,12 @@ export const markAsReadByRecipientAndBooking = async (recipientId, bookingId) =>
 export const markAsReadByDivisiAndBooking = async (divisi, bookingId) => {
     try {
         const query = `
-            UPDATE sys_notifications n
+            UPDATE notifications n
             SET is_read = TRUE
-            WHERE n.booking_id = $2
+            WHERE n.nobooking = $2
               AND n.is_read = FALSE
-              AND n.recipient_id IN (
-                  SELECT id FROM a_2_verified_users WHERE lower(divisi) = lower($1)
+              AND n.userid IN (
+                  SELECT userid FROM a_2_verified_users WHERE lower(divisi) = lower($1)
               )
         `;
         await pool.query(query, [divisi, bookingId]);
