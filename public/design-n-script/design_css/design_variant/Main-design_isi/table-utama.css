@@ -24,6 +24,31 @@
   width: calc(100vw - 250px);
 }
 
+/* Ensure main content uses full width */
+.main-content {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Remove any container constraints that might limit width */
+.data-masuk {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure body and html don't have margins that could affect layout */
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
 /* ===== CARD-BASED LAYOUT FOR PENELITI VERIFIKASI ===== */
 /* Modern Card Design - DARK THEME */
 .verification-cards-container {
@@ -33,23 +58,46 @@
   padding: 20px;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   min-height: calc(100vh);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Desktop Layout - 3 columns grid */
+/* Desktop Layout - 3 columns grid - FULL WIDTH */
 @media (min-width: 1024px) {
   .verification-cards-container {
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    padding: 24px;
+    gap: 16px;
+    padding: 20px;
+    width: 100%;
+    margin: 0;
+    max-width: none;
+    padding-right: 20px; /* Ensure right padding touches edge */
   }
   
   .verification-card {
     min-height: 220px;
+    width: 100%;
+    box-sizing: border-box;
   }
   
   .card-content {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+}
+
+/* Extra wide screens - ensure cards touch right edge */
+@media (min-width: 1600px) {
+  .verification-cards-container {
+    padding-right: 24px;
+  }
+}
+
+/* Large Desktop Layout - Better spacing for wide screens */
+@media (min-width: 1440px) {
+  .verification-cards-container {
+    gap: 20px;
+    padding: 24px;
   }
 }
 
@@ -98,6 +146,8 @@
   padding: 20px;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   border-top: 1px solid #374151;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .pagination-info {
