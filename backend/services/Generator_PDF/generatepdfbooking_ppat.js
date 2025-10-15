@@ -357,13 +357,31 @@ export default function registerGeneratePdfBooking(app, pool) {
                 };
 
                 const wpSignaturePath = data.path_ttd_wp;
-                const wpAbs = toAbsolutePublicPath(wpSignaturePath);
                 
-                console.log('🔍 [PDF] WP Signature debug:', {
+                console.log('🔍 [PDF] WP Signature debug - RAW DATA:', {
                     userid: userid,
-                    path_ttd_wp: wpSignaturePath,
+                    path_ttd_wp: wpSignaturePath
+                });
+                
+                // Handle different path formats for WP signature
+                let wpAbs = null;
+                if (wpSignaturePath) {
+                    // If path starts with /, it's absolute path from root
+                    if (wpSignaturePath.startsWith('/')) {
+                        // Convert to absolute path by removing leading slash and joining with public
+                        const relativePath = wpSignaturePath.substring(1);
+                        wpAbs = path.resolve(process.cwd(), 'public', relativePath);
+                    } else {
+                        // Use existing function for relative paths
+                        wpAbs = toAbsolutePublicPath(wpSignaturePath);
+                    }
+                }
+                
+                console.log('🔍 [PDF] WP Signature debug - PROCESSED:', {
+                    originalPath: wpSignaturePath,
                     absolutePath: wpAbs,
-                    fileExists: wpAbs ? fs.existsSync(wpAbs) : false
+                    fileExists: wpAbs ? fs.existsSync(wpAbs) : false,
+                    directoryExists: wpAbs ? fs.existsSync(path.dirname(wpAbs)) : false
                 });
                 
                 if (wpAbs && fs.existsSync(wpAbs)) {
@@ -405,15 +423,43 @@ export default function registerGeneratePdfBooking(app, pool) {
             
                 // Prioritas: gunakan tanda_tangan_path dari user profile, fallback ke pat_6_sign
                 const signaturePath = data.tanda_tangan_path || data.path_ttd_ppatk;
-                const ppatAbs = toAbsolutePublicPath(signaturePath);
                 
-                console.log('🔍 [PDF] Signature debug:', {
+                console.log('🔍 [PDF] Signature debug - RAW DATA:', {
                     userid: userid,
                     tanda_tangan_path: data.tanda_tangan_path,
                     path_ttd_ppatk: data.path_ttd_ppatk,
-                    finalPath: signaturePath,
+                    finalPath: signaturePath
+                });
+                
+                // Handle different path formats
+                let ppatAbs = null;
+                if (signaturePath) {
+                    // If path starts with /, it's absolute path from root
+                    if (signaturePath.startsWith('/')) {
+                        // Convert to absolute path by removing leading slash and joining with public
+                        const relativePath = signaturePath.substring(1);
+                        ppatAbs = path.resolve(process.cwd(), 'public', relativePath);
+                        
+                        // Fix for incorrect folder name in database
+                        // Database has: /penting_F_simpan/folderttd/folderttd_ppatk/ttd-PAT02.png
+                        // Actual path: /penting_F_simpan/folderttd/ppat_sign/ttd-PAT02.png
+                        if (!fs.existsSync(ppatAbs) && signaturePath.includes('folderttd_ppatk')) {
+                            const correctedPath = signaturePath.replace('folderttd_ppatk', 'ppat_sign');
+                            const correctedRelativePath = correctedPath.substring(1);
+                            ppatAbs = path.resolve(process.cwd(), 'public', correctedRelativePath);
+                            console.log('🔧 [PDF] Corrected PPAT signature path:', correctedPath);
+                        }
+                    } else {
+                        // Use existing function for relative paths
+                        ppatAbs = toAbsolutePublicPath(signaturePath);
+                    }
+                }
+                
+                console.log('🔍 [PDF] Signature debug - PROCESSED:', {
+                    originalPath: signaturePath,
                     absolutePath: ppatAbs,
-                    fileExists: ppatAbs ? fs.existsSync(ppatAbs) : false
+                    fileExists: ppatAbs ? fs.existsSync(ppatAbs) : false,
+                    directoryExists: ppatAbs ? fs.existsSync(path.dirname(ppatAbs)) : false
                 });
                 
                 if (ppatAbs && fs.existsSync(ppatAbs)) {
@@ -727,7 +773,40 @@ try {
         return path.resolve(process.cwd(), 'public', normalized);
     };
     
-    const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+    console.log('🔍 [PDF] Pemohon Signature debug - RAW DATA:', {
+        path_ttd_ppatk: data.path_ttd_ppatk
+    });
+    
+    // Handle different path formats for Pemohon signature
+    let ppatAbs = null;
+    if (data.path_ttd_ppatk) {
+        // If path starts with /, it's absolute path from root
+        if (data.path_ttd_ppatk.startsWith('/')) {
+            // Convert to absolute path by removing leading slash and joining with public
+            const relativePath = data.path_ttd_ppatk.substring(1);
+            ppatAbs = path.resolve(process.cwd(), 'public', relativePath);
+            
+            // Fix for incorrect folder name in database
+            // Database has: /penting_F_simpan/folderttd/folderttd_ppatk/ttd-PAT02.png
+            // Actual path: /penting_F_simpan/folderttd/ppat_sign/ttd-PAT02.png
+            if (!fs.existsSync(ppatAbs) && data.path_ttd_ppatk.includes('folderttd_ppatk')) {
+                const correctedPath = data.path_ttd_ppatk.replace('folderttd_ppatk', 'ppat_sign');
+                const correctedRelativePath = correctedPath.substring(1);
+                ppatAbs = path.resolve(process.cwd(), 'public', correctedRelativePath);
+                console.log('🔧 [PDF] Corrected Pemohon signature path:', correctedPath);
+            }
+        } else {
+            // Use existing function for relative paths
+            ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+        }
+    }
+    
+    console.log('🔍 [PDF] Pemohon Signature debug - PROCESSED:', {
+        originalPath: data.path_ttd_ppatk,
+        absolutePath: ppatAbs,
+        fileExists: ppatAbs ? fs.existsSync(ppatAbs) : false,
+        directoryExists: ppatAbs ? fs.existsSync(path.dirname(ppatAbs)) : false
+    });
     
     if (ppatAbs && fs.existsSync(ppatAbs)) {
         // Use medium size (400x400) for signature
