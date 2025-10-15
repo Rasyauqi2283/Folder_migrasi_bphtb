@@ -1,8 +1,9 @@
 let selectedNoBooking = null;
-// Fungsi UTAMA untuk memuat data ke dalam tabel
+
+// Fungsi UTAMA untuk memuat data ke dalam card layout
 async function loadTableDataPenelitiV() {
     try {
-        console.log('🔍 [FRONTEND] ===== PENELITI VERIFIKASI LOADING =====');
+        console.log('🔍 [FRONTEND] ===== PENELITI VERIFIKASI LOADING (CARD LAYOUT) =====');
         console.log('🔍 [FRONTEND] Timestamp:', new Date().toISOString());
         console.log('🔍 [FRONTEND] URL:', window.location.href);
         
@@ -44,7 +45,6 @@ async function loadTableDataPenelitiV() {
                 headers: Object.fromEntries(response.headers.entries())
             });
 
-            // Jika 404, perlakukan sebagai tidak ada data (bukan error)
             if (!response.ok && response.status !== 404) {
                 console.log('❌ [FRONTEND] API Error Response:', {
                     status: response.status,
@@ -67,7 +67,6 @@ async function loadTableDataPenelitiV() {
         let data;
         try {
             if (response.status === 404) {
-                // Graceful empty state
                 data = { success: true, data: [] };
             } else {
                 data = await response.json();
@@ -89,22 +88,24 @@ async function loadTableDataPenelitiV() {
             throw new Error(`Gagal memproses data: ${parseError.message}`);
         }
 
-        // DOM manipulation
+        // DOM manipulation - Create card-based layout
         const tbody = document.querySelector('.data-masuk');
         if (!tbody) {
             throw new Error('Target table body element not found');
         }
 
-        // Clear existing content
+        // Clear existing content and create cards container
         tbody.innerHTML = '';
+        
+        // Create cards container
+        const cardsContainer = document.createElement('div');
+        cardsContainer.className = 'verification-cards-container';
+        tbody.appendChild(cardsContainer);
 
-        // Process each item
+        // Process each item and create cards
         data.data.forEach(item => {
             try {
-                // Validate required fields (relaxed)
-                const requiredFields = ['no_registrasi','nobooking', 'noppbb', 'userid', 
-                                      'namawajibpajak', 'namapemilikobjekpajak', 'tanggal_terima', 'creator_special_field', 'jenis_wajib_pajak'];
-                // Only enforce truly critical fields so rows still render
+                // Validate required fields
                 const criticalFields = ['no_registrasi','nobooking'];
                 const missingCritical = criticalFields.filter(field => !item[field]);
                 if (missingCritical.length > 0) {
@@ -112,28 +113,68 @@ async function loadTableDataPenelitiV() {
                     return;
                 }
 
-                // Create table row
-                const row = tbody.insertRow();
+                // Create verification card
+                const card = document.createElement('div');
+                card.className = 'verification-card';
                 
-                // Add basic data cells
-                requiredFields.forEach((field, index) => {
-                    const cell = row.insertCell(index);
-                    const value = (item[field] === undefined || item[field] === null || item[field] === '') ? '-' : item[field];
-                    cell.textContent = value;
-                });
-
-                // Add action button
-                const sendCell = row.insertCell(9);
-                const sendButton = document.createElement('button');
-                sendButton.textContent = 'Kirim';
-                sendButton.classList.add('btn-kirim-document');
+                // Format data for display
+                const formatValue = (value) => {
+                    return (value === undefined || value === null || value === '' || value === '-') ? 'Belum diisi' : value;
+                };
                 
+                const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
+                
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
+                            <p class="secondary-info">${formatValue(item.nobooking)}</p>
+                        </div>
+                        <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
+                            <span>📤</span> Kirim
+                        </button>
+                    </div>
+                    
+                    <div class="card-content">
+                        <div class="info-item">
+                            <span class="info-label">NOP PBB</span>
+                            <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">User ID</span>
+                            <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Nama Wajib Pajak</span>
+                            <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Pemilik Objek</span>
+                            <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Special Field</span>
+                            <span class="info-value ${formatValue(item.creator_special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Jenis Wajib Pajak</span>
+                            <span class="info-value ${formatValue(item.jenis_wajib_pajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.jenis_wajib_pajak)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="tanggal-info">${formatValue(item.tanggal_terima)}</div>
+                        <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                    </div>
+                `;
+                
+                // Add event listener to send button
+                const sendButton = card.querySelector('.btn-kirim-prominent');
                 sendButton.addEventListener('click', async () => {
                     try {
                         const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
                         
                         if (confirmation) {
-                            // Hanya wajib: nobooking (opsional: no_registrasi)
                             if (!item || !item.nobooking) {
                                 throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
                             }
@@ -141,7 +182,8 @@ async function loadTableDataPenelitiV() {
                             const result = await sendToParafKasie(item);
                             if (result && result.success) {
                                 sendButton.disabled = true;
-                                sendButton.textContent = 'Data Terkirim';
+                                sendButton.innerHTML = '<span>✅</span> Terkirim';
+                                sendButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                                 showAlert('success', "Data berhasil dikirim ke peneliti paraf!");
                             } else {
@@ -157,220 +199,36 @@ async function loadTableDataPenelitiV() {
                     }
                 });
                 
-                sendCell.appendChild(sendButton);
-
-                // Create dropdown row - PRESERVED FROM ORIGINAL CODE
-                // data html akan tertampil menggunakan fungsi dropdown di dalam baris tabel
-                const dropdownRow = document.createElement('tr');
-                const dropdownContent = document.createElement('td');
-                dropdownContent.colSpan = 10;
-                dropdownContent.style.display = 'none';
-                
-                try {
-                    // Pesan status ringkas untuk kepegawaian
-                    const sudahSetuju = String(item.persetujuan||'').toLowerCase()==='true';
-                    const adaPemilihan = !!item.pemilihan; // tetap, karena pemilihan hanya ada di p_1_verifikasi
-                    const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
-                    // Tampilkan penandatangan berdasarkan paraf (p_3_clear_to_paraf.tanda_paraf_path -> a_2_verified_users)
-                    // Backend kini mengirim pc.tanda_paraf_path dan signer_userid
-                    const signerUser = item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
-                    
-                    // Cek apakah sudah ada tanda tangan/paraf - gunakan tanda_paraf_path atau peneliti_tanda_tangan_path
-                    const hasSignature = item.peneliti_tanda_tangan_path || item.signer_userid;
-                    
-                    // Debug logging
-                    console.log('🔍 [PENELITI-VERIF] Signature check for booking:', item.nobooking);
-                    console.log('🔍 [PENELITI-VERIF] - peneliti_tanda_tangan_path:', item.peneliti_tanda_tangan_path);
-                    console.log('🔍 [PENELITI-VERIF] - signer_userid:', item.signer_userid);
-                    console.log('🔍 [PENELITI-VERIF] - hasSignature:', hasSignature);
-                    console.log('🔍 [PENELITI-VERIF] - signerUser:', signerUser);
-                    
-                    const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
-                    dropdownContent.innerHTML = `
-                        <div class="dropdown-content-wrapper">
-                            <!-- Document Info Section -->
-                            <div class="document-info-section">
-                                <p><strong>No. Registrasi:</strong> ${item.nobooking || 'N/A'}</p>
-                                <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
-                                <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
-                                ${pesan1}
-                                ${pesan2}
-                            </div>
-
-                            <!-- Signature Section -->
-                            ${item.peneliti_tanda_tangan_path ? `
-                                <div class="signature-section">
-                                    <div class="form-group approval-section">
-                                        <label>
-                                            <input type="radio" name="ParafVerif-${item.nobooking}" value="ya" required> Setujui Paraf
-                                        </label>
-                                        <div class="signature-preview">
-                                            <p>Tanda Tangan Saat Ini:</p>
-                                            <img src="${item.peneliti_tanda_tangan_path}"
-                                                alt="Tanda Tangan" 
-                                                class="signature-image"
-                                                onerror="this.style.display='none'">
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : `
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    Tidak dapat memberikan persetujuan - tanda tangan belum diunggah
-                                </div>
-                                <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
-                            `}
-
-                            <!-- Calculation Form Section -->
-                            <div class="calculation-section">
-                                <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
-                                ${item.pemilihan ? `
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
-                                            Penghitungan wajib pajak
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
-                                            STPD kurang bayar
-                                        </label>
-                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
-                                            <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
-                                            <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
-                                            Pengurangan dihitung sendiri
-                                        </label>
-                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
-                                            <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
-                                            <span>%</span>
-                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
-                                            Lainnya
-                                        </label>
-                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
-                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
-                                        </div>
-                                    </div>
-                                ` : `
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
-                                            Penghitungan wajib pajak
-                                        </label>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
-                                            STPD kurang bayar
-                                        </label>
-                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
-                                            <input type="text" class="nomorstpd" name="nomorstpd-${item.nobooking}" placeholder="Nomor STPD">
-                                            <input type="date" class="tanggalstpd" name="tanggalstpd-${item.nobooking}">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
-                                            Pengurangan dihitung sendiri
-                                        </label>
-                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
-                                            <input type="number" class="angkapersen" name="angkapersen-${item.nobooking}" placeholder="0-100" min="0" max="100" step="0.01">
-                                            <span>%</span>
-                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri-${item.nobooking}" placeholder="Berdasarkan...">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>
-                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
-                                            Lainnya
-                                        </label>
-                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
-                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya-${item.nobooking}" placeholder="Isikan disini...">
-                                        </div>
-                                    </div>
-                                `}
-                            </div>
-
-                            <!-- Action Button -->
-                            <div class="action-buttons">
-                                <button type="button" class="btn-simpaninput" data-nobooking="${item.nobooking}" onclick="simpanData(this)">
-                                    <span class="btn-text">Simpan</span>
-                                    <span class="spinner" hidden>
-                                        <i class="fa fa-spinner fa-spin"></i>
-                                    </span>
-                                </button>
-                            </div>
-
-                            <!-- Document Links Section -->
-                            <div class="document-links-section">
-                                <h6 class="document-links-title">Dokumen Terkait:</h6>
-                                <div class="document-links-list">
-                                    ${generateDocumentLinks(item)}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                } catch (dropdownError) {
-                    console.error('Dropdown Creation Error:', dropdownError);
-                    dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
-                }
-
-                dropdownRow.appendChild(dropdownContent);
-                tbody.appendChild(dropdownRow);
-
-                // Row click handler for dropdown toggle
-                row.addEventListener('click', function() {
-                    try {
-                        selectedNoBooking = item.nobooking;
-                        console.log(`Selected No Booking: ${selectedNoBooking}`);
-    
-                        if (typeof enableViewDocumentButton === 'function') {
-                            enableViewDocumentButton(item.nobooking);
-                        }                    
-                        const isVisible = dropdownContent.style.display === 'table-cell';
-                        dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
-                        
-                        
-                        if (!isVisible) {
-                            let nextRow = row.nextElementSibling;
-                            while (nextRow) {
-                                nextRow.style.marginTop = '20px';
-                                nextRow = nextRow.nextElementSibling;
-                            }
-                        }
-                    } catch (clickError) {
-                        console.error('Row Click Handler Error:', clickError);
-                    }
-                });
+                cardsContainer.appendChild(card);
 
             } catch (itemError) {
                 console.error('Error processing item:', itemError);
-                // Create error row for failed items
-                const errorRow = tbody.insertRow();
-                const errorCell = errorRow.insertCell(0);
-                errorCell.colSpan = 10;
-                errorCell.textContent = `Gagal memuat data item: ${itemError.message}`;
-                errorCell.style.color = 'red';
+                // Create error card for failed items
+                const errorCard = document.createElement('div');
+                errorCard.className = 'verification-card';
+                errorCard.style.border = '1px solid #ef4444';
+                errorCard.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <h3 class="primary-info" style="color: #ef4444;">Error</h3>
+                            <p class="secondary-info">Gagal memuat data</p>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <p style="color: #ef4444;">${itemError.message}</p>
+                    </div>
+                `;
+                cardsContainer.appendChild(errorCard);
             }
         });
 
-        // Show empty state if no valid data
-        if (tbody.children.length === 0) {
-            const emptyRow = tbody.insertRow();
-            const emptyCell = emptyRow.insertCell(0);
-            emptyCell.colSpan = 10;
-            emptyCell.textContent = 'tidak ada data saat ini, 0 dari 0 data';
+        // Show success message
+        if (data.data.length > 0) {
+            console.log('✅ [FRONTEND] SUCCESS: Cards loaded successfully');
+            showAlert('success', `Berhasil memuat ${data.data.length} data verifikasi`);
+        } else {
+            console.log('⚠️ [FRONTEND] NO DATA: No verification data found');
+            showAlert('info', 'Tidak ada data verifikasi yang ditemukan');
         }
 
     } catch (mainError) {
@@ -382,486 +240,171 @@ async function loadTableDataPenelitiV() {
             userAgent: navigator.userAgent,
             url: window.location.href
         });
-        
-        // Show error to user
+
         const errorContainer = document.querySelector('.data-masuk') || document.body;
         errorContainer.innerHTML = `
-            <div class="error-message">
-                <h3>Terjadi Kesalahan</h3>
-                <p>${mainError.message}</p>
-                <button onclick="location.reload()">Coba Lagi</button>
+            <div class="error-message" style="
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+                border: 1px solid #ef4444;
+                border-radius: 12px;
+                padding: 24px;
+                margin: 20px;
+                color: #f3f4f6;
+                text-align: center;
+            ">
+                <h3 style="color: #ef4444; margin-bottom: 16px;">❌ Terjadi Kesalahan</h3>
+                <p style="margin-bottom: 20px;">${mainError.message}</p>
+                <button onclick="location.reload()" style="
+                    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">🔄 Coba Lagi</button>
             </div>
         `;
     }
 }
-// Menambahkan event listener untuk setiap baris dalam tabel
-document.querySelectorAll('#penelitiverifikasiTable tbody tr').forEach(row => {
-    row.addEventListener('click', function() {
-        // Mendapatkan nilai noBooking dari kolom pertama
-        selectedNoBooking = row.cells[0].textContent.trim();  // Kolom pertama adalah No. Booking
-        console.log(`No Booking yang dipilih: ${selectedNoBooking}`);  // Debugging
-    });
-});
+
+// Helper function to get user division
 function getUserDivisi() {
-    return localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
-}
-localStorage.setItem('divisi', 'Peneliti');
-// Atau
-sessionStorage.setItem('divisi', 'Peneliti');
-/// end fungsi utama
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-function enableViewDocumentButton(nobooking) {
-    // Temukan tombol "View Dokumen" dan aktifkan
-    const viewPdfButton = document.querySelector('.btn.viewpdf');
-    
-    // Jika tombol ditemukan, aktifkan dan set onclick dengan nobooking yang dipilih
-    if (viewPdfButton) {
-        viewPdfButton.disabled = false; // Pastikan tombol bisa diklik
-        viewPdfButton.onclick = () => viewDocument(nobooking); // Pasangkan nobooking yang dipilih
-    }
-}
-async function viewDocument(nobooking) {
-    // Pastikan nobooking tersedia
-    if (!nobooking) {
-        alert('No Booking tidak valid!');
-        return;
-    }
-    // Ambil userid dan nama dari session atau localStorage
-    const userid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
-    const nama = sessionStorage.getItem('nama') || localStorage.getItem('nama');
-    if (!userid || !nama) {
-        alert('User ID atau Nama tidak ditemukan.');
-        return;
-    }
-
     try {
-        const response = await fetch(`/api/getCreatorByBooking/${encodeURIComponent(nobooking)}`, { credentials: 'include' });
-        const data = await response.json();  // Mengonversi respons ke JSON
-        if (response.ok && data && data.userid) {
-            const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
-            // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
-
-            // Jika response sukses, buka PDF
-            window.open(pdfUrl, '_blank');
-        } else {
-            alert('Gagal memuat dokumen PDF.');
+        // Try to get from window object first
+        if (window.userDivisi && typeof window.userDivisi === 'string') {
+            return window.userDivisi;
         }
+        
+        // Try to get from session storage
+        const sessionDivisi = sessionStorage.getItem('userDivisi');
+        if (sessionDivisi && typeof sessionDivisi === 'string') {
+            return sessionDivisi;
+        }
+        
+        // Try to get from localStorage
+        const localDivisi = localStorage.getItem('userDivisi');
+        if (localDivisi && typeof localDivisi === 'string') {
+            return localDivisi;
+        }
+        
+        // Default fallback
+        return 'Peneliti';
     } catch (error) {
-        console.error('Error fetching the PDF:', error);
-        alert('Terjadi kesalahan saat mengambil dokumen PDF.');
+        console.warn('Error getting user division:', error);
+        return 'Peneliti';
     }
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////
-function resetSignatureForm() {
-    document.getElementById('signature_verif').value = '';
-    document.getElementById('preview').style.display = 'none';
-}//
-function previewImage(event, previewId) {
-    const file = event.target.files[0];
-    if (!file) return;
-    // Validasi tipe file
-    const validTypes = ['image/jpeg', 'image/png'];
-    if (!validTypes.includes(file.type)) {
-        showAlert('error', 'Hanya file JPG/PNG yang diperbolehkan!');
-        event.target.value = ''; // Reset input
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const preview = document.getElementById(previewId);
-        preview.src = e.target.result;
-        preview.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
-}
-// Helper functions
-function toggleLoading(show) {
-    const btn = document.getElementById('uploadttd');
-    const loadingIndicator = document.getElementById('loadingIndicator') || createLoadingIndicator();
-    if (show) {
-        btn.disabled = true;
-        loadingIndicator.style.display = 'inline-block';
-    } else {
-        btn.disabled = false;
-        loadingIndicator.style.display = 'none';
-    }
-}
-function createLoadingIndicator() {
-    const indicator = document.createElement('span');
-    indicator.id = 'loadingIndicator';
-    indicator.style.display = 'none';
-    indicator.innerHTML = ' &nbsp;<i class="fa fa-spinner fa-spin"></i>';
-    document.getElementById('uploadttd').appendChild(indicator);
-    return indicator;
-}
+
+// Helper function to show alerts
 function showAlert(type, message) {
-    // Ganti dengan library notifikasi atau custom alert Anda
-    alert(`${type.toUpperCase()}: ${message}`);
-}
-
-//
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-async function simpanData(buttonElement) {
-    const nobooking = buttonElement.dataset.nobooking;
-    if (!nobooking) {
-        alert("Data nobooking tidak valid!");
-        return;
-    }
-    const submitButton = buttonElement;
-    const btnText = submitButton.querySelector('.btn-text');
-    const spinner = submitButton.querySelector('.spinner');
-    btnText.hidden = true;
-    spinner.hidden = false;
-    submitButton.disabled = true;
-
     try {
-        console.log('Memproses No Booking:', nobooking);
+        // Create alert element
+        const alert = document.createElement('div');
+        alert.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 9999;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease;
+        `;
         
-        // 1) Check signature
-        const signatureCheck = await fetch('/api/v1/auth/peneliti/check-signature', { credentials: 'include' });
-        const { has_signature } = await signatureCheck.json();
-        if (!has_signature) {
-            throw new Error('Anda belum mengunggah tanda tangan di profil!');
-        }
-
-        // 2) Check persetujuan
-        const persetujuanVerif = document.querySelector(`input[name="ParafVerif-${nobooking}"]:checked`)?.value;
-        if (!persetujuanVerif) {
-            throw new Error('Harap pilih setujui agar dapat mengetahui dokumen telah di cek');
-        }
-        let userData;
-        try {
-            const userResponse = await fetch('/api/v1/auth/profile', { 
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            if (!userResponse.ok) {
-                throw new Error(`HTTP ${userResponse.status} - ${userResponse.statusText}`);
-            }
-            userData = await userResponse.json();
-            if (!userData?.userid) {
-                throw new Error('Data user tidak lengkap');
-            }
-        } catch (error) {
-            console.error('Error fetching user:', error);
-            throw new Error(`Gagal memuat profil: ${error.message}`);
-        }
-        if (userData.divisi !== 'Peneliti') {  // Ganti `divisi` -> `userData.divisi`
-            throw new Error('Hanya divisi Peneliti yang dapat menyetujui');
-        }
-        const tandaTanganResponse = await fetch(`/api/v1/auth/get-tanda-tangan?userid=${userData.userid}`, { credentials: 'include' });  // Ganti `userid` -> `userData.userid`
-        if (!tandaTanganResponse.ok) {
-            throw new Error('Gagal mengambil tanda tangan');
-        }
-
-        const blob = await tandaTanganResponse.blob();
-        const base64TandaTangan = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
-
-        // 6. Proses pilihan
-        let pemilihan = '';
-        let nomorstpd = null;
-        let tanggalstpd = null;
-        let angkapersen = null;
-        let keterangandihitungSendiri = null;
-        let isiketeranganlainnya = null;
-
-        const radioButtons = document.querySelectorAll(`input[name="pemilihan-${nobooking}"]`);
-        for (let radioButton of radioButtons) {
-            if (radioButton.checked) {
-                pemilihan = radioButton.value;
+        // Set background based on type
+        switch(type) {
+            case 'success':
+                alert.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                 break;
-            }
-        }
-
-        // Validasi berdasarkan pilihan
-        if (!pemilihan) {
-            throw new Error("Harap pilih salah satu opsi.");
-        }
-
-        if (pemilihan === 'stpd_kurangbayar') {
-            nomorstpd = document.querySelector(`input[name="nomorstpd-${nobooking}"]`)?.value || document.querySelector(`input[name="nomorstpd"]`)?.value;
-            tanggalstpd = document.querySelector(`input[name="tanggalstpd-${nobooking}"]`)?.value || document.querySelector(`input[name="tanggalstpd"]`)?.value;
-            if (!nomorstpd || !tanggalstpd) {
-                throw new Error("Harap isi nomor STPD dan tanggal STPD.");
-            }
-        } 
-        else if (pemilihan === 'dihitungsendiri') {
-            angkapersen = parseFloat(document.querySelector(`input[name="angkapersen-${nobooking}"]`)?.value || document.querySelector(`input[name="angkapersen"]`)?.value);
-            if (isNaN(angkapersen) || angkapersen < 0 || angkapersen > 100) {
-                throw new Error("Persen harus antara 0-100");
-            }
-            keterangandihitungSendiri = document.querySelector(`input[name="keteranganhitungsendiri-${nobooking}"]`)?.value || document.querySelector(`input[name="keteranganhitungsendiri"]`)?.value;
-            if (!keterangandihitungSendiri) {
-                throw new Error("Harap isi keterangan penghitungan");
-            }
-        } 
-        else if (pemilihan === 'lainnyapenghitungwp') {
-            isiketeranganlainnya = document.querySelector(`input[name="isiketeranganlainnya-${nobooking}"]`)?.value || document.querySelector(`input[name="isiketeranganlainnya"]`)?.value;
-            if (!isiketeranganlainnya) {
-                throw new Error("Harap isi keterangan lainnya");
-            }
-        }
-
-        // 7. Siapkan data untuk dikirim
-        const data = {
-            userid: userData.userid,
-            nobooking: nobooking, // Gunakan variabel nobooking yang sudah didefinisikan
-            pemilihan: pemilihan,
-            nomorstpd: nomorstpd,
-            tanggalstpd: tanggalstpd,
-            angkapersen: angkapersen,
-            keterangandihitungSendiri: keterangandihitungSendiri,
-            isiketeranganlainnya: isiketeranganlainnya,
-            persetujuanVerif: persetujuanVerif,
-            pemberi_persetujuan: userData.userid, // Tambahkan pemberi persetujuan dari session user
-            tanda_tangan_blob: base64TandaTangan
-        };
-        
-        // Log data yang akan dikirim untuk debugging
-        console.log('📤 Data yang akan dikirim ke API:', {
-            ...data,
-            tanda_tangan_blob: '[BLOB_DATA]' // Jangan log blob data yang besar
-        });
-        console.log('👤 Pemberi Persetujuan (UserID):', userData.userid);
-
-        // 8. Kirim data ke backend dengan timeout
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000); // Increase timeout untuk transfer signature
-
-        const saveResponse = await fetch('/api/peneliti_update-berdasarkan-pemilihan', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data }),
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeout);
-
-        if (!saveResponse.ok) {
-            throw new Error(await saveResponse.text());
+            case 'error':
+                alert.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                break;
+            case 'warning':
+                alert.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                break;
+            default:
+                alert.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
         }
         
-        // 9. OTOMATIS transfer tanda tangan jika disetujui (tidak perlu modal lagi)
-        if (persetujuanVerif === 'ya') {
-            console.log('✍️ Automatically transferring signature...');
-            
-            try {
-                const transferResponse = await fetch('/api/peneliti/transfer-signature', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nobooking: nobooking })
-                });
-                
-                const transferResult = await transferResponse.json();
-                
-                if (!transferResponse.ok || !transferResult.success) {
-                    console.warn('⚠️ Signature transfer warning:', transferResult.message);
-                    // Tidak throw error, hanya warning karena data sudah tersimpan
-                } else {
-                    console.log('✅ Signature transferred successfully');
-                }
-            } catch (transferError) {
-                console.error('❌ Error transferring signature:', transferError);
-                // Tidak throw error, data sudah tersimpan
+        alert.textContent = message;
+        document.body.appendChild(alert);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => alert.remove(), 300);
             }
-        }
-
-        alert("Data berhasil disimpan dan tanda tangan ditambahkan!");
-        location.reload();
-
+        }, 5000);
+        
     } catch (error) {
-        console.error('Error:', error);
-        if (error.name === 'AbortError') {
-            alert('Request timeout, silakan coba lagi');
-        } else {
-            alert(`Error: ${error.message}`);
-        }
-    } finally {
-        if (submitButton) {
-            btnText.hidden = false;
-            spinner.hidden = true;
-            submitButton.disabled = false;
-        }
+        console.error('Error showing alert:', error);
+        alert(message); // Fallback to browser alert
     }
 }
-//
-//////
-// Fungsi untuk generate PDF
-// pada bagian ini masih ada tracking
-async function generatePDF(nobooking, base64TandaTangan) {
+
+// Send to Paraf Kasie function
+async function sendToParafKasie(item) {
     try {
-        const response = await fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`, {
+        const response = await fetch('/api/peneliti_send-to-paraf', {
             method: 'POST',
-            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({
-                signature: base64TandaTangan
+                nobooking: item.nobooking,
+                no_registrasi: item.no_registrasi
             })
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to generate PDF');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `document_${nobooking}.pdf`;
-        document.body.appendChild(a);
-        a.click();
+        const result = await response.json();
         
-        // Cleanup
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 100);
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        alert(`Gagal generate PDF: ${error.message}`);
-    }
-}
-////
-function resetNamaPemverifikasi(nobooking) {
-    fetch('/api/reset-nama-pemverifikasi', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ nobooking: nobooking })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Nama Pemverifikasi berhasil di-reset!');
-            location.reload(); // Reload halaman untuk melihat perubahan
-            // Update tampilan di frontend jika perlu, misalnya mengosongkan input field atau mengubah tampilan di tabel
-        } else {
-            alert('Gagal mereset nama pemverifikasi.');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Terjadi kesalahan saat mereset nama pemverifikasi.');
-    });
-}
-////
-///
-//
-////
-///
-//
-// Fungsi untuk mengirim data ke peneliti
-async function sendToParafKasie(item) {
-    try {
-        // userid pada tabel p_3_clear_to_paraf:
-        // - userid   -> userid pembuat/pengirim nobooking (PPAT/PPATS) -> berasal dari item.userid
-        // - pemverifikasi -> userid peneliti (user yang sedang login)
-        const verifierUserid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
-        if (!verifierUserid) {
-            alert('User peneliti tidak ditemukan. Silakan login ulang.');
-            return { success: false, message: 'Tidak ada session peneliti' };
-        }
-        const response = await fetch('/api/peneliti_send-to-paraf', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                nobooking: item.nobooking,
-                namawajibpajak: item.namawajibpajak,
-                namapemilikobjekpajak: item.namapemilikobjekpajak,
-                tanggal_terima: item.tanggal_terima,
-                status: 'Dikerjakan',  // Status yang dikirim dari frontend
-                trackstatus: 'Diverifikasi',  // Trackstatus yang dikirim dari frontend
-                keterangan: item.keterangan,
-                no_registrasi: item.no_registrasi
-            }),
-        });
-
-        const result = await response.json().catch(() => ({ success: false, message: 'Response tidak valid' }));
         if (!response.ok) {
-            return { success: false, message: result.message || `HTTP ${response.status}` };
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
-        if (result.success) {
-            alert('Data berhasil dikirim ke peneliti!');
-        } else {
-            alert('Gagal mengirim data ke peneliti.');
-        }
+        
         return result;
     } catch (error) {
-        console.error('Error sending data to peneliti:', error);
-        alert('Terjadi kesalahan saat mengirim data.');
-        return { success: false, message: error?.message || 'Unknown error' };
+        console.error('Send to Paraf Error:', error);
+        throw error;
     }
 }
 
-
-  ///
-// Helper function untuk generate document links
-function generateDocumentLinks(item) {
-    const toHref = (p) => { if(!p) return ''; return p.startsWith('/') ? p : ('/' + p); };
-    const docs = [];
-    
-    if (item.akta_tanah_path) {
-        const p = item.akta_tanah_path;
-        const href = toHref(p);
-        const isPdf = /\.pdf($|\?)/i.test(p);
-        docs.push(`
-            <div class="document-link-item">
-                <span class="document-label">Akta Tanah:</span>
-                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
-                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Akta Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
-            </div>`);
-    }
-    
-    if (item.sertifikat_tanah_path) {
-        const p = item.sertifikat_tanah_path;
-        const href = toHref(p);
-        const isPdf = /\.pdf($|\?)/i.test(p);
-        docs.push(`
-            <div class="document-link-item">
-                <span class="document-label">Sertifikat Tanah:</span>
-                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
-                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Sertifikat Tanah" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
-            </div>`);
-    }
-    
-    if (item.pelengkap_path) {
-        const p = item.pelengkap_path;
-        const href = toHref(p);
-        const isPdf = /\.pdf($|\?)/i.test(p);
-        docs.push(`
-            <div class="document-link-item">
-                <span class="document-label">Dokumen Pelengkap:</span>
-                ${isPdf ? `<a href="${href}" target="_blank"><button class="btn-view">View PDF</button></a>`
-                        : `<a href="${href}" target="_blank"><img src="${href}" alt="Pelengkap" style="max-width:100px; max-height:100px;" onerror="this.onerror=null;this.src='/asset/notfound.png'"></a>`}
-            </div>`);
-    }
-    
-    return docs.join('');
-}
-
-window.onload = loadTableDataPenelitiV;
-
-// ===== Refactor: Signature flow using stored profile signature =====
-document.addEventListener('DOMContentLoaded', () => {
-    // ===== SIGNATURE MODAL LOGIC DIHAPUS =====
-    // Tanda tangan sekarang otomatis ditambahkan saat simpanData()
-    // Tidak perlu modal terpisah lagi
-    
-    console.log('✅ Signature will be added automatically when data is saved');
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 [FRONTEND] Peneliti Verifikasi Cards initialized');
+    loadTableDataPenelitiV();
 });
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
