@@ -3,8 +3,17 @@ const API_ENDPOINT = '/api/peneliti/get-berkas-till-verif';
 const REQUEST_TIMEOUT = 10000; // 10 seconds
 let penParafRows = [];
 
+// Pagination variables
+let allData = [];
+let currentPage = 1;
+const itemsPerPage = 6;
+
 async function loadTableDataPenelitiP() {
     try {
+        console.log('🔍 [FRONTEND] ===== PENELITI PARAF LOADING =====');
+        console.log('🔍 [FRONTEND] Timestamp:', new Date().toISOString());
+        console.log('🔍 [FRONTEND] URL:', window.location.href);
+
         const userDivisi = getUserDivisi();
         if (typeof userDivisi !== 'string') {
             throw new Error('Data divisi pengguna tidak valid');
@@ -14,6 +23,17 @@ async function loadTableDataPenelitiP() {
             showUserNotification('Akses Ditolak', 'Anda tidak memiliki akses ke data Peneliti', 'error');
             return;
         }
+
+        console.log('🔍 [FRONTEND] User division check:', {
+            userDivisi: userDivisi,
+            userDivisiType: typeof userDivisi,
+            isString: typeof userDivisi === 'string',
+            isPeneliti: userDivisi === 'Peneliti'
+        });
+
+        console.log('✅ [FRONTEND] User division validated, proceeding with API call...');
+        console.log('🔍 [FRONTEND] Making API request to', API_ENDPOINT, '...');
+
         const response = await fetchWithTimeout(
             API_ENDPOINT,
             {
@@ -37,46 +57,557 @@ async function loadTableDataPenelitiP() {
         if (!success) {
             throw new Error('Respon server menunjukkan operasi gagal');
         }
-        const tbody = document.querySelector('.data-masuk');
-        if (!tbody) {
-            throw new Error('Elemen tabel target tidak ditemukan');
+
+        console.log('✅ [FRONTEND] API response received:', {
+            success: success,
+            dataLength: Array.isArray(data) ? data.length : 0,
+            metadata: metadata
+        });
+
+        // Store all data for pagination
+        allData = Array.isArray(data) ? data : [];
+        penParafRows = allData;
+
+        // Create cards container and pagination container
+        const mainContent = document.querySelector('.main-content');
+        if (!mainContent) {
+            throw new Error('Main content container tidak ditemukan');
         }
 
-        clearTableBody(tbody);
+        // Remove existing table and create cards container
+        const existingTable = document.querySelector('#peneliti_paraf_kasie_Table');
+        if (existingTable) {
+            existingTable.style.display = 'none';
+        }
 
-        // Simpan dataset untuk akses overlay (cek persetujuan dsb.)
-        penParafRows = Array.isArray(data) ? data : [];
+        // Create cards container
+        let cardsContainer = document.querySelector('.paraf-cards-container');
+        if (!cardsContainer) {
+            cardsContainer = document.createElement('div');
+            cardsContainer.className = 'paraf-cards-container';
+            cardsContainer.style.display = 'none'; // Initially hidden
+            mainContent.appendChild(cardsContainer);
+        }
+
+        // Create pagination container
+        let paginationContainer = document.querySelector('.pagination-container');
+        if (!paginationContainer) {
+            paginationContainer = document.createElement('div');
+            paginationContainer.className = 'pagination-container';
+            paginationContainer.style.display = 'none'; // Initially hidden
+            mainContent.appendChild(paginationContainer);
+        }
 
         if (!Array.isArray(data) || data.length === 0) {
-            showEmptyState(tbody, 'Tidak ada data berkas yang ditemukan');
+            showEmptyStateCards(cardsContainer, 'Tidak ada data berkas yang ditemukan');
             return;
         }
-        data.forEach(item => {
-            try {
-                validateItemFields(item, [
-                    'no_registrasi', 'nobooking', 'noppbb', 'tahunajb', 'userid',
-                    'namawajibpajak', 'namapemilikobjekpajak', 'status', 'trackstatus'
-                ]);
 
-                const row = createTableRow(tbody, item);
-                addActionButton(row, item);
-                addDropdownRow(tbody, item);
-                setupRowClickHandler(row, item);
+        // Display first page
+        displayPage(currentPage);
 
-            } catch (itemError) {
-                console.error('Error processing item:', itemError);
-                appendErrorRow(tbody, `Gagal memuat data: ${itemError.message}`);
-            }
+    } catch (error) {
+        console.error('Main Function Error:', error);
+        showUserNotification('Error', `Gagal memuat data: ${error.message}`, 'error');
+    }
+}
+
+// Display page function for pagination
+function displayPage(page) {
+    try {
+        const startIndex = (page - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageData = allData.slice(startIndex, endIndex);
+        
+        console.log(`📄 [PAGINATION] Displaying page ${page}:`, {
+            startIndex: startIndex,
+            endIndex: endIndex,
+            pageDataLength: pageData.length,
+            totalData: allData.length
         });
-        if (metadata) {
-            console.log(`Data loaded successfully. Count: ${metadata.count}, Generated at: ${metadata.generatedAt}`);
+
+        // Clear existing cards
+        const cardsContainer = document.querySelector('.paraf-cards-container');
+        const paginationContainer = document.querySelector('.pagination-container');
+        
+        if (cardsContainer) {
+            cardsContainer.innerHTML = '';
+            cardsContainer.style.display = 'grid';
+        }
+
+        // Render cards for current page
+        pageData.forEach(item => {
+            createCard(cardsContainer, item);
+        });
+
+        // Create pagination controls
+        if (allData.length > itemsPerPage) {
+            createPagination(paginationContainer, page, Math.ceil(allData.length / itemsPerPage));
+            if (paginationContainer) {
+                paginationContainer.style.display = 'flex';
+            }
+        } else if (paginationContainer) {
+            paginationContainer.style.display = 'none';
         }
 
     } catch (error) {
-        console.error('Main Error:', error);
-        showErrorUI(error.message);
+        console.error('Display Page Error:', error);
+        showUserNotification('Error', `Gagal menampilkan halaman: ${error.message}`, 'error');
     }
 }
+
+// Create card function
+function createCard(container, item) {
+    try {
+        const criticalFields = ['no_registrasi', 'nobooking'];
+        const missingCritical = criticalFields.filter(field => !item[field]);
+        if (missingCritical.length > 0) {
+            console.warn(`Skipping row missing critical fields for nobooking ${item.nobooking || 'unknown'}:`, missingCritical);
+            return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'paraf-card';
+        
+        const formatValue = (value) => {
+            return (value === undefined || value === null || value === '' || value === '-') ? 'Belum diisi' : value;
+        };
+        
+        const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
+        
+        card.innerHTML = `
+            <div class="card-header">
+                <div>
+                    <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
+                    <p class="secondary-info">${formatValue(item.nobooking)}</p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
+                        <span>📄</span> View
+                    </button>
+                    <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
+                        <span>✍️</span> Paraf
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card-content">
+                <div class="info-item">
+                    <span class="info-label">NOP PBB</span>
+                    <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">User ID</span>
+                    <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Nama Wajib Pajak</span>
+                    <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Pemilik Objek</span>
+                    <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tahun AJB</span>
+                    <span class="info-value ${formatValue(item.tahunajb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.tahunajb)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Status</span>
+                    <span class="info-value ${formatValue(item.status) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.status)}</span>
+                </div>
+            </div>
+            
+            <div class="card-footer">
+                <div class="tanggal-info">${formatValue(item.tanggal_terima || item.created_at)}</div>
+                <div class="footer-actions">
+                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                    <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
+                        <span>❌</span> Tolak
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Add event listener to paraf button
+        const parafButton = card.querySelector('.btn-paraf-prominent');
+        parafButton.addEventListener('click', async () => {
+            try {
+                const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
+                
+                if (confirmation) {
+                    if (!item || !item.nobooking) {
+                        throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
+                    }
+
+                    const result = await giveParaf(item);
+                    if (result && result.success) {
+                        parafButton.disabled = true;
+                        parafButton.innerHTML = '<span>✅</span> Berhasil';
+                        parafButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+                        showAlert('success', "Paraf berhasil diberikan!");
+                    } else {
+                        const msg = (result && result.message) ? result.message : "Gagal memberikan paraf.";
+                        throw new Error(msg);
+                    }
+                } else {
+                    showAlert('info', "Paraf tidak jadi diberikan.");
+                }
+            } catch (buttonError) {
+                console.error('Button Action Error:', buttonError);
+                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
+            }
+        });
+        
+        container.appendChild(card);
+
+        // Add dropdown content for detailed view
+        const dropdownContent = document.createElement('div');
+        dropdownContent.className = 'card-dropdown-content';
+        dropdownContent.style.display = 'none';
+        
+        try {
+            dropdownContent.innerHTML = `
+                <div class="dropdown-content-wrapper">
+                    <!-- Document Info Section -->
+                    <div class="document-info-section">
+                        <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+                        <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                        <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
+                        <p><strong>Tahun AJB:</strong> ${item.tahunajb || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${item.status || 'N/A'}</p>
+                    </div>
+
+                    <!-- Signature Section -->
+                    <div class="signature-section">
+                        <div class="form-group approval-section">
+                            <label>
+                                <input type="checkbox" name="ParafApproval-${item.nobooking}" value="approved"> Setujui untuk Paraf
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons Section -->
+                    <div class="action-buttons">
+                        <button type="button" class="btn-save-paraf" data-nobooking="${item.nobooking}">
+                            <i class="fas fa-save"></i> Simpan Paraf
+                        </button>
+                    </div>
+
+                    <!-- Document Links Section -->
+                    <div class="document-links-section">
+                        <h6 class="document-links-title">Dokumen Terkait:</h6>
+                        <div class="document-links-list">
+                            ${generateDocumentLinks(item)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+        } catch (dropdownError) {
+            console.error('Dropdown Creation Error:', dropdownError);
+            dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
+        }
+
+        card.appendChild(dropdownContent);
+
+        // Add click event for dropdown toggle
+        card.addEventListener('click', function(e) {
+            if (e.target.closest('button')) return;
+            
+            const dropdown = this.querySelector('.card-dropdown-content');
+            if (dropdown) {
+                const isVisible = dropdown.style.display !== 'none';
+                dropdown.style.display = isVisible ? 'none' : 'block';
+                
+                if (!isVisible) {
+                    dropdown.style.opacity = '0';
+                    dropdown.style.transform = 'translateY(-10px)';
+                    setTimeout(() => {
+                        dropdown.style.transition = 'all 0.3s ease';
+                        dropdown.style.opacity = '1';
+                        dropdown.style.transform = 'translateY(0)';
+                    }, 10);
+                }
+            }
+        });
+
+        setupParafFormInteractions(card, item);
+
+    } catch (itemError) {
+        console.error('Error processing item:', itemError);
+        const errorCard = document.createElement('div');
+        errorCard.className = 'paraf-card';
+        errorCard.style.border = '1px solid #ef4444';
+        errorCard.innerHTML = `
+            <div class="card-header">
+                <div>
+                    <h3 class="primary-info">Error</h3>
+                    <p class="secondary-info">Gagal memuat data</p>
+                </div>
+            </div>
+            <div class="card-content">
+                <p style="color: #ef4444;">${itemError.message}</p>
+            </div>
+        `;
+        container.appendChild(errorCard);
+    }
+}
+
+// Create pagination function
+function createPagination(container, currentPage, totalPages) {
+    container.innerHTML = '';
+    
+    // Pagination info
+    const paginationInfo = document.createElement('div');
+    paginationInfo.className = 'pagination-info';
+    paginationInfo.textContent = `Halaman ${currentPage} dari ${totalPages} (${allData.length} data)`;
+    container.appendChild(paginationInfo);
+    
+    // Previous button
+    const prevButton = document.createElement('button');
+    prevButton.className = 'pagination-button';
+    prevButton.textContent = '← Previous';
+    prevButton.disabled = currentPage === 1;
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            displayPage(currentPage);
+        }
+    });
+    container.appendChild(prevButton);
+    
+    // Page numbers
+    const pageNumbers = document.createElement('div');
+    pageNumbers.className = 'pagination-numbers';
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const pageButton = document.createElement('button');
+        pageButton.className = 'pagination-number';
+        pageButton.textContent = i;
+        pageButton.classList.toggle('active', i === currentPage);
+        pageButton.addEventListener('click', () => {
+            currentPage = i;
+            displayPage(currentPage);
+        });
+        pageNumbers.appendChild(pageButton);
+    }
+    
+    container.appendChild(pageNumbers);
+    
+    // Next button
+    const nextButton = document.createElement('button');
+    nextButton.className = 'pagination-button';
+    nextButton.textContent = 'Next →';
+    nextButton.disabled = currentPage === totalPages;
+    nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayPage(currentPage);
+        }
+    });
+    container.appendChild(nextButton);
+}
+
+// Show empty state for cards
+function showEmptyStateCards(container, message) {
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">📄</div>
+            <h3>Tidak Ada Data</h3>
+            <p>${message}</p>
+        </div>
+    `;
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    container.style.minHeight = '300px';
+}
+
+// View Document function (reuse from verifikasi)
+function viewDocument(nobooking) {
+    try {
+        if (!nobooking) {
+            showAlert('error', 'No booking tidak ditemukan');
+            return;
+        }
+
+        console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
+        
+        // Open PDF in new tab
+        const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`;
+        window.open(pdfUrl, '_blank');
+        
+        showAlert('success', 'Dokumen berhasil dibuka');
+    } catch (error) {
+        console.error('View Document Error:', error);
+        showAlert('error', `Gagal membuka dokumen: ${error.message}`);
+    }
+}
+
+// Give Paraf function
+async function giveParaf(item) {
+    try {
+        if (!item || !item.nobooking) {
+            throw new Error('Data yang diperlukan tidak lengkap');
+        }
+
+        console.log('✍️ [PARAF] Giving paraf for nobooking:', item.nobooking);
+
+        const response = await fetch('/api/peneliti_give-paraf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nobooking: item.nobooking
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('Give Paraf Error:', error);
+        throw error;
+    }
+}
+
+// Setup form interactions for paraf
+function setupParafFormInteractions(card, item) {
+    const saveButton = card.querySelector('.btn-save-paraf');
+    if (saveButton) {
+        saveButton.addEventListener('click', async () => {
+            try {
+                const checkbox = card.querySelector(`input[name="ParafApproval-${item.nobooking}"]`);
+                const isApproved = checkbox ? checkbox.checked : false;
+                
+                if (!isApproved) {
+                    showAlert('warning', 'Harap centang "Setujui untuk Paraf" terlebih dahulu');
+                    return;
+                }
+                
+                const result = await giveParaf(item);
+                if (result && result.success) {
+                    showAlert('success', 'Paraf berhasil disimpan');
+                    setTimeout(() => {
+                        loadTableDataPenelitiP();
+                    }, 1000);
+                } else {
+                    throw new Error(result?.message || 'Gagal menyimpan paraf');
+                }
+            } catch (error) {
+                console.error('Save Paraf Error:', error);
+                showAlert('error', `Gagal menyimpan paraf: ${error.message}`);
+            }
+        });
+    }
+}
+
+// Generate document links (reuse from verifikasi)
+function generateDocumentLinks(item) {
+    const links = [];
+    
+    if (item.akta_tanah_path) {
+        links.push(`<a href="${item.akta_tanah_path}" target="_blank" class="document-link">📄 Akta Tanah</a>`);
+    }
+    
+    if (item.sertifikat_tanah_path) {
+        links.push(`<a href="${item.sertifikat_tanah_path}" target="_blank" class="document-link">📄 Sertifikat Tanah</a>`);
+    }
+    
+    if (item.pelengkap_path) {
+        links.push(`<a href="${item.pelengkap_path}" target="_blank" class="document-link">📄 Dokumen Pelengkap</a>`);
+    }
+    
+    return links.length > 0 ? links.join('') : '<p class="no-documents">Tidak ada dokumen tersedia</p>';
+}
+
+// Show reject modal (reuse from verifikasi)
+function showRejectModal(nobooking) {
+    const reason = prompt('Masukkan alasan penolakan:');
+    
+    if (reason === null) {
+        return;
+    }
+    
+    if (reason.trim() === '') {
+        showAlert('error', 'Alasan penolakan tidak boleh kosong');
+        return;
+    }
+    
+    const confirmation = confirm(`Apakah Anda yakin ingin menolak data ini?\n\nAlasan: ${reason}`);
+    
+    if (confirmation) {
+        rejectWithReason(nobooking, reason);
+    }
+}
+
+// Reject with reason function (reuse from verifikasi)
+async function rejectWithReason(nobooking, reason) {
+    try {
+        if (!nobooking) {
+            showAlert('error', 'No booking tidak ditemukan');
+            return;
+        }
+
+        if (!reason || reason.trim() === '') {
+            showAlert('error', 'Alasan penolakan harus diisi');
+            return;
+        }
+
+        console.log('❌ [REJECT] Rejecting nobooking:', nobooking, 'Reason:', reason);
+
+        const response = await fetch('/api/peneliti_reject-with-reason', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nobooking: nobooking,
+                reason: reason.trim()
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        showAlert('success', 'Data berhasil ditolak');
+        
+        // Reload data to reflect changes
+        setTimeout(() => {
+            loadTableDataPenelitiP();
+        }, 1000);
+        
+        return result;
+    } catch (error) {
+        console.error('Reject Error:', error);
+        showAlert('error', `Gagal menolak data: ${error.message}`);
+        throw error;
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 [FRONTEND] Peneliti Paraf Cards initialized');
+    loadTableDataPenelitiP();
+});
+
 async function fetchWithTimeout(url, options, timeout) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
