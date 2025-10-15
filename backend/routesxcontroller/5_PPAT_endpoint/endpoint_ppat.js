@@ -1496,6 +1496,24 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 namawajibpajak: bookingData.namawajibpajak
             });
 
+            // Generate no_registrasi otomatis (format: 2025O00001, 2025O00002, dst)
+            const getNextRegistrasiQuery = `
+                SELECT no_registrasi FROM ltb_1_terima_berkas_sspd 
+                WHERE no_registrasi LIKE '2025O%' 
+                ORDER BY no_registrasi DESC 
+                LIMIT 1
+            `;
+            const lastRegistrasi = await client.query(getNextRegistrasiQuery);
+            
+            let nextNoRegistrasi;
+            if (lastRegistrasi.rows.length === 0) {
+                nextNoRegistrasi = '2025O00001'; // First record
+            } else {
+                const lastNumber = parseInt(lastRegistrasi.rows[0].no_registrasi.substring(5));
+                nextNoRegistrasi = `2025O${String(lastNumber + 1).padStart(5, '0')}`;
+            }
+            console.log('📝 [SEND-NOW] Generated no_registrasi:', nextNoRegistrasi);
+
             // Insert ke ltb_1_terima_berkas_sspd
             // Cek dulu apakah sudah ada record dengan nobooking ini
             const checkLtbQuery = `SELECT id FROM ltb_1_terima_berkas_sspd WHERE nobooking = $1`;
@@ -1544,7 +1562,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                     bookingData.user_divisi || 'PPATK', // divisi
                     bookingData.user_nama || 'PPATK User', // nama
                     bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
-                    null // no_registrasi (akan diisi oleh LTB)
+                    nextNoRegistrasi // no_registrasi (auto-generated)
                 ];
                 
                 ltbResult = await client.query(insertLtbQuery, ltbParams);
@@ -1590,15 +1608,15 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 const bankParams = [
                     nobooking, // nobooking
                     bookingData.userid, // userid
-                    null, // bphtb_yangtelah_dibayar (akan diisi oleh Bank)
-                    null, // nomor_bukti_pembayaran (akan diisi oleh Bank)
-                    null, // tanggal_perolehan (akan diisi oleh Bank)
-                    null, // tanggal_pembayaran (akan diisi oleh Bank)
+                    bookingData.bphtb_yangtelah_dibayar || null, // bphtb_yangtelah_dibayar (dari booking)
+                    bookingData.nomor_bukti_pembayaran || null, // nomor_bukti_pembayaran (dari booking)
+                    bookingData.tanggal_perolehan || null, // tanggal_perolehan (dari booking)
+                    bookingData.tanggal_pembayaran || null, // tanggal_pembayaran (dari booking)
                     'Pending', // status_verifikasi
                     null, // catatan_bank (akan diisi oleh Bank)
                     null, // verified_by (akan diisi oleh Bank)
                     null, // verified_at (akan diisi oleh Bank)
-                    null, // no_registrasi (akan diisi oleh Bank)
+                    nextNoRegistrasi, // no_registrasi (sama dengan LTB)
                     'Dicheck' // status_dibank
                 ];
 
@@ -1719,6 +1737,24 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                         namawajibpajak: bookingData.namawajibpajak
                     });
 
+                    // Generate no_registrasi otomatis (format: 2025O00001, 2025O00002, dst)
+                    const getNextRegistrasiQuery = `
+                        SELECT no_registrasi FROM ltb_1_terima_berkas_sspd 
+                        WHERE no_registrasi LIKE '2025O%' 
+                        ORDER BY no_registrasi DESC 
+                        LIMIT 1
+                    `;
+                    const lastRegistrasi = await client.query(getNextRegistrasiQuery);
+                    
+                    let nextNoRegistrasi;
+                    if (lastRegistrasi.rows.length === 0) {
+                        nextNoRegistrasi = '2025O00001'; // First record
+                    } else {
+                        const lastNumber = parseInt(lastRegistrasi.rows[0].no_registrasi.substring(5));
+                        nextNoRegistrasi = `2025O${String(lastNumber + 1).padStart(5, '0')}`;
+                    }
+                    console.log('📝 [PROCESS-QUEUE] Generated no_registrasi:', nextNoRegistrasi);
+
                     // Insert ke ltb_1_terima_berkas_sspd
                     // Cek dulu apakah sudah ada record dengan nobooking ini
                     const checkLtbQuery = `SELECT id FROM ltb_1_terima_berkas_sspd WHERE nobooking = $1`;
@@ -1767,7 +1803,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                             bookingData.user_divisi || 'PPATK', // divisi
                             bookingData.user_nama || 'PPATK User', // nama
                             bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
-                            null // no_registrasi (akan diisi oleh LTB)
+                            nextNoRegistrasi // no_registrasi (auto-generated)
                         ];
 
                         ltbResult = await client.query(insertLtbQuery, ltbParams);
@@ -1813,15 +1849,15 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                         const bankParams = [
                             item.nobooking, // nobooking
                             bookingData.userid, // userid
-                            null, // bphtb_yangtelah_dibayar (akan diisi oleh Bank)
-                            null, // nomor_bukti_pembayaran (akan diisi oleh Bank)
-                            null, // tanggal_perolehan (akan diisi oleh Bank)
-                            null, // tanggal_pembayaran (akan diisi oleh Bank)
+                            bookingData.bphtb_yangtelah_dibayar || null, // bphtb_yangtelah_dibayar (dari booking)
+                            bookingData.nomor_bukti_pembayaran || null, // nomor_bukti_pembayaran (dari booking)
+                            bookingData.tanggal_perolehan || null, // tanggal_perolehan (dari booking)
+                            bookingData.tanggal_pembayaran || null, // tanggal_pembayaran (dari booking)
                             'Pending', // status_verifikasi
                             null, // catatan_bank (akan diisi oleh Bank)
                             null, // verified_by (akan diisi oleh Bank)
                             null, // verified_at (akan diisi oleh Bank)
-                            null, // no_registrasi (akan diisi oleh Bank)
+                            nextNoRegistrasi, // no_registrasi (sama dengan LTB)
                             'Dicheck' // status_dibank
                         ];
 
