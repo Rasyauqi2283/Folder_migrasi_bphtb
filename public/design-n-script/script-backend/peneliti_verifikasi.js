@@ -201,6 +201,190 @@ async function loadTableDataPenelitiV() {
                 
                 cardsContainer.appendChild(card);
 
+                // Create dropdown content for each card
+                const dropdownContent = document.createElement('div');
+                dropdownContent.className = 'card-dropdown-content';
+                dropdownContent.style.display = 'none';
+                
+                try {
+                    // Pesan status ringkas untuk kepegawaian
+                    const sudahSetuju = String(item.persetujuan||'').toLowerCase()==='true';
+                    const adaPemilihan = !!item.pemilihan;
+                    const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
+                    
+                    const signerUser = item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+                    const hasSignature = item.peneliti_tanda_tangan_path || item.signer_userid;
+                    const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
+                    
+                    dropdownContent.innerHTML = `
+                        <div class="dropdown-content-wrapper">
+                            <!-- Document Info Section -->
+                            <div class="document-info-section">
+                                <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
+                                <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
+                                <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
+                                ${pesan1}
+                                ${pesan2}
+                            </div>
+
+                            <!-- Signature Section -->
+                            ${item.peneliti_tanda_tangan_path ? `
+                                <div class="signature-section">
+                                    <div class="form-group approval-section">
+                                        <label>
+                                            <input type="radio" name="ParafVerif-${item.nobooking}" value="ya" required> Setujui Paraf
+                                        </label>
+                                        <div class="signature-preview">
+                                            <p>Tanda Tangan Saat Ini:</p>
+                                            <img src="${item.peneliti_tanda_tangan_path}"
+                                                alt="Tanda Tangan" 
+                                                class="signature-image"
+                                                onerror="this.style.display='none'">
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Tidak dapat memberikan persetujuan - tanda tangan belum diunggah
+                                </div>
+                                <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
+                            `}
+
+                            <!-- Calculation Form Section -->
+                            <div class="calculation-section">
+                                <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
+                                ${item.pemilihan ? `
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
+                                            Penghitungan wajib pajak
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
+                                            STPD kurang bayar
+                                        </label>
+                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
+                                            <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
+                                            <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
+                                            Pengurangan dihitung sendiri
+                                        </label>
+                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
+                                            <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
+                                            <span>%</span>
+                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
+                                            Lainnya
+                                        </label>
+                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
+                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
+                                            Penghitungan wajib pajak
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
+                                            STPD kurang bayar
+                                        </label>
+                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar" style="display:none;">
+                                            <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD">
+                                            <input type="date" class="tanggalstpd" name="tanggalstpd">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
+                                            Pengurangan dihitung sendiri
+                                        </label>
+                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri" style="display:none;">
+                                            <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01">
+                                            <span>%</span>
+                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan...">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
+                                            Lainnya
+                                        </label>
+                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp" style="display:none;">
+                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini...">
+                                        </div>
+                                    </div>
+                                `}
+                            </div>
+
+                            <!-- Action Buttons Section -->
+                            <div class="action-buttons">
+                                <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}">
+                                    <i class="fas fa-save"></i> Simpan Verifikasi
+                                </button>
+                                <button type="button" class="btn-send-to-paraf" data-nobooking="${item.nobooking}">
+                                    <i class="fas fa-paper-plane"></i> Kirim ke Paraf
+                                </button>
+                            </div>
+
+                            <!-- Document Links Section -->
+                            <div class="document-links-section">
+                                <h6 class="document-links-title">Dokumen Terkait:</h6>
+                                <div class="document-links-list">
+                                    ${generateDocumentLinks(item)}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                } catch (dropdownError) {
+                    console.error('Dropdown Creation Error:', dropdownError);
+                    dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
+                }
+
+                // Add dropdown to card
+                card.appendChild(dropdownContent);
+
+                // Add click handler to toggle dropdown
+                card.addEventListener('click', function(e) {
+                    // Don't toggle if clicking on buttons
+                    if (e.target.closest('button')) return;
+                    
+                    const dropdown = this.querySelector('.card-dropdown-content');
+                    if (dropdown) {
+                        const isVisible = dropdown.style.display !== 'none';
+                        dropdown.style.display = isVisible ? 'none' : 'block';
+                        
+                        // Smooth animation
+                        if (!isVisible) {
+                            dropdown.style.opacity = '0';
+                            dropdown.style.transform = 'translateY(-10px)';
+                            setTimeout(() => {
+                                dropdown.style.transition = 'all 0.3s ease';
+                                dropdown.style.opacity = '1';
+                                dropdown.style.transform = 'translateY(0)';
+                            }, 10);
+                        }
+                    }
+                });
+
+                // Add event listeners for form interactions
+                setupFormInteractions(card, item);
+
             } catch (itemError) {
                 console.error('Error processing item:', itemError);
                 // Create error card for failed items
@@ -348,6 +532,121 @@ function showAlert(type, message) {
     }
 }
 
+// Setup form interactions for dropdown
+function setupFormInteractions(card, item) {
+    // Radio button interactions for sub-inputs
+    const radioButtons = card.querySelectorAll('input[type="radio"]');
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const parentType = this.className;
+            const subInputs = card.querySelectorAll('.sub-inputs');
+            
+            // Hide all sub-inputs
+            subInputs.forEach(subInput => {
+                subInput.style.display = 'none';
+            });
+            
+            // Show relevant sub-input
+            const targetSubInput = card.querySelector(`.${parentType}-sub-input`);
+            if (targetSubInput && this.checked) {
+                targetSubInput.style.display = 'block';
+            }
+        });
+    });
+
+    // Save verification button
+    const saveButton = card.querySelector('.btn-save-verification');
+    if (saveButton) {
+        saveButton.addEventListener('click', async () => {
+            try {
+                await saveVerificationData(card, item);
+            } catch (error) {
+                console.error('Save Verification Error:', error);
+                showAlert('error', `Gagal menyimpan: ${error.message}`);
+            }
+        });
+    }
+
+    // Send to paraf button
+    const sendToParafButton = card.querySelector('.btn-send-to-paraf');
+    if (sendToParafButton) {
+        sendToParafButton.addEventListener('click', async () => {
+            try {
+                await sendToParafKasie(item);
+            } catch (error) {
+                console.error('Send to Paraf Error:', error);
+                showAlert('error', `Gagal mengirim: ${error.message}`);
+            }
+        });
+    }
+}
+
+// Save verification data function
+async function saveVerificationData(card, item) {
+    try {
+        // Collect form data
+        const formData = {
+            userid: item.userid,
+            nobooking: item.nobooking,
+            pemilihan: card.querySelector(`input[name="pemilihan-${item.nobooking}"]:checked`)?.value,
+            nomorstpd: card.querySelector('.nomorstpd')?.value || null,
+            tanggalstpd: card.querySelector('.tanggalstpd')?.value || null,
+            angkapersen: card.querySelector('.angkapersen')?.value || null,
+            keterangandihitungSendiri: card.querySelector('.keterangandihitungSendiri')?.value || null,
+            isiketeranganlainnya: card.querySelector('.isiketeranganlainnya')?.value || null,
+            persetujuanVerif: card.querySelector(`input[name="ParafVerif-${item.nobooking}"]:checked`)?.value === 'ya'
+        };
+
+        console.log('Saving verification data:', formData);
+
+        const response = await fetch('/api/peneliti_update-berdasarkan-pemilihan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ data: formData })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        showAlert('success', 'Data verifikasi berhasil disimpan!');
+        return result;
+    } catch (error) {
+        console.error('Save Verification Error:', error);
+        throw error;
+    }
+}
+
+// Generate document links function
+function generateDocumentLinks(item) {
+    const links = [];
+    
+    if (item.akta_tanah_path) {
+        links.push(`<a href="${item.akta_tanah_path}" target="_blank" class="document-link">
+            <i class="fas fa-file-alt"></i> Akta Tanah
+        </a>`);
+    }
+    
+    if (item.sertifikat_tanah_path) {
+        links.push(`<a href="${item.sertifikat_tanah_path}" target="_blank" class="document-link">
+            <i class="fas fa-certificate"></i> Sertifikat Tanah
+        </a>`);
+    }
+    
+    if (item.pelengkap_path) {
+        links.push(`<a href="${item.pelengkap_path}" target="_blank" class="document-link">
+            <i class="fas fa-file-pdf"></i> Dokumen Pelengkap
+        </a>`);
+    }
+    
+    return links.length > 0 ? links.join('') : '<p class="no-documents">Tidak ada dokumen tersedia</p>';
+}
+
 // Send to Paraf Kasie function
 async function sendToParafKasie(item) {
     try {
@@ -369,6 +668,7 @@ async function sendToParafKasie(item) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
         
+        showAlert('success', 'Data berhasil dikirim ke peneliti paraf!');
         return result;
     } catch (error) {
         console.error('Send to Paraf Error:', error);
