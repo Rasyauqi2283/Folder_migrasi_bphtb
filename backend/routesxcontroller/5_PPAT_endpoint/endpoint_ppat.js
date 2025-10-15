@@ -375,6 +375,13 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
 
         const userid = req.session.user.userid;
         const body = req.body || {};
+        
+        // Debug: Log raw request body and headers
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Raw req.body:', body);
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] req.body keys:', Object.keys(body));
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Content-Type header:', req.headers['content-type']);
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Request method:', req.method);
+        
         let {
             nobooking,
             alamat_pemohon,

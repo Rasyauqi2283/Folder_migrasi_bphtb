@@ -3313,13 +3313,19 @@ async function gotoform(nobooking) {
                                 const baseOrigin = (window.opener && !window.opener.closed) ? window.opener.location.origin : window.location.origin;
                                 const apiUrl = baseOrigin + '/api/save-ppatk-additional-data?nobooking=' + encodeURIComponent(resolvedNoBooking);
                                 console.log('[SAVE] nobooking, apiUrl, formData:', { resolvedNoBooking, apiUrl, formData });
+                                
+                                // Debug: Log JSON string yang akan dikirim
+                                const jsonString = JSON.stringify(formData);
+                                console.log('[SAVE] JSON string to send:', jsonString);
+                                console.log('[SAVE] JSON string length:', jsonString.length);
+                                
                                 const response = await fetch(apiUrl, {
                                     method: 'POST',
                                     credentials: 'include',
                                     headers: {
                                         'Content-Type': 'application/json',
                                     },
-                                    body: JSON.stringify(formData)
+                                    body: jsonString
                                 });
 
                                 const result = await response.json();
