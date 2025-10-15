@@ -1480,8 +1480,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
             SELECT 
                 b.*,
                 vu.nama as user_nama,
-                vu.divisi as user_divisi,
-                vu.jenis_wajib_pajak as user_jenis_wajib_pajak
+                vu.divisi as user_divisi
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             WHERE b.nobooking = $1
@@ -1530,7 +1529,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
                 bookingData.user_divisi || 'PPATK', // divisi
                 bookingData.user_nama || 'PPATK User', // nama
-                bookingData.jenis_wajib_pajak || bookingData.user_jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
+                bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
                 null // no_registrasi (akan diisi oleh LTB)
             ];
 
@@ -1675,8 +1674,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                     SELECT 
                         b.*,
                         vu.nama as user_nama,
-                        vu.divisi as user_divisi,
-                        vu.jenis_wajib_pajak as user_jenis_wajib_pajak
+                        vu.divisi as user_divisi
                     FROM pat_1_bookingsspd b
                     LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
                     WHERE b.nobooking = $1
@@ -1725,7 +1723,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                         bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
                         bookingData.user_divisi || 'PPATK', // divisi
                         bookingData.user_nama || 'PPATK User', // nama
-                        bookingData.jenis_wajib_pajak || bookingData.user_jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
+                        bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
                         null // no_registrasi (akan diisi oleh LTB)
                     ];
 
