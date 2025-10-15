@@ -128,9 +128,6 @@ dropdownContent.innerHTML = `
 
         <div class="address-section">
         <h5>Pengisian Data Alamat Permohonan Validasi</h5>
-        <div class="address-grid">
-            ${renderAddressField(item, 'alamat_pemohon', 'Alamat Pemohon')}
-        </div>
 
                    <button class="btn-form" onclick="gotoform('${item.nobooking}')">
                 <i class="fas fa-file-alt"></i> Isi Form Permohonan

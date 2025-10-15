@@ -715,7 +715,7 @@ export default function registerGeneratePdfBooking(app, pool) {
 
             doc.font(normalFont).text('Kecamatan', 150, currentY)
                 .font(normalFont).text(':', 250 - 10, currentY)
-                .text(`${data.kecamatanopj || '_______________'}Kabupaten Bogor`, 250, currentY);
+                .text(`${data.kecamatanopj || '_______________'} Kabupaten Bogor`, 250, currentY);
             currentY += 20;
 
             doc.font(boldFont).text('Terlampir dokumen sebagai berikut :', leftColumnX, currentY);
