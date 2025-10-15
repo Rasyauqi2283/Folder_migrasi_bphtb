@@ -1394,6 +1394,119 @@ app.post('/api/ppatk/send-now', async (req, res) => {
         // Untuk alur internal: setelah send-now, status masuk ke LTB sebagai 'Diolah'
         await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
 
+        // ✅ FIX: Insert ke ltb_1_terima_berkas_sspd dan bank_1_cek_hasil_transaksi
+        // Ambil data booking lengkap untuk insert ke LTB dan Bank
+        const bookingQuery = `
+            SELECT 
+                b.*,
+                vu.nama as user_nama,
+                vu.divisi as user_divisi,
+                vu.jenis_wajib_pajak as user_jenis_wajib_pajak
+            FROM pat_1_bookingsspd b
+            LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            WHERE b.nobooking = $1
+        `;
+        
+        const bookingResult = await client.query(bookingQuery, [nobooking]);
+        
+        if (bookingResult.rows.length > 0) {
+            const bookingData = bookingResult.rows[0];
+            console.log('📝 [SEND-NOW] Booking data found for LTB/Bank insert:', {
+                nobooking: bookingData.nobooking,
+                userid: bookingData.userid,
+                namawajibpajak: bookingData.namawajibpajak
+            });
+
+            // Insert ke ltb_1_terima_berkas_sspd
+            const insertLtbQuery = `
+                INSERT INTO ltb_1_terima_berkas_sspd (
+                    nobooking,
+                    tanggal_terima,
+                    status,
+                    pengirim_ltb,
+                    trackstatus,
+                    userid,
+                    namawajibpajak,
+                    namapemilikobjekpajak,
+                    divisi,
+                    nama,
+                    jenis_wajib_pajak,
+                    no_registrasi
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ON CONFLICT (nobooking) DO UPDATE SET
+                    trackstatus = EXCLUDED.trackstatus,
+                    updated_at = NOW()
+                RETURNING id
+            `;
+
+            const ltbParams = [
+                nobooking,
+                new Date().toLocaleDateString('id-ID'), // tanggal_terima
+                'Diterima', // status
+                bookingData.user_nama || 'PPATK User', // pengirim_ltb
+                'Diolah', // trackstatus
+                bookingData.userid, // userid
+                bookingData.namawajibpajak, // namawajibpajak
+                bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
+                bookingData.user_divisi || 'PPATK', // divisi
+                bookingData.user_nama || 'PPATK User', // nama
+                bookingData.jenis_wajib_pajak || bookingData.user_jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
+                null // no_registrasi (akan diisi oleh LTB)
+            ];
+
+            const ltbResult = await client.query(insertLtbQuery, ltbParams);
+            console.log('✅ [SEND-NOW] Inserted/Updated ltb_1_terima_berkas_sspd:', ltbResult.rows[0].id);
+
+            // Insert ke bank_1_cek_hasil_transaksi
+            const insertBankQuery = `
+                INSERT INTO bank_1_cek_hasil_transaksi (
+                    nobooking,
+                    userid,
+                    bphtb_yangtelah_dibayar,
+                    nomor_bukti_pembayaran,
+                    tanggal_perolehan,
+                    tanggal_pembayaran,
+                    status_verifikasi,
+                    catatan_bank,
+                    verified_by,
+                    verified_at,
+                    no_registrasi,
+                    status_dibank
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ON CONFLICT (nobooking) DO UPDATE SET
+                    status_verifikasi = EXCLUDED.status_verifikasi,
+                    status_dibank = EXCLUDED.status_dibank,
+                    updated_at = NOW()
+                RETURNING id
+            `;
+
+            const bankParams = [
+                nobooking, // nobooking
+                bookingData.userid, // userid
+                null, // bphtb_yangtelah_dibayar (akan diisi oleh Bank)
+                null, // nomor_bukti_pembayaran (akan diisi oleh Bank)
+                null, // tanggal_perolehan (akan diisi oleh Bank)
+                null, // tanggal_pembayaran (akan diisi oleh Bank)
+                'Pending', // status_verifikasi
+                null, // catatan_bank (akan diisi oleh Bank)
+                null, // verified_by (akan diisi oleh Bank)
+                null, // verified_at (akan diisi oleh Bank)
+                null, // no_registrasi (akan diisi oleh Bank)
+                'Dicheck' // status_dibank
+            ];
+
+            const bankResult = await client.query(insertBankQuery, bankParams);
+            console.log('✅ [SEND-NOW] Inserted/Updated bank_1_cek_hasil_transaksi:', bankResult.rows[0].id);
+
+            console.log('🎉 [SEND-NOW] LTB and Bank records created successfully:', {
+                nobooking,
+                ltb_id: ltbResult.rows[0].id,
+                bank_id: bankResult.rows[0].id
+            });
+        } else {
+            console.warn('⚠️ [SEND-NOW] Booking data not found for LTB/Bank insert');
+        }
+
         await client.query('COMMIT');
         res.json({ success: true, message: 'Dikirim sekarang (kuota dihitung)', data: { date: today } });
     } catch (e) {
@@ -1465,6 +1578,119 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                     SET trackstatus='Diolah', updated_at=now() 
                     WHERE nobooking=$1 AND userid=$2
                 `, [item.nobooking, item.userid]);
+
+                // ✅ FIX: Insert ke ltb_1_terima_berkas_sspd dan bank_1_cek_hasil_transaksi
+                // Ambil data booking lengkap untuk insert ke LTB dan Bank
+                const bookingQuery = `
+                    SELECT 
+                        b.*,
+                        vu.nama as user_nama,
+                        vu.divisi as user_divisi,
+                        vu.jenis_wajib_pajak as user_jenis_wajib_pajak
+                    FROM pat_1_bookingsspd b
+                    LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+                    WHERE b.nobooking = $1
+                `;
+                
+                const bookingResult = await client.query(bookingQuery, [item.nobooking]);
+                
+                if (bookingResult.rows.length > 0) {
+                    const bookingData = bookingResult.rows[0];
+                    console.log('📝 [PROCESS-QUEUE] Booking data found for LTB/Bank insert:', {
+                        nobooking: bookingData.nobooking,
+                        userid: bookingData.userid,
+                        namawajibpajak: bookingData.namawajibpajak
+                    });
+
+                    // Insert ke ltb_1_terima_berkas_sspd
+                    const insertLtbQuery = `
+                        INSERT INTO ltb_1_terima_berkas_sspd (
+                            nobooking,
+                            tanggal_terima,
+                            status,
+                            pengirim_ltb,
+                            trackstatus,
+                            userid,
+                            namawajibpajak,
+                            namapemilikobjekpajak,
+                            divisi,
+                            nama,
+                            jenis_wajib_pajak,
+                            no_registrasi
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        ON CONFLICT (nobooking) DO UPDATE SET
+                            trackstatus = EXCLUDED.trackstatus,
+                            updated_at = NOW()
+                        RETURNING id
+                    `;
+
+                    const ltbParams = [
+                        item.nobooking,
+                        new Date().toLocaleDateString('id-ID'), // tanggal_terima
+                        'Diterima', // status
+                        bookingData.user_nama || 'PPATK User', // pengirim_ltb
+                        'Diolah', // trackstatus
+                        bookingData.userid, // userid
+                        bookingData.namawajibpajak, // namawajibpajak
+                        bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
+                        bookingData.user_divisi || 'PPATK', // divisi
+                        bookingData.user_nama || 'PPATK User', // nama
+                        bookingData.jenis_wajib_pajak || bookingData.user_jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
+                        null // no_registrasi (akan diisi oleh LTB)
+                    ];
+
+                    const ltbResult = await client.query(insertLtbQuery, ltbParams);
+                    console.log('✅ [PROCESS-QUEUE] Inserted/Updated ltb_1_terima_berkas_sspd:', ltbResult.rows[0].id);
+
+                    // Insert ke bank_1_cek_hasil_transaksi
+                    const insertBankQuery = `
+                        INSERT INTO bank_1_cek_hasil_transaksi (
+                            nobooking,
+                            userid,
+                            bphtb_yangtelah_dibayar,
+                            nomor_bukti_pembayaran,
+                            tanggal_perolehan,
+                            tanggal_pembayaran,
+                            status_verifikasi,
+                            catatan_bank,
+                            verified_by,
+                            verified_at,
+                            no_registrasi,
+                            status_dibank
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        ON CONFLICT (nobooking) DO UPDATE SET
+                            status_verifikasi = EXCLUDED.status_verifikasi,
+                            status_dibank = EXCLUDED.status_dibank,
+                            updated_at = NOW()
+                        RETURNING id
+                    `;
+
+                    const bankParams = [
+                        item.nobooking, // nobooking
+                        bookingData.userid, // userid
+                        null, // bphtb_yangtelah_dibayar (akan diisi oleh Bank)
+                        null, // nomor_bukti_pembayaran (akan diisi oleh Bank)
+                        null, // tanggal_perolehan (akan diisi oleh Bank)
+                        null, // tanggal_pembayaran (akan diisi oleh Bank)
+                        'Pending', // status_verifikasi
+                        null, // catatan_bank (akan diisi oleh Bank)
+                        null, // verified_by (akan diisi oleh Bank)
+                        null, // verified_at (akan diisi oleh Bank)
+                        null, // no_registrasi (akan diisi oleh Bank)
+                        'Dicheck' // status_dibank
+                    ];
+
+                    const bankResult = await client.query(insertBankQuery, bankParams);
+                    console.log('✅ [PROCESS-QUEUE] Inserted/Updated bank_1_cek_hasil_transaksi:', bankResult.rows[0].id);
+
+                    console.log('🎉 [PROCESS-QUEUE] LTB and Bank records created successfully:', {
+                        nobooking: item.nobooking,
+                        ltb_id: ltbResult.rows[0].id,
+                        bank_id: bankResult.rows[0].id
+                    });
+                } else {
+                    console.warn('⚠️ [PROCESS-QUEUE] Booking data not found for LTB/Bank insert');
+                }
 
                 processed++;
                 console.log(`✅ [PROCESS-QUEUE] Processed: ${item.nobooking} for user ${item.userid}`);
