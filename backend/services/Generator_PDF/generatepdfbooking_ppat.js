@@ -457,7 +457,8 @@ export default function registerGeneratePdfBooking(app, pool) {
     app.get('/api/ppatk/generate-pdf-mohon-validasi/:nobooking', async (req, res) => {
         const { nobooking } = req.params; // Ambil nobooking dari URL parameter
         const { pengirim } = req.query;
-        console.log('nobooking:', nobooking);
+        console.log('📄 [PDF] Generating mohon validasi PDF for nobooking:', nobooking);
+        console.log('📄 [PDF] Request headers:', req.headers);
         try {
             const bookingQuery = await pool.query(`
                 SELECT 
@@ -471,11 +472,15 @@ export default function registerGeneratePdfBooking(app, pool) {
                 WHERE pb.nobooking = $1
             `, [nobooking]);
 
+            console.log('📄 [PDF] Booking query result:', bookingQuery.rows.length, 'rows found');
+            
             if (bookingQuery.rows.length === 0) {
+                console.error('❌ [PDF] No data found for nobooking:', nobooking);
                 return res.status(404).json({ message: 'Data tidak ditemukan' });
             }
 
             const bookingData = bookingQuery.rows[0];
+            console.log('📄 [PDF] Booking data found:', bookingData.nobooking, bookingData.nama_pembuat);
             const pengirimData = {
                 nama: pengirim || bookingData.nama_pembuat || '',
                 userid: bookingData.id_pembuat || ''
@@ -488,7 +493,10 @@ export default function registerGeneratePdfBooking(app, pool) {
             }
             const creator = trackingresult.rows[0];
             const { userid, nama } = creator;
+            console.log('📄 [PDF] Creator data:', { userid, nama });
+            
             if (!userid || !nama) {
+                console.error('❌ [PDF] Missing userid or nama:', { userid, nama });
                 return res.status(400).json({ success: false, message: 'User ID dan nama pembuat is required' });
             }
             const result = await pool.query(`
@@ -517,7 +525,10 @@ export default function registerGeneratePdfBooking(app, pool) {
             WHERE 
                 pb.userid = $1 AND pb.nobooking = $2`, [userid, nobooking]);
 
+            console.log('📄 [PDF] Main data query result:', result.rows.length, 'rows found');
+            
             if (result.rows.length === 0) {
+                console.error('❌ [PDF] No main data found for userid:', userid, 'nobooking:', nobooking);
                 return res.status(404).json({ message: 'Data not found' });
             }
             const data = result.rows[0];
@@ -732,11 +743,13 @@ doc.text(data.nama_pengirim || '_____________________', leftX - 60, nameY, { wid
             doc.end();
 
         } catch (error) {
-            console.error('Error generating PDF:', error);
+            console.error('❌ [PDF] Error generating mohon validasi PDF:', error);
+            console.error('❌ [PDF] Error stack:', error.stack);
             res.status(500).json({ 
                 success: false, 
                 message: 'Gagal menghasilkan dokumen PDF',
-                error: error.message 
+                error: error.message,
+                nobooking: nobooking
             });
         }
     });

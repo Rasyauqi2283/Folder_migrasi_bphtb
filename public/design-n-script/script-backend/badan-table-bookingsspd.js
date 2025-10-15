@@ -569,7 +569,9 @@ async function viewPDF(nobooking) {
         viewBtn.disabled = true;
         const response = await fetch(`/api/ppatk/generate-pdf-mohon-validasi/${nobooking}`, { credentials: 'include' });
         if (!response.ok) {
-            throw new Error(response.statusText || 'Gagal mengambil PDF');
+            const errorText = await response.text();
+            console.error('Response error:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
         const blob = await response.blob();
         const pdfUrl = URL.createObjectURL(blob);
