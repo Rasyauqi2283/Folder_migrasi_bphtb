@@ -10,8 +10,16 @@ export default function registerGeneratePdfBooking(app, pool) {
         const { nobooking } = req.params;
 
         try {
+            console.log('📄 [PDF-BADAN] Generating PDF for nobooking:', nobooking);
+            
+            // Get user data from verified_users table instead of pat_1_bookingsspd
             const trackingresult = await pool.query(`
-                SELECT userid, nama FROM pat_1_bookingsspd WHERE nobooking = $1
+                SELECT 
+                    pb.userid,
+                    vu.nama
+                FROM pat_1_bookingsspd pb
+                LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
+                WHERE pb.nobooking = $1
             `, [nobooking]);
 
             if (trackingresult.rows.length === 0) {
@@ -20,8 +28,11 @@ export default function registerGeneratePdfBooking(app, pool) {
 
             const creator = trackingresult.rows[0];
             const { userid, nama } = creator;
+            
+            console.log('📄 [PDF-BADAN] Creator data:', { userid, nama });
 
             if (!userid || !nama) {
+                console.error('❌ [PDF-BADAN] Missing userid or nama:', { userid, nama });
                 return res.status(400).json({ success: false, message: 'User ID dan nama pembuat is required' });
             }
 
@@ -56,7 +67,10 @@ export default function registerGeneratePdfBooking(app, pool) {
             WHERE 
                 pb.userid = $1 AND vb.nama = $2 AND pb.nobooking = $3`, [userid, nama, nobooking]);
 
+            console.log('📄 [PDF-BADAN] Main data query result:', result.rows.length, 'rows found');
+            
             if (result.rows.length === 0) {
+                console.error('❌ [PDF-BADAN] No main data found for userid:', userid, 'nama:', nama, 'nobooking:', nobooking);
                 return res.status(404).json({ message: 'Data not found' });
             }
             const data = result.rows[0];
@@ -447,9 +461,14 @@ export default function registerGeneratePdfBooking(app, pool) {
             doc.moveTo(0, signatureYPosition + 85).lineTo(700, signatureYPosition + 85).stroke();
             doc.end();
         } catch (error) {
-            console.warn('Logo not found, proceeding without logo');
-            console.error('Error generating PDF:', error);
-            res.status(500).json({ message: 'Error generating PDF' });
+            console.error('❌ [PDF-BADAN] Error generating PDF:', error);
+            console.error('❌ [PDF-BADAN] Error stack:', error.stack);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Gagal menghasilkan dokumen PDF',
+                error: error.message,
+                nobooking: nobooking
+            });
         }
     });
 

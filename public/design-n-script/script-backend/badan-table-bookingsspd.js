@@ -550,8 +550,8 @@ async function viewDocument(nobooking) {
         return;
     }
 
-    // Buat URL untuk mengakses PDF
-    const pdfUrl = `/api/ppatk/generate-pdf-mohon-validasi/${encodeURIComponent(nobooking)}`;
+    // Buat URL untuk mengakses PDF - menggunakan endpoint yang benar
+    const pdfUrl = `/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}`;
     
     // Membuka PDF di jendela baru
     window.open(pdfUrl, '_blank');
