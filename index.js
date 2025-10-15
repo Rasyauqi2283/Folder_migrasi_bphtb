@@ -233,7 +233,11 @@ console.log('CORS Origins:', process.env.CORS_ORIGINS?.split(',')
 .filter(Boolean));
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
-// Register PPATK endpoints BEFORE body parsers (for multipart/form-data support)
+// Body parsers must come FIRST for JSON endpoints
+app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
+
+// Register PPATK endpoints AFTER body parsers
 registerPPATKEndpoints({
   app,
   pool,
@@ -241,12 +245,6 @@ registerPPATKEndpoints({
   morganMiddleware,
   triggerNotificationByStatus
 });
-
-// Body parsers must come after PPATK endpoints
-app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
-
-// Register JSON-based PPATK endpoints AFTER body parsers
 registerCreateBookingEndpoints({
   app,
   pool,
