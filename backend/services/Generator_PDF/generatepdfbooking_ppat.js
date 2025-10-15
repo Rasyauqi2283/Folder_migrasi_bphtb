@@ -36,6 +36,13 @@ export default function registerGeneratePdfBooking(app, pool) {
                 return res.status(400).json({ success: false, message: 'User ID dan nama pembuat is required' });
             }
 
+            // Test simple query first
+            const testQuery = await pool.query(`
+                SELECT COUNT(*) as count FROM pat_1_bookingsspd 
+                WHERE userid = $1 AND nobooking = $2
+            `, [userid, nobooking]);
+            console.log('📄 [PDF-BADAN] Test query result:', testQuery.rows[0].count, 'records found');
+
             const result = await pool.query(`
                 SELECT DISTINCT
                 pb.nobooking, pb.noppbb, pb.userid, pb.jenis_wajib_pajak, pb.namawajibpajak, pb.alamatwajibpajak, 
@@ -59,18 +66,18 @@ export default function registerGeneratePdfBooking(app, pool) {
             LEFT JOIN 
                 pat_4_objek_pajak o ON pb.nobooking = o.nobooking
             LEFT JOIN
-                a_2_verified_users vb ON vb.nama = pb.nama AND pb.userid = vb.userid
+                a_2_verified_users vb ON pb.userid = vb.userid
             LEFT JOIN
                 pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking 
             LEFT JOIN
                 pat_6_sign ps ON pb.nobooking = ps.nobooking
             WHERE 
-                pb.userid = $1 AND vb.nama = $2 AND pb.nobooking = $3`, [userid, nama, nobooking]);
+                pb.userid = $1 AND pb.nobooking = $2`, [userid, nobooking]);
 
             console.log('📄 [PDF-BADAN] Main data query result:', result.rows.length, 'rows found');
             
             if (result.rows.length === 0) {
-                console.error('❌ [PDF-BADAN] No main data found for userid:', userid, 'nama:', nama, 'nobooking:', nobooking);
+                console.error('❌ [PDF-BADAN] No main data found for userid:', userid, 'nobooking:', nobooking);
                 return res.status(404).json({ message: 'Data not found' });
             }
             const data = result.rows[0];
