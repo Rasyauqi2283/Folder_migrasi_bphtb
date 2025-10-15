@@ -481,22 +481,21 @@ export default function registerGeneratePdfBooking(app, pool) {
 
             const bookingData = bookingQuery.rows[0];
             console.log('📄 [PDF] Booking data found:', bookingData.nobooking, bookingData.nama_pembuat);
+            console.log('📄 [PDF] Available fields:', Object.keys(bookingData).filter(key => bookingData[key] !== null));
             const pengirimData = {
                 nama: pengirim || bookingData.nama_pembuat || '',
                 userid: bookingData.id_pembuat || ''
             };
-            const trackingresult = await pool.query(`
-                SELECT userid, nama FROM pat_1_bookingsspd WHERE nobooking = $1
-            `, [nobooking]);
-            if (trackingresult.rows.length === 0) {
-                return res.status(404).json({ message: 'Data untuk nobooking ini tidak ditemukan' });
-            }
-            const creator = trackingresult.rows[0];
-            const { userid, nama } = creator;
+            
+            // Use data from the first query instead of doing a separate query
+            const userid = bookingData.id_pembuat || bookingData.userid;
+            const nama = bookingData.nama_pembuat || bookingData.namawajibpajak;
+            
             console.log('📄 [PDF] Creator data:', { userid, nama });
             
             if (!userid || !nama) {
                 console.error('❌ [PDF] Missing userid or nama:', { userid, nama });
+                console.error('❌ [PDF] Available booking data fields:', Object.keys(bookingData));
                 return res.status(400).json({ success: false, message: 'User ID dan nama pembuat is required' });
             }
             const result = await pool.query(`
