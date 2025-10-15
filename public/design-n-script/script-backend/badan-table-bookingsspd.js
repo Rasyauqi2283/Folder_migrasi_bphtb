@@ -3247,27 +3247,7 @@ async function gotoform(nobooking) {
                         // Single event listener for save button
                         document.querySelector('.btn-simpan').addEventListener('click', async function() {
                             try {
-                                // Validate required fields first
-                                const requiredFields = [
-                                    'alamat_pemohon',
-                                    'kampungop',
-                                    'kelurahanop',
-                                    'kecamatanopj'
-                                ];
-                                
-                                const missingFields = requiredFields.filter(field => {
-                                    const value = document.getElementById(field).value.trim();
-                                    console.log('[VALIDATION] Field ' + field + ': "' + value + '" (length: ' + value.length + ')');
-                                    return !value;
-                                });
-                                
-                                if (missingFields.length > 0) {
-                                    console.log('[VALIDATION] Missing required fields:', missingFields);
-                                    alert('Mohon lengkapi field yang wajib diisi: ' + missingFields.join(', '));
-                                    return;
-                                }
-
-                                // Prepare data
+                                // Prepare data first
                                 const resolvedNoBooking = (typeof window !== 'undefined' && window.NOBOOKING) ? window.NOBOOKING : (document.getElementById('nobooking')?.value || '').trim();
 
                                 if (!resolvedNoBooking) {
@@ -3283,12 +3263,45 @@ async function gotoform(nobooking) {
                                     keterangan: (document.getElementById('lainnya')?.value || '').trim()
                                 };
                                 
+                                // Validate required fields using the same data that will be sent
+                                const requiredFields = [
+                                    'alamat_pemohon',
+                                    'kampungop',
+                                    'kelurahanop',
+                                    'kecamatanopj'
+                                ];
+                                
+                                const missingFields = requiredFields.filter(field => {
+                                    const value = formData[field];
+                                    console.log('[VALIDATION] Field ' + field + ': "' + value + '" (length: ' + value.length + ')');
+                                    return !value;
+                                });
+                                
+                                if (missingFields.length > 0) {
+                                    console.log('[VALIDATION] Missing required fields:', missingFields);
+                                    alert('Mohon lengkapi field yang wajib diisi: ' + missingFields.join(', '));
+                                    return;
+                                }
+
+                                
                                 console.log('[SAVE] Form data prepared:', formData);
                                 console.log('[SAVE] Field values before trim:', {
                                     alamat_pemohon: document.getElementById('alamat_pemohon').value,
                                     kampungop: document.getElementById('kampungop').value,
                                     kelurahanop: document.getElementById('kelurahanop').value,
                                     kecamatanopj: document.getElementById('kecamatanopj').value
+                                });
+                                console.log('[SAVE] Field values after trim:', {
+                                    alamat_pemohon: formData.alamat_pemohon,
+                                    kampungop: formData.kampungop,
+                                    kelurahanop: formData.kelurahanop,
+                                    kecamatanopj: formData.kecamatanopj
+                                });
+                                console.log('[SAVE] Field lengths:', {
+                                    alamat_pemohon_length: formData.alamat_pemohon.length,
+                                    kampungop_length: formData.kampungop.length,
+                                    kelurahanop_length: formData.kelurahanop.length,
+                                    kecamatanopj_length: formData.kecamatanopj.length
                                 });
 
                                 // Show loading state
