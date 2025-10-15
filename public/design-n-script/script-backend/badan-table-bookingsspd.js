@@ -2996,13 +2996,13 @@ async function gotoform(nobooking) {
             <body>
                 <script>
                     // Expose nobooking to this popup context so it's not lost inside nested template strings
-                    window.NOBOOKING = '${nobooking}';
+                    window.NOBOOKING = '` + nobooking + `';
                 </script>
                 <div class="form-wrapper">
-                    <h1 class="form-title">Formulir Validasi PPATK - ${nobooking}</h1>
+                    <h1 class="form-title">Formulir Validasi PPATK - ` + nobooking + `</h1>
                     
                     <form id="ppatkForm" class="validation-form">
-                        <input type="hidden" id="nobooking" name="nobooking" value="${nobooking}">
+                        <input type="hidden" id="nobooking" name="nobooking" value="` + nobooking + `">
                         <!-- Form sections with pre-filled data -->
                         <div class="form-header-decoration">
                             <div class="tax-icon">
@@ -3027,7 +3027,7 @@ async function gotoform(nobooking) {
                                                 <label for="nama_pemohon">Nama Lengkap Pemohon</label>
                                             </div>
                                             <input type="text" id="nama_pemohon" name="nama_pemohon" 
-                                                   class="elegant-input" value="${formData.nama_pemohon || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.nama_pemohon || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3035,7 +3035,7 @@ async function gotoform(nobooking) {
                                                 <label for="no_telepon">Nomor Telepon/HP</label>
                                             </div>
                                             <input type="tel" id="no_telepon" name="no_telepon" 
-                                                   class="elegant-input" value="${formData.no_telepon || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.no_telepon || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3043,7 +3043,7 @@ async function gotoform(nobooking) {
                                                 <label for="alamat_pemohon">Alamat Pemohon</label>
                                             </div>
                                             <textarea id="alamat_pemohon" name="alamat_pemohon" rows="3" 
-                                                      class="elegant-textarea" placeholder="Tolong diisikan" required>${formData.alamat_pemohon || ''}</textarea>
+                                                      class="elegant-textarea" placeholder="Tolong diisikan" required>` + (formData.alamat_pemohon || '') + `</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -3062,7 +3062,7 @@ async function gotoform(nobooking) {
                                                 <label for="nama_wajib_pajak">Nama Wajib Pajak</label>
                                             </div>
                                             <input type="text" id="nama_wajib_pajak" name="nama_wajib_pajak" 
-                                                   class="elegant-input" value="${formData.nama_wajib_pajak || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.nama_wajib_pajak || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3070,7 +3070,7 @@ async function gotoform(nobooking) {
                                                 <label for="kelurahan">Desa/Kelurahan</label>
                                             </div>
                                             <input type="text" id="kelurahan" name="kelurahan" 
-                                                   class="elegant-input" value="${formData.kelurahan || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.kelurahan || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3078,7 +3078,7 @@ async function gotoform(nobooking) {
                                                 <label for="kecamatan">Kecamatan</label>
                                             </div>
                                             <input type="text" id="kecamatan" name="kecamatan" 
-                                                   class="elegant-input" value="${formData.kecamatan || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.kecamatan || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3086,7 +3086,7 @@ async function gotoform(nobooking) {
                                                 <label for="kabupaten_kota">Kabupaten/Kota</label>
                                             </div>
                                             <input type="text" id="kabupaten_kota" name="kabupaten_kota" 
-                                                   class="elegant-input" value="${formData.kabupaten_kota || ''}" required readonly>
+                                                   class="elegant-input" value="` + (formData.kabupaten_kota || '') + `" required readonly>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
@@ -3094,7 +3094,7 @@ async function gotoform(nobooking) {
                                                 <label for="alamat_wajib_pajak">Alamat Wajib Pajak</label>
                                             </div>
                                             <textarea id="alamat_wajib_pajak" name="alamat_wajib_pajak" rows="3" 
-                                                      class="elegant-textarea" required readonly>${formData.alamat_wajib_pajak || ''}</textarea>
+                                                      class="elegant-textarea" required readonly>` + (formData.alamat_wajib_pajak || '') + `</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -3120,7 +3120,7 @@ async function gotoform(nobooking) {
                                                         <label for="Alamatop">Alamat Objek Pajak</label>
                                                     </div>
                                                     <input type="text" id="Alamatop" name="Alamatop" 
-                                                           class="elegant-input" value="${formData.Alamatop || ''}" required readonly>
+                                                           class="elegant-input" value="` + (formData.Alamatop || '') + `" required readonly>
                                                 </div>
                                                 <div class="form-group">
                                                     <div class="label-with-icon">
@@ -3128,7 +3128,7 @@ async function gotoform(nobooking) {
                                                         <label for="kampungop">Kampung</label>
                                                     </div>
                                                     <input type="text" id="kampungop" name="kampungop" 
-                                                           class="elegant-input" placeholder="Tolong diisikan" value="${formData.kampungop || ''}" required>
+                                                           class="elegant-input" placeholder="Tolong diisikan" value="` + (formData.kampungop || '') + `" required>
                                                 </div>
                                                 <div class="form-group">
                                                     <div class="label-with-icon">
@@ -3136,7 +3136,7 @@ async function gotoform(nobooking) {
                                                         <label for="kelurahanop">Kelurahan/Desa</label>
                                                     </div>
                                                     <input type="text" id="kelurahanop" name="kelurahanop" 
-                                                           class="elegant-input" placeholder="Tolong diisikan" value="${formData.kelurahanop || ''}" required>
+                                                           class="elegant-input" placeholder="Tolong diisikan" value="` + (formData.kelurahanop || '') + `" required>
                                                 </div>
                                                 <div class="form-group">
                                                     <div class="label-with-icon">
@@ -3144,7 +3144,7 @@ async function gotoform(nobooking) {
                                                         <label for="kecamatanopj">Kecamatan</label>
                                                     </div>
                                                     <input type="text" id="kecamatanopj" name="kecamatanopj" 
-                                                           class="elegant-input" placeholder="Tolong diisikan" value="${formData.kecamatanopj || ''}" required>
+                                                           class="elegant-input" placeholder="Tolong diisikan" value="` + (formData.kecamatanopj || '') + `" required>
                                                 </div>
                                             </div>
                                         </div>
@@ -3157,7 +3157,7 @@ async function gotoform(nobooking) {
                                                         <label for="nop">Nomor Objek Pajak (NOP)</label>
                                                     </div>
                                                     <input type="text" id="nop" name="nop" 
-                                                           class="elegant-input" value="${formData.nop || ''}" readonly>
+                                                           class="elegant-input" value="` + (formData.nop || '') + `" readonly>
                                                 </div>                    
                                                 <div class="form-group">      
                                                     <div class="label-with-icon">
@@ -3165,7 +3165,7 @@ async function gotoform(nobooking) {
                                                         <label for="atas_nama">Atas Nama (Sertifikat)</label>
                                                     </div>
                                                     <input type="text" id="atas_nama" name="atas_nama" 
-                                                           class="elegant-input" value="${formData.atas_nama || ''}" readonly>
+                                                           class="elegant-input" value="` + (formData.atas_nama || '') + `" readonly>
                                                 </div>
                                                 <div class="form-group">
                                                     <div class="label-with-icon">
@@ -3173,7 +3173,7 @@ async function gotoform(nobooking) {
                                                         <label for="luas_tanah">Luas Tanah (m²)</label>
                                                     </div>
                                                     <input type="number" id="luas_tanah" name="luas_tanah" min="0" step="0.01" 
-                                                           value="${formData.luas_tanah || 0}" class="elegant-input" readonly>
+                                                           value="` + (formData.luas_tanah || 0) + `" class="elegant-input" readonly>
                                                 </div>
                                                 <div class="form-group">
                                                     <div class="label-with-icon">
@@ -3181,7 +3181,7 @@ async function gotoform(nobooking) {
                                                         <label for="luas_bangunan">Luas Bangunan (m²)</label>
                                                     </div>
                                                     <input type="number" id="luas_bangunan" name="luas_bangunan" min="0" step="0.01" 
-                                                           value="${formData.luas_bangunan || 0}" class="elegant-input" readonly>
+                                                           value="` + (formData.luas_bangunan || 0) + `" class="elegant-input" readonly>
                                                 </div>
                                             </div>
                                         </div>
@@ -3194,7 +3194,7 @@ async function gotoform(nobooking) {
                                                 <label for="lainnya">Keterangan Tambahan</label>
                                             </div>
                                         <textarea id="lainnya" name="lainnya" rows="3" 
-                                                      class="keterangan-textarea elegant-textarea">${formData.keterangan || ''}</textarea>
+                                                      class="keterangan-textarea elegant-textarea">` + (formData.keterangan || '') + `</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -3225,9 +3225,9 @@ async function gotoform(nobooking) {
                     
                     // Fungsi untuk toggle section
                     function toggleSection(sectionId) {
-                        console.log(\`[DEBUG] Toggling section: \${sectionId}\`);
-                        const content = document.getElementById(\`content-\${sectionId}\`);
-                        const icon = document.getElementById(\`icon-\${sectionId}\`);
+                        console.log('[DEBUG] Toggling section: ' + sectionId);
+                        const content = document.getElementById('content-' + sectionId);
+                        const icon = document.getElementById('icon-' + sectionId);
                         
                         if (content.style.display === 'none') {
                             content.style.display = 'block';
@@ -3257,8 +3257,15 @@ async function gotoform(nobooking) {
                                 
                                 const missingFields = requiredFields.filter(field => {
                                     const value = document.getElementById(field).value.trim();
+                                    console.log('[VALIDATION] Field ' + field + ': "' + value + '" (length: ' + value.length + ')');
                                     return !value;
                                 });
+                                
+                                if (missingFields.length > 0) {
+                                    console.log('[VALIDATION] Missing required fields:', missingFields);
+                                    alert('Mohon lengkapi field yang wajib diisi: ' + missingFields.join(', '));
+                                    return;
+                                }
 
                                 // Prepare data
                                 const resolvedNoBooking = (typeof window !== 'undefined' && window.NOBOOKING) ? window.NOBOOKING : (document.getElementById('nobooking')?.value || '').trim();
@@ -3275,6 +3282,14 @@ async function gotoform(nobooking) {
                                     kecamatanopj: document.getElementById('kecamatanopj').value.trim(),
                                     keterangan: (document.getElementById('lainnya')?.value || '').trim()
                                 };
+                                
+                                console.log('[SAVE] Form data prepared:', formData);
+                                console.log('[SAVE] Field values before trim:', {
+                                    alamat_pemohon: document.getElementById('alamat_pemohon').value,
+                                    kampungop: document.getElementById('kampungop').value,
+                                    kelurahanop: document.getElementById('kelurahanop').value,
+                                    kecamatanopj: document.getElementById('kecamatanopj').value
+                                });
 
                                 // Show loading state
                                 const saveBtn = this;
@@ -3295,8 +3310,11 @@ async function gotoform(nobooking) {
                                 });
 
                                 const result = await response.json();
+                                console.log('[SAVE] Response received:', result);
+                                console.log('[SAVE] Response status:', response.status);
 
                                 if (!response.ok || !result.success) {
+                                    console.error('[SAVE] Error response:', result);
                                     throw new Error(result.message || 'Gagal menyimpan data');
                                 }
 
@@ -3385,21 +3403,21 @@ function generateFormHTML(data) {
                                             <i class="fas fa-user"></i>
                                             <label for="nama_pemohon">Nama Lengkap Pemohon</label>
                                         </div>
-                                        <input type="text" id="nama_pemohon" name="nama_pemohon" class="elegant-input" value="${data.nama_pemohon || ''}" required>
+                                        <input type="text" id="nama_pemohon" name="nama_pemohon" class="elegant-input" value="` + (data.nama_pemohon || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-phone-alt"></i>
                                             <label for="no_telepon">Nomor Telepon/HP</label>
                                         </div>
-                                            <input type="tel" id="no_telepon" name="no_telepon" class="elegant-input" value="${data.no_telepon || ''}" required>
+                                            <input type="tel" id="no_telepon" name="no_telepon" class="elegant-input" value="` + (data.no_telepon || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-map-marker-alt"></i>
                                             <label for="alamat_pemohon">Alamat Pemohon</label>
                                         </div>
-                                            <textarea id="alamat_pemohon" name="alamat_pemohon" rows="3" class="elegant-textarea" required>${data.alamat_pemohon || ''}</textarea>
+                                            <textarea id="alamat_pemohon" name="alamat_pemohon" rows="3" class="elegant-textarea" required>` + (data.alamat_pemohon || '') + `</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -3417,35 +3435,35 @@ function generateFormHTML(data) {
                                             <i class="fas fa-user"></i>
                                             <label for="nama_wajib_pajak">Nama Wajib Pajak</label>
                                         </div>
-                                        <input type="text" id="nama_wajib_pajak" name="nama_wajib_pajak" class="elegant-input" value="${data.nama_wajib_pajak || ''}" required>
+                                        <input type="text" id="nama_wajib_pajak" name="nama_wajib_pajak" class="elegant-input" value="` + (data.nama_wajib_pajak || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-map-signs"></i>
                                             <label for="kelurahan">Desa/Kelurahan</label>
                                         </div>
-                                            <input type="text" id="kelurahan" name="kelurahan" class="elegant-input" value="${data.kelurahan || ''}" required>
+                                            <input type="text" id="kelurahan" name="kelurahan" class="elegant-input" value="` + (data.kelurahan || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-map-pin"></i>
                                             <label for="kecamatan">Kecamatan</label>
                                         </div>
-                                        <input type="text" id="kecamatan" name="kecamatan" class="elegant-input" value="${data.kecamatan || ''}" required>
+                                        <input type="text" id="kecamatan" name="kecamatan" class="elegant-input" value="` + (data.kecamatan || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-city"></i>
                                             <label for="kabupaten_kota">Kabupaten/Kota</label>
                                         </div>
-                                            <input type="text" id="kabupaten_kota" name="kabupaten_kota" class="elegant-input" value="${data.kabupaten_kota || ''}" required>
+                                            <input type="text" id="kabupaten_kota" name="kabupaten_kota" class="elegant-input" value="` + (data.kabupaten_kota || '') + `" required>
                                     </div>
                                     <div class="form-group">
                                         <div class="label-with-icon">
                                             <i class="fas fa-map-marker-alt"></i>
                                             <label for="alamat_wajib_pajak">Alamat Wajib Pajak</label>
                                         </div>
-                                        <textarea id="alamat_wajib_pajak" name="alamat_wajib_pajak" rows="3" class="elegant-textarea" required>${data.alamat_wajib_pajak || ''}</textarea>
+                                        <textarea id="alamat_wajib_pajak" name="alamat_wajib_pajak" rows="3" class="elegant-textarea" required>` + (data.alamat_wajib_pajak || '') + `</textarea>
                                     </div>
                                 </div>
                             </div>
@@ -3471,28 +3489,28 @@ function generateFormHTML(data) {
                                                 <i class="fas fa-map-marker-alt"></i>
                                                 <label for="Alamatop">Alamat Objek Pajak</label>
                                             </div>
-                                                <input type="text" id="Alamatop" name="Alamatop" class="elegant-input" value="${data.Alamatop || ''}" required>
+                                                <input type="text" id="Alamatop" name="Alamatop" class="elegant-input" value="` + (data.Alamatop || '') + `" required>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
                                                 <i class="fas fa-map-marked-alt"></i>
                                                 <label for="kampungop">Kampung</label>
                                             </div>
-                                                <input type="text" id="kampungop" name="kampungop" class="elegant-input" value="${data.kampungop || ''}" required>
+                                                <input type="text" id="kampungop" name="kampungop" class="elegant-input" value="` + (data.kampungop || '') + `" required>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
                                                 <i class="fas fa-map-signs"></i>
                                                 <label for="kelurahanop">Kelurahan/Desa</label>
                                             </div>
-                                                <input type="text" id="kelurahanop" name="kelurahanop" class="elegant-input" value="${data.kelurahanop || ''}" required>
+                                                <input type="text" id="kelurahanop" name="kelurahanop" class="elegant-input" value="` + (data.kelurahanop || '') + `" required>
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
                                                 <i class="fas fa-map-pin"></i>
                                                 <label for="kecamatan">Kecamatan</label>
                                             </div>
-                                            <input type="text" id="kecamatanopj" name="kecamatanopj" class="elegant-input" value="${data.kecamatanopj || ''}" required>
+                                            <input type="text" id="kecamatanopj" name="kecamatanopj" class="elegant-input" value="` + (data.kecamatanopj || '') + `" required>
                                         </div>
                                     </div>
                                 </div>
@@ -3506,7 +3524,7 @@ function generateFormHTML(data) {
                                             </div>
 
                                             <div class="input-with-icon">
-                                                <input type="text" id="nop" name="nop" class="elegant-input" value="${data.nop || ''}">
+                                                <input type="text" id="nop" name="nop" class="elegant-input" value="` + (data.nop || '') + `">
                                             </div>
                                         </div>                    
                                         <div class="form-group">      
@@ -3514,21 +3532,21 @@ function generateFormHTML(data) {
                                                 <i class="fas fa-user-check"></i>
                                                 <label for="atas_nama">Atas Nama (Sertifikat)</label>
                                             </div>
-                                                <input type="text" id="atas_nama" name="atas_nama" class="elegant-input" value="${data.atas_nama || ''}">
+                                                <input type="text" id="atas_nama" name="atas_nama" class="elegant-input" value="` + (data.atas_nama || '') + `">
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
                                                 <i class="fas fa-vector-square"></i>
                                                 <label for="luas_tanah">Luas Tanah (m²)</label>
                                             </div>
-                                                <input type="number" id="luas_tanah" name="luas_tanah" min="0" step="0.01" value="${data.luas_tanah || 0}" class="elegant-input">
+                                                <input type="number" id="luas_tanah" name="luas_tanah" min="0" step="0.01" value="` + (data.luas_tanah || 0) + `" class="elegant-input">
                                         </div>
                                         <div class="form-group">
                                             <div class="label-with-icon">
                                                 <i class="fas fa-ruler-combined"></i>
                                                 <label for="luas_bangunan">Luas Bangunan (m²)</label>
                                             </div>
-                                                <input type="number" id="luas_bangunan" name="luas_bangunan" min="0" step="0.01" value="${data.luas_bangunan || 0}" class="elegant-input">
+                                                <input type="number" id="luas_bangunan" name="luas_bangunan" min="0" step="0.01" value="` + (data.luas_bangunan || 0) + `" class="elegant-input">
                                         </div>
                                     </div>
                                 </div>
@@ -3540,7 +3558,7 @@ function generateFormHTML(data) {
                                         <i class="fas fa-edit"></i>
                                         <label for="lainnya">Keterangan Tambahan</label>
                                     </div>
-                                        <textarea id="lainnya" name="lainnya" rows="3" class="keterangan-textarea elegant-textarea">${data.keterangan || ''}</textarea>
+                                        <textarea id="lainnya" name="lainnya" rows="3" class="keterangan-textarea elegant-textarea">` + (data.keterangan || '') + `</textarea>
                                 </div>
                             </div>
                         </div>
