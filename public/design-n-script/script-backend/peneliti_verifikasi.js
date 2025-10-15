@@ -1,4 +1,7 @@
 let selectedNoBooking = null;
+let allData = []; // Store all data
+let currentPage = 1;
+const itemsPerPage = 6; // 6 items per page
 
 // Fungsi UTAMA untuk memuat data ke dalam card layout
 async function loadTableDataPenelitiV() {
@@ -94,6 +97,9 @@ async function loadTableDataPenelitiV() {
             throw new Error('Target table body element not found');
         }
 
+        // Store all data for pagination
+        allData = data.data;
+        
         // Clear existing content and create cards container
         tbody.innerHTML = '';
         
@@ -102,8 +108,91 @@ async function loadTableDataPenelitiV() {
         cardsContainer.className = 'verification-cards-container';
         tbody.appendChild(cardsContainer);
 
-        // Process each item and create cards
-        data.data.forEach(item => {
+        // Create pagination container
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination-container';
+        tbody.appendChild(paginationContainer);
+
+        // Display current page
+        displayPage(currentPage);
+        
+        // Show success message
+        if (allData.length > 0) {
+            console.log('✅ [FRONTEND] SUCCESS: Cards loaded successfully');
+            showAlert('success', `Berhasil memuat ${allData.length} data verifikasi`);
+        } else {
+            console.log('⚠️ [FRONTEND] NO DATA: No verification data found');
+            showAlert('info', 'Tidak ada data verifikasi yang ditemukan');
+        }
+
+    } catch (mainError) {
+        console.error('❌ [FRONTEND] Main Function Error:', {
+            errorMessage: mainError.message,
+            errorName: mainError.name,
+            errorStack: mainError.stack,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        });
+
+        const errorContainer = document.querySelector('.data-masuk') || document.body;
+        errorContainer.innerHTML = `
+            <div class="error-message" style="
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+                border: 1px solid #ef4444;
+                border-radius: 12px;
+                padding: 24px;
+                margin: 20px;
+                color: #f3f4f6;
+                text-align: center;
+            ">
+                <h3 style="color: #ef4444; margin-bottom: 16px;">❌ Terjadi Kesalahan</h3>
+                <p style="margin-bottom: 20px;">${mainError.message}</p>
+                <button onclick="location.reload()" style="
+                    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">🔄 Coba Lagi</button>
+            </div>
+        `;
+    }
+}
+
+// Function to display specific page
+function displayPage(page) {
+    const cardsContainer = document.querySelector('.verification-cards-container');
+    const paginationContainer = document.querySelector('.pagination-container');
+    
+    if (!cardsContainer || !paginationContainer) return;
+    
+    // Clear existing cards
+    cardsContainer.innerHTML = '';
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(allData.length / itemsPerPage);
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentData = allData.slice(startIndex, endIndex);
+    
+    // Create cards for current page
+    currentData.forEach(item => {
+        createCard(cardsContainer, item);
+    });
+    
+    // Create pagination controls
+    createPagination(paginationContainer, page, totalPages);
+    
+    // Update current page
+    currentPage = page;
+}
+
+// Function to create individual card
+function createCard(container, item) {
             try {
                 // Validate required fields
                 const criticalFields = ['no_registrasi','nobooking'];
@@ -199,7 +288,7 @@ async function loadTableDataPenelitiV() {
                     }
                 });
                 
-                cardsContainer.appendChild(card);
+                container.appendChild(card);
 
                 // Create dropdown content for each card
                 const dropdownContent = document.createElement('div');
@@ -385,71 +474,24 @@ async function loadTableDataPenelitiV() {
                 // Add event listeners for form interactions
                 setupFormInteractions(card, item);
 
-            } catch (itemError) {
-                console.error('Error processing item:', itemError);
-                // Create error card for failed items
-                const errorCard = document.createElement('div');
-                errorCard.className = 'verification-card';
-                errorCard.style.border = '1px solid #ef4444';
-                errorCard.innerHTML = `
-                    <div class="card-header">
-                        <div>
-                            <h3 class="primary-info" style="color: #ef4444;">Error</h3>
-                            <p class="secondary-info">Gagal memuat data</p>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <p style="color: #ef4444;">${itemError.message}</p>
-                    </div>
-                `;
-                cardsContainer.appendChild(errorCard);
-            }
-        });
-
-        // Show success message
-        if (data.data.length > 0) {
-            console.log('✅ [FRONTEND] SUCCESS: Cards loaded successfully');
-            showAlert('success', `Berhasil memuat ${data.data.length} data verifikasi`);
-        } else {
-            console.log('⚠️ [FRONTEND] NO DATA: No verification data found');
-            showAlert('info', 'Tidak ada data verifikasi yang ditemukan');
-        }
-
-    } catch (mainError) {
-        console.error('❌ [FRONTEND] Main Function Error:', {
-            errorMessage: mainError.message,
-            errorName: mainError.name,
-            errorStack: mainError.stack,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            url: window.location.href
-        });
-
-        const errorContainer = document.querySelector('.data-masuk') || document.body;
-        errorContainer.innerHTML = `
-            <div class="error-message" style="
-                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-                border: 1px solid #ef4444;
-                border-radius: 12px;
-                padding: 24px;
-                margin: 20px;
-                color: #f3f4f6;
-                text-align: center;
-            ">
-                <h3 style="color: #ef4444; margin-bottom: 16px;">❌ Terjadi Kesalahan</h3>
-                <p style="margin-bottom: 20px;">${mainError.message}</p>
-                <button onclick="location.reload()" style="
-                    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-                    color: white;
-                    border: none;
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                ">🔄 Coba Lagi</button>
+    } catch (itemError) {
+        console.error('Error processing item:', itemError);
+        // Create error card for failed items
+        const errorCard = document.createElement('div');
+        errorCard.className = 'verification-card';
+        errorCard.style.border = '1px solid #ef4444';
+        errorCard.innerHTML = `
+            <div class="card-header">
+                <div>
+                    <h3 class="primary-info" style="color: #ef4444;">Error</h3>
+                    <p class="secondary-info">Gagal memuat data</p>
+                </div>
+            </div>
+            <div class="card-content">
+                <p style="color: #ef4444;">${itemError.message}</p>
             </div>
         `;
+        container.appendChild(errorCard);
     }
 }
 
@@ -674,6 +716,76 @@ async function sendToParafKasie(item) {
         console.error('Send to Paraf Error:', error);
         throw error;
     }
+}
+
+// Function to create pagination controls
+function createPagination(container, currentPage, totalPages) {
+    container.innerHTML = '';
+    
+    if (totalPages <= 1) return; // No pagination needed
+    
+    // Pagination info
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, allData.length);
+    
+    const info = document.createElement('div');
+    info.className = 'pagination-info';
+    info.textContent = `Menampilkan ${startItem}-${endItem} dari ${allData.length} data`;
+    container.appendChild(info);
+    
+    // Previous button
+    const prevButton = document.createElement('button');
+    prevButton.className = 'pagination-button';
+    prevButton.innerHTML = '‹ Sebelumnya';
+    prevButton.disabled = currentPage === 1;
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) {
+            displayPage(currentPage - 1);
+        }
+    });
+    container.appendChild(prevButton);
+    
+    // Page numbers
+    const numbersContainer = document.createElement('div');
+    numbersContainer.className = 'pagination-numbers';
+    
+    // Calculate page range
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+    
+    // Adjust range if we're near the beginning or end
+    if (endPage - startPage < 4) {
+        if (startPage === 1) {
+            endPage = Math.min(totalPages, startPage + 4);
+        } else {
+            startPage = Math.max(1, endPage - 4);
+        }
+    }
+    
+    // Add page numbers
+    for (let i = startPage; i <= endPage; i++) {
+        const pageButton = document.createElement('button');
+        pageButton.className = `pagination-number ${i === currentPage ? 'active' : ''}`;
+        pageButton.textContent = i;
+        pageButton.addEventListener('click', () => {
+            displayPage(i);
+        });
+        numbersContainer.appendChild(pageButton);
+    }
+    
+    container.appendChild(numbersContainer);
+    
+    // Next button
+    const nextButton = document.createElement('button');
+    nextButton.className = 'pagination-button';
+    nextButton.innerHTML = 'Selanjutnya ›';
+    nextButton.disabled = currentPage === totalPages;
+    nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            displayPage(currentPage + 1);
+        }
+    });
+    container.appendChild(nextButton);
 }
 
 // Initialize when DOM is loaded

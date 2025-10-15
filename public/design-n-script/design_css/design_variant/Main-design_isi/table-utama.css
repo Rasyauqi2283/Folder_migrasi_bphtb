@@ -28,43 +28,44 @@
 /* Modern Card Design - DARK THEME */
 .verification-cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   padding: 20px;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  min-height: 100vh;
+  min-height: calc(100vh - 200px);
 }
 
-/* Desktop Layout - Show as table-like cards */
+/* Desktop Layout - 3 columns grid */
 @media (min-width: 1024px) {
   .verification-cards-container {
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
     padding: 24px;
   }
   
   .verification-card {
-    min-height: 200px;
+    min-height: 220px;
   }
   
   .card-content {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
-/* Tablet Layout */
+/* Tablet Layout - 2 columns */
 @media (min-width: 768px) and (max-width: 1023px) {
   .verification-cards-container {
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
   }
   
   .card-content {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 }
 
-/* Mobile Layout */
+/* Mobile Layout - 1 column */
 @media (max-width: 767px) {
   .verification-cards-container {
     grid-template-columns: 1fr;
@@ -86,6 +87,111 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ===== PAGINATION STYLING ===== */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-top: 1px solid #374151;
+}
+
+.pagination-info {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-right: 20px;
+}
+
+.pagination-button {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  border-color: #6b7280;
+  transform: translateY(-1px);
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-button.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #8b5cf6;
+  color: white;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-number {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 40px;
+  text-align: center;
+}
+
+.pagination-number:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  border-color: #6b7280;
+  transform: translateY(-1px);
+}
+
+.pagination-number.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #8b5cf6;
+  color: white;
+}
+
+/* Loading state */
+.pagination-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+.pagination-loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #374151;
+  border-top: 2px solid #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .verification-card {
