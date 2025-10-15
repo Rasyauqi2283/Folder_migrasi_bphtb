@@ -1297,6 +1297,19 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
 // End LTB (Loket Terima Berkas) Endpoint //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Start Peneliti Endpoint //
+
+// Debug endpoint untuk cek session
+app.get('/api/debug-session', async (req, res) => {
+    res.json({
+        sessionExists: !!req.session.user,
+        sessionUser: req.session.user,
+        sessionId: req.sessionID,
+        divisi: req.session.user?.divisi,
+        userid: req.session.user?.userid,
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Peneliti bagian Verifikasi Endpoint //
 app.get('/api/peneliti_get-berkas-fromltb', async (req, res) => {
     console.log('[1] Memulai proses peneliti_get-berkas-fromltb');
@@ -1306,11 +1319,25 @@ app.get('/api/peneliti_get-berkas-fromltb', async (req, res) => {
     });
 
 
-    // Cek apakah pengguna sudah login dan apakah divisinya LTB
-    if (!req.session.user || req.session.user.divisi !== 'Peneliti') {
+    // Cek apakah pengguna sudah login dan apakah divisinya Peneliti
+    console.log('[3] Checking session and divisi access:', {
+        hasSession: !!req.session.user,
+        userDivisi: req.session.user?.divisi,
+        expectedDivisi: 'Peneliti',
+        isDivisiMatch: req.session.user?.divisi === 'Peneliti'
+    });
+    
+    if (!req.session.user) {
         return res.status(403).json({
             success: false,
-            message: 'Akses ditolak. Hanya pengguna dengan divisi Peneliti yang dapat mengakses data ini.'
+            message: 'Akses ditolak. Tidak ada session user. Silakan login terlebih dahulu.'
+        });
+    }
+    
+    if (req.session.user.divisi !== 'Peneliti') {
+        return res.status(403).json({
+            success: false,
+            message: `Akses ditolak. User divisi: "${req.session.user.divisi}", Required: "Peneliti". Silakan login dengan user yang memiliki divisi Peneliti.`
         });
     }
 
