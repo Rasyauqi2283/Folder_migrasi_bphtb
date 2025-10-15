@@ -2,19 +2,34 @@ let selectedNoBooking = null;
 // Fungsi UTAMA untuk memuat data ke dalam tabel
 async function loadTableDataPenelitiV() {
     try {
+        console.log('🔍 [FRONTEND] ===== PENELITI VERIFIKASI LOADING =====');
+        console.log('🔍 [FRONTEND] Timestamp:', new Date().toISOString());
+        console.log('🔍 [FRONTEND] URL:', window.location.href);
+        
         // Validate user division
         const userDivisi = getUserDivisi();
+        console.log('🔍 [FRONTEND] User division check:', {
+            userDivisi: userDivisi,
+            userDivisiType: typeof userDivisi,
+            isString: typeof userDivisi === 'string',
+            isPeneliti: userDivisi === 'Peneliti'
+        });
+        
         if (typeof userDivisi !== 'string') {
             throw new Error('Invalid user division data');
         }
 
         if (userDivisi !== 'Peneliti') {
+            console.log('❌ [FRONTEND] BLOCKED: User divisi is not Peneliti:', userDivisi);
             alert('Anda tidak memiliki akses ke data Peneliti');
             return;
         }
+        
+        console.log('✅ [FRONTEND] User division validated, proceeding with API call...');
 
         // Fetch data with timeout
         let response;
+        console.log('🔍 [FRONTEND] Making API request to /api/peneliti_get-berkas-fromltb...');
         try {
             response = await Promise.race([
                 fetch('/api/peneliti_get-berkas-fromltb', { credentials: 'include' }),
@@ -22,12 +37,29 @@ async function loadTableDataPenelitiV() {
                     setTimeout(() => reject(new Error('Request timeout: Server took too long to respond')), 10000))
             ]);
 
+            console.log('🔍 [FRONTEND] API Response received:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+
             // Jika 404, perlakukan sebagai tidak ada data (bukan error)
             if (!response.ok && response.status !== 404) {
+                console.log('❌ [FRONTEND] API Error Response:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    url: response.url
+                });
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
         } catch (fetchError) {
-            console.error('Fetch Error:', fetchError);
+            console.error('❌ [FRONTEND] Fetch Error:', {
+                errorMessage: fetchError.message,
+                errorName: fetchError.name,
+                errorStack: fetchError.stack,
+                timestamp: new Date().toISOString()
+            });
             throw new Error(`Gagal memuat data: ${fetchError.message}`);
         }
 
@@ -342,7 +374,14 @@ async function loadTableDataPenelitiV() {
         }
 
     } catch (mainError) {
-        console.error('Main Function Error:', mainError);
+        console.error('❌ [FRONTEND] Main Function Error:', {
+            errorMessage: mainError.message,
+            errorName: mainError.name,
+            errorStack: mainError.stack,
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
+        });
         
         // Show error to user
         const errorContainer = document.querySelector('.data-masuk') || document.body;

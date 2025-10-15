@@ -1312,41 +1312,68 @@ app.get('/api/debug-session', async (req, res) => {
 
 // Peneliti bagian Verifikasi Endpoint //
 app.get('/api/peneliti_get-berkas-fromltb', async (req, res) => {
-    console.log('[1] Memulai proses peneliti_get-berkas-fromltb');
-    console.log('[2] Memeriksa session user:', {
-        sessionUser: req.session.user,
-        sessionId: req.sessionID
+    console.log('🔍 [PENELITI-API] ===== DEBUGGING PENELITI ENDPOINT =====');
+    console.log('🔍 [PENELITI-API] Timestamp:', new Date().toISOString());
+    console.log('🔍 [PENELITI-API] Request headers:', {
+        'user-agent': req.headers['user-agent'],
+        'cookie': req.headers.cookie ? 'Present' : 'Missing',
+        'x-forwarded-for': req.headers['x-forwarded-for'],
+        'host': req.headers.host
     });
+    console.log('🔍 [PENELITI-API] Session details:', {
+        sessionExists: !!req.session,
+        sessionId: req.sessionID,
+        sessionUser: req.session.user,
+        sessionKeys: req.session ? Object.keys(req.session) : 'No session'
+    });
+    console.log('🔍 [PENELITI-API] Raw session data:', req.session);
 
 
     // Cek apakah pengguna sudah login dan apakah divisinya Peneliti
-    console.log('[3] Checking session and divisi access:', {
+    console.log('🔍 [PENELITI-API] Checking session and divisi access:', {
         hasSession: !!req.session.user,
         userDivisi: req.session.user?.divisi,
+        userDivisiType: typeof req.session.user?.divisi,
         expectedDivisi: 'Peneliti',
-        isDivisiMatch: req.session.user?.divisi === 'Peneliti'
+        isDivisiMatch: req.session.user?.divisi === 'Peneliti',
+        userObject: req.session.user
     });
     
     if (!req.session.user) {
+        console.log('❌ [PENELITI-API] BLOCKED: No session user found');
         return res.status(403).json({
             success: false,
             message: 'Akses ditolak. Tidak ada session user. Silakan login terlebih dahulu.'
         });
     }
     
+    console.log('🔍 [PENELITI-API] User found, checking divisi:', {
+        userDivisi: req.session.user.divisi,
+        divisiComparison: `"${req.session.user.divisi}" === "Peneliti"`,
+        result: req.session.user.divisi === 'Peneliti'
+    });
+    
     if (req.session.user.divisi !== 'Peneliti') {
+        console.log('❌ [PENELITI-API] BLOCKED: Wrong divisi:', {
+            actualDivisi: req.session.user.divisi,
+            requiredDivisi: 'Peneliti',
+            userDetails: req.session.user
+        });
         return res.status(403).json({
             success: false,
             message: `Akses ditolak. User divisi: "${req.session.user.divisi}", Required: "Peneliti". Silakan login dengan user yang memiliki divisi Peneliti.`
         });
     }
+    
+    console.log('✅ [PENELITI-API] Access granted, proceeding with query...');
 
     try {
         const penelitiUserId = req.session.user.userid;
         // Query untuk mengambil data yang hanya untuk divisi Peneliti
-        console.log('[4] User yang terautentikasi:', {
+        console.log('🔍 [PENELITI-API] User yang terautentikasi:', {
             userId: penelitiUserId,
-            division: req.session.user.divisi
+            division: req.session.user.divisi,
+            fullUserObject: req.session.user
         });
 
         const penelitiDataQuery = `
@@ -1409,28 +1436,45 @@ WHERE
     ORDER BY p.no_registrasi ASC;
         `;
 
-         console.log('[6] Mengeksekusi query dengan parameter:', {
-            query: penelitiDataQuery,
-            parameters: [penelitiUserId]
+        console.log('🔍 [PENELITI-API] Mengeksekusi query dengan parameter:', {
+            query: penelitiDataQuery.substring(0, 200) + '...',
+            parameters: [penelitiUserId],
+            parameterCount: 1
         });
+        
         const result = await pool.query(penelitiDataQuery, [penelitiUserId]);
         
-        console.log('[7] Hasil query database:', {
+        console.log('🔍 [PENELITI-API] Hasil query database:', {
             rowCount: result.rowCount,
-            sampleData: result.rows.length > 0 ? result.rows[0] : null
-        })
+            hasData: result.rows.length > 0,
+            sampleData: result.rows.length > 0 ? {
+                no_registrasi: result.rows[0].no_registrasi,
+                nobooking: result.rows[0].nobooking,
+                trackstatus: result.rows[0].trackstatus,
+                status: result.rows[0].status,
+                namawajibpajak: result.rows[0].namawajibpajak
+            } : null
+        });
         if (result.rows.length > 0) {
+            console.log('✅ [PENELITI-API] SUCCESS: Returning data to frontend');
             res.status(200).json({
                 success: true,
                 data: result.rows
             });
         } else {
+            console.log('⚠️ [PENELITI-API] NO DATA: No records found for Peneliti');
             res.status(404).json({
                 success: false,
                 message: 'No data found for Peneliti'
             });
-        }   } catch (error) {
-        console.error('Error fetching data:', error);
+        }
+    } catch (error) {
+        console.error('❌ [PENELITI-API] ERROR: Database query failed:', {
+            errorMessage: error.message,
+            errorStack: error.stack,
+            errorCode: error.code,
+            timestamp: new Date().toISOString()
+        });
         res.status(500).json({
             success: false,
             message: 'An error occurred while fetching data.'
