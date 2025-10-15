@@ -1883,6 +1883,168 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
         res.status(500).json({ success: false, message: 'Gagal mengirim data ke peneliti.' });
     }
 });
+// ===== PENELITI REJECT WITH REASON ENDPOINT =====
+app.post('/api/peneliti_reject-with-reason', async (req, res) => {
+    try {
+        console.log('🔍 [PENELITI-REJECT] ===== REJECT WITH REASON =====');
+        
+        // Check session
+        if (!req.session || !req.session.user) {
+            console.log('❌ [PENELITI-REJECT] No session found');
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const sessionUser = req.session.user;
+        console.log('✅ [PENELITI-REJECT] Session user:', sessionUser.userid, sessionUser.divisi);
+
+        // Check divisi access
+        if (sessionUser.divisi !== 'Peneliti') {
+            console.log('❌ [PENELITI-REJECT] Invalid divisi:', sessionUser.divisi);
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+
+        const { nobooking, reason } = req.body;
+        console.log('📝 [PENELITI-REJECT] Data:', { nobooking, reason });
+
+        // Validate input
+        if (!nobooking || !reason || reason.trim() === '') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No booking dan alasan penolakan harus diisi' 
+            });
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            // 1. Check if booking exists and get booking data
+            const bookingQuery = `
+                SELECT b.*, l.no_registrasi, l.status as ltb_status
+                FROM pat_1_bookingsspd b
+                LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = b.nobooking
+                WHERE b.nobooking = $1
+            `;
+            const bookingResult = await client.query(bookingQuery, [nobooking]);
+
+            if (bookingResult.rowCount === 0) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'No booking tidak ditemukan' 
+                });
+            }
+
+            const bookingData = bookingResult.rows[0];
+            console.log('📋 [PENELITI-REJECT] Booking found:', bookingData.nobooking);
+
+            // 2. Update trackstatus to 'Ditolak'
+            const updateTrackQuery = `
+                UPDATE pat_1_bookingsspd 
+                SET trackstatus = 'Ditolak', 
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE nobooking = $1
+            `;
+            await client.query(updateTrackQuery, [nobooking]);
+
+            // 3. Update LTB status to 'Ditolak'
+            const updateLTBQuery = `
+                UPDATE ltb_1_terima_berkas_sspd 
+                SET status = 'Ditolak', 
+                    alasan_penolakan = $2,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE nobooking = $1
+            `;
+            await client.query(updateLTBQuery, [nobooking, reason.trim()]);
+
+            // 4. Insert rejection record into p_1_verifikasi if not exists
+            const insertRejectionQuery = `
+                INSERT INTO p_1_verifikasi (
+                    nobooking, 
+                    pemilihan, 
+                    persetujuan, 
+                    pemberi_persetujuan,
+                    alasan_penolakan,
+                    tanda_tangan_path,
+                    ttd_peneliti_mime
+                ) VALUES ($1, 'ditolak', false, $2, $3, $4, $5)
+                ON CONFLICT (nobooking) DO UPDATE SET
+                    pemilihan = 'ditolak',
+                    persetujuan = false,
+                    pemberi_persetujuan = $2,
+                    alasan_penolakan = $3,
+                    updated_at = CURRENT_TIMESTAMP
+            `;
+
+            // Get user signature data
+            const userQuery = `
+                SELECT tanda_tangan_path, tanda_tangan_mime 
+                FROM a_2_verified_users 
+                WHERE userid = $1
+            `;
+            const userResult = await client.query(userQuery, [sessionUser.userid]);
+            const userData = userResult.rows[0] || {};
+
+            await client.query(insertRejectionQuery, [
+                nobooking,
+                sessionUser.nama || sessionUser.userid,
+                reason.trim(),
+                userData.tanda_tangan_path || null,
+                userData.tanda_tangan_mime || null
+            ]);
+
+            // 5. Create notification
+            try {
+                const notificationQuery = `
+                    INSERT INTO notifications (
+                        userid, 
+                        nobooking, 
+                        title, 
+                        message, 
+                        type, 
+                        status
+                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                `;
+                
+                const notificationData = [
+                    bookingData.userid, // Target user (creator)
+                    nobooking,
+                    'Dokumen Ditolak',
+                    `Dokumen dengan No. Booking ${nobooking} telah ditolak oleh Peneliti. Alasan: ${reason.trim()}`,
+                    'rejection',
+                    'unread'
+                ];
+                
+                await client.query(notificationQuery, notificationData);
+                console.log('✅ [PENELITI-REJECT] Notification created');
+            } catch (notifError) {
+                console.error('⚠️ [PENELITI-REJECT] Notification error:', notifError);
+                // Don't fail the whole operation for notification error
+            }
+
+            await client.query('COMMIT');
+
+            console.log('✅ [PENELITI-REJECT] Successfully rejected booking:', nobooking);
+            res.json({ 
+                success: true, 
+                message: `Dokumen dengan No. Booking ${nobooking} berhasil ditolak` 
+            });
+
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+
+    } catch (error) {
+        console.error('❌ [PENELITI-REJECT] Error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Gagal menolak dokumen' 
+        });
+    }
+});
+
 // Fungsi untuk mengirimkan email pemberitahuan ke pembuat dokumen
 async function sendPenelitiVerifikasiEmail(creatorEmail, creatorName, nobooking, status, trackstatus) {
     try {

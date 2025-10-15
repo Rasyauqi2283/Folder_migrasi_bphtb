@@ -282,6 +282,13 @@ body, html {
   border-bottom: 1px solid #374151;
 }
 
+/* Card Actions Container */
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .primary-info {
   font-size: 20px;
   font-weight: 700;
@@ -297,23 +304,57 @@ body, html {
   margin: 4px 0 0 0;
 }
 
-/* Action Button */
+/* Action Buttons */
 .btn-kirim-prominent {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.btn-view-document {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-reject {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn-kirim-prominent:hover {
@@ -322,7 +363,21 @@ body, html {
   background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
 }
 
-.btn-kirim-prominent:active {
+.btn-view-document:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.6);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.btn-reject:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.btn-kirim-prominent:active,
+.btn-view-document:active,
+.btn-reject:active {
   transform: scale(0.98);
 }
 
@@ -396,6 +451,13 @@ body, html {
   padding-top: 16px;
   border-top: 1px solid #374151;
   margin-top: 16px;
+}
+
+/* Footer Actions Container */
+.footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .tanggal-info {

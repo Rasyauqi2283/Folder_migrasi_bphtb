@@ -213,16 +213,21 @@ function createCard(container, item) {
                 
                 const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
                 
-                card.innerHTML = `
-                    <div class="card-header">
-                        <div>
-                            <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
-                            <p class="secondary-info">${formatValue(item.nobooking)}</p>
-                        </div>
-                        <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
-                            <span>📤</span> Kirim
-                        </button>
-                    </div>
+        card.innerHTML = `
+            <div class="card-header">
+                <div>
+                    <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
+                    <p class="secondary-info">${formatValue(item.nobooking)}</p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
+                        <span>📄</span> View
+                    </button>
+                    <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
+                        <span>📤</span> Kirim
+                    </button>
+                </div>
+            </div>
                     
                     <div class="card-content">
                         <div class="info-item">
@@ -251,10 +256,15 @@ function createCard(container, item) {
                         </div>
                     </div>
                     
-                    <div class="card-footer">
-                        <div class="tanggal-info">${formatValue(item.tanggal_terima)}</div>
-                        <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
-                    </div>
+            <div class="card-footer">
+                <div class="tanggal-info">${formatValue(item.tanggal_terima)}</div>
+                <div class="footer-actions">
+                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                    <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
+                        <span>❌</span> Tolak
+                    </button>
+                </div>
+            </div>
                 `;
                 
                 // Add event listener to send button
@@ -786,6 +796,96 @@ function createPagination(container, currentPage, totalPages) {
         }
     });
     container.appendChild(nextButton);
+}
+
+// View Document function
+function viewDocument(nobooking) {
+    try {
+        if (!nobooking) {
+            showAlert('error', 'No booking tidak ditemukan');
+            return;
+        }
+
+        console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
+        
+        // Open PDF in new tab
+        const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`;
+        window.open(pdfUrl, '_blank');
+        
+        showAlert('success', 'Dokumen berhasil dibuka');
+    } catch (error) {
+        console.error('View Document Error:', error);
+        showAlert('error', `Gagal membuka dokumen: ${error.message}`);
+    }
+}
+
+// Reject with reason function
+async function rejectWithReason(nobooking, reason) {
+    try {
+        if (!nobooking) {
+            showAlert('error', 'No booking tidak ditemukan');
+            return;
+        }
+
+        if (!reason || reason.trim() === '') {
+            showAlert('error', 'Alasan penolakan harus diisi');
+            return;
+        }
+
+        console.log('❌ [REJECT] Rejecting nobooking:', nobooking, 'Reason:', reason);
+
+        const response = await fetch('/api/peneliti_reject-with-reason', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nobooking: nobooking,
+                reason: reason.trim()
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        showAlert('success', 'Data berhasil ditolak');
+        
+        // Reload data to reflect changes
+        setTimeout(() => {
+            loadTableDataPenelitiV();
+        }, 1000);
+        
+        return result;
+    } catch (error) {
+        console.error('Reject Error:', error);
+        showAlert('error', `Gagal menolak data: ${error.message}`);
+        throw error;
+    }
+}
+
+// Show reject modal
+function showRejectModal(nobooking) {
+    const reason = prompt('Masukkan alasan penolakan:');
+    
+    if (reason === null) {
+        // User cancelled
+        return;
+    }
+    
+    if (reason.trim() === '') {
+        showAlert('error', 'Alasan penolakan tidak boleh kosong');
+        return;
+    }
+    
+    const confirmation = confirm(`Apakah Anda yakin ingin menolak data ini?\n\nAlasan: ${reason}`);
+    
+    if (confirmation) {
+        rejectWithReason(nobooking, reason);
+    }
 }
 
 // Initialize when DOM is loaded
