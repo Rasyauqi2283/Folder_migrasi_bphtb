@@ -1,6 +1,23 @@
 /*Design untuk setiap Table Utama*/
 /* Excel-like table styling for main content tables */
 
+/* Universal box-sizing for consistent layout */
+html {
+  box-sizing: border-box;
+}
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* Ensure no overflow on the root elements */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll on the entire page */
+}
+
 /* Container helpers - PROPER MAIN LAYOUT */
 .main-content {
   /* Positioning */
@@ -21,14 +38,17 @@
 }
 
 .main-content .table-scroll {
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto; /* Allow horizontal scroll if absolutely necessary */
+  overflow-x: hidden; /* Remove horizontal scroll */
+  overflow-y: auto; /* Allow vertical scroll only */
 }
 
-/* When sidebar is expanded, adjust main content positioning */
+/* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
   margin-left: 260px; /* 250px sidebar + 10px margin */
   width: calc(100vw - 250px - 20px); /* 250px sidebar + 20px total margins */
+  transition: margin-left 0.5s ease, width 0.5s ease; /* Ensure smooth transition */
 }
 
 /* Remove any container constraints that might limit width */
@@ -815,6 +835,9 @@ body, html {
   border-bottom: 1px solid #1f2937;
   color: #e5e7eb;
   font-size: 13px;
+  word-break: break-word; /* Prevent text overflow in cells */
+  overflow-wrap: break-word; /* Additional word breaking support */
+  white-space: normal; /* Allow text wrapping */
 }
 
 .main-content #ltbBerkasTable tbody tr:nth-child(odd),
@@ -882,6 +905,7 @@ body, html {
   width: 100%; /* Use full available width within main container */
   max-width: 100%; /* Prevent overflow */
   overflow-x: hidden; /* Remove horizontal scroll */
+  overflow-y: auto; /* Allow vertical scroll only */
   margin: 0; /* Remove auto centering */
   box-sizing: border-box;
 }
@@ -2292,13 +2316,16 @@ form button:hover {
 #peneliti_paraf_kasie_Table {
   opacity: 1;
   width: 100%;
+  max-width: 100%;
   margin-top: 25px;
-  margin-left: -30px;
+  margin-left: 0; /* Remove negative margin that causes overflow */
   border-collapse: collapse;
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  table-layout: fixed; /* Fixed table layout for better column control */
+  box-sizing: border-box;
 }
 
 #peneliti_paraf_kasie_Table thead {
@@ -2311,6 +2338,9 @@ form button:hover {
   padding: 12px 15px;
   text-align: left;
   border-bottom: 1px solid #e2e2e2;
+  word-break: break-word; /* Prevent text overflow in cells */
+  overflow-wrap: break-word; /* Additional word breaking support */
+  white-space: normal; /* Allow text wrapping */
 }
 
 #peneliti_paraf_kasie_Table tbody tr:hover {
