@@ -369,71 +369,91 @@ app.use('/api/auth/reset-password-request', resetPasswordLimiter);
 // GET list transaksi untuk verifikasi (status filter, pencarian, pagination)
 // GET list transaksi untuk verifikasi (hanya dari tabel bank, dengan filter & pagination)
 app.get('/api/bank/transaksi', async (req, res) => {
-    try {
-      const { page = 1, limit = 20, q, tab = 'pending' } = req.query;
-      const lim = Math.min(parseInt(limit) || 20, 100);
-      const off = (parseInt(page) - 1) * lim;
-  
-      const params = [];
-      const where = [];
-  
-      // Tab-based filtering
-      if (tab === 'pending') {
-        // Hanya transaksi yang masih pending & dicek di bank
-        where.push(`COALESCE(bk.status_verifikasi, 'Pending') = 'Pending'`);
-        where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Dicheck'`);
-      } else if (tab === 'reviewed') {
-        // Transaksi yang sudah di-review (approved atau rejected)
-        where.push(`COALESCE(bk.status_verifikasi, 'Pending') IN ('Disetujui', 'Ditolak')`);
-        where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Tercheck'`);
-      }
-  
-      // Pencarian (berbasis data di bank, termasuk no_registrasi)
-      if (q && String(q).trim().length) {
-        params.push(`%${String(q).trim().toLowerCase()}%`);
-        where.push(`(
-          lower(bk.nobooking) LIKE $${params.length}
-          OR lower(p.namawajibpajak) LIKE $${params.length}
-          OR lower(COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran)::text) LIKE $${params.length}
-          OR lower(l.no_registrasi) LIKE $${params.length}
-        )`);
-      }
-  
-      params.push(lim, off);
-  
-      const sql = `
-        SELECT 
-          bk.id,
-          bk.nobooking,
-          p.namawajibpajak,
-          COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran) AS nomor_bukti_pembayaran,
-          COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar) AS nominal,
-          COALESCE(bk.tanggal_pembayaran, p4.tanggal_pembayaran) AS tanggal_pembayaran,
-          COALESCE(bk.status_verifikasi, 'Pending') AS status_verifikasi,
-          COALESCE(bk.status_dibank, 'Dicheck') AS status_dibank,
-          bk.catatan_bank,
-          l.no_registrasi
-        FROM bank_1_cek_hasil_transaksi bk
-        LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
-        LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
-        LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
-        LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
-        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-        ORDER BY bk.id DESC
-        LIMIT $${params.length-1} OFFSET $${params.length}
-      `;
-  
-      const rows = await pool.query(sql, params);
-      return res.json({ 
-        success: true, 
-        page: parseInt(page), 
-        limit: lim, 
-        rows: rows.rows 
-      });
-    } catch (e) {
-      console.error('bank list transaksi error:', e);
-      return res.status(500).json({ success:false, message:'Internal server error' });
-    } 
+  try {
+    const { page = 1, limit = 20, q, tab = 'pending', status } = req.query;
+    const lim = Math.min(parseInt(limit) || 20, 100);
+    const off = (parseInt(page) - 1) * lim;
+
+    const params = [];
+    const where = [];
+
+    // Tab-based filtering
+    if (tab === 'pending') {
+      // Hanya transaksi yang masih pending & dicek di bank
+      where.push(`COALESCE(bk.status_verifikasi, 'Pending') = 'Pending'`);
+      where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Dicheck'`);
+    } else if (tab === 'reviewed') {
+      // Transaksi yang sudah di-review (approved atau rejected)
+      where.push(`COALESCE(bk.status_verifikasi, 'Pending') IN ('Disetujui', 'Ditolak')`);
+      where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Tercheck'`);
+    }
+
+    // Status filter (additional filtering within the tab)
+    if (status && String(status).trim().length) {
+      const statusValue = String(status).trim();
+      where.push(`COALESCE(bk.status_verifikasi, 'Pending') = '${statusValue}'`);
+    }
+
+    // Pencarian (berbasis data di bank, termasuk no_registrasi)
+    if (q && String(q).trim().length) {
+      params.push(`%${String(q).trim().toLowerCase()}%`);
+      where.push(`(
+        lower(bk.nobooking) LIKE $${params.length}
+        OR lower(p.namawajibpajak) LIKE $${params.length}
+        OR lower(COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran)::text) LIKE $${params.length}
+        OR lower(l.no_registrasi) LIKE $${params.length}
+      )`);
+    }
+
+    params.push(lim, off);
+
+    console.log('🔍 [BANK-API] Query parameters:', {
+      tab, status, q, page, limit,
+      whereClauses: where,
+      paramsCount: params.length
+    });
+
+    const sql = `
+      SELECT 
+        bk.id,
+        bk.nobooking,
+        p.namawajibpajak,
+        COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran) AS nomor_bukti_pembayaran,
+        COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar) AS nominal,
+        COALESCE(bk.tanggal_pembayaran, p4.tanggal_pembayaran) AS tanggal_pembayaran,
+        COALESCE(bk.status_verifikasi, 'Pending') AS status_verifikasi,
+        COALESCE(bk.status_dibank, 'Dicheck') AS status_dibank,
+        bk.catatan_bank,
+        l.no_registrasi
+      FROM bank_1_cek_hasil_transaksi bk
+      LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
+      LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
+      LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
+      LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+      ORDER BY bk.id DESC
+      LIMIT $${params.length-1} OFFSET $${params.length}
+    `;
+
+    console.log('🔍 [BANK-API] SQL Query:', sql);
+    
+    const rows = await pool.query(sql, params);
+    
+    console.log('✅ [BANK-API] Query result:', {
+      rowCount: rows.rows.length,
+      sampleData: rows.rows.slice(0, 2)
+    });
+
+    return res.json({ 
+      success: true, 
+      page: parseInt(page), 
+      limit: lim, 
+      rows: rows.rows 
+    });
+  } catch (e) {
+    console.error('❌ [BANK-API] Error:', e);
+    return res.status(500).json({ success:false, message:'Internal server error' });
+  } 
 });
 
   

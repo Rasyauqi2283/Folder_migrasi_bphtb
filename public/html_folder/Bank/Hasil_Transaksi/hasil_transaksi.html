@@ -408,8 +408,34 @@
         document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
         document.getElementById(tab + 'Tab').classList.add('active');
         
+        // Update filter options based on tab
+        updateFilterOptions(tab);
+        
+        // Reset filter when switching tabs
+        filter.value = '';
+        
         // Reload data for the selected tab
         load();
+      }
+      
+      function updateFilterOptions(tab) {
+        const filterSelect = document.getElementById('filterStatus');
+        filterSelect.innerHTML = ''; // Clear existing options
+        
+        if (tab === 'pending') {
+          // For pending tab, only show pending option
+          filterSelect.innerHTML = `
+            <option value="">Semua</option>
+            <option value="Pending">Pending</option>
+          `;
+        } else if (tab === 'reviewed') {
+          // For reviewed tab, show approved and rejected options
+          filterSelect.innerHTML = `
+            <option value="">Semua</option>
+            <option value="Disetujui">Disetujui</option>
+            <option value="Ditolak">Ditolak</option>
+          `;
+        }
       }
       
       // Make switchTab globally available
@@ -432,21 +458,45 @@
       async function load(){
         try{
           const qs = [];
-          const st = (filter.value||'').trim(); if(st) qs.push('status='+encodeURIComponent(st));
-          const q = (search.value||'').trim(); if(q) qs.push('q='+encodeURIComponent(q));
           
-          // Add tab parameter
+          // Add tab parameter first
           qs.push('tab=' + encodeURIComponent(currentTab));
           
+          // Add status filter if selected
+          const st = (filter.value||'').trim(); 
+          if(st) {
+            qs.push('status='+encodeURIComponent(st));
+          }
+          
+          // Add search query if provided
+          const q = (search.value||'').trim(); 
+          if(q) {
+            qs.push('q='+encodeURIComponent(q));
+          }
+          
           const url = '/api/bank/transaksi?page=1&limit=50' + (qs.length?'&'+qs.join('&'):'');
+          console.log('🔍 [BANK] Loading data with URL:', url);
+          console.log('🔍 [BANK] Current tab:', currentTab);
+          console.log('🔍 [BANK] Filter status:', st);
+          console.log('🔍 [BANK] Search query:', q);
+          
           const js = await fetchJSON(url);
           const rows = js.rows||[];
+          
+          console.log('✅ [BANK] Received data:', {
+            success: js.success,
+            rowCount: rows.length,
+            sampleData: rows.slice(0, 2)
+          });
+          
           tbody.innerHTML = '';
           if(!rows.length){
             const tr = document.createElement('tr');
             tr.innerHTML = `<td colspan="9" style="text-align:center;color:#888">Tidak ada data</td>`;
-            tbody.appendChild(tr); return;
+            tbody.appendChild(tr); 
+            return;
           }
+          
           rows.forEach((r, idx)=>{
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -472,6 +522,7 @@
             tbody.appendChild(tr);
           });
         }catch(e){
+          console.error('❌ [BANK] Load error:', e);
           tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#c00">Gagal memuat data: ${e.message}</td></tr>`;
         }
       }
@@ -504,10 +555,32 @@
         const acc = e.target.closest('button[data-acc]'); if(acc){ approve(acc.getAttribute('data-acc')); }
         const rej = e.target.closest('button[data-rej]'); if(rej){ reject(rej.getAttribute('data-rej')); }
       });
-      filter.addEventListener('change', load);
-      search.addEventListener('keyup', (e)=>{ if(e.key==='Enter') load(); });
-      reload.addEventListener('click', load);
-      document.addEventListener('DOMContentLoaded', load);
+      
+      // Event listeners
+      filter.addEventListener('change', () => {
+        console.log('🔍 [BANK] Filter changed to:', filter.value);
+        load();
+      });
+      
+      search.addEventListener('keyup', (e)=>{ 
+        if(e.key==='Enter') {
+          console.log('🔍 [BANK] Search triggered:', search.value);
+          load(); 
+        }
+      });
+      
+      reload.addEventListener('click', () => {
+        console.log('🔄 [BANK] Reload clicked');
+        load();
+      });
+      
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 [BANK] Page loaded, initializing...');
+        // Set initial filter options for pending tab
+        updateFilterOptions('pending');
+        load();
+      });
     })();
   </script>
   
