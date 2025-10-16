@@ -1951,6 +1951,209 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
         res.status(500).json({ success: false, message: 'Gagal mengirim data ke peneliti.' });
     }
 });
+
+// Endpoint untuk mengirim data ke Pejabat untuk validasi dan QR Code
+app.post('/api/peneliti_send-to-pejabat-validation', async (req, res) => {
+    const { nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, no_registrasi, pemverifikasi } = req.body;
+
+    try {
+        // 0) Validasi session dan role
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Anda harus login terlebih dahulu' });
+        }
+        const sessionUserid = req.session.user.userid;
+        const sessionDivisi = req.session.user.divisi;
+        if (sessionDivisi !== 'Peneliti') {
+            return res.status(403).json({ success: false, message: 'Hanya divisi Peneliti yang dapat mengirim ke Pejabat' });
+        }
+
+        console.log('🏛️ [PEJABAT-VALIDATION] Starting pejabat validation process for nobooking:', nobooking);
+
+        // 1) Validasi data p_3_clear_to_paraf sudah lengkap sebelum transfer ke pejabat
+        const parafCheck = await pool.query(`
+            SELECT persetujuan, tanda_paraf_path, pemverifikasi
+            FROM p_3_clear_to_paraf 
+            WHERE nobooking = $1
+        `, [nobooking]);
+        
+        if (parafCheck.rows.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Data paraf tidak ditemukan. Silakan lakukan paraf terlebih dahulu.' 
+            });
+        }
+        
+        const parafData = parafCheck.rows[0];
+        if (!parafData.persetujuan || !parafData.tanda_paraf_path) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Data paraf belum lengkap. Silakan lengkapi paraf terlebih dahulu.' 
+            });
+        }
+        
+        console.log('✅ [PEJABAT-VALIDATION] Paraf data validation passed:', parafData);
+
+        // 2) Update trackstatus di pat_1_bookingsspd dan p_3_clear_to_paraf
+        const updateQueryPPATK = `
+        UPDATE pat_1_bookingsspd
+        SET trackstatus = $1
+        WHERE nobooking = $2
+        RETURNING *;
+        `;
+        const updateValuesPAT = ['Divalidasi_Pejabat', nobooking];
+        const updateResultPAT = await pool.query(updateQueryPPATK, updateValuesPAT);
+        
+        if (updateResultPAT.rowCount === 0) {
+            return res.status(400).json({ success: false, message: 'Data tidak ditemukan untuk diupdate.' });
+        }
+
+        const updateQueryPC = `
+        UPDATE p_3_clear_to_paraf
+        SET trackstatus = $1
+        WHERE nobooking = $2
+        RETURNING *;
+        `;
+        const updateValuesPC = ['Divalidasi_Pejabat', nobooking];
+        const updateResultPC = await pool.query(updateQueryPC, updateValuesPC);
+        
+        if (updateResultPC.rowCount === 0) {
+            return res.status(400).json({ success: false, message: 'Data paraf tidak ditemukan untuk diupdate.' });
+        }
+
+        // 3) Ambil data lengkap untuk insert ke tabel pejabat validasi
+        const dataQuery = `
+            SELECT 
+                pc.namawajibpajak,
+                pc.namapemilikobjekpajak,
+                pc.keterangan,
+                b.userid as creator_userid,
+                pc.no_registrasi,
+                pc.pemverifikasi
+            FROM p_3_clear_to_paraf pc
+            LEFT JOIN pat_1_bookingsspd b ON pc.nobooking = b.nobooking
+            WHERE pc.nobooking = $1
+        `;
+        const dataResult = await pool.query(dataQuery, [nobooking]);
+
+        if (dataResult.rows.length === 0) {
+            return res.status(400).json({ success: false, message: 'Data dokumen tidak ditemukan.' });
+        }
+
+        const {
+            namawajibpajak: dbNamawajibpajak,
+            namapemilikobjekpajak: dbNamapemilikobjekpajak,
+            keterangan: dbKeterangan,
+            creator_userid: creatorUserid,
+            no_registrasi: dbNoRegistrasi,
+            pemverifikasi: dbPemverifikasi
+        } = dataResult.rows[0];
+
+        // 4) Generate nomor validasi (format: YYYYV00001)
+        const currentYear = new Date().getFullYear();
+        const lastValidasiQuery = `
+            SELECT no_validasi FROM pv_1_paraf_validate 
+            WHERE no_validasi LIKE $1 
+            ORDER BY no_validasi DESC LIMIT 1
+        `;
+        const lastValidasiResult = await pool.query(lastValidasiQuery, [`${currentYear}V%`]);
+        
+        let nextNumber = 1;
+        if (lastValidasiResult.rows.length > 0) {
+            const lastNumber = parseInt(lastValidasiResult.rows[0].no_validasi.replace(`${currentYear}V`, ''));
+            nextNumber = lastNumber + 1;
+        }
+        
+        const noValidasi = `${currentYear}V${String(nextNumber).padStart(5, '0')}`;
+
+        // 5) Insert ke tabel pv_1_paraf_validate (Pejabat Validasi)
+        const insertQuery = `
+            INSERT INTO pv_1_paraf_validate (
+                nobooking, userid, namawajibpajak, namapemilikobjekpajak, 
+                status, trackstatus, keterangan, no_registrasi, pemverifikasi, 
+                no_validasi, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+            RETURNING *;
+        `;
+        const insertValues = [
+            nobooking, creatorUserid, dbNamawajibpajak, dbNamapemilikobjekpajak,
+            'Menunggu_Validasi_Pejabat', 'Divalidasi_Pejabat', dbKeterangan, 
+            dbNoRegistrasi, dbPemverifikasi, noValidasi, sessionUserid
+        ];
+        
+        console.log('🔍 [PEJABAT-VALIDATION] Inserting data:', {
+            nobooking,
+            creatorUserid,
+            dbNamawajibpajak,
+            dbNamapemilikobjekpajak,
+            status: 'Menunggu_Validasi_Pejabat',
+            trackstatus: 'Divalidasi_Pejabat',
+            dbKeterangan,
+            no_registrasi: dbNoRegistrasi,
+            pemverifikasi: dbPemverifikasi,
+            noValidasi,
+            created_by: sessionUserid
+        });
+
+        const insertResult = await pool.query(insertQuery, insertValues);
+        
+        console.log('✅ [PEJABAT-VALIDATION] Insert result:', {
+            rowCount: insertResult.rowCount,
+            insertedData: insertResult.rows[0]
+        });
+
+        // 6) Ambil email pembuat untuk notifikasi
+        const emailQuery = 'SELECT email, nama FROM a_2_verified_users WHERE userid = $1';
+        const emailResult = await pool.query(emailQuery, [creatorUserid]);
+
+        if (emailResult.rows.length > 0) {
+            const creatorEmail = emailResult.rows[0].email;
+            const creatorName = emailResult.rows[0].nama;
+            
+            // Kirim email pemberitahuan ke pembuat dokumen
+            try {
+                // Implementasi email notification jika diperlukan
+                console.log('📧 [PEJABAT-VALIDATION] Email notification would be sent to:', creatorEmail);
+            } catch (emailError) {
+                console.warn('Email notification failed:', emailError);
+            }
+        }
+
+        // 7) Mark-read notifikasi dan trigger notifikasi baru
+        try {
+            const bookingId = updateResultPAT?.rows?.[0]?.bookingid;
+            if (bookingId) {
+                const notificationModel = await import('./backend/routesxcontroller/3_notification/notification_model.js');
+                if (notificationModel?.markAsReadByDivisiAndBooking) {
+                    await notificationModel.markAsReadByDivisiAndBooking('Peneliti', bookingId);
+                }
+                
+                // Trigger notifikasi ke Pejabat
+                const { triggerNotificationByStatus } = await import('./backend/routesxcontroller/3_notification/notification_service.js');
+                await triggerNotificationByStatus(bookingId, 'to_pejabat_validation', sessionUserid);
+            }
+        } catch (notificationError) {
+            console.warn('Notification handling failed:', notificationError);
+        }
+
+        // 8) Response sukses dengan nomor validasi
+        res.json({ 
+            success: true, 
+            message: 'Data berhasil dikirim ke Pejabat untuk validasi.', 
+            no_validasi: noValidasi,
+            data: {
+                nobooking,
+                no_validasi: noValidasi,
+                trackstatus: 'Divalidasi_Pejabat',
+                status: 'Menunggu_Validasi_Pejabat'
+            }
+        });
+
+    } catch (error) {
+        console.error('Error sending data to pejabat validation:', error);
+        res.status(500).json({ success: false, message: 'Gagal mengirim data ke Pejabat.' });
+    }
+});
 // ===== PENELITI REJECT WITH REASON ENDPOINT =====
 app.post('/api/peneliti_reject-with-reason', async (req, res) => {
     try {

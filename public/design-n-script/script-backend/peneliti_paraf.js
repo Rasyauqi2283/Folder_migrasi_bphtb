@@ -188,6 +188,9 @@ function createCard(container, item) {
                     <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
                         <span>✍️</span> Paraf
                     </button>
+                    <button class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
+                        <span>🏛️</span> Kirim ke Pejabat
+                    </button>
                 </div>
             </div>
             
@@ -256,6 +259,37 @@ function createCard(container, item) {
                 }
             } catch (buttonError) {
                 console.error('Button Action Error:', buttonError);
+                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
+            }
+        });
+
+        // Add event listener to pejabat validation button
+        const pejabatButton = card.querySelector('.btn-pejabat-validation');
+        pejabatButton.addEventListener('click', async () => {
+            try {
+                const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini ke Pejabat untuk validasi dan pembuatan QR Code?");
+                
+                if (confirmation) {
+                    if (!item || !item.nobooking) {
+                        throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
+                    }
+
+                    const result = await sendToPejabatValidation(item);
+                    if (result && result.success) {
+                        pejabatButton.disabled = true;
+                        pejabatButton.innerHTML = '<span>✅</span> Terkirim';
+                        pejabatButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+                        showAlert('success', `Data berhasil dikirim ke Pejabat! No. Validasi: ${result.no_validasi || 'N/A'}`);
+                    } else {
+                        const msg = (result && result.message) ? result.message : "Gagal mengirim data ke Pejabat.";
+                        throw new Error(msg);
+                    }
+                } else {
+                    showAlert('info', "Data tidak jadi dikirim ke Pejabat.");
+                }
+            } catch (buttonError) {
+                console.error('Pejabat Button Action Error:', buttonError);
                 showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
             }
         });
@@ -335,8 +369,8 @@ function createCard(container, item) {
 
         setupParafFormInteractions(card, item);
 
-    } catch (itemError) {
-        console.error('Error processing item:', itemError);
+            } catch (itemError) {
+                console.error('Error processing item:', itemError);
         const errorCard = document.createElement('div');
         errorCard.className = 'paraf-card';
         errorCard.style.border = '1px solid #ef4444';
@@ -480,6 +514,45 @@ async function giveParaf(item) {
         return result;
     } catch (error) {
         console.error('Give Paraf Error:', error);
+        throw error;
+    }
+}
+
+// Send to Pejabat Validation function
+async function sendToPejabatValidation(item) {
+    try {
+        if (!item || !item.nobooking) {
+            throw new Error('Data yang diperlukan tidak lengkap');
+        }
+
+        console.log('🏛️ [PEJABAT] Sending to pejabat validation for nobooking:', item.nobooking);
+
+        const response = await fetch('/api/peneliti_send-to-pejabat-validation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nobooking: item.nobooking,
+                no_registrasi: item.no_registrasi,
+                namawajibpajak: item.namawajibpajak,
+                namapemilikobjekpajak: item.namapemilikobjekpajak,
+                trackstatus: 'Divalidasi_Pejabat',
+                status: 'Menunggu_Validasi_Pejabat'
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        console.log('✅ [PEJABAT] Successfully sent to pejabat validation:', result);
+        return result;
+    } catch (error) {
+        console.error('Send to Pejabat Validation Error:', error);
         throw error;
     }
 }
@@ -748,6 +821,57 @@ function setupRowClickHandler(row, item) {
 function showUserNotification(title, message, type = 'info') {
     // Implement your notification system here
     alert(`${title}: ${message}`);
+}
+
+// Helper function to show alerts (reuse from verifikasi)
+function showAlert(type, message) {
+    try {
+        // Create alert element
+        const alert = document.createElement('div');
+        alert.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 9999;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease;
+        `;
+        
+        // Set background based on type
+        switch(type) {
+            case 'success':
+                alert.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                break;
+            case 'error':
+                alert.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                break;
+            case 'warning':
+                alert.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+                break;
+            default:
+                alert.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+        }
+        
+        alert.textContent = message;
+        document.body.appendChild(alert);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => alert.remove(), 300);
+            }
+        }, 5000);
+        
+    } catch (error) {
+        console.error('Error showing alert:', error);
+        alert(message); // Fallback to browser alert
+    }
 }
 
 async function showConfirmationDialog(title, message) {

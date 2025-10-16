@@ -238,14 +238,6 @@ function createCard(container, item) {
                     <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
                     <p class="secondary-info">${formatValue(item.nobooking)}</p>
                 </div>
-                <div class="card-actions">
-                    <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
-                        <span>📄</span> View
-                    </button>
-                    <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
-                        <span>📤</span> Kirim
-                    </button>
-                </div>
             </div>
                     
                     <div class="card-content">
@@ -277,6 +269,14 @@ function createCard(container, item) {
                     
             <div class="card-footer">
                 <div class="tanggal-info">${formatValue(item.tanggal_terima)}</div>
+                <div class="card-actions-below-date">
+                    <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
+                        <span>📄</span> View
+                    </button>
+                    <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
+                        <span>📤</span> Kirim
+                    </button>
+                </div>
                 <div class="footer-actions">
                     <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
                     <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
