@@ -37,7 +37,7 @@ body {
 
 /* Transisi geser mainContent, footerContent, dan main */
 .shifted {
-    transform: translateX(190px); /* 250px expand - 60px collapse = 190px */
+    transform: translateX(110px); /* Reduced from 190px to 110px */
     transition: transform 0.5s ease; /* Sama dengan sidebar transition */
 }
 
@@ -48,8 +48,8 @@ main {
 }
 
 main.shifted {
-    transform: translateX(190px);
-    margin-left: 190px; /* 250px expand - 60px collapse = 190px */
+    transform: translateX(110px);
+    margin-left: 110px; /* Reduced from 190px to 110px */
 }
 
 
