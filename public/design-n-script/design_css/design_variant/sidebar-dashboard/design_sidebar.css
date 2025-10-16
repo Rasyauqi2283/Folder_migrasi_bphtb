@@ -38,13 +38,16 @@ body {
 /* Transisi geser mainContent, footerContent, dan main */
 .shifted {
     transform: translateX(60px); /* Sesuaikan dengan lebar sidebar saat expanded */
-    transition: transform 0.7s ease;
+    transition: transform 0.5s ease; /* Sama dengan sidebar transition */
 }
 
-/* Specific styling untuk main element */
+/* Specific styling untuk main element dengan smooth transition */
+main {
+    transition: margin-left 0.5s ease, transform 0.5s ease; /* Smooth transition untuk semua perubahan */
+}
+
 main.shifted {
     transform: translateX(60px);
-    transition: transform 0.7s ease;
     margin-left: 60px; /* Tambahan untuk memastikan positioning */
 }
 

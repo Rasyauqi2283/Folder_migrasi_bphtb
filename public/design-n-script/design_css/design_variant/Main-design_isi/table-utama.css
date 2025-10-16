@@ -32,7 +32,7 @@ html, body {
   height: calc(100vh); /* minus header, footer, margins */
   
   /* Responsive to sidebar */
-  transition: margin-left 0.5s ease, width 0.5s ease;
+  transition: margin-left 0.5s ease, width 0.5s ease, transform 0.5s ease; /* Tambahkan transform transition */
   box-sizing: border-box;
   overflow-x: hidden !important; /* Force override */
   overflow-y: auto;
@@ -44,6 +44,11 @@ html, body {
 
 .main-content::-webkit-scrollbar {
   display: none; /* WebKit browsers */
+}
+
+/* Smooth transition untuk main element */
+main {
+  transition: margin-left 0.5s ease, transform 0.5s ease; /* Smooth transition untuk semua perubahan */
 }
 
 .main-content .table-scroll {
