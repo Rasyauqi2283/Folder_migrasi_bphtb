@@ -564,6 +564,27 @@ async function saveParafData(item) {
         }
         
         console.log('✅ [PARAF] Paraf data saved successfully:', result);
+        
+        // Transfer signature to paraf table
+        try {
+            console.log('🔄 [PARAF] Transferring signature...');
+            const transferResponse = await fetch('/api/peneliti/paraf-transfer-signature', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nobooking: item.nobooking })
+            });
+            
+            if (transferResponse.ok) {
+                const transferResult = await transferResponse.json();
+                console.log('✅ [PARAF] Signature transferred successfully:', transferResult);
+            } else {
+                console.warn('⚠️ [PARAF] Signature transfer failed, but paraf data saved');
+            }
+        } catch (transferError) {
+            console.warn('⚠️ [PARAF] Signature transfer error:', transferError);
+        }
+        
         return result;
     } catch (error) {
         console.error('Save Paraf Data Error:', error);

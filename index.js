@@ -2368,18 +2368,41 @@ app.post('/api/peneliti_update-ttd-paraf', async (req, res) => {
         const updateQuery = `
             UPDATE p_3_clear_to_paraf
             SET 
-                persetujuan = TRUE
+                persetujuan = TRUE,
+                tanda_paraf_path = $2,
+                ttd_paraf_mime = $3,
+                pemverifikasi = $4
             WHERE nobooking = $1
             RETURNING *;
         `;
 
+        // Get signature path from user data
+        const signaturePath = `/penting_F_simpan/folderttd/peneliti_sign/ttd-${userid}.png`;
+        const signatureMime = 'image/png';
+        
+        console.log('🔍 [PARAF-UPDATE] Updating paraf data:', {
+            nobooking,
+            signaturePath,
+            signatureMime,
+            pemverifikasi: userid
+        });
+
         const result = await client.query(updateQuery, [
-            nobooking
+            nobooking,
+            signaturePath,
+            signatureMime,
+            userid
         ]);
 
         if (result.rowCount === 0) {
             throw new Error('Data tidak ditemukan');
         }
+
+        console.log('✅ [PARAF-UPDATE] Successfully updated paraf data:', {
+            nobooking,
+            updatedRows: result.rowCount,
+            updatedData: result.rows[0]
+        });
 
         // Catat stempel default di p_2_verif_sign (idempotent per nobooking)
         const sessionUserid = (req.session && req.session.user && req.session.user.userid) ? req.session.user.userid : userid;
