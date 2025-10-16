@@ -527,7 +527,7 @@ async function sendToPejabatValidation(item) {
 
         console.log('🏛️ [PEJABAT] Sending to pejabat validation for nobooking:', item.nobooking);
 
-        const response = await fetch('/api/peneliti_send-to-pejabat-validation', {
+        const response = await fetch('/api/peneliti_send-to-ParafValidate', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -535,11 +535,12 @@ async function sendToPejabatValidation(item) {
             credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
-                no_registrasi: item.no_registrasi,
+                userid: item.userid,
                 namawajibpajak: item.namawajibpajak,
                 namapemilikobjekpajak: item.namapemilikobjekpajak,
-                trackstatus: 'Divalidasi_Pejabat',
-                status: 'Menunggu_Validasi_Pejabat'
+                status: 'Terverifikasi',
+                trackstatus: 'Terverifikasi',
+                keterangan: item.keterangan || 'Dikirim ke Pejabat untuk validasi'
             })
         });
 
