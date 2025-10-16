@@ -100,6 +100,23 @@ async function loadTableDataPenelitiV() {
         // Store all data for pagination
         allData = data.data;
         
+        // Log sample data to verify persetujuan and pemilihan fields
+        if (allData.length > 0) {
+            console.log('🔍 [FRONTEND] Sample data verification:', {
+                totalItems: allData.length,
+                sampleItem: {
+                    nobooking: allData[0].nobooking,
+                    no_registrasi: allData[0].no_registrasi,
+                    persetujuan: allData[0].persetujuan,
+                    persetujuan_type: typeof allData[0].persetujuan,
+                    pemilihan: allData[0].pemilihan,
+                    pemilihan_type: typeof allData[0].pemilihan,
+                    tanda_tangan_path: allData[0].peneliti_tanda_tangan_path,
+                    signer_userid: allData[0].signer_userid
+                }
+            });
+        }
+        
         // Clear existing content and create cards container
         tbody.innerHTML = '';
         
@@ -306,6 +323,16 @@ function createCard(container, item) {
                 dropdownContent.style.display = 'none';
                 
                 try {
+                    // Debug logging for dropdown creation
+                    console.log(`🔍 [FRONTEND] Creating dropdown for nobooking ${item.nobooking}:`, {
+                        persetujuan: item.persetujuan,
+                        persetujuan_type: typeof item.persetujuan,
+                        pemilihan: item.pemilihan,
+                        pemilihan_type: typeof item.pemilihan,
+                        peneliti_tanda_tangan_path: item.peneliti_tanda_tangan_path,
+                        signer_userid: item.signer_userid
+                    });
+                    
                     // Pesan status ringkas untuk kepegawaian
                     const sudahSetuju = String(item.persetujuan||'').toLowerCase()==='true';
                     const adaPemilihan = !!item.pemilihan;
@@ -314,6 +341,14 @@ function createCard(container, item) {
                     const signerUser = item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
                     const hasSignature = item.peneliti_tanda_tangan_path || item.signer_userid;
                     const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
+                    
+                    console.log(`🔍 [FRONTEND] Dropdown logic for ${item.nobooking}:`, {
+                        sudahSetuju,
+                        adaPemilihan,
+                        pesan1: pesan1.includes('telah diberi') ? 'APPROVED' : 'NOT_APPROVED',
+                        hasSignature,
+                        signerUser
+                    });
                     
                     dropdownContent.innerHTML = `
                         <div class="dropdown-content-wrapper">
@@ -666,7 +701,19 @@ async function saveVerificationData(card, item) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
         
+        console.log('✅ [FRONTEND] Data saved successfully, refreshing UI...');
         showAlert('success', 'Data verifikasi berhasil disimpan!');
+        
+        // Refresh data to show updated information
+        setTimeout(async () => {
+            try {
+                console.log('🔄 [FRONTEND] Refreshing data after save...');
+                await loadTableDataPenelitiV();
+            } catch (refreshError) {
+                console.error('❌ [FRONTEND] Error refreshing data:', refreshError);
+            }
+        }, 1000); // Wait 1 second before refresh to ensure backend has processed
+        
         return result;
     } catch (error) {
         console.error('Save Verification Error:', error);

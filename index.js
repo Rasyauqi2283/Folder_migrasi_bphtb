@@ -1730,8 +1730,12 @@ app.post('/api/peneliti_update-berdasarkan-pemilihan', async (req, res) => {
         console.log('[5] Data berhasil diupdate:', {
             nobooking,
             pemberi_persetujuan,
+            persetujuan: 'TRUE',
             pemilihan,
-            rowCount: result.rowCount
+            tanda_tangan_path: tandaTanganPath,
+            ttd_peneliti_mime: ttdMime,
+            updated_rows: result.rowCount,
+            sample_updated_data: result.rows[0]
         });
 
         await client.query('COMMIT');
