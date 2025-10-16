@@ -111,6 +111,8 @@ async function loadTableDataPenelitiV() {
                     persetujuan_type: typeof allData[0].persetujuan,
                     pemilihan: allData[0].pemilihan,
                     pemilihan_type: typeof allData[0].pemilihan,
+                    pemberi_persetujuan: allData[0].pemberi_persetujuan,
+                    pemberi_persetujuan_type: typeof allData[0].pemberi_persetujuan,
                     tanda_tangan_path: allData[0].peneliti_tanda_tangan_path,
                     signer_userid: allData[0].signer_userid
                 }
@@ -329,6 +331,8 @@ function createCard(container, item) {
                         persetujuan_type: typeof item.persetujuan,
                         pemilihan: item.pemilihan,
                         pemilihan_type: typeof item.pemilihan,
+                        pemberi_persetujuan: item.pemberi_persetujuan,
+                        pemberi_persetujuan_type: typeof item.pemberi_persetujuan,
                         peneliti_tanda_tangan_path: item.peneliti_tanda_tangan_path,
                         signer_userid: item.signer_userid
                     });
@@ -338,8 +342,9 @@ function createCard(container, item) {
                     const adaPemilihan = !!item.pemilihan;
                     const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
                     
-                    const signerUser = item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
-                    const hasSignature = item.peneliti_tanda_tangan_path || item.signer_userid;
+                    // Use pemberi_persetujuan from database as the primary source
+                    const signerUser = item.pemberi_persetujuan || item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+                    const hasSignature = item.peneliti_tanda_tangan_path || item.pemberi_persetujuan || item.signer_userid;
                     const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
                     
                     console.log(`🔍 [FRONTEND] Dropdown logic for ${item.nobooking}:`, {
@@ -347,7 +352,9 @@ function createCard(container, item) {
                         adaPemilihan,
                         pesan1: pesan1.includes('telah diberi') ? 'APPROVED' : 'NOT_APPROVED',
                         hasSignature,
-                        signerUser
+                        signerUser,
+                        pemberi_persetujuan: item.pemberi_persetujuan,
+                        final_signer_display: signerUser
                     });
                     
                     dropdownContent.innerHTML = `
@@ -749,6 +756,13 @@ function generateDocumentLinks(item) {
 // Send to Paraf Kasie function
 async function sendToParafKasie(item) {
     try {
+        console.log('🔍 [FRONTEND] Sending to paraf:', {
+            nobooking: item.nobooking,
+            no_registrasi: item.no_registrasi,
+            trackstatus: 'Diverifikasi',
+            status: 'Dikerjakan'
+        });
+
         const response = await fetch('/api/peneliti_send-to-paraf', {
             method: 'POST',
             headers: {
@@ -757,7 +771,9 @@ async function sendToParafKasie(item) {
             credentials: 'include',
             body: JSON.stringify({
                 nobooking: item.nobooking,
-                no_registrasi: item.no_registrasi
+                no_registrasi: item.no_registrasi,
+                trackstatus: 'Diverifikasi',
+                status: 'Dikerjakan'
             })
         });
 
@@ -767,7 +783,19 @@ async function sendToParafKasie(item) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
         
+        console.log('✅ [FRONTEND] Data sent to paraf successfully, refreshing UI...');
         showAlert('success', 'Data berhasil dikirim ke peneliti paraf!');
+        
+        // Refresh data to show updated information
+        setTimeout(async () => {
+            try {
+                console.log('🔄 [FRONTEND] Refreshing data after send to paraf...');
+                await loadTableDataPenelitiV();
+            } catch (refreshError) {
+                console.error('❌ [FRONTEND] Error refreshing data:', refreshError);
+            }
+        }, 1000); // Wait 1 second before refresh
+        
         return result;
     } catch (error) {
         console.error('Send to Paraf Error:', error);

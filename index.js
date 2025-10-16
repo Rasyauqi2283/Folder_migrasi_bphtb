@@ -1421,6 +1421,7 @@ SELECT DISTINCT ON (p.no_registrasi)
     p.angkapersen,
     p.keterangandihitungSendiri,
     p.isiketeranganlainnya,
+    p.pemberi_persetujuan,
     -- data booking
     b.noppbb,
     b.namawajibpajak,
@@ -1856,24 +1857,57 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
                 if (updateResultPV.rowCount === 0) {
                     return res.status(400).json({ success: false, message: 'Data tidak ditemukan untuk diupdate.' });
                 }
-        // Step 2: Ambil userid pembuat berdasarkan nobooking (PPAT/PPATS)
-        const userQuery = 'SELECT userid FROM pat_1_bookingsspd WHERE nobooking = $1';
-        const userResult = await pool.query(userQuery, [nobooking]);
+        // Step 2: Ambil data lengkap dari p_1_verifikasi dan pat_1_bookingsspd
+        const dataQuery = `
+            SELECT 
+                p.namawajibpajak,
+                p.namapemilikobjekpajak,
+                p.keterangan,
+                b.userid as creator_userid,
+                p.no_registrasi
+            FROM p_1_verifikasi p
+            LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
+            WHERE p.nobooking = $1
+        `;
+        const dataResult = await pool.query(dataQuery, [nobooking]);
 
-        if (userResult.rows.length === 0) {
+        if (dataResult.rows.length === 0) {
             console.log(`No Booking ${nobooking} tidak ditemukan.`);
-            return res.status(400).json({ success: false, message: 'Pembuat dokumen tidak ditemukan.' });
+            return res.status(400).json({ success: false, message: 'Data dokumen tidak ditemukan.' });
         }
 
-        const creatorUserid = userResult.rows[0].userid;
+        const {
+            namawajibpajak,
+            namapemilikobjekpajak,
+            keterangan,
+            creator_userid: creatorUserid,
+            no_registrasi: dbNoRegistrasi
+        } = dataResult.rows[0];
 
         // Step 3: Pindahkan data ke tabel 'p_3_clear_to_paraf' dengan userid pembuat dan pemverifikasi peneliti (diambil dari session)
         const insertQuery = `
             INSERT INTO p_3_clear_to_paraf (nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, no_registrasi, pemverifikasi)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *;
         `;
-        const insertValues = [nobooking, creatorUserid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, no_registrasi, sessionUserid];
+        const insertValues = [nobooking, creatorUserid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, dbNoRegistrasi, sessionUserid];
+        
+        console.log('🔍 [PARAF-INSERT] Inserting data:', {
+            nobooking,
+            creatorUserid,
+            namawajibpajak,
+            namapemilikobjekpajak,
+            status,
+            trackstatus,
+            keterangan,
+            no_registrasi: dbNoRegistrasi,
+            pemverifikasi: sessionUserid
+        });
         const insertResult = await pool.query(insertQuery, insertValues);
+        
+        console.log('✅ [PARAF-INSERT] Insert result:', {
+            rowCount: insertResult.rowCount,
+            insertedData: insertResult.rows[0]
+        });
         // Ambil email pembuat berdasarkan userid
         const emailQuery = 'SELECT email, nama FROM a_2_verified_users WHERE userid = $1';
         const emailResult = await pool.query(emailQuery, [creatorUserid]);
