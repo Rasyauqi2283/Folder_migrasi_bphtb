@@ -2346,6 +2346,35 @@ form button:hover {
     flex-wrap: wrap;
 }
 
+/* Button layout for paraf cards - 3 separate rows */
+.card-actions-row-1,
+.card-actions-row-2,
+.card-actions-row-3 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 6px 0;
+    width: 100%;
+}
+
+/* Button styling for paraf card rows */
+.card-actions-row-1 .btn-view-document,
+.card-actions-row-2 .btn-paraf-prominent,
+.card-actions-row-3 .btn-pejabat-validation {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
 .card-actions-below-date .btn-view-document,
 .card-actions-below-date .btn-kirim-prominent,
 .card-actions-below-date .btn-paraf-prominent,

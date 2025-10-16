@@ -212,17 +212,28 @@ function createCard(container, item) {
             
             <div class="card-footer">
                 <div class="tanggal-info">${formatValue(item.tanggal_terima || item.created_at)}</div>
-                <div class="card-actions-below-date">
+                
+                <!-- Row 1: View Button -->
+                <div class="card-actions-row-1">
                     <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
                         <span>📄</span> View
                     </button>
+                </div>
+                
+                <!-- Row 2: Paraf Button -->
+                <div class="card-actions-row-2">
                     <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
                         <span>✍️</span> Paraf
                     </button>
+                </div>
+                
+                <!-- Row 3: Kirim ke Pejabat Button -->
+                <div class="card-actions-row-3">
                     <button class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
                         <span>🏛️</span> Kirim ke Pejabat
                     </button>
                 </div>
+                
                 <div class="footer-actions">
                     <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
                     <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
