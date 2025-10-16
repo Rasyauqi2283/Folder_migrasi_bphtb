@@ -243,7 +243,7 @@ function createCard(container, item) {
                         throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
                     }
 
-                    const result = await giveParaf(item);
+                    const result = await saveParafData(item);
                     if (result && result.success) {
                         parafButton.disabled = true;
                         parafButton.innerHTML = '<span>✅</span> Berhasil';
@@ -485,23 +485,75 @@ function viewDocument(nobooking) {
     }
 }
 
-// Give Paraf function
-async function giveParaf(item) {
+// Save Paraf Data function
+async function saveParafData(item) {
     try {
         if (!item || !item.nobooking) {
             throw new Error('Data yang diperlukan tidak lengkap');
         }
 
-        console.log('✍️ [PARAF] Giving paraf for nobooking:', item.nobooking);
+        console.log('✍️ [PARAF] Saving paraf data for nobooking:', item.nobooking);
 
-        const response = await fetch('/api/peneliti_give-paraf', {
+        // First, check signature and get user data
+        const signatureCheck = await fetch('/api/v1/auth/peneliti/check-signature', { 
+            credentials: 'include' 
+        });
+        
+        if (!signatureCheck.ok) {
+            throw new Error('Signature check failed');
+        }
+        
+        const signatureData = await signatureCheck.json();
+        if (!signatureData.has_signature) {
+            throw new Error('Anda belum mengunggah tanda tangan!');
+        }
+
+        // Get user profile
+        const userResponse = await fetch('/api/v1/auth/profile', { 
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!userResponse.ok) {
+            throw new Error('Failed to get user profile');
+        }
+        
+        const userData = await userResponse.json();
+        if (!userData?.userid) {
+            throw new Error('User data incomplete');
+        }
+
+        // Get signature blob
+        const tandaTanganResponse = await fetch(`/api/v1/auth/get-tanda-tangan?userid=${userData.userid}`, {
+            credentials: 'include',
+            cache: 'force-cache'
+        });
+        
+        if (!tandaTanganResponse.ok) {
+            throw new Error('Failed to get signature');
+        }
+
+        const blob = await tandaTanganResponse.blob();
+        const base64TandaTangan = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+
+        // Send paraf data
+        const response = await fetch('/api/peneliti_update-ttd-paraf', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             credentials: 'include',
             body: JSON.stringify({
-                nobooking: item.nobooking
+                data: {
+                    userid: userData.userid,
+                    nobooking: item.nobooking,
+                    persetujuanParaf: 'approve',
+                    tanda_tangan_blob: base64TandaTangan
+                }
             })
         });
 
@@ -511,9 +563,10 @@ async function giveParaf(item) {
             throw new Error(result.message || `HTTP error! status: ${response.status}`);
         }
         
+        console.log('✅ [PARAF] Paraf data saved successfully:', result);
         return result;
     } catch (error) {
-        console.error('Give Paraf Error:', error);
+        console.error('Save Paraf Data Error:', error);
         throw error;
     }
 }
@@ -572,7 +625,7 @@ function setupParafFormInteractions(card, item) {
                     return;
                 }
                 
-                const result = await giveParaf(item);
+                const result = await saveParafData(item);
                 if (result && result.success) {
                     showAlert('success', 'Paraf berhasil disimpan');
                     setTimeout(() => {
