@@ -23,7 +23,7 @@ html, body {
   /* Positioning */
   margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
   margin-right: 15px !important; /* Fixed 15px from viewport edge - NEVER CHANGES - Force override */
-  margin-top: 90px !important; /* 80px header + 10px margin - Force override */
+  margin-top: 80px !important; /* 80px header + 10px margin - Force override */
   
   /* Dimensions - Fixed right gap, dynamic width based on sidebar state */
   width: calc(100vw - 70px - 15px) !important; /* 70px left margin + 15px FIXED right margin - Force override */
@@ -109,9 +109,9 @@ body, html {
   grid-template-columns: repeat(4, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 16px;
-  padding: 20px 0; /* Remove horizontal padding to use full width */
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  min-height: calc(100vh - 90px); /* Adjust for header */
+  padding: 20px; /* Add padding to prevent content from being cut off */
+  background: transparent; /* Remove background to avoid interference */
+  min-height: calc(100vh - 80px); /* Adjust for header */
   width: 100%; /* Use full width of main-content container */
   max-width: 100%; /* Use full width of main-content container */
   box-sizing: border-box;
@@ -125,7 +125,7 @@ body, html {
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(2, 1fr);
     gap: 16px;
-    padding: 20px 0; /* Remove horizontal padding to use full width */
+    padding: 20px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     margin: 0;
     max-width: 100%; /* Use full width of main-content container */
@@ -152,7 +152,7 @@ body, html {
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(2, 1fr);
     gap: 20px;
-    padding: 24px 0; /* Remove horizontal padding to use full width */
+    padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
   }
@@ -170,7 +170,7 @@ body, html {
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: repeat(2, 1fr);
     gap: 18px;
-    padding: 24px 0; /* Remove horizontal padding to use full width */
+    padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
   }
@@ -202,7 +202,7 @@ body, html {
     grid-template-columns: 1fr;
     grid-template-rows: auto; /* Allow rows to expand based on content */
     gap: 16px;
-    padding: 16px 0; /* Remove horizontal padding to use full width */
+    padding: 16px; /* Add padding to prevent content from being cut off */
   }
   
   .card-content {
@@ -228,7 +228,7 @@ body, html {
   align-items: center;
   gap: 12px;
   padding: 20px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: transparent; /* Remove background to avoid interference */
   border-top: 1px solid #374151;
   width: 100%;
   box-sizing: border-box;
