@@ -32,7 +32,8 @@ html, body {
   height: calc(100vh); /* minus header, footer, margins */
   
   /* Responsive to sidebar */
-  transition: margin-left 0.5s ease, width 0.5s ease, transform 0.5s ease; /* Tambahkan transform transition */
+  transition: margin-left 0.5s ease, width 0.5s ease, transform 0.5s ease, max-width 0.5s ease; /* Tambahkan max-width transition */
+  will-change: margin-left, width, max-width, transform; /* Optimize for GPU acceleration */
   box-sizing: border-box;
   overflow-x: hidden !important; /* Force override */
   overflow-y: auto;
@@ -70,7 +71,7 @@ main {
   margin-left: 260px !important; /* 250px sidebar + 10px margin - Force override */
   width: calc(100vw - 250px - 20px) !important; /* 250px sidebar + 20px total margins - Force override */
   max-width: calc(100vw - 250px - 20px) !important; /* Prevent any override */
-  transition: margin-left 0.5s ease, width 0.5s ease; /* Ensure smooth transition */
+  transition: margin-left 0.5s ease, width 0.5s ease, max-width 0.5s ease; /* Ensure smooth transition */
 }
 
 /* Remove any container constraints that might limit width */

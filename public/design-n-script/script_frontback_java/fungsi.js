@@ -93,7 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 300);
             });
     
-            mainContent.style.width = 'calc(100vw - 250px)';
+            // Remove inline style to let CSS transition handle the width change
+            mainContent.style.width = '';
             setTimeout(callback, 300);
         } else {
             callback();
@@ -128,7 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             icon.style.zIndex = '1';
         });
     
-        mainContent.style.width = 'calc(100vw - 60px)';
+        // Remove inline style to let CSS transition handle the width change
+        mainContent.style.width = '';
         // Tutup semua dropdown saat sidebar ditutup
         closeAllDropdowns();
     }
