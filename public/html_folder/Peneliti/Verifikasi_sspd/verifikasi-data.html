@@ -7,14 +7,16 @@
   <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
     <!---->
   <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
-    <!---->
-
-    <!---->
-    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/dropdown-table.css">
-    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <!--design variant-->
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/dropdown-table.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/peneliti_kasie_design.css">
+    <!---->
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
 
     <style>
@@ -68,6 +70,35 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+}
+
+/* ===== VERIFIKASI MAIN CONTENT INTEGRATION ===== */
+/* Ensure verifikasi uses the same shifted system as paraf-kasie */
+/* Main content behavior when sidebar is expanded (controlled by .shifted class) */
+/* This integrates with the .shifted system from design_sidebar.css */
+
+/* Additional styling for verifikasi main-content when shifted */
+main.shifted #verifikasi_p1_design {
+    /* Width adjustment for shifted state */
+    width: calc(100vw - 250px - 15px); /* 250px sidebar + 15px right margin */
+    max-width: calc(100vw - 250px - 15px);
+}
+
+/* Ensure consistent behavior with paraf-kasie */
+.verification-cards-container,
+.paraf-cards-container {
+    /* Both use the same grid system */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider, more comfortable viewing */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards per page */
+    gap: 20px; /* Increased gap for better spacing */
+    padding: 20px; /* Add padding to prevent content from being cut off */
+    background: transparent; /* Remove background to avoid interference */
+    min-height: auto; /* Remove fixed height to prevent empty space */
+    width: 100%; /* Use full width of main-content container */
+    max-width: 100%; /* Use full width of main-content container */
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
     </style>
 </head>
@@ -187,29 +218,33 @@
   <!---->
   <!-- MAIN -->
   <main id="verifikasi_p1_design" class="main-content">
-    <table id="penelitiverifikasiTable ">
+    <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+    
+    <div id="verifikasi_p1_design">
+      <table id="penelitiverifikasiTable">
         <tbody class="data-masuk" style="cursor: pointer;">
-            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+          <!-- Data akan dimasukkan ke sini oleh JavaScript -->
         </tbody>
-    </table>
+      </table>
+    </div>
 
     <!-- Overlay TTD SIGN-->
     <div id="overlay-sign" class="overlay-sign">
-        <div class="overlay-content-sign">
-            <p>Dokumen Booking dengan [No. Booking] ini telah dikirim oleh PPAT untuk verifikasi</p>
+      <div class="overlay-content-sign">
+        <p>Dokumen Booking dengan [No. Booking] ini telah dikirim oleh PPAT untuk verifikasi</p>
         <button id="close_batal_overlay">Batal</button>    
         <button id="Tambahkan_tandatangan">Tambahkan Tanda Tangan</button>
-    </div>
-        <!-- Overlay TTD SIGN (confirmed)-->
-        <div id="overlay-sign-confirmed" class="overlay-sign-confirmed">
-            <div class="overlay-content-sign-confirmed">
-                <p>Apakah anda yakin ingin menambahkan tanda tangan?</p>
-            <button id="Tambahkan_tandatangan_batal_overlay">Batal</button>
-            <button id="Tambahkan_tandatangan_confirmed">Iya</button>
+      </div>
+      <!-- Overlay TTD SIGN (confirmed)-->
+      <div id="overlay-sign-confirmed" class="overlay-sign-confirmed">
+        <div class="overlay-content-sign-confirmed">
+          <p>Apakah anda yakin ingin menambahkan tanda tangan?</p>
+          <button id="Tambahkan_tandatangan_batal_overlay">Batal</button>
+          <button id="Tambahkan_tandatangan_confirmed">Iya</button>
         </div>
-
-
-</main>
+      </div>
+    </div>
+  </main>
     <!-- Footer berada di dalam page-wrapper -->
     <footer class="footer">
         <div class="footer-content">
