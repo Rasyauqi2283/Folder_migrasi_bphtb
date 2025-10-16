@@ -755,6 +755,18 @@
       if (typeof value === 'string' && /\d{4}-\d{2}-\d{2}T/.test(value)) {
         try { return new Date(value).toLocaleString('id-ID', { hour12: false }); } catch (_) {}
       }
+      // Format currency values (numbers that look like currency)
+      if (typeof value === 'number' || (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value))) {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+          }).format(numValue);
+        }
+      }
       return String(value);
     }
 

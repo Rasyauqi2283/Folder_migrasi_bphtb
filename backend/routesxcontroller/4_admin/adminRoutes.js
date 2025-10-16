@@ -647,11 +647,14 @@ router.get('/validate-qr/:no_validasi', verifyValidationRoles, async (req, res) 
         -- Data peneliti validasi
         avpv.nama as peneliti_nama,
         avpv.special_parafv as peneliti_special_parafv,
-        avpv.nip as peneliti_nip
+        avpv.nip as peneliti_nip,
+        -- Data BPHTB dari pat_2
+        p2.bphtb_yangtelah_dibayar
       FROM pv_1_paraf_validate pv
       LEFT JOIN pat_1_bookingsspd pb ON pv.nobooking = pb.nobooking
       LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
       LEFT JOIN a_2_verified_users avpv ON avpv.tanda_tangan_path = pv.tanda_tangan_validasi_path
+      LEFT JOIN pat_2_bphtb_perhitungan p2 ON pv.nobooking = p2.nobooking
       WHERE pv.no_validasi = $1
       LIMIT 1
     `;
@@ -696,7 +699,8 @@ router.get('/validate-qr/:no_validasi', verifyValidationRoles, async (req, res) 
         status_tertampil: validationData.status_tertampil,
         keterangan: validationData.keterangan,
         created_at: validationData.created_at,
-        updated_at: validationData.updated_at
+        updated_at: validationData.updated_at,
+        bphtb_yangtelah_dibayar: validationData.bphtb_yangtelah_dibayar
       },
       document_info: {
         nobooking: validationData.nobooking,
