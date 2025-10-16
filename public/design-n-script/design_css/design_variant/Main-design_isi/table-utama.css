@@ -67,9 +67,9 @@ main {
 }
 /* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
-  margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
-  width: calc(100vw - 60px - 20px) !important; /* 60px sidebar + 20px total margins - Force override */
-  max-width: calc(100vw - 60px - 20px) !important; /* Prevent any override */
+  margin-left: 260px !important; /* 250px sidebar + 10px margin - Force override */
+  width: calc(100vw - 250px - 20px) !important; /* 250px sidebar + 20px total margins - Force override */
+  max-width: calc(100vw - 250px - 20px) !important; /* Prevent any override */
   transition: margin-left 0.5s ease, width 0.5s ease; /* Ensure smooth transition */
 }
 
