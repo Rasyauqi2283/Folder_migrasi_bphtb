@@ -289,6 +289,27 @@ body, html {
   position: relative; /* Ensure proper stacking */
 }
 
+/* ===== CARD DROPDOWN TOGGLE BEHAVIOR ===== */
+/* Add visual feedback when card is clicked */
+.verification-card,
+.paraf-card {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.verification-card:hover,
+.paraf-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure dropdown content is properly positioned */
+.verification-card .card-dropdown-content,
+.paraf-card .card-dropdown-content {
+  position: relative;
+  z-index: 2;
+}
+
 /* ===== DYNAMIC GRID ROWS BASED ON CONTENT ===== */
 /* Smart grid behavior - only show rows that have content */
 .verification-cards-container.auto-rows,
@@ -736,11 +757,12 @@ body, html {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #374151;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: none; /* Hide dropdown by default */
   opacity: 0;
   max-height: 0;
   overflow: hidden;
+  transform: translateY(-10px);
 }
 
 /* Show dropdown when active */
@@ -749,6 +771,7 @@ body, html {
   opacity: 1 !important;
   max-height: 2000px !important; /* Allow content to expand */
   overflow: visible !important;
+  transform: translateY(0) !important;
 }
 
 .card-dropdown-content .dropdown-content-wrapper {
