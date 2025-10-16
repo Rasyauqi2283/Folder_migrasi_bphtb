@@ -16,9 +16,11 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
     // GET /api/peneliti_lanjutan-generate-pdf-badan/:nobooking
     app.get('/api/Validasi_lanjutan-generate-pdf-bookingsspd/:nobooking', async (req, res) => {
         const { nobooking } = req.params;
+        
+        console.log(`[PDF-GENERATOR] Request for nobooking: ${nobooking}`);
 
         try {
-            // Ambil pembuat
+            // Ambil pembuat dengan fallback untuk data kosong
             const tracking = await pool.query(
                 'SELECT userid, nama FROM pat_1_bookingsspd WHERE nobooking = $1',
                 [nobooking]
@@ -26,10 +28,18 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
             if (tracking.rows.length === 0) {
                 return res.status(404).json({ message: 'Data untuk nobooking ini tidak ditemukan' });
             }
-            const { userid, nama } = tracking.rows[0];
+            
+            let { userid, nama } = tracking.rows[0];
+            
+            // Fallback jika userid atau nama kosong
             if (!userid || !nama) {
-                return res.status(400).json({ success: false, message: 'User ID dan nama pembuat is required' });
+                console.warn(`[PDF-GENERATOR] Missing userid or nama for nobooking ${nobooking}, using fallback values`);
+                console.warn(`[PDF-GENERATOR] Original data: userid=${userid}, nama=${nama}`);
+                userid = userid || 'UNKNOWN';
+                nama = nama || 'Unknown User';
             }
+            
+            console.log(`[PDF-GENERATOR] Using userid: ${userid}, nama: ${nama}`);
 
             // Query utama data PDF
             const q = `
@@ -54,7 +64,7 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 FROM pat_1_bookingsspd pb
                 LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
                 LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
-                LEFT JOIN a_2_verified_users vb ON vb.nama = pb.nama AND pb.userid = vb.userid
+                LEFT JOIN a_2_verified_users vb ON (vb.nama = pb.nama AND pb.userid = vb.userid) OR (pb.userid = vb.userid)
                 LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking 
                 LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
                 LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
@@ -65,13 +75,18 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 LEFT JOIN a_2_verified_users avpv 
                     ON avpv.tanda_tangan_path = par.tanda_tangan_validasi_path
                 LEFT JOIN bank_1_cek_hasil_transaksi bk ON pb.nobooking = bk.nobooking
-                WHERE pb.userid = $1 AND vb.nama = $2 AND pb.nobooking = $3
+                WHERE pb.nobooking = $1
             `;
-            const r = await pool.query(q, [userid, nama, nobooking]);
+            const r = await pool.query(q, [nobooking]);
+            console.log(`[PDF-GENERATOR] Query result: ${r.rows.length} rows found`);
+            
             if (r.rows.length === 0) {
+                console.error(`[PDF-GENERATOR] No data found for nobooking: ${nobooking}`);
                 return res.status(404).json({ message: 'Data not found' });
             }
+            
             const data = r.rows[0];
+            console.log(`[PDF-GENERATOR] Data found for nobooking: ${nobooking}, userid: ${data.userid}, nama: ${data.nama}`);
             data.special_parafv = req.session?.user?.special_parafv;
 
             const doc = new PDFKitDocument({ margin: 30, size: 'A4' });

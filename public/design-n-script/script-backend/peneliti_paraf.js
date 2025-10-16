@@ -482,8 +482,8 @@ function viewDocument(nobooking) {
 
         console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
         
-        // Open PDF in new tab
-        const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`;
+        // Open PDF in new tab - menggunakan API yang benar
+        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
         window.open(pdfUrl, '_blank');
         
         showAlert('success', 'Dokumen berhasil dibuka');
@@ -1185,7 +1185,7 @@ async function validateNoBooking(nobooking) {
 ////////////////////// END VN   ///////////////////////////////////////////////////////////////////
 // Fungsi untuk generate PDF
 function generatePDF(nobooking, stempelStatusP) {
-    fetch(`/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}?stempelStatus=${stempelStatusP}`, { credentials: 'include' })
+    fetch(`/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}?stempelStatus=${stempelStatusP}`, { credentials: 'include' })
     .then(response => response.blob())
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
@@ -1231,8 +1231,8 @@ async function viewDocument(nobooking) {
 
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
-            // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            // Buat URL untuk mengakses PDF menggunakan API yang benar
+            const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nobooking)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');

@@ -876,8 +876,8 @@ function viewDocument(nobooking) {
 
         console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
         
-        // Open PDF in new tab
-        const pdfUrl = `/api/peneliti_lanjutan-generate-pdf-badan/${nobooking}`;
+        // Open PDF in new tab - menggunakan API yang benar
+        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
         window.open(pdfUrl, '_blank');
         
         showAlert('success', 'Dokumen berhasil dibuka');
