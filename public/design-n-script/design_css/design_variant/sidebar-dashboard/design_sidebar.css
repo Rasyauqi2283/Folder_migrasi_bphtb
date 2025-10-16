@@ -35,10 +35,17 @@ body {
     background: linear-gradient(180deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
 }
 
-/* Transisi geser mainContent dan footerContent */
+/* Transisi geser mainContent, footerContent, dan main */
 .shifted {
     transform: translateX(250px); /* Sesuaikan dengan lebar sidebar saat expanded */
     transition: transform 0.7s ease;
+}
+
+/* Specific styling untuk main element */
+main.shifted {
+    transform: translateX(250px);
+    transition: transform 0.7s ease;
+    margin-left: 250px; /* Tambahan untuk memastikan positioning */
 }
 
 

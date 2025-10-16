@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dekorasiImage = document.querySelector('.dekorasi-image');
     const mainContent = document.querySelector('.main-content');
     const footerContent = document.querySelector('.footer-content');
+    const mainElement = document.querySelector('main');
     
     // Fungsi untuk mengaktifkan animasi logo dan memperluas sidebar, mainContent, dan footerContent
     function activateLogoAnimation() {
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kabupatenBogorText.style.transform = 'translateX(-40px)';
         kabupatenBogorText.style.cursor = 'pointer';
     
-        // Tambahkan kelas untuk memperluas sidebar, mainContent, dan footerContent
+        // Tambahkan kelas untuk memperluas sidebar, mainContent, footerContent, dan main
         expandSidebar();
     }
     
@@ -38,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kabupatenBogorText.style.transform = 'translateX(-65px)';
         kabupatenBogorText.style.cursor = 'default';
     
-        // Hapus kelas expand untuk mengembalikan posisi sidebar, mainContent, dan footerContent
+        // Hapus kelas expand untuk mengembalikan posisi sidebar, mainContent, footerContent, dan main
         collapseSidebar();
     }
     
@@ -69,6 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.add('expand');
             mainContent.classList.add('shifted');
             footerContent.classList.add('shifted');
+            
+            // Tambahkan kelas shifted untuk main element jika ada
+            if (mainElement) {
+                mainElement.classList.add('shifted');
+            }
     
             // Sembunyikan ikon dengan transisi
             sidebarIcons.forEach(icon => {
@@ -101,6 +107,11 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.remove('expand');
         mainContent.classList.remove('shifted');
         footerContent.classList.remove('shifted');
+        
+        // Hapus kelas shifted untuk main element jika ada
+        if (mainElement) {
+            mainElement.classList.remove('shifted');
+        }
     
         // Sembunyikan teks dengan transisi
         sidebarTexts.forEach(text => {

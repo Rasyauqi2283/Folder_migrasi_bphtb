@@ -34,23 +34,9 @@ read-only{
 /* Main Content Section */
 /* ============================= */
 
-.main-content {
-    flex: 1;
-    margin-left: 80px;
-    transition: transform 0.5s ease, width 0.5s;
-    margin-top: 70px;
-    overflow: auto;
-    padding: 20px; 
-}
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0px;
-        width: 100vw;
-    }
-}
-.main-content.shifted {
-    transform: translateX(180px);
-}
+/* .main-content rules moved to table-utama.css for consistency */
+/* .main-content responsive rules moved to table-utama.css for consistency */
+/* .main-content.shifted - moved to design_sidebar.css for consistency */
 
 /* ============================= */
 /* Footer Design Section */
@@ -91,10 +77,7 @@ read-only{
     transform: scale(1);
 }
 
-/* Shrink effect when sidebar expands */
-.footer-content.shifted {
-    transform: scale(1) translateX(180px);
-}
+/* .footer-content.shifted - moved to design_sidebar.css for consistency */
 
 /* Footer links section remains at the right and does not move */
 .footer-links {

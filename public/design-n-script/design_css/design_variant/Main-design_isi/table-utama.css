@@ -105,8 +105,8 @@ body, html {
   padding: 20px;
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   min-height: calc(100vh);
-  width: 100%;
-  max-width: 100vw;
+  width: 100%; /* Use full width of main-content container */
+  max-width: 100%; /* Use full width of main-content container */
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -118,11 +118,9 @@ body, html {
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     padding: 20px 20px 20px 20px; /* top right bottom left */
-    width: calc(100vw - 40px); /* Full width minus 40px total padding */
+    width: 100%; /* Use full width of main-content container */
     margin: 0;
-    max-width: calc(100vw - 40px);
-    margin-left: 20px; /* Push content closer to right edge */
-    margin-right: 20px; /* Maintain space from right edge */
+    max-width: 100%; /* Use full width of main-content container */
     box-sizing: border-box;
   }
   
@@ -145,10 +143,8 @@ body, html {
   .paraf-cards-container {
     gap: 20px;
     padding: 24px 24px 24px 24px;
-    width: calc(100vw - 48px); /* Full width minus 48px total padding */
-    max-width: calc(100vw - 48px);
-    margin-left: 24px;
-    margin-right: 24px;
+    width: 100%; /* Use full width of main-content container */
+    max-width: 100%; /* Use full width of main-content container */
   }
 }
 
@@ -158,10 +154,8 @@ body, html {
   .paraf-cards-container {
     gap: 20px;
     padding: 24px 24px 24px 24px;
-    width: calc(100vw - 48px);
-    max-width: calc(100vw - 48px);
-    margin-left: 24px;
-    margin-right: 24px;
+    width: 100%; /* Use full width of main-content container */
+    max-width: 100%; /* Use full width of main-content container */
   }
 }
 
@@ -1039,7 +1033,7 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 @media (max-width: 768px) {
   .bank-page .main-content {
     padding: 15px;
-    max-width: calc(100vw - 30px);
+    /* Remove max-width override - use inherited values */
   }
   
   .bank-page .bank-table {
@@ -1049,7 +1043,7 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 
 @media (min-width: 1200px) {
   .bank-page .main-content {
-    max-width: 1400px; /* Limit max width on very large screens */
+    /* Remove max-width override - use inherited values */
   }
 }
 
