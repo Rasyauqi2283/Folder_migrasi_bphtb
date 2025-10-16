@@ -22,17 +22,17 @@ html, body {
 .main-content {
   /* Positioning */
   margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
-  margin-right: 15px !important; /* Consistent 15px from viewport edge - Force override */
+  margin-right: 15px !important; /* Fixed 15px from viewport edge - NEVER CHANGES - Force override */
   margin-top: 90px !important; /* 80px header + 10px margin - Force override */
   
-  /* Dimensions - Fixed calculation for proper spacing */
-  width: calc(100vw - 70px - 15px) !important; /* 70px left margin + 15px right margin - Force override */
+  /* Dimensions - Fixed right gap, dynamic width based on sidebar state */
+  width: calc(100vw - 70px - 15px) !important; /* 70px left margin + 15px FIXED right margin - Force override */
   max-width: calc(100vw - 70px - 15px) !important; /* Prevent any override */
   height: calc(100vh - 90px); /* minus header, margins */
   
-  /* Responsive to sidebar - Optimized to prevent flicker */
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
-  will-change: margin-left, width; /* Only animate essential properties */
+  /* Responsive to sidebar - Only width changes, right margin stays fixed */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Only animate width, not margin-right */
+  will-change: width; /* Only animate width property */
   box-sizing: border-box;
   overflow-x: hidden !important; /* Force override */
   overflow-y: auto;
@@ -67,11 +67,11 @@ main {
 }
 /* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
-  margin-left: 250px !important; /* 250px sidebar width - Force override */
-  margin-right: 15px !important; /* Keep consistent 15px from viewport edge - Force override */
-  width: calc(100vw - 250px - 15px) !important; /* 250px sidebar + 15px right margin - Force override */
+  margin-left: 70px !important; /* Keep same left position - sidebar expands to the right - Force override */
+  margin-right: 15px !important; /* FIXED 15px from viewport edge - NEVER CHANGES - Force override */
+  width: calc(100vw - 250px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
   max-width: calc(100vw - 250px - 15px) !important; /* Prevent any override */
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Only animate width, margin-right stays fixed */
 }
 
 /* Remove any container constraints that might limit width */
