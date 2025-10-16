@@ -23,12 +23,16 @@
       margin: 0;
       padding: 0;
       min-height: 100vh;
+      overflow-x: hidden; /* Prevent horizontal scroll */
     }
 
     .main-content {
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       min-height: calc(100vh - 80px);
       padding: 20px;
+      max-width: calc(100vw - 40px); /* Ensure content doesn't exceed viewport */
+      margin: 0 auto; /* Center content */
+      box-sizing: border-box;
     }
 
     h2 {
@@ -49,6 +53,8 @@
       border: 1px solid #374151;
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .table-toolbar label {
@@ -99,12 +105,16 @@
       border: 1px solid #374151;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       overflow: hidden;
+      width: 100%;
+      box-sizing: border-box;
+      margin-right: 0; /* Remove any right margin */
     }
 
     .bank-table {
       width: 100%;
       border-collapse: collapse;
       background: transparent;
+      table-layout: auto; /* Allow table to adjust column widths */
     }
 
     .bank-table thead {
@@ -229,6 +239,8 @@
       border-radius: 12px;
       padding: 4px;
       border: 1px solid #374151;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .nav-tab {
@@ -269,6 +281,11 @@
 
     /* Responsive */
     @media (max-width: 768px) {
+      .main-content {
+        padding: 15px;
+        max-width: calc(100vw - 30px);
+      }
+
       .table-toolbar {
         flex-direction: column;
         gap: 12px;
@@ -280,12 +297,47 @@
 
       .bank-table {
         font-size: 12px;
+        min-width: 800px; /* Ensure table has minimum width for scrolling */
       }
 
       .bank-table thead th,
       .bank-table tbody td {
         padding: 8px 6px;
+        white-space: nowrap; /* Prevent text wrapping */
       }
+
+      .table-scroll {
+        overflow-x: auto; /* Enable horizontal scroll on mobile */
+      }
+    }
+
+    /* Desktop responsive adjustments */
+    @media (min-width: 1200px) {
+      .main-content {
+        max-width: 1400px; /* Limit max width on very large screens */
+      }
+    }
+
+    /* Ensure table cells don't break layout */
+    .bank-table th,
+    .bank-table td {
+      max-width: 200px; /* Limit cell width */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Allow some columns to be wider if needed */
+    .bank-table th:nth-child(3), /* No. Booking */
+    .bank-table td:nth-child(3),
+    .bank-table th:nth-child(4), /* Nama WP */
+    .bank-table td:nth-child(4) {
+      max-width: 250px;
+    }
+
+    .bank-table th:nth-child(5), /* No. Bukti */
+    .bank-table td:nth-child(5) {
+      max-width: 300px;
     }
   </style>
 </head>

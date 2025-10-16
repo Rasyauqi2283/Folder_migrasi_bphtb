@@ -834,10 +834,15 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 .bank-page {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #f3f4f6;
+  overflow-x: hidden; /* Prevent horizontal scroll on body */
 }
 
 .bank-page .main-content {
   background: transparent;
+  max-width: calc(100vw - 40px); /* Ensure content doesn't exceed viewport */
+  margin: 0 auto; /* Center content */
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 /* Bank table specific styling */
@@ -845,10 +850,40 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
   display: table !important;
   visibility: visible !important;
   opacity: 1 !important;
+  width: 100%;
+  table-layout: auto;
 }
 
 .bank-page .table-scroll {
   display: block !important;
+  overflow-x: auto; /* Enable horizontal scroll for table if needed */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure Bank page containers respect viewport */
+.bank-page .nav-tabs,
+.bank-page .table-toolbar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments for Bank page */
+@media (max-width: 768px) {
+  .bank-page .main-content {
+    padding: 15px;
+    max-width: calc(100vw - 30px);
+  }
+  
+  .bank-page .bank-table {
+    min-width: 800px; /* Ensure table can scroll horizontally on mobile */
+  }
+}
+
+@media (min-width: 1200px) {
+  .bank-page .main-content {
+    max-width: 1400px; /* Limit max width on very large screens */
+  }
 }
 
 .main-content table.excel-table thead th {
