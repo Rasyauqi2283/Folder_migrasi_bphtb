@@ -273,9 +273,6 @@ function createCard(container, item) {
                     <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
                         <span>📄</span> View
                     </button>
-                    <button class="btn-kirim-prominent" data-nobooking="${item.nobooking}">
-                        <span>📤</span> Kirim
-                    </button>
                 </div>
                 <div class="footer-actions">
                     <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
@@ -286,36 +283,7 @@ function createCard(container, item) {
             </div>
         `;
                 
-                // Add event listener to send button
-                const sendButton = card.querySelector('.btn-kirim-prominent');
-                sendButton.addEventListener('click', async () => {
-                    try {
-                        const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
-                        
-                        if (confirmation) {
-                            if (!item || !item.nobooking) {
-                                throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
-                            }
-
-                            const result = await sendToParafKasie(item);
-                            if (result && result.success) {
-                                sendButton.disabled = true;
-                                sendButton.innerHTML = '<span>✅</span> Terkirim';
-                                sendButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                                try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                                showAlert('success', "Data berhasil dikirim ke peneliti paraf!");
-                            } else {
-                                const msg = (result && result.message) ? result.message : "Gagal mengirim data ke peneliti.";
-                                throw new Error(msg);
-                            }
-                        } else {
-                            showAlert('info', "Data tidak jadi dikirim.");
-                        }
-                    } catch (buttonError) {
-                        console.error('Button Action Error:', buttonError);
-                        showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
-                    }
-                });
+                // Button Kirim removed - functionality moved to dropdown
                 
                 container.appendChild(card);
 
@@ -502,8 +470,15 @@ function createCard(container, item) {
 
                 // Add click handler to toggle dropdown
                 card.addEventListener('click', function(e) {
-                    // Don't toggle if clicking on buttons
-                    if (e.target.closest('button')) return;
+                    // Don't toggle if clicking on buttons, inputs, labels, or form elements
+                    if (e.target.closest('button') || 
+                        e.target.closest('input') || 
+                        e.target.closest('label') || 
+                        e.target.closest('form') ||
+                        e.target.closest('.dropdown-content-wrapper') ||
+                        e.target.closest('.card-dropdown-content')) {
+                        return;
+                    }
                     
                     const dropdown = this.querySelector('.card-dropdown-content');
                     if (dropdown) {
@@ -525,6 +500,28 @@ function createCard(container, item) {
 
                 // Add event listeners for form interactions
                 setupFormInteractions(card, item);
+                
+                // Prevent dropdown from closing when interacting with form elements
+                const dropdownContentElement = card.querySelector('.card-dropdown-content');
+                if (dropdownContentElement) {
+                    dropdownContentElement.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Prevent event bubbling to card
+                    });
+                    
+                    // Prevent closing on input focus/blur
+                    const inputs = dropdownContentElement.querySelectorAll('input, textarea, select');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', function(e) {
+                            e.stopPropagation();
+                        });
+                        input.addEventListener('blur', function(e) {
+                            e.stopPropagation();
+                        });
+                        input.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                        });
+                    });
+                }
 
             } catch (itemError) {
                 console.error('Error processing item:', itemError);
