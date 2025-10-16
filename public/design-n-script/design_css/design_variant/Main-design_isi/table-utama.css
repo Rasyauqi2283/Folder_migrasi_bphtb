@@ -24,7 +24,6 @@ html, body {
   margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
   margin-right: 10px !important; /* Force override */
   margin-top: 90px !important; /* 80px header + 10px margin - Force override */
-  margin-bottom: 60px !important; /* 50px footer + 10px margin - Force override */
   
   /* Dimensions */
   width: calc(100vw - 60px - 20px) !important; /* 60px sidebar + 20px total margins - Force override */
@@ -626,9 +625,10 @@ body, html {
 
 /* Show dropdown when active */
 .card-dropdown-content.active {
-  display: block;
-  opacity: 1;
-  max-height: 1000px; /* Allow content to expand */
+  display: block !important;
+  opacity: 1 !important;
+  max-height: 2000px !important; /* Allow content to expand */
+  overflow: visible !important;
 }
 
 .card-dropdown-content .dropdown-content-wrapper {
@@ -660,7 +660,10 @@ body, html {
 .card-dropdown-content .sub-inputs {
   margin-top: 8px;
   padding-left: 24px;
-  display: block; /* Changed from none to block to show dropdown content */
+  display: block !important; /* Force show dropdown content */
+  opacity: 1 !important;
+  max-height: none !important;
+  overflow: visible !important;
 }
 
 .card-dropdown-content .sub-inputs input {

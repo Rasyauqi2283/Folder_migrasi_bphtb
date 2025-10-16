@@ -482,18 +482,14 @@ function createCard(container, item) {
                     
                     const dropdown = this.querySelector('.card-dropdown-content');
                     if (dropdown) {
-                        const isVisible = dropdown.style.display !== 'none';
-                        dropdown.style.display = isVisible ? 'none' : 'block';
+                        const isActive = dropdown.classList.contains('active');
                         
-                        // Smooth animation
-                        if (!isVisible) {
-                            dropdown.style.opacity = '0';
-                            dropdown.style.transform = 'translateY(-10px)';
-                            setTimeout(() => {
-                                dropdown.style.transition = 'all 0.3s ease';
-                                dropdown.style.opacity = '1';
-                                dropdown.style.transform = 'translateY(0)';
-                            }, 10);
+                        if (isActive) {
+                            // Close dropdown
+                            dropdown.classList.remove('active');
+                        } else {
+                            // Open dropdown
+                            dropdown.classList.add('active');
                         }
                     }
                 });
