@@ -25,10 +25,10 @@ html, body {
   margin-right: 15px !important; /* Consistent 15px from viewport edge - Force override */
   margin-top: 90px !important; /* 80px header + 10px margin - Force override */
   
-  /* Dimensions */
-  width: calc(100vw - 60px - 25px) !important; /* 60px sidebar + 15px right margin + 10px left margin - Force override */
-  max-width: calc(100vw - 60px - 25px) !important; /* Prevent any override */
-  height: calc(100vh); /* minus header, footer, margins */
+  /* Dimensions - Fixed calculation for proper spacing */
+  width: calc(100vw - 70px - 15px) !important; /* 70px left margin + 15px right margin - Force override */
+  max-width: calc(100vw - 70px - 15px) !important; /* Prevent any override */
+  height: calc(100vh - 90px); /* minus header, margins */
   
   /* Responsive to sidebar - Optimized to prevent flicker */
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
@@ -67,10 +67,10 @@ main {
 }
 /* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
-  margin-left: 260px !important; /* 250px sidebar + 10px margin - Force override */
+  margin-left: 250px !important; /* 250px sidebar width - Force override */
   margin-right: 15px !important; /* Keep consistent 15px from viewport edge - Force override */
-  width: calc(100vw - 250px - 25px) !important; /* 250px sidebar + 15px right margin + 10px left margin - Force override */
-  max-width: calc(100vw - 250px - 25px) !important; /* Prevent any override */
+  width: calc(100vw - 250px - 15px) !important; /* 250px sidebar + 15px right margin - Force override */
+  max-width: calc(100vw - 250px - 15px) !important; /* Prevent any override */
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
 }
 
@@ -108,9 +108,9 @@ body, html {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
-  padding: 20px;
+  padding: 20px 0; /* Remove horizontal padding to use full width */
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  min-height: calc(100vh);
+  min-height: calc(100vh - 90px); /* Adjust for header */
   width: 100%; /* Use full width of main-content container */
   max-width: 100%; /* Use full width of main-content container */
   box-sizing: border-box;
@@ -123,7 +123,7 @@ body, html {
   .paraf-cards-container {
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    padding: 20px 20px 20px 20px; /* top right bottom left */
+    padding: 20px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
     margin: 0;
     max-width: 100%; /* Use full width of main-content container */
@@ -148,7 +148,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     gap: 20px;
-    padding: 24px 24px 24px 24px;
+    padding: 24px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
   }
@@ -159,7 +159,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     gap: 20px;
-    padding: 24px 24px 24px 24px;
+    padding: 24px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
   }
@@ -184,7 +184,7 @@ body, html {
   .paraf-cards-container {
     grid-template-columns: 1fr;
     gap: 16px;
-    padding: 16px;
+    padding: 16px 0; /* Remove horizontal padding to use full width */
   }
   
   .card-content {
