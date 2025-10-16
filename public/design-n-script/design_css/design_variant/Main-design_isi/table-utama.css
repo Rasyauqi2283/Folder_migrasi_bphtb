@@ -71,7 +71,7 @@ main {
   margin-left: 180px !important; /* 170px (60px + 110px) + 10px margin - Force override */
   width: calc(100vw - 170px - 20px) !important; /* 170px + 20px total margins - Force override */
   max-width: calc(100vw - 170px - 20px) !important; /* Prevent any override */
-  transition: margin-left 0.5s ease, width 0.5s ease, max-width 0.5s ease; /* Ensure smooth transition */
+  transition: margin-left 0.8s ease, width 0.9s ease, max-width 0.7s ease; /* Ensure smooth transition */
 }
 
 /* Remove any container constraints that might limit width */
