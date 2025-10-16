@@ -67,10 +67,10 @@ main {
 }
 /* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
-  margin-left: 250px !important; /* Shift main content to the right like sliding door - Force override */
+  margin-left: 100px !important; /* Shift main content to the right like sliding door - Force override */
   margin-right: 15px !important; /* FIXED 15px from viewport edge - NEVER CHANGES - Force override */
-  width: calc(100vw - 250px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
-  max-width: calc(100vw - 250px - 15px) !important; /* Prevent any override */
+  width: calc(100vw - 100px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
+  max-width: calc(100vw - 100px - 15px) !important; /* Prevent any override */
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
 }
 
