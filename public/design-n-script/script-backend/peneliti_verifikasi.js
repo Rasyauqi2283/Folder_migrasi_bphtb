@@ -121,7 +121,7 @@ async function loadTableDataPenelitiV() {
         
         // Clear existing content and create cards container
         tbody.innerHTML = '';
-        
+
         // Create cards container
         const cardsContainer = document.createElement('div');
         cardsContainer.className = 'verification-cards-container';
@@ -392,103 +392,103 @@ function createCard(container, item) {
                                 <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
                             `}
 
-                            <!-- Calculation Form Section -->
-                            <div class="calculation-section">
-                                <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
-                                ${item.pemilihan ? `
-                                    <div class="form-group">
+                        <!-- Calculation Form Section -->
+                        <div class="calculation-section">
+                            <h6 class="section-title">Jumlah Setoran Berdasarkan:</h6>
+                            ${item.pemilihan ? `
+                                <div class="form-group">
                                         <label>
-                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
+                                    <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak" ${item.pemilihan === 'penghitung_wajib_pajak' ? 'checked' : ''}>
                                             Penghitungan wajib pajak
                                         </label>
-                                    </div>
-                                    <div class="form-group">
+                                </div>
+                            <div class="form-group">
                                         <label>
-                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
+                                <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar" ${item.pemilihan === 'stpd_kurangbayar' ? 'checked' : ''}>
                                             STPD kurang bayar
                                         </label>
-                                        <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
-                                            <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
-                                            <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
+                                <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar">
+                                    <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD" value="${item.nomorstpd || ''}">
+                                    <input type="date" class="tanggalstpd" name="tanggalstpd" value="${item.tanggalstpd || ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
                                         <label>
-                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
+                                <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri" ${item.pemilihan === 'dihitungsendiri' ? 'checked' : ''}>
                                             Pengurangan dihitung sendiri
                                         </label>
-                                        <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
-                                            <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
-                                            <span>%</span>
-                                            <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
+                                <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri">
+                                    <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01" value="${item.angkapersen || ''}">
+                                    <span>%</span>
+                                    <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan..." value="${item.keterangandihitungSendiri || ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
                                         <label>
-                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
+                                <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp" ${item.pemilihan === 'lainnyapenghitungwp' ? 'checked' : ''}>
                                             Lainnya
                                         </label>
-                                        <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
-                                            <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
-                                        </div>
-                                    </div>
-                                ` : `
+                                <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp">
+                                    <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini..." value="${item.isiketeranganlainnya || ''}">
+                                </div>
+                            </div>
+                        ` : `
                                     <div class="form-group">
                                         <label>
-                                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
+                            <input type="radio" class="penghitungwajibpajak" name="pemilihan-${item.nobooking}" value="penghitung_wajib_pajak">
                                             Penghitungan wajib pajak
                                         </label>
                                     </div>
                                     <div class="form-group">
                                         <label>
-                                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
+                            <input type="radio" class="stpdkurangbayar" name="pemilihan-${item.nobooking}" value="stpd_kurangbayar">
                                             STPD kurang bayar
                                         </label>
                                         <div class="sub-inputs stpdkurangbayar-sub-input" data-parent="stpdkurangbayar" style="display:none;">
                                             <input type="text" class="nomorstpd" name="nomorstpd" placeholder="Nomor STPD">
                                             <input type="date" class="tanggalstpd" name="tanggalstpd">
-                                        </div>
+                            </div>
                                     </div>
                                     <div class="form-group">
                                         <label>
-                                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
+                            <input type="radio" class="dihitungsendiri" name="pemilihan-${item.nobooking}" value="dihitungsendiri">
                                             Pengurangan dihitung sendiri
                                         </label>
                                         <div class="sub-inputs dihitungsendiri-sub-input" data-parent="dihitungsendiri" style="display:none;">
                                             <input type="number" class="angkapersen" name="angkapersen" placeholder="0-100" min="0" max="100" step="0.01">
-                                            <span>%</span>
+                                <span>%</span>
                                             <input type="text" class="keterangandihitungSendiri" name="keteranganhitungsendiri" placeholder="Berdasarkan...">
-                                        </div>
+                            </div>
                                     </div>
                                     <div class="form-group">
                                         <label>
-                                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
+                            <input type="radio" class="lainnyapenghitungwp" name="pemilihan-${item.nobooking}" value="lainnyapenghitungwp">
                                             Lainnya
                                         </label>
                                         <div class="sub-inputs lainnyapenghitungwp-sub-input" data-parent="lainnyapenghitungwp" style="display:none;">
                                             <input type="text" class="isiketeranganlainnya" name="isiketeranganlainnya" placeholder="Isikan disini...">
                                         </div>
-                                    </div>
-                                `}
                             </div>
+                        `}
+                        </div>
 
                             <!-- Action Buttons Section -->
-                            <div class="action-buttons">
+                        <div class="action-buttons">
                                 <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}">
                                     <i class="fas fa-save"></i> Simpan Verifikasi
                                 </button>
                                 <button type="button" class="btn-send-to-paraf" data-nobooking="${item.nobooking}">
                                     <i class="fas fa-paper-plane"></i> Kirim ke Paraf
-                                </button>
-                            </div>
+                            </button>
+                        </div>
 
-                            <!-- Document Links Section -->
-                            <div class="document-links-section">
-                                <h6 class="document-links-title">Dokumen Terkait:</h6>
-                                <div class="document-links-list">
-                                    ${generateDocumentLinks(item)}
-                                </div>
+                        <!-- Document Links Section -->
+                        <div class="document-links-section">
+                            <h6 class="document-links-title">Dokumen Terkait:</h6>
+                            <div class="document-links-list">
+                                ${generateDocumentLinks(item)}
                             </div>
+                        </div>
                         </div>
                     `;
                     
@@ -526,8 +526,8 @@ function createCard(container, item) {
                 // Add event listeners for form interactions
                 setupFormInteractions(card, item);
 
-    } catch (itemError) {
-        console.error('Error processing item:', itemError);
+            } catch (itemError) {
+                console.error('Error processing item:', itemError);
         // Create error card for failed items
         const errorCard = document.createElement('div');
         errorCard.className = 'verification-card';
@@ -667,7 +667,7 @@ function setupFormInteractions(card, item) {
         sendToParafButton.addEventListener('click', async () => {
             try {
                 await sendToParafKasie(item);
-            } catch (error) {
+        } catch (error) {
                 console.error('Send to Paraf Error:', error);
                 showAlert('error', `Gagal mengirim: ${error.message}`);
             }
