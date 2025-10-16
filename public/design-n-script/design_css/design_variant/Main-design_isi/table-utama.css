@@ -764,7 +764,7 @@ body, html {
   letter-spacing: .03em;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 1; /* Reduced from 2 to 1 to avoid conflicts with modals */
 }
 
 .main-content #ltbBerkasTable tbody td {
@@ -832,7 +832,7 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 .main-content table.excel-table thead th {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 1; /* Reduced from 2 to 1 to avoid conflicts with modals */
   background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
   color: #f3f4f6; /* slate-100 */
   font-weight: 600;
@@ -1088,6 +1088,11 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 /* Sticky footer shadow illusion when scrolled */
 .main-content .table-scroll:is(:hover, :focus-within) thead th {
   box-shadow: 0 1px 0 #cbd5e1, 0 6px 8px -6px rgba(15, 23, 42, 0.15);
+}
+
+/* Ensure table headers don't interfere with modals */
+.main-content .table-scroll thead th {
+  z-index: 1 !important; /* Force low z-index for table headers */
 }
 
 /* ===== Moved table styles from table_design.css (unified) ===== */
