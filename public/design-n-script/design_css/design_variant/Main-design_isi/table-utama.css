@@ -783,14 +783,16 @@ body, html {
 /* Peneliti Validasi Specific Styling */
 .main-content #penelitikasieTable {
   display: table !important;
-  width: 100%;
-  margin: 20px 0;
+  width: calc(100vw - 80px); /* Full width minus padding for viewport control */
+  max-width: calc(100vw - 80px); /* Prevent overflow */
+  margin: 20px auto; /* Center the table */
   background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
   color: #f3f4f6;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0,0,0,.35);
   border: 1px solid #1f2937;
+  box-sizing: border-box;
 }
 
 .main-content #ltbBerkasTable thead th,
@@ -839,6 +841,15 @@ body, html {
   overflow-x: auto;
 }
 
+/* Peneliti Validasi table container styling */
+.paraf-validasi-page .main-content .table-scroll {
+  display: block !important;
+  max-width: calc(100vw - 80px); /* Prevent overflow */
+  overflow-x: auto; /* Allow horizontal scroll if needed */
+  margin: 0 auto; /* Center the container */
+  box-sizing: border-box;
+}
+
 /* Force visibility for LTB page elements */
 body:has(#ltbBerkasTable) .main-content table.excel-table {
   display: table !important;
@@ -875,6 +886,54 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 .ltb-page .main-content .data-masuk,
 .paraf-validasi-page .main-content .data-masuk {
   display: table-row-group !important;
+}
+
+/* Peneliti Validasi page main content viewport control */
+.paraf-validasi-page .main-content {
+  max-width: calc(100vw - 40px); /* Full viewport minus padding */
+  margin: 0 auto; /* Center content */
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-x: hidden; /* Prevent horizontal overflow */
+}
+
+/* Responsive adjustments for Peneliti Validasi table */
+@media (max-width: 1200px) {
+  .paraf-validasi-page .main-content {
+    max-width: calc(100vw - 30px);
+    padding: 15px;
+  }
+  
+  .paraf-validasi-page .main-content .table-scroll {
+    max-width: calc(100vw - 60px);
+  }
+  
+  .main-content #penelitikasieTable {
+    width: calc(100vw - 60px);
+    max-width: calc(100vw - 60px);
+  }
+}
+
+@media (max-width: 768px) {
+  .paraf-validasi-page .main-content {
+    max-width: calc(100vw - 20px);
+    padding: 10px;
+  }
+  
+  .paraf-validasi-page .main-content .table-scroll {
+    max-width: calc(100vw - 40px);
+  }
+  
+  .main-content #penelitikasieTable {
+    width: calc(100vw - 40px);
+    max-width: calc(100vw - 40px);
+    font-size: 12px;
+  }
+  
+  .main-content #penelitikasieTable th,
+  .main-content #penelitikasieTable td {
+    padding: 8px 10px;
+  }
 }
 
 /* ===== BANK PAGE STYLING ===== */
