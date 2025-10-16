@@ -63,6 +63,15 @@ body, html {
 
 /* ===== CARD-BASED LAYOUT FOR PENELITI VERIFIKASI & PARAF ===== */
 /* Modern Card Design - DARK THEME */
+
+/* Main content wrapper for viewport optimization */
+.main-content {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
 .verification-cards-container,
 .paraf-cards-container {
   display: grid;
@@ -77,16 +86,19 @@ body, html {
   overflow-x: hidden;
 }
 
-/* Desktop Layout - 3 columns grid - FULL WIDTH */
+/* Desktop Layout - 3 columns grid - OPTIMIZED FOR RIGHT EDGE */
 @media (min-width: 1024px) {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-    padding: 20px;
-    width: 100%;
+    padding: 20px 20px 20px 20px; /* top right bottom left */
+    width: calc(100vw - 40px); /* Full width minus 40px total padding */
     margin: 0;
-    max-width: none;
+    max-width: calc(100vw - 40px);
+    margin-left: 20px; /* Push content closer to right edge */
+    margin-right: 20px; /* Maintain space from right edge */
+    box-sizing: border-box;
   }
   
   .verification-card,
@@ -102,21 +114,29 @@ body, html {
   }
 }
 
-/* Extra wide screens - optimal spacing */
+/* Extra wide screens - optimal spacing with right edge alignment */
 @media (min-width: 1600px) {
   .verification-cards-container,
   .paraf-cards-container {
     gap: 20px;
-    padding: 24px;
+    padding: 24px 24px 24px 24px;
+    width: calc(100vw - 48px); /* Full width minus 48px total padding */
+    max-width: calc(100vw - 48px);
+    margin-left: 24px;
+    margin-right: 24px;
   }
 }
 
-/* Large Desktop Layout - Better spacing for wide screens */
+/* Large Desktop Layout - Better spacing for wide screens with right edge alignment */
 @media (min-width: 1440px) {
   .verification-cards-container,
   .paraf-cards-container {
     gap: 20px;
-    padding: 24px;
+    padding: 24px 24px 24px 24px;
+    width: calc(100vw - 48px);
+    max-width: calc(100vw - 48px);
+    margin-left: 24px;
+    margin-right: 24px;
   }
 }
 
