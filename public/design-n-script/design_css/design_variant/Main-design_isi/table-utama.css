@@ -1,17 +1,23 @@
 /*Design untuk setiap Table Utama*/
 /* Excel-like table styling for main content tables */
 
-/* Container helpers */
+/* Container helpers - PROPER MAIN LAYOUT */
 .main-content {
-  /* Prevent content from exceeding viewport width when sidebar expands */
-  max-width: 100vw;
-  overflow-x: hidden;
-  /* Keep right edge pinned to viewport; shrink from pushing (left) side */
-  margin-left: 60px; /* collapsed sidebar width */
-  width: calc(100vw - 60px);
-  transition: margin-left .3s ease, width .3s ease;
-  padding-right: 20px; /* right gutter so content not flush to viewport */
+  /* Positioning */
+  margin-left: 70px; /* 60px sidebar + 10px margin */
+  margin-right: 10px;
+  margin-top: 90px; /* 80px header + 10px margin */
+  margin-bottom: 60px; /* 50px footer + 10px margin */
+  
+  /* Dimensions */
+  width: calc(100vw - 60px - 20px); /* 60px sidebar + 20px total margins */
+  height: calc(100vh - 80px - 50px - 20px); /* minus header, footer, margins */
+  
+  /* Responsive to sidebar */
+  transition: margin-left 0.5s ease, width 0.5s ease;
   box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .main-content .table-scroll {
@@ -19,18 +25,10 @@
   overflow-x: auto; /* Allow horizontal scroll if absolutely necessary */
 }
 
-/* When sidebar is expanded, shift content by sidebar width but keep right edge pinned */
-.main-content.shifted {
-  width: calc(100vw - 250px);
-}
-
-/* Ensure main content uses full width */
-.main-content {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* When sidebar is expanded, adjust main content positioning */
+.sidebar.expand ~ .main-content {
+  margin-left: 260px; /* 250px sidebar + 10px margin */
+  width: calc(100vw - 250px - 20px); /* 250px sidebar + 20px total margins */
 }
 
 /* Remove any container constraints that might limit width */
@@ -783,9 +781,9 @@ body, html {
 /* Peneliti Validasi Specific Styling */
 .main-content #penelitikasieTable {
   display: table !important;
-  width: calc(100vw - 80px); /* Full width minus padding for viewport control */
-  max-width: calc(100vw - 80px); /* Prevent overflow */
-  margin: 20px auto; /* Center the table */
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0; /* Remove extra margins since main-content handles positioning */
   background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
   color: #f3f4f6;
   border-radius: 12px;
@@ -793,6 +791,7 @@ body, html {
   box-shadow: 0 10px 30px rgba(0,0,0,.35);
   border: 1px solid #1f2937;
   box-sizing: border-box;
+  table-layout: fixed; /* Fixed table layout for better column control */
 }
 
 .main-content #ltbBerkasTable thead th,
@@ -834,6 +833,42 @@ body, html {
   transition: background .2s ease;
 }
 
+/* Peneliti Validasi table column widths */
+.main-content #penelitikasieTable th:nth-child(1),
+.main-content #penelitikasieTable td:nth-child(1) {
+  width: 15%; /* No. Validasi */
+}
+
+.main-content #penelitikasieTable th:nth-child(2),
+.main-content #penelitikasieTable td:nth-child(2) {
+  width: 12%; /* No. Registrasi */
+}
+
+.main-content #penelitikasieTable th:nth-child(3),
+.main-content #penelitikasieTable td:nth-child(3) {
+  width: 15%; /* No. Booking */
+}
+
+.main-content #penelitikasieTable th:nth-child(4),
+.main-content #penelitikasieTable td:nth-child(4) {
+  width: 8%; /* Tahun AJB */
+}
+
+.main-content #penelitikasieTable th:nth-child(5),
+.main-content #penelitikasieTable td:nth-child(5) {
+  width: 15%; /* Status */
+}
+
+.main-content #penelitikasieTable th:nth-child(6),
+.main-content #penelitikasieTable td:nth-child(6) {
+  width: 20%; /* Pembuat Booking */
+}
+
+.main-content #penelitikasieTable th:nth-child(7),
+.main-content #penelitikasieTable td:nth-child(7) {
+  width: 15%; /* Aksi */
+}
+
 /* Ensure LTB table container is visible */
 .main-content .table-scroll {
   display: block !important;
@@ -844,9 +879,10 @@ body, html {
 /* Peneliti Validasi table container styling */
 .paraf-validasi-page .main-content .table-scroll {
   display: block !important;
-  max-width: calc(100vw - 80px); /* Prevent overflow */
-  overflow-x: auto; /* Allow horizontal scroll if needed */
-  margin: 0 auto; /* Center the container */
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  overflow-x: hidden; /* Remove horizontal scroll */
+  margin: 0; /* Remove auto centering */
   box-sizing: border-box;
 }
 
@@ -888,45 +924,26 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
   display: table-row-group !important;
 }
 
-/* Peneliti Validasi page main content viewport control */
+/* Peneliti Validasi page inherits main-content layout automatically */
 .paraf-validasi-page .main-content {
-  max-width: calc(100vw - 40px); /* Full viewport minus padding */
-  margin: 0 auto; /* Center content */
+  /* Inherits positioning from .main-content base class */
   padding: 20px;
   box-sizing: border-box;
-  overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 /* Responsive adjustments for Peneliti Validasi table */
 @media (max-width: 1200px) {
   .paraf-validasi-page .main-content {
-    max-width: calc(100vw - 30px);
     padding: 15px;
-  }
-  
-  .paraf-validasi-page .main-content .table-scroll {
-    max-width: calc(100vw - 60px);
-  }
-  
-  .main-content #penelitikasieTable {
-    width: calc(100vw - 60px);
-    max-width: calc(100vw - 60px);
   }
 }
 
 @media (max-width: 768px) {
   .paraf-validasi-page .main-content {
-    max-width: calc(100vw - 20px);
     padding: 10px;
   }
   
-  .paraf-validasi-page .main-content .table-scroll {
-    max-width: calc(100vw - 40px);
-  }
-  
   .main-content #penelitikasieTable {
-    width: calc(100vw - 40px);
-    max-width: calc(100vw - 40px);
     font-size: 12px;
   }
   
