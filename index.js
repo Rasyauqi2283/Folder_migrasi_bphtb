@@ -370,24 +370,32 @@ app.use('/api/auth/reset-password-request', resetPasswordLimiter);
 // GET list transaksi untuk verifikasi (hanya dari tabel bank, dengan filter & pagination)
 app.get('/api/bank/transaksi', async (req, res) => {
     try {
-      const { page = 1, limit = 20, q } = req.query;
+      const { page = 1, limit = 20, q, tab = 'pending' } = req.query;
       const lim = Math.min(parseInt(limit) || 20, 100);
       const off = (parseInt(page) - 1) * lim;
   
       const params = [];
       const where = [];
   
-      // Hanya transaksi yang masih pending & dicek di bank
-      where.push(`COALESCE(bk.status_verifikasi, 'Pending') = 'Pending'`);
-      where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Dicheck'`);
+      // Tab-based filtering
+      if (tab === 'pending') {
+        // Hanya transaksi yang masih pending & dicek di bank
+        where.push(`COALESCE(bk.status_verifikasi, 'Pending') = 'Pending'`);
+        where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Dicheck'`);
+      } else if (tab === 'reviewed') {
+        // Transaksi yang sudah di-review (approved atau rejected)
+        where.push(`COALESCE(bk.status_verifikasi, 'Pending') IN ('Disetujui', 'Ditolak')`);
+        where.push(`COALESCE(bk.status_dibank, 'Dicheck') = 'Tercheck'`);
+      }
   
-      // Pencarian (berbasis data di bank, tapi bisa melibatkan join untuk nama/nobooking)
+      // Pencarian (berbasis data di bank, termasuk no_registrasi)
       if (q && String(q).trim().length) {
         params.push(`%${String(q).trim().toLowerCase()}%`);
         where.push(`(
           lower(bk.nobooking) LIKE $${params.length}
           OR lower(p.namawajibpajak) LIKE $${params.length}
-          OR lower(COALESCE(bk.nomor_bukti_pembayaran, p2.nomor_bukti_pembayaran)::text) LIKE $${params.length}
+          OR lower(COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran)::text) LIKE $${params.length}
+          OR lower(l.no_registrasi) LIKE $${params.length}
         )`);
       }
   
@@ -403,11 +411,13 @@ app.get('/api/bank/transaksi', async (req, res) => {
           COALESCE(bk.tanggal_pembayaran, p4.tanggal_pembayaran) AS tanggal_pembayaran,
           COALESCE(bk.status_verifikasi, 'Pending') AS status_verifikasi,
           COALESCE(bk.status_dibank, 'Dicheck') AS status_dibank,
-          bk.catatan_bank
+          bk.catatan_bank,
+          l.no_registrasi
         FROM bank_1_cek_hasil_transaksi bk
         LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
         LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
         LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
+        LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
         ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
         ORDER BY bk.id DESC
         LIMIT $${params.length-1} OFFSET $${params.length}

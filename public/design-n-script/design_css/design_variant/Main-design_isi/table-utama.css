@@ -829,6 +829,28 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
   display: table-row-group !important;
 }
 
+/* ===== BANK PAGE STYLING ===== */
+/* Bank page specific styling */
+.bank-page {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f3f4f6;
+}
+
+.bank-page .main-content {
+  background: transparent;
+}
+
+/* Bank table specific styling */
+.bank-page .bank-table {
+  display: table !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.bank-page .table-scroll {
+  display: block !important;
+}
+
 .main-content table.excel-table thead th {
   position: sticky;
   top: 0;

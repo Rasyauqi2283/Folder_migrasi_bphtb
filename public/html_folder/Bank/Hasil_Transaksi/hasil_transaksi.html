@@ -4,157 +4,372 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verifikasi Pembayaran Bank</title>
-  <!-- Universal Alert System -->
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+  
+  <!-- CSS Files -->
   <link rel="stylesheet" href="../../../design-n-script/design_css/universal-alert.css">
   <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
   <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+
+  <!-- Bank-specific styling -->
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f7f7f7;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f3f4f6;
       margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .main-content {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: calc(100vh - 80px);
       padding: 20px;
     }
 
     h2 {
-      margin-bottom: 15px;
+      color: #f3f4f6;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
     }
 
-    table {
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+      border: 1px solid #374151;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    .table-toolbar label {
+      color: #e5e7eb;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
+    .table-toolbar select,
+    .table-toolbar input {
+      background: #0b1220;
+      color: #f1f5f9;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .table-toolbar select:focus,
+    .table-toolbar input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .table-toolbar button {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .table-toolbar button:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .table-scroll {
+      background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+      border-radius: 16px;
+      border: 1px solid #374151;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    .bank-table {
       width: 100%;
       border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      background: transparent;
     }
 
-    thead {
-      background: #2c3e50;
-      color: #fff;
+    .bank-table thead {
+      background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
     }
 
-    th, td {
-      padding: 12px 15px;
+    .bank-table thead th {
+      background: transparent;
+      color: #f3f4f6;
+      font-weight: 600;
       text-align: left;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #374151;
+      padding: 16px 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 13px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
 
-    tr:hover {
-      background: #4c505b;
+    .bank-table tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #1f2937;
+      color: #e5e7eb;
+      font-size: 14px;
+      vertical-align: middle;
     }
 
-    .status {
-      font-weight: bold;
-      padding: 5px 10px;
-      border-radius: 4px;
-      text-align: center;
-      display: inline-block;
+    .bank-table tbody tr:nth-child(odd) {
+      background-color: rgba(15, 23, 42, 0.3);
     }
 
-    .pending {
-      background: #f1c40f;
-      color: #fff;
+    .bank-table tbody tr:nth-child(even) {
+      background-color: rgba(15, 23, 42, 0.1);
     }
 
-    .approved {
-      background: #27ae60;
-      color: #fff;
+    .bank-table tbody tr:hover {
+      background-color: rgba(59, 130, 246, 0.1);
+      transition: background 0.2s ease;
     }
 
-    .rejected {
-      background: #e74c3c;
-      color: #fff;
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .status-approved {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .status-rejected {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
     .actions button {
-      padding: 6px 12px;
-      margin-right: 5px;
+      padding: 8px 16px;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .approve-btn {
-      background: #27ae60;
-      color: #fff;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .approve-btn:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
 
     .reject-btn {
-      background: #e74c3c;
-      color: #fff;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
 
-    /* Responsive untuk mobile */
+    .reject-btn:hover {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+
+    .currency {
+      font-weight: 600;
+      color: #10b981;
+    }
+
+    /* Navigation tabs */
+    .nav-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid #374151;
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 12px 20px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: #9ca3af;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .nav-tab.active {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .nav-tab:hover:not(.active) {
+      background: rgba(59, 130, 246, 0.1);
+      color: #e5e7eb;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 8px;
+      color: #e5e7eb;
+    }
+
+    /* Responsive */
     @media (max-width: 768px) {
-      table, thead, tbody, th, td, tr {
-        display: block;
+      .table-toolbar {
+        flex-direction: column;
+        gap: 12px;
       }
-      thead {
-        display: none;
+
+      .nav-tabs {
+        flex-direction: column;
       }
-      tr {
-        margin-bottom: 15px;
-        background: #fff;
-        padding: 10px;
-        border-radius: 6px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+      .bank-table {
+        font-size: 12px;
       }
-      td {
-        border: none;
-        padding: 8px 10px;
-        display: flex;
-        justify-content: space-between;
-      }
-      td::before {
-        content: attr(data-label);
-        font-weight: bold;
+
+      .bank-table thead th,
+      .bank-table tbody td {
+        padding: 8px 6px;
       }
     }
   </style>
 </head>
-<body>
-  <h2>Daftar Verifikasi Pembayaran</h2>
-  <div style="margin:10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <label for="filterStatus">Filter Status:</label>
-    <select id="filterStatus">
-      <option value="">Semua</option>
-      <option value="Pending">Pending</option>
-      <option value="Disetujui">Disetujui</option>
-      <option value="Ditolak">Ditolak</option>
-    </select>
-    <input id="searchBox" placeholder="Cari NoBooking / Nama WP / No. Bukti" style="padding:6px 10px; border:1px solid #ddd; border-radius:4px;" />
-    <button id="reloadBtn" class="approve-btn" style="background:#3498db">Muat Ulang</button>
+<body class="bank-page">
+  <div class="main-content">
+    <h2>Verifikasi Pembayaran Bank</h2>
+    
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab active" id="pendingTab" onclick="switchTab('pending')">
+        <span>📋</span> Pending Review
+      </button>
+      <button class="nav-tab" id="reviewedTab" onclick="switchTab('reviewed')">
+        <span>✅</span> Sudah di Review
+      </button>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="table-toolbar">
+      <label for="filterStatus">Filter Status:</label>
+      <select id="filterStatus">
+        <option value="">Semua</option>
+        <option value="Pending">Pending</option>
+        <option value="Disetujui">Disetujui</option>
+        <option value="Ditolak">Ditolak</option>
+      </select>
+      <input id="searchBox" placeholder="Cari No. Registrasi / No. Booking / Nama WP / No. Bukti" />
+      <button id="reloadBtn">
+        <span>🔄</span> Muat Ulang
+      </button>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-scroll">
+      <table id="trxTable" class="bank-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>No. Registrasi</th>
+            <th>No. Booking</th>
+            <th>Nama WP</th>
+            <th>No. Bukti</th>
+            <th>Nominal</th>
+            <th>Tanggal Bayar</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="trxBody">
+        </tbody>
+      </table>
+    </div>
   </div>
-  <table id="trxTable">
-    <thead>
-      <tr>
-        <th>No</th>
-        <th>No. Booking</th>
-        <th>Nama WP</th>
-        <th>No. Bukti</th>
-        <th>Nominal</th>
-        <th>Tanggal Bayar</th>
-        <th>Status</th>
-        <th>Aksi</th>
-      </tr>
-    </thead>
-    <tbody id="trxBody">
-    </tbody>
-  </table>
   <script>
     (function(){
       const tbody = document.getElementById('trxBody');
       const filter = document.getElementById('filterStatus');
       const search = document.getElementById('searchBox');
       const reload = document.getElementById('reloadBtn');
+      
+      // Tab management
+      let currentTab = 'pending';
+      
+      function switchTab(tab) {
+        currentTab = tab;
+        
+        // Update tab UI
+        document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tab + 'Tab').classList.add('active');
+        
+        // Reload data for the selected tab
+        load();
+      }
+      
+      // Make switchTab globally available
+      window.switchTab = switchTab;
 
       function fmtCurrency(n){
         const x = Number(n||0); return 'Rp ' + x.toLocaleString('id-ID');
       }
       function badge(status){
         const s = String(status||'Pending');
-        const cls = s==='Disetujui'?'approved':(s==='Ditolak'?'rejected':'pending');
-        return `<span class="status ${cls}">${s}</span>`;
+        const cls = s==='Disetujui'?'status-approved':(s==='Ditolak'?'status-rejected':'status-pending');
+        return `<span class="status-badge ${cls}">${s}</span>`;
       }
       async function fetchJSON(url, opt){
         const res = await fetch(url, Object.assign({ credentials:'include' }, opt||{}));
@@ -167,36 +382,45 @@
           const qs = [];
           const st = (filter.value||'').trim(); if(st) qs.push('status='+encodeURIComponent(st));
           const q = (search.value||'').trim(); if(q) qs.push('q='+encodeURIComponent(q));
+          
+          // Add tab parameter
+          qs.push('tab=' + encodeURIComponent(currentTab));
+          
           const url = '/api/bank/transaksi?page=1&limit=50' + (qs.length?'&'+qs.join('&'):'');
           const js = await fetchJSON(url);
           const rows = js.rows||[];
           tbody.innerHTML = '';
           if(!rows.length){
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="8" style="text-align:center;color:#888">Tidak ada data</td>`;
+            tr.innerHTML = `<td colspan="9" style="text-align:center;color:#888">Tidak ada data</td>`;
             tbody.appendChild(tr); return;
           }
           rows.forEach((r, idx)=>{
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td data-label="No">${idx+1}</td>
+              <td data-label="No. Registrasi">${r.no_registrasi||'-'}</td>
               <td data-label="No. Booking">${r.nobooking||'-'}</td>
               <td data-label="Nama WP">${r.namawajibpajak||'-'}</td>
               <td data-label="No. Bukti">${r.nomor_bukti_pembayaran||'-'}</td>
-              <td data-label="Nominal">${fmtCurrency(r.nominal)}</td>
+              <td data-label="Nominal" class="currency">${fmtCurrency(r.nominal)}</td>
               <td data-label="Tanggal Bayar">${r.tanggal_pembayaran||'-'}</td>
               <td data-label="Status">${badge(r.status_verifikasi)}</td>
               <td data-label="Aksi" class="actions">
                 ${r.status_verifikasi==='Disetujui' || r.status_verifikasi==='Ditolak' ? '—' : `
-                  <button class="approve-btn" data-acc="${r.nobooking}">✓ Approve</button>
-                  <button class="reject-btn" data-rej="${r.nobooking}">✗ Reject</button>
+                  <button class="approve-btn" data-acc="${r.nobooking}">
+                    <span>✓</span> Approve
+                  </button>
+                  <button class="reject-btn" data-rej="${r.nobooking}">
+                    <span>✗</span> Reject
+                  </button>
                 `}
               </td>
             `;
             tbody.appendChild(tr);
           });
         }catch(e){
-          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#c00">Gagal memuat data: ${e.message}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#c00">Gagal memuat data: ${e.message}</td></tr>`;
         }
       }
 
