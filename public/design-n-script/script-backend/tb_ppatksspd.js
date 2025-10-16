@@ -1,53 +1,142 @@
 let selectedNoBooking = null;
 // Fungsi untuk memuat data ke dalam tabel
 async function loadTableDataLTB() {
-    const userDivisi = getUserDivisi();
-
-    // Cek apakah divisi adalah LTB
-    if (userDivisi !== 'LTB') {
-        alert('Anda tidak memiliki akses ke data LTB.');
-        return;  // Menghentikan eksekusi jika divisi bukan LTB
-    }
-
     try {
+        console.log('🔍 [FRONTEND] ===== LTB LOADING =====');
+        console.log('🔍 [FRONTEND] Timestamp:', new Date().toISOString());
+        console.log('🔍 [FRONTEND] URL:', window.location.href);
+
+        const userDivisi = getUserDivisi();
+        console.log('🔍 [FRONTEND] User division check:', {
+            userDivisi: userDivisi,
+            userDivisiType: typeof userDivisi,
+            isString: typeof userDivisi === 'string',
+            isLTB: userDivisi === 'LTB'
+        });
+
+        // Cek apakah divisi adalah LTB
+        if (userDivisi !== 'LTB') {
+            console.log('❌ [FRONTEND] Invalid divisi:', userDivisi);
+            alert('Anda tidak memiliki akses ke data LTB.');
+            return;  // Menghentikan eksekusi jika divisi bukan LTB
+        }
+
+        console.log('✅ [FRONTEND] User division validated, proceeding with API call...');
+        console.log('🔍 [FRONTEND] Making API request to /api/ltb_get-ltb-berkas...');
+
         const response = await fetch('/api/ltb_get-ltb-berkas', { credentials: 'include' }); // Endpoint API untuk mendapatkan data berkas LTB
         const data = await response.json();
 
-        // Log untuk melihat apakah data berhasil di-fetch
-        console.log("Fetched Data:", data);
+        console.log('✅ [FRONTEND] API response received:', {
+            success: data.success,
+            dataLength: Array.isArray(data.data) ? data.data.length : 0,
+            dataType: typeof data.data,
+            hasData: !!data.data,
+            fullResponse: data
+        });
 
         if (data.success) {
+            console.log('✅ [FRONTEND] Success response received, processing data...');
+            
             const tbody = document.querySelector('.data-masuk');
+            if (!tbody) {
+                console.error('❌ [FRONTEND] Table body element not found!');
+                throw new Error('Table body element not found');
+            }
+            console.log('✅ [FRONTEND] Table body found:', tbody);
 
             // Pagination setup
             const PAGE_SIZE = 12;
             const rows = Array.isArray(data.data) ? data.data : [];
             let currentPage = 1;
 
+            console.log('📊 [FRONTEND] Data processing:', {
+                pageSize: PAGE_SIZE,
+                totalRows: rows.length,
+                rowsType: Array.isArray(rows) ? 'Array' : typeof rows,
+                firstRowSample: rows.length > 0 ? {
+                    no_registrasi: rows[0].no_registrasi,
+                    nobooking: rows[0].nobooking,
+                    noppbb: rows[0].noppbb,
+                    namawajibpajak: rows[0].namawajibpajak,
+                    trackstatus: rows[0].trackstatus,
+                    status: rows[0].status
+                } : 'No data'
+            });
+
             function renderPage(page) {
+                console.log(`📄 [PAGINATION] Rendering page ${page}:`, {
+                    start: (page - 1) * PAGE_SIZE,
+                    end: (page - 1) * PAGE_SIZE + PAGE_SIZE,
+                    totalRows: rows.length
+                });
+                
                 currentPage = page;
                 tbody.innerHTML = '';
                 const start = (page - 1) * PAGE_SIZE;
                 const end = start + PAGE_SIZE;
                 const pageRows = rows.slice(start, end);
 
-                pageRows.forEach(item => {
-                const row = tbody.insertRow();
+                console.log(`📄 [PAGINATION] Page data:`, {
+                    pageRowsLength: pageRows.length,
+                    pageRowsSample: pageRows.slice(0, 2).map(item => ({
+                        no_registrasi: item.no_registrasi,
+                        nobooking: item.nobooking,
+                        noppbb: item.noppbb,
+                        namawajibpajak: item.namawajibpajak,
+                        trackstatus: item.trackstatus
+                    }))
+                });
+
+                pageRows.forEach((item, index) => {
+                    try {
+                        console.log(`🔧 [ROW ${index + 1}] Processing item:`, {
+                            no_registrasi: item.no_registrasi,
+                            nobooking: item.nobooking,
+                            noppbb: item.noppbb,
+                            namawajibpajak: item.namawajibpajak,
+                            namapemilikobjekpajak: item.namapemilikobjekpajak,
+                            tanggal_terima: item.tanggal_terima,
+                            trackstatus: item.trackstatus,
+                            status: item.status
+                        });
+
+                        // Check for critical null values
+                        const criticalFields = ['no_registrasi', 'nobooking', 'noppbb', 'namawajibpajak'];
+                        const nullFields = criticalFields.filter(field => !item[field]);
+                        if (nullFields.length > 0) {
+                            console.warn(`⚠️ [ROW ${index + 1}] Missing critical fields:`, nullFields);
+                        }
+
+                        const row = tbody.insertRow();
+                        console.log(`🔧 [ROW ${index + 1}] Row created, inserting cells...`);
 
                 // Menambahkan data ke dalam setiap sel
-                row.insertCell(0).textContent = item.no_registrasi;
-                row.insertCell(1).textContent = item.nobooking;
-                row.insertCell(2).textContent = item.noppbb;
-                row.insertCell(3).textContent = item.namawajibpajak;
-                row.insertCell(4).textContent = item.namapemilikobjekpajak;
-                row.insertCell(5).textContent = item.tanggal_terima;
-                row.insertCell(6).textContent = item.trackstatus;
+                row.insertCell(0).textContent = item.no_registrasi || 'N/A';
+                row.insertCell(1).textContent = item.nobooking || 'N/A';
+                row.insertCell(2).textContent = item.noppbb || 'N/A';
+                row.insertCell(3).textContent = item.namawajibpajak || 'N/A';
+                row.insertCell(4).textContent = item.namapemilikobjekpajak || 'N/A';
+                row.insertCell(5).textContent = item.tanggal_terima || 'N/A';
+                row.insertCell(6).textContent = item.trackstatus || 'N/A';
+
+                console.log(`🔧 [ROW ${index + 1}] Cells inserted:`, {
+                    no_registrasi: item.no_registrasi || 'N/A',
+                    nobooking: item.nobooking || 'N/A',
+                    noppbb: item.noppbb || 'N/A',
+                    namawajibpajak: item.namawajibpajak || 'N/A',
+                    namapemilikobjekpajak: item.namapemilikobjekpajak || 'N/A',
+                    tanggal_terima: item.tanggal_terima || 'N/A',
+                    trackstatus: item.trackstatus || 'N/A'
+                });
 
                 // Kolom Keterangan, ditambah dengan tombol "View Document"
                 const sendCell = row.insertCell(7);
                 const sendButton = document.createElement('button');
                 sendButton.textContent = 'Kirim';
                 sendButton.classList.add('btn-kirim-document'); // Berikan kelas CSS untuk styling (optional)
+                
+                console.log(`🔧 [ROW ${index + 1}] Button created and added to cell`);
                 // Menambahkan event listener pada tombol
                 sendButton.addEventListener('click', async () => {
                     const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
@@ -131,14 +220,39 @@ async function loadTableDataLTB() {
 
                 // Menambahkan baris dropdown ke dalam tabel
                 tbody.appendChild(dropdownRow);
+                console.log(`🔧 [ROW ${index + 1}] Row and dropdown completed`);
+                
+                    } catch (itemError) {
+                        console.error(`❌ [ROW ${index + 1}] Error processing item:`, itemError);
+                        // Create error row
+                        const errorRow = tbody.insertRow();
+                        const errorCell = errorRow.insertCell(0);
+                        errorCell.colSpan = 8;
+                        errorCell.textContent = `Error loading data: ${itemError.message}`;
+                        errorCell.style.color = '#ef4444';
+                        errorCell.style.textAlign = 'center';
+                    }
                 });
+                
+                console.log(`✅ [PAGINATION] Page ${page} rendered successfully`);
                 renderPagination();
             }
 
             function renderPagination() {
                 const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+                console.log('📄 [PAGINATION] Rendering pagination:', {
+                    totalRows: rows.length,
+                    pageSize: PAGE_SIZE,
+                    totalPages: totalPages,
+                    currentPage: currentPage
+                });
+                
                 const container = document.getElementById('ltbPagination');
-                if (!container) return;
+                if (!container) {
+                    console.error('❌ [PAGINATION] Pagination container not found!');
+                    return;
+                }
+                console.log('✅ [PAGINATION] Container found, clearing and building...');
                 container.innerHTML = '';
                 const makeBtn = (label, page, disabled, active) => {
                     const btn = document.createElement('button');
@@ -165,8 +279,15 @@ async function loadTableDataLTB() {
 
             // Search/filter
             const searchInput = document.getElementById('ltbSearch');
+            console.log('🔍 [SEARCH] Search input element:', {
+                found: !!searchInput,
+                element: searchInput
+            });
+            
             window.filterTableLTB = function () {
                 const q = (searchInput?.value || '').toLowerCase();
+                console.log('🔍 [SEARCH] Filtering with query:', q);
+                
                 const filtered = rows.filter((r) => {
                     return (
                         String(r.no_registrasi || '').toLowerCase().includes(q) ||
@@ -177,6 +298,13 @@ async function loadTableDataLTB() {
                         String(r.trackstatus || '').toLowerCase().includes(q)
                     );
                 });
+                
+                console.log('🔍 [SEARCH] Filter results:', {
+                    originalCount: rows.length,
+                    filteredCount: filtered.length,
+                    query: q
+                });
+                
                 // Re-render with filtered dataset
                 const backup = rows.slice();
                 rows.length = 0; Array.prototype.push.apply(rows, filtered);
@@ -185,12 +313,21 @@ async function loadTableDataLTB() {
                 rows.length = 0; Array.prototype.push.apply(rows, backup);
             }
 
+            console.log('🚀 [FRONTEND] Starting initial page render...');
             renderPage(1);
+            console.log('✅ [FRONTEND] Initial render completed');
         } else {
+            console.log('❌ [FRONTEND] API returned success: false');
+            console.log('❌ [FRONTEND] Response data:', data);
             alert('No data available');
         }
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('❌ [FRONTEND] Main Function Error:', error);
+        console.error('❌ [FRONTEND] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         alert('An error occurred while fetching data.');
     }
 }
