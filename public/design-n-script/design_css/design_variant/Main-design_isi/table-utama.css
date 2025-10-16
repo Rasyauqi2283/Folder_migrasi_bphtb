@@ -617,9 +617,7 @@ body, html {
 
 /* Card Content */
 .card-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  /* Remove grid layout from card-content - let info-grid handle it */
   margin-bottom: 16px;
 }
 
@@ -627,6 +625,31 @@ body, html {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Info grid layout - ensures 2 columns */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Responsive info-grid - maintain 2 columns even on mobile */
+@media (max-width: 480px) {
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .info-label {
+    font-size: 11px;
+  }
+  
+  .info-value {
+    font-size: 13px;
+  }
 }
 
 .info-label {
@@ -2677,13 +2700,7 @@ form button:hover {
     padding: 16px;
 }
 
-/* Info grid layout */
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    padding: 16px;
-}
+/* Info grid layout - consolidated with existing .info-grid above */
 
 /* Date section styling */
 .date-section {
