@@ -31,7 +31,7 @@ html, body {
   height: calc(100vh - 90px); /* minus header, margins */
   
   /* Responsive to sidebar - Smooth transition like sliding door */
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
+  transition: margin-left 0.9s cubic-bezier(0.4, 0, 0.2, 1), width 0.9s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
   will-change: margin-left, width; /* Animate both margin-left and width */
   box-sizing: border-box;
   overflow-x: hidden !important; /* Force override */
@@ -106,9 +106,9 @@ body, html {
 .verification-cards-container,
 .paraf-cards-container {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: auto; /* Dynamic rows based on content */
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns for wider, more comfortable viewing */
+  grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards per page */
+  gap: 20px; /* Increased gap for better spacing */
   padding: 20px; /* Add padding to prevent content from being cut off */
   background: transparent; /* Remove background to avoid interference */
   min-height: auto; /* Remove fixed height to prevent empty space */
@@ -118,13 +118,13 @@ body, html {
   overflow-x: hidden;
 }
 
-/* Desktop Layout - 8 cards (4x4 grid) - OPTIMIZED FOR RIGHT EDGE */
+/* Desktop Layout - 6 cards (3x2 grid) - WIDER AND MORE COMFORTABLE */
 @media (min-width: 1024px) {
   .verification-cards-container,
   .paraf-cards-container {
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: auto; /* Dynamic rows based on content */
-    gap: 16px;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 20px; /* Increased gap for better spacing */
     padding: 20px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     margin: 0;
@@ -134,14 +134,14 @@ body, html {
   
   .verification-card,
   .paraf-card {
-    min-height: 200px; /* Slightly reduced for better fit in 4x4 grid */
+    min-height: 220px; /* Increased height for more comfortable viewing */
     width: 100%;
     box-sizing: border-box;
   }
   
   .card-content {
     grid-template-columns: 1fr;
-    gap: 10px; /* Slightly reduced gap for compact layout */
+    gap: 12px; /* Increased gap for better readability */
   }
 }
 
@@ -149,9 +149,9 @@ body, html {
 @media (min-width: 1600px) {
   .verification-cards-container,
   .paraf-cards-container {
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: auto; /* Dynamic rows based on content */
-    gap: 20px;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 24px; /* Increased gap for extra wide screens */
     padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
@@ -159,7 +159,7 @@ body, html {
   
   .verification-card,
   .paraf-card {
-    min-height: 220px; /* Slightly larger for wide screens */
+    min-height: 240px; /* Larger height for extra wide screens */
   }
 }
 
@@ -167,9 +167,9 @@ body, html {
 @media (min-width: 1440px) {
   .verification-cards-container,
   .paraf-cards-container {
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: auto; /* Dynamic rows based on content */
-    gap: 18px;
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 22px; /* Increased gap for large screens */
     padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
@@ -177,7 +177,7 @@ body, html {
   
   .verification-card,
   .paraf-card {
-    min-height: 210px; /* Balanced height for large screens */
+    min-height: 230px; /* Balanced height for large screens */
   }
 }
 
@@ -234,15 +234,15 @@ body, html {
   box-sizing: border-box;
 }
 
-/* Show pagination when there are more than 8 cards */
-.verification-cards-container:has(.verification-card:nth-child(9)),
-.paraf-cards-container:has(.paraf-card:nth-child(9)) {
-  grid-template-rows: auto; /* Dynamic rows based on content */
+/* Show pagination when there are more than 6 cards */
+.verification-cards-container:has(.verification-card:nth-child(7)),
+.paraf-cards-container:has(.paraf-card:nth-child(7)) {
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 6 cards */
 }
 
-.verification-cards-container:has(.verification-card:nth-child(9)) + .pagination-container,
-.paraf-cards-container:has(.paraf-card:nth-child(9)) + .pagination-container {
-  display: flex; /* Show pagination when more than 8 cards */
+.verification-cards-container:has(.verification-card:nth-child(7)) + .pagination-container,
+.paraf-cards-container:has(.paraf-card:nth-child(7)) + .pagination-container {
+  display: flex; /* Show pagination when more than 6 cards */
 }
 
 /* Fallback for browsers that don't support :has() */
@@ -253,7 +253,7 @@ body, html {
 /* JavaScript-controlled pagination visibility */
 .verification-cards-container.with-pagination,
 .paraf-cards-container.with-pagination {
-  grid-template-rows: auto; /* Dynamic rows based on content */
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 6 cards */
 }
 
 .verification-cards-container.with-pagination + .pagination-container,
@@ -295,7 +295,7 @@ body, html {
   min-height: auto; /* Remove fixed height */
 }
 
-/* Force 1 row when less than 5 cards */
+/* Force 1 row when less than 4 cards */
 .verification-cards-container.few-cards,
 .paraf-cards-container.few-cards {
   grid-template-rows: auto;
@@ -303,10 +303,10 @@ body, html {
   overflow: hidden; /* Prevent empty space */
 }
 
-/* Force 2 rows when 5-8 cards */
+/* Force 2 rows when 4-6 cards */
 .verification-cards-container.many-cards,
 .paraf-cards-container.many-cards {
-  grid-template-rows: auto auto;
+  grid-template-rows: repeat(2, 1fr);
   grid-auto-rows: 0; /* Hide empty rows */
 }
 

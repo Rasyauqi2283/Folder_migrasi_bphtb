@@ -38,18 +38,19 @@ body {
 /* Transisi geser mainContent, footerContent, dan main */
 .shifted {
     transform: translateX(190px); /* 250px - 60px = 190px difference */
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
 }
 
 /* Specific styling untuk main element dengan smooth transition */
 main {
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+    transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
     will-change: margin-left, transform; /* Optimize for GPU acceleration */
 }
 
 main.shifted {
     transform: translateX(190px);
     margin-left: 190px; /* 250px - 60px = 190px difference */
+    transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
 }
 
 
