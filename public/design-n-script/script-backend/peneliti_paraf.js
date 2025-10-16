@@ -213,29 +213,19 @@ function createCard(container, item) {
             <div class="card-footer">
                 <div class="tanggal-info">${formatValue(item.tanggal_terima || item.created_at)}</div>
                 
-                <!-- Row 1: View Button -->
-                <div class="card-actions-row-1">
+                <!-- Row 1: View Button (same as Verifikasi) -->
+                <div class="card-actions-below-date">
                     <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
                         <span>📄</span> View
                     </button>
                 </div>
                 
-                <!-- Row 2: Paraf Button -->
-                <div class="card-actions-row-2">
+                <!-- Row 2: Paraf + Tolak buttons (same as Verifikasi) -->
+                <div class="footer-actions">
+                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
                     <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
                         <span>✍️</span> Paraf
                     </button>
-                </div>
-                
-                <!-- Row 3: Kirim ke Pejabat Button -->
-                <div class="card-actions-row-3">
-                    <button class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
-                        <span>🏛️</span> Kirim ke Pejabat
-                    </button>
-                </div>
-                
-                <div class="footer-actions">
-                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
                     <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
                         <span>❌</span> Tolak
                     </button>
@@ -274,36 +264,7 @@ function createCard(container, item) {
             }
         });
 
-        // Add event listener to pejabat validation button
-        const pejabatButton = card.querySelector('.btn-pejabat-validation');
-        pejabatButton.addEventListener('click', async () => {
-            try {
-                const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini ke Pejabat untuk validasi dan pembuatan QR Code?");
-                
-                if (confirmation) {
-                    if (!item || !item.nobooking) {
-                        throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
-                    }
-
-                    const result = await sendToPejabatValidation(item);
-                    if (result && result.success) {
-                        pejabatButton.disabled = true;
-                        pejabatButton.innerHTML = '<span>✅</span> Terkirim';
-                        pejabatButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                        showAlert('success', `Data berhasil dikirim ke Pejabat! No. Validasi: ${result.no_validasi || 'N/A'}`);
-                    } else {
-                        const msg = (result && result.message) ? result.message : "Gagal mengirim data ke Pejabat.";
-                        throw new Error(msg);
-                    }
-                } else {
-                    showAlert('info', "Data tidak jadi dikirim ke Pejabat.");
-                }
-            } catch (buttonError) {
-                console.error('Pejabat Button Action Error:', buttonError);
-                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
-            }
-        });
+        // Button "Kirim ke Pejabat" removed - functionality moved to dropdown
         
         container.appendChild(card);
 
@@ -337,6 +298,9 @@ function createCard(container, item) {
                     <div class="action-buttons">
                         <button type="button" class="btn-save-paraf" data-nobooking="${item.nobooking}">
                             <i class="fas fa-save"></i> Simpan Paraf
+                        </button>
+                        <button type="button" class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
+                            <span>🏛️</span> Kirim ke Pejabat
                         </button>
                     </div>
 
@@ -669,6 +633,39 @@ function setupParafFormInteractions(card, item) {
             } catch (error) {
                 console.error('Save Paraf Error:', error);
                 showAlert('error', `Gagal menyimpan paraf: ${error.message}`);
+            }
+        });
+    }
+    
+    // Add event listener for "Kirim ke Pejabat" button in dropdown
+    const pejabatButton = card.querySelector('.btn-pejabat-validation');
+    if (pejabatButton) {
+        pejabatButton.addEventListener('click', async () => {
+            try {
+                const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini ke Pejabat untuk validasi dan pembuatan QR Code?");
+                
+                if (confirmation) {
+                    if (!item || !item.nobooking) {
+                        throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
+                    }
+
+                    const result = await sendToPejabatValidation(item);
+                    if (result && result.success) {
+                        pejabatButton.disabled = true;
+                        pejabatButton.innerHTML = '<span>✅</span> Terkirim';
+                        pejabatButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+                        showAlert('success', `Data berhasil dikirim ke Pejabat! No. Validasi: ${result.no_validasi || 'N/A'}`);
+                    } else {
+                        const msg = (result && result.message) ? result.message : "Gagal mengirim data ke Pejabat.";
+                        throw new Error(msg);
+                    }
+                } else {
+                    showAlert('info', "Data tidak jadi dikirim ke Pejabat.");
+                }
+            } catch (buttonError) {
+                console.error('Pejabat Button Action Error:', buttonError);
+                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
             }
         });
     }
