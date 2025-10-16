@@ -21,20 +21,20 @@ html, body {
 /* Container helpers - PROPER MAIN LAYOUT */
 .main-content {
   /* Positioning */
-  margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
-  margin-right: 15px !important; /* Fixed 15px from viewport edge - NEVER CHANGES - Force override */
-  margin-top: 80px !important; /* 80px header + 10px margin - Force override */
+  margin-left: 70px; /* 60px sidebar + 10px margin - No !important needed */
+  margin-right: 15px; /* Fixed 15px from viewport edge - NEVER CHANGES */
+  margin-top: 80px; /* 80px header margin */
   
   /* Dimensions - Fixed right gap, dynamic width based on sidebar state */
-  width: calc(100vw - 70px - 15px) !important; /* 70px left margin + 15px FIXED right margin - Force override */
-  max-width: calc(100vw - 70px - 15px) !important; /* Prevent any override */
-  height: calc(100vh - 90px); /* minus header, margins */
+  width: calc(100vw - 70px - 15px); /* 70px left margin + 15px FIXED right margin */
+  max-width: calc(100vw - 70px - 15px); /* Prevent any override */
+  height: calc(100vh - 80px); /* minus header margin */
   
-  /* Responsive to sidebar - Smooth transition like sliding door */
-  transition: margin-left 0.9s cubic-bezier(0.4, 0, 0.2, 1), width 0.9s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
-  will-change: margin-left, width; /* Animate both margin-left and width */
+  /* Responsive to sidebar - Smooth transition controlled by .shifted class */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition for all properties */
+  will-change: transform, margin-left; /* Optimize for GPU acceleration */
   box-sizing: border-box;
-  overflow-x: hidden !important; /* Force override */
+  overflow-x: hidden;
   overflow-y: auto;
   
   /* Hide scrollbar for aesthetics */
@@ -46,10 +46,9 @@ html, body {
   display: none; /* WebKit browsers */
 }
 
-/* Smooth transition untuk main element */
-main {
-  transition: margin-left 0.5s ease, transform 0.5s ease; /* Smooth transition untuk semua perubahan */
-}
+/* ===== MAIN ELEMENT STYLING ===== */
+/* Main element styling is now handled by design_sidebar.css with .shifted system */
+/* This ensures consistent behavior across all pages */
 
 .main-content .table-scroll {
   width: 100%;
@@ -65,13 +64,16 @@ main {
 .main-content .table-scroll::-webkit-scrollbar {
   display: none; /* WebKit browsers */
 }
-/* When sidebar is expanded, adjust main content positioning with smooth transition */
-.sidebar.expand ~ .main-content {
-  margin-left: 100px !important; /* Shift main content to the right like sliding door - Force override */
-  margin-right: 15px !important; /* FIXED 15px from viewport edge - NEVER CHANGES - Force override */
-  width: calc(100vw - 250px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
-  max-width: calc(100vw - 250px - 15px) !important; /* Prevent any override */
-  transition: margin-left 0.8s cubic-bezier(0.4, 0, 0.2, 1), width 0.9s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
+/* ===== SHIFTED SYSTEM INTEGRATION ===== */
+/* Main content behavior when sidebar is expanded (controlled by .shifted class) */
+/* Note: This is now handled by the .shifted class in design_sidebar.css */
+/* The .shifted class applies: transform: translateX(190px) and margin-left: 190px */
+
+/* Additional styling for main-content when shifted */
+main.shifted .main-content {
+  /* Width adjustment for shifted state */
+  width: calc(100vw - 250px - 15px); /* 250px sidebar + 15px right margin */
+  max-width: calc(100vw - 250px - 15px);
 }
 
 /* Remove any container constraints that might limit width */
