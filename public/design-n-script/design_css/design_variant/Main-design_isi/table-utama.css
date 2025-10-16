@@ -106,8 +106,9 @@ body, html {
 .verification-cards-container,
 .paraf-cards-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 16px;
   padding: 20px 0; /* Remove horizontal padding to use full width */
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   min-height: calc(100vh - 90px); /* Adjust for header */
@@ -117,11 +118,12 @@ body, html {
   overflow-x: hidden;
 }
 
-/* Desktop Layout - 3 columns grid - OPTIMIZED FOR RIGHT EDGE */
+/* Desktop Layout - 8 cards (4x4 grid) - OPTIMIZED FOR RIGHT EDGE */
 @media (min-width: 1024px) {
   .verification-cards-container,
   .paraf-cards-container {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 16px;
     padding: 20px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
@@ -132,14 +134,14 @@ body, html {
   
   .verification-card,
   .paraf-card {
-    min-height: 220px;
+    min-height: 200px; /* Slightly reduced for better fit in 4x4 grid */
     width: 100%;
     box-sizing: border-box;
   }
   
   .card-content {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 10px; /* Slightly reduced gap for compact layout */
   }
 }
 
@@ -147,10 +149,17 @@ body, html {
 @media (min-width: 1600px) {
   .verification-cards-container,
   .paraf-cards-container {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 20px;
     padding: 24px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
+  }
+  
+  .verification-card,
+  .paraf-card {
+    min-height: 220px; /* Slightly larger for wide screens */
   }
 }
 
@@ -158,10 +167,17 @@ body, html {
 @media (min-width: 1440px) {
   .verification-cards-container,
   .paraf-cards-container {
-    gap: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 18px;
     padding: 24px 0; /* Remove horizontal padding to use full width */
     width: 100%; /* Use full width of main-content container */
     max-width: 100%; /* Use full width of main-content container */
+  }
+  
+  .verification-card,
+  .paraf-card {
+    min-height: 210px; /* Balanced height for large screens */
   }
 }
 
@@ -170,7 +186,8 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
+    grid-template-rows: auto; /* Allow rows to expand based on content */
+    gap: 16px;
   }
   
   .card-content {
@@ -183,6 +200,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: 1fr;
+    grid-template-rows: auto; /* Allow rows to expand based on content */
     gap: 16px;
     padding: 16px 0; /* Remove horizontal padding to use full width */
   }
@@ -205,7 +223,7 @@ body, html {
 
 /* ===== PAGINATION STYLING ===== */
 .pagination-container {
-  display: flex;
+  display: none; /* Hidden by default, shown when needed */
   justify-content: center;
   align-items: center;
   gap: 12px;
@@ -216,10 +234,60 @@ body, html {
   box-sizing: border-box;
 }
 
+/* Show pagination when there are more than 8 cards */
+.verification-cards-container:has(.verification-card:nth-child(9)),
+.paraf-cards-container:has(.paraf-card:nth-child(9)) {
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 8 cards */
+}
+
+.verification-cards-container:has(.verification-card:nth-child(9)) + .pagination-container,
+.paraf-cards-container:has(.paraf-card:nth-child(9)) + .pagination-container {
+  display: flex; /* Show pagination when more than 8 cards */
+}
+
+/* Fallback for browsers that don't support :has() */
+.pagination-container.show {
+  display: flex !important; /* Force show when JavaScript adds 'show' class */
+}
+
+/* JavaScript-controlled pagination visibility */
+.verification-cards-container.with-pagination,
+.paraf-cards-container.with-pagination {
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 8 cards */
+}
+
+.verification-cards-container.with-pagination + .pagination-container,
+.paraf-cards-container.with-pagination + .pagination-container {
+  display: flex !important; /* Show pagination when class is added */
+}
+
 .pagination-info {
   color: #9ca3af;
   font-size: 14px;
   margin-right: 20px;
+  font-weight: 500;
+}
+
+.pagination-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 20px;
+  background: rgba(31, 41, 55, 0.8);
+  border-radius: 8px;
+  border: 1px solid #374151;
+}
+
+.pagination-stats .total-items {
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pagination-stats .current-page-info {
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .pagination-button {
