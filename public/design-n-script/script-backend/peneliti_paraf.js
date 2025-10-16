@@ -176,59 +176,83 @@ function createCard(container, item) {
         const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
         
         card.innerHTML = `
+            <!-- SECTION 1: HEADER INFO -->
             <div class="card-header">
-                <div>
+                <div class="header-content">
                     <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
                     <p class="secondary-info">${formatValue(item.nobooking)}</p>
                 </div>
             </div>
             
+            <!-- SECTION DIVIDER -->
+            <div class="section-divider"></div>
+            
+            <!-- SECTION 2: DATA INFO -->
             <div class="card-content">
-                <div class="info-item">
-                    <span class="info-label">NOP PBB</span>
-                    <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">User ID</span>
-                    <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Nama Wajib Pajak</span>
-                    <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Pemilik Objek</span>
-                    <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Tahun AJB</span>
-                    <span class="info-value ${formatValue(item.tahunajb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.tahunajb)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Status</span>
-                    <span class="info-value ${formatValue(item.status) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.status)}</span>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">NOP PBB</span>
+                        <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">User ID</span>
+                        <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Nama Wajib Pajak</span>
+                        <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Pemilik Objek</span>
+                        <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tahun AJB</span>
+                        <span class="info-value ${formatValue(item.tahunajb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.tahunajb)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status</span>
+                        <span class="info-value ${formatValue(item.status) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.status)}</span>
+                    </div>
                 </div>
             </div>
             
+            <!-- SECTION DIVIDER -->
+            <div class="section-divider"></div>
+            
+            <!-- SECTION 3: DATE INFO -->
+            <div class="date-section">
+                <div class="tanggal-info">
+                    <span class="calendar-icon">📅</span>
+                    <span class="date-text">${formatValue(item.tanggal_terima || item.created_at)}</span>
+                </div>
+            </div>
+            
+            <!-- SECTION DIVIDER -->
+            <div class="section-divider"></div>
+            
+            <!-- SECTION 4: ACTION BUTTONS -->
             <div class="card-footer">
-                <div class="tanggal-info">${formatValue(item.tanggal_terima || item.created_at)}</div>
-                
-                <!-- Row 1: View Button (same as Verifikasi) -->
-                <div class="card-actions-below-date">
+                <!-- GROUP 1: View Action -->
+                <div class="action-group view-group">
                     <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
                         <span>📄</span> View
                     </button>
                 </div>
                 
-                <!-- Row 2: Paraf + Tolak buttons (same as Verifikasi) -->
-                <div class="footer-actions">
-                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
-                    <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
-                        <span>✍️</span> Paraf
-                    </button>
-                    <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
-                        <span>❌</span> Tolak
-                    </button>
+                <!-- GROUP 2: Status & Actions -->
+                <div class="action-group status-actions-group">
+                    <div class="status-section">
+                        <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                    </div>
+                    <div class="button-section">
+                        <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
+                            <span>✍️</span> Paraf
+                        </button>
+                        <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
+                            <span>❌</span> Tolak
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
