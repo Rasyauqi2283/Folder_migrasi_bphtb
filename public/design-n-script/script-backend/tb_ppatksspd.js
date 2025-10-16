@@ -333,13 +333,17 @@ async function loadTableDataLTB() {
 }
 
 function getUserDivisi() {
-    return localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
+    // Ensure LTB divisi is set for LTB pages
+    const divisi = localStorage.getItem('divisi') || sessionStorage.getItem('divisi');
+    if (!divisi) {
+        localStorage.setItem('divisi', 'LTB');
+        return 'LTB';
+    }
+    return divisi;
 }
-///
+
+// Initialize LTB divisi
 localStorage.setItem('divisi', 'LTB');
-// Atau
-sessionStorage.setItem('divisi', 'LTB');
-///
 // Menambahkan event listener untuk setiap baris dalam tabel
 document.querySelectorAll('#ltbBerkasTable tbody tr').forEach(row => {
     row.addEventListener('click', function() {
