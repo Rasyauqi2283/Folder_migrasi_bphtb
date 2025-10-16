@@ -507,6 +507,8 @@ body, html {
   display: flex;
   gap: 8px;
   align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
 }
 
 .tanggal-info {
@@ -2341,6 +2343,7 @@ form button:hover {
     margin: 8px 0;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .card-actions-below-date .btn-view-document,
@@ -2442,6 +2445,22 @@ form button:hover {
         width: 100%;
         min-width: auto;
     }
+}
+
+/* Ensure proper spacing between rows */
+.verification-card .card-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.verification-card .card-actions-below-date {
+    order: 2;
+}
+
+.verification-card .footer-actions {
+    order: 3;
+    margin-top: 8px;
 }
 
 /* ================================ */

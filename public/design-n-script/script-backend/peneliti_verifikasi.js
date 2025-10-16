@@ -239,34 +239,34 @@ function createCard(container, item) {
                     <p class="secondary-info">${formatValue(item.nobooking)}</p>
                 </div>
             </div>
-                    
-                    <div class="card-content">
-                        <div class="info-item">
-                            <span class="info-label">NOP PBB</span>
-                            <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">User ID</span>
-                            <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Nama Wajib Pajak</span>
-                            <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Pemilik Objek</span>
-                            <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Special Field</span>
-                            <span class="info-value ${formatValue(item.creator_special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field)}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Jenis Wajib Pajak</span>
-                            <span class="info-value ${formatValue(item.jenis_wajib_pajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.jenis_wajib_pajak)}</span>
-                        </div>
-                    </div>
-                    
+            
+            <div class="card-content">
+                <div class="info-item">
+                    <span class="info-label">NOP PBB</span>
+                    <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">User ID</span>
+                    <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Nama Wajib Pajak</span>
+                    <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Pemilik Objek</span>
+                    <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Special Field</span>
+                    <span class="info-value ${formatValue(item.creator_special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field)}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Jenis Wajib Pajak</span>
+                    <span class="info-value ${formatValue(item.jenis_wajib_pajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.jenis_wajib_pajak)}</span>
+                </div>
+            </div>
+            
             <div class="card-footer">
                 <div class="tanggal-info">${formatValue(item.tanggal_terima)}</div>
                 <div class="card-actions-below-date">
@@ -284,7 +284,7 @@ function createCard(container, item) {
                     </button>
                 </div>
             </div>
-                `;
+        `;
                 
                 // Add event listener to send button
                 const sendButton = card.querySelector('.btn-kirim-prominent');
