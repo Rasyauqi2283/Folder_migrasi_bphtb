@@ -2,7 +2,7 @@
 import PDFDocument from 'pdfkit';
 import path from 'path';
 import fs from 'fs';
-import { saveQrToPublic } from '../../utils/qrcode.js';
+import { saveQrToPublic, generateQrWithValidasi, generateQrPayload, generateQrWithValidasiFromDB, generateQrPayloadFromDB } from '../../utils/qrcode.js';
 
 function formatNumber(num) {
     const n = Number(num || 0);
@@ -16,7 +16,7 @@ function formatDate(date) {
     return d.toLocaleDateString('id-ID', options);
 }
 
-export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath, passphrase }) {
+export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath, passphrase, pvUserid = null }) {
     // 1) Ambil data dari DB
     const { rows } = await pool.query(
         `SELECT 
@@ -292,17 +292,60 @@ const jenisPerolehanMap = {
     doc.text('Cibinong, ' + formatDate(new Date()), rightX, footerY, { align: 'center' });
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
     doc.text(String(pvCn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' }); //<- bagian ini seharusnya pvCn
-    // Generate QR jika belum disediakan: payload URL berisi no_validasi agar mudah divalidasi
+    // Generate QR jika belum disediakan: payload dengan data real dari database + nomor validasi untuk keunikan
     let qrAbsPath = qrImageAbsPath;
     try {
       const nv = String(noValidasi || data.no_validasi || '').trim();
       if (!qrAbsPath && nv) {
-        const base = (process.env.PUBLIC_BASE_URL || 'https://bphtb-bappenda.up.railway.app').replace(/\/$/, '');
-        const payload = `${base}/verify?no_validasi=${encodeURIComponent(nv)}`;
-        const saved = await saveQrToPublic({ filename: `validasi_${nv}`, text: payload, size: 256 });
-        qrAbsPath = saved.abs;
+        // Coba generate QR dengan data real dari database jika pvUserid tersedia
+        if (pvUserid && pool) {
+          try {
+            const saved = await generateQrWithValidasiFromDB({
+              pool,
+              userid: pvUserid,
+              nomorValidasi: nv,
+              filename: `validasi_${nv}`,
+              size: 256
+            });
+            qrAbsPath = saved.abs;
+            console.log(`[QR-GENERATED] QR dengan data real dari DB - userid: ${pvUserid}, nomor validasi: ${nv}, payload: ${saved.payload}`);
+          } catch (dbError) {
+            console.warn('[QR-WARNING] Gagal generate QR dengan data DB, fallback ke format default:', dbError.message);
+            // Fallback ke format default
+            const saved = await generateQrWithValidasi({
+              basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
+              nomorValidasi: nv,
+              filename: `validasi_${nv}`,
+              size: 256
+            });
+            qrAbsPath = saved.abs;
+            console.log(`[QR-GENERATED] QR dengan format default, nomor validasi: ${nv}, payload: ${saved.payload}`);
+          }
+        } else {
+          // Generate QR dengan format standar + nomor validasi (fallback)
+          const saved = await generateQrWithValidasi({
+            basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
+            nomorValidasi: nv,
+            filename: `validasi_${nv}`,
+            size: 256
+          });
+          qrAbsPath = saved.abs;
+          console.log(`[QR-GENERATED] QR dengan format default, nomor validasi: ${nv}, payload: ${saved.payload}`);
+        }
       }
-    } catch (_) { /* fallback silent */ }
+    } catch (error) { 
+      console.error('[QR-ERROR] Gagal generate QR dengan nomor validasi:', error);
+      // Fallback ke method lama jika ada error
+      try {
+        const nv = String(noValidasi || data.no_validasi || '').trim();
+        if (nv) {
+          const base = (process.env.PUBLIC_BASE_URL || 'https://bphtb-bappenda.up.railway.app').replace(/\/$/, '');
+          const payload = `${base}/verify?no_validasi=${encodeURIComponent(nv)}`;
+          const saved = await saveQrToPublic({ filename: `validasi_${nv}`, text: payload, size: 256 });
+          qrAbsPath = saved.abs;
+        }
+      } catch (_) { /* fallback silent */ }
+    }
 
     if (qrAbsPath && fs.existsSync(qrAbsPath)) {
         doc.image(qrAbsPath, rightX + 50, footerY + 35, { width: 100 });

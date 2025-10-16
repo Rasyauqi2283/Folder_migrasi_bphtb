@@ -2,7 +2,7 @@
 import express from 'express';
 import { pool } from '../../../db.js';
 import { ttdVerifMiddleware } from '../../config/uploads/upload_ttdverif.js';
-import { saveQrToPublic } from '../../utils/qrcode.js';
+import { saveQrToPublic, generateQrWithValidasi, generateQrPayload, generateQrWithValidasiFromDB, generateQrPayloadFromDB } from '../../utils/qrcode.js';
 
 const router = express.Router();
 
@@ -526,6 +526,58 @@ router.post('/api/pv/generate-qr', async (req, res) => {
   } catch (e) {
     console.error('QR error:', e);
     return res.status(500).json({ success: false, message: 'Gagal membuat QR' });
+  }
+});
+
+// Generate QR code dengan nomor validasi untuk keunikan
+router.post('/api/pv/generate-qr-with-validasi', async (req, res) => {
+  if (!req.session || !req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
+    return res.status(403).json({ success: false, message: 'Akses ditolak.' });
+  }
+  try {
+    const { nomor_validasi, custom_base, use_db_data = true } = req.body || {};
+    
+    if (!nomor_validasi) {
+      return res.status(400).json({ success: false, message: 'nomor_validasi wajib diisi' });
+    }
+    
+    let saved;
+    
+    if (use_db_data) {
+      // Generate QR dengan data real dari database
+      saved = await generateQrWithValidasiFromDB({
+        pool,
+        userid: req.session.user.userid,
+        nomorValidasi: nomor_validasi,
+        filename: `qr_${nomor_validasi}`,
+        size: 256
+      });
+    } else {
+      // Generate QR dengan custom base atau format default
+      const qrPayload = generateQrPayload({ 
+        nomorValidasi: nomor_validasi, 
+        customBase: custom_base 
+      });
+      
+      saved = await generateQrWithValidasi({
+        basePayload: custom_base || "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
+        nomorValidasi: nomor_validasi,
+        filename: `qr_${nomor_validasi}`,
+        size: 256
+      });
+    }
+    
+    return res.json({ 
+      success: true, 
+      path: saved.path,
+      payload: saved.payload,
+      nomor_validasi: saved.nomorValidasi,
+      userid: saved.userid || req.session.user.userid,
+      use_db_data: use_db_data
+    });
+  } catch (e) {
+    console.error('QR with validasi error:', e);
+    return res.status(500).json({ success: false, message: 'Gagal membuat QR dengan nomor validasi' });
   }
 });
 

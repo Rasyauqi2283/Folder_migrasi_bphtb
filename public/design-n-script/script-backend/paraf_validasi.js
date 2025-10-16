@@ -821,6 +821,35 @@ async function processDigitalSignature(nobooking) {
         return { success: false, message: error.message };
     }
 }
+
+// Generate QR dengan nomor validasi untuk keunikan
+async function generateQrWithValidasi(nomorValidasi) {
+    try {
+        const API_URL = 'https://bphtb-bappenda.up.railway.app';
+        const response = await fetch(`${API_URL}/api/pv/generate-qr-with-validasi`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                nomor_validasi: nomorValidasi
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || 'Gagal generate QR dengan nomor validasi');
+        }
+
+        console.log(`[QR-GENERATED] QR dengan nomor validasi ${nomorValidasi}:`, result);
+        return result;
+    } catch (error) {
+        console.error('QR Generation Error:', error);
+        return { success: false, message: error.message };
+    }
+}
 // =====================
 // DROPDOWN EVENT HANDLERS
 // =====================
