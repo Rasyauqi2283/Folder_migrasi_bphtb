@@ -29,7 +29,7 @@ html, body {
   /* Dimensions */
   width: calc(100vw - 60px - 20px) !important; /* 60px sidebar + 20px total margins - Force override */
   max-width: calc(100vw - 60px - 20px) !important; /* Prevent any override */
-  height: calc(100vh - 80px - 50px - 20px); /* minus header, footer, margins */
+  height: calc(100vh); /* minus header, footer, margins */
   
   /* Responsive to sidebar */
   transition: margin-left 0.5s ease, width 0.5s ease;
@@ -62,9 +62,9 @@ html, body {
 }
 /* When sidebar is expanded, adjust main content positioning with smooth transition */
 .sidebar.expand ~ .main-content {
-  margin-left: 260px !important; /* 250px sidebar + 10px margin - Force override */
-  width: calc(100vw - 250px - 20px) !important; /* 250px sidebar + 20px total margins - Force override */
-  max-width: calc(100vw - 250px - 20px) !important; /* Prevent any override */
+  margin-left: 70px !important; /* 60px sidebar + 10px margin - Force override */
+  width: calc(100vw - 60px - 20px) !important; /* 60px sidebar + 20px total margins - Force override */
+  max-width: calc(100vw - 60px - 20px) !important; /* Prevent any override */
   transition: margin-left 0.5s ease, width 0.5s ease; /* Ensure smooth transition */
 }
 
@@ -1041,11 +1041,6 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
   }
 }
 
-@media (min-width: 1200px) {
-  .bank-page .main-content {
-    /* Remove max-width override - use inherited values */
-  }
-}
 
 .main-content table.excel-table thead th {
   position: sticky;
