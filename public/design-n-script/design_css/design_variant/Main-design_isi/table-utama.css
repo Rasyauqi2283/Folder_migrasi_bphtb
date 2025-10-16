@@ -31,7 +31,7 @@ html, body {
   height: calc(100vh); /* minus header, footer, margins */
   
   /* Responsive to sidebar */
-  transition: margin-left 0.5s ease, width 0.5s ease, transform 0.5s ease, max-width 0.5s ease; /* Tambahkan max-width transition */
+  transition: margin-left 1s ease, width 0.5s ease, transform 0.5s ease, max-width 0.5s ease; /* Tambahkan max-width transition */
   will-change: margin-left, width, max-width, transform; /* Optimize for GPU acceleration */
   box-sizing: border-box;
   overflow-x: hidden !important; /* Force override */
