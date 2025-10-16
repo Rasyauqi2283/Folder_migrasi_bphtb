@@ -69,9 +69,9 @@ main {
 .sidebar.expand ~ .main-content {
   margin-left: 100px !important; /* Shift main content to the right like sliding door - Force override */
   margin-right: 15px !important; /* FIXED 15px from viewport edge - NEVER CHANGES - Force override */
-  width: calc(100vw - 100px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
-  max-width: calc(100vw - 100px - 15px) !important; /* Prevent any override */
-  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
+  width: calc(100vw - 250px - 15px) !important; /* 250px expanded sidebar + 15px FIXED right margin - Force override */
+  max-width: calc(100vw - 250px - 15px) !important; /* Prevent any override */
+  transition: margin-left 0.8s cubic-bezier(0.4, 0, 0.2, 1), width 0.9s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth door-like transition */
 }
 
 /* Remove any container constraints that might limit width */
@@ -107,11 +107,11 @@ body, html {
 .paraf-cards-container {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-rows: auto; /* Dynamic rows based on content */
   gap: 16px;
   padding: 20px; /* Add padding to prevent content from being cut off */
   background: transparent; /* Remove background to avoid interference */
-  min-height: calc(100vh - 80px); /* Adjust for header */
+  min-height: auto; /* Remove fixed height to prevent empty space */
   width: 100%; /* Use full width of main-content container */
   max-width: 100%; /* Use full width of main-content container */
   box-sizing: border-box;
@@ -123,7 +123,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: auto; /* Dynamic rows based on content */
     gap: 16px;
     padding: 20px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
@@ -150,7 +150,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: auto; /* Dynamic rows based on content */
     gap: 20px;
     padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
@@ -168,7 +168,7 @@ body, html {
   .verification-cards-container,
   .paraf-cards-container {
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-rows: auto; /* Dynamic rows based on content */
     gap: 18px;
     padding: 24px; /* Add padding to prevent content from being cut off */
     width: 100%; /* Use full width of main-content container */
@@ -237,7 +237,7 @@ body, html {
 /* Show pagination when there are more than 8 cards */
 .verification-cards-container:has(.verification-card:nth-child(9)),
 .paraf-cards-container:has(.paraf-card:nth-child(9)) {
-  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 8 cards */
+  grid-template-rows: auto; /* Dynamic rows based on content */
 }
 
 .verification-cards-container:has(.verification-card:nth-child(9)) + .pagination-container,
@@ -253,12 +253,61 @@ body, html {
 /* JavaScript-controlled pagination visibility */
 .verification-cards-container.with-pagination,
 .paraf-cards-container.with-pagination {
-  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 8 cards */
+  grid-template-rows: auto; /* Dynamic rows based on content */
 }
 
 .verification-cards-container.with-pagination + .pagination-container,
 .paraf-cards-container.with-pagination + .pagination-container {
   display: flex !important; /* Show pagination when class is added */
+}
+
+/* ===== DROPDOWN BEHAVIOR CONTROL ===== */
+/* Ensure other cards maintain normal appearance when one dropdown is open */
+.verification-card:not(.dropdown-active),
+.paraf-card:not(.dropdown-active) {
+  transform: none; /* Keep normal transform */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4); /* Keep normal shadow */
+  border-color: #374151; /* Keep normal border */
+  z-index: 1; /* Normal z-index */
+}
+
+/* Active dropdown card gets elevated appearance */
+.verification-card.dropdown-active,
+.paraf-card.dropdown-active {
+  transform: translateY(-8px) scale(1.02); /* Enhanced transform for active card */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6); /* Enhanced shadow for active card */
+  border-color: #8b5cf6; /* Highlighted border for active card */
+  z-index: 10; /* Higher z-index for active card */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+}
+
+/* Prevent other cards from being affected by dropdown state */
+.verification-cards-container .verification-card:not(.dropdown-active),
+.paraf-cards-container .paraf-card:not(.dropdown-active) {
+  position: relative; /* Ensure proper stacking */
+}
+
+/* ===== DYNAMIC GRID ROWS BASED ON CONTENT ===== */
+/* Smart grid behavior - only show rows that have content */
+.verification-cards-container.auto-rows,
+.paraf-cards-container.auto-rows {
+  grid-template-rows: auto; /* Always use auto for dynamic content */
+  min-height: auto; /* Remove fixed height */
+}
+
+/* Force 1 row when less than 5 cards */
+.verification-cards-container.few-cards,
+.paraf-cards-container.few-cards {
+  grid-template-rows: auto;
+  grid-auto-rows: 0; /* Hide empty rows */
+  overflow: hidden; /* Prevent empty space */
+}
+
+/* Force 2 rows when 5-8 cards */
+.verification-cards-container.many-cards,
+.paraf-cards-container.many-cards {
+  grid-template-rows: auto auto;
+  grid-auto-rows: 0; /* Hide empty rows */
 }
 
 .pagination-info {
