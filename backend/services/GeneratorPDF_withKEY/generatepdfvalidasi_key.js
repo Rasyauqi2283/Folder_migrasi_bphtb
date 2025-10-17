@@ -296,10 +296,18 @@ const jenisPerolehanMap = {
     let qrAbsPath = qrImageAbsPath;
     try {
       const nv = String(noValidasi || data.no_validasi || '').trim();
+      console.log(`[QR-DEBUG] Starting QR generation for nobooking: ${nobooking}`);
+      console.log(`[QR-DEBUG] noValidasi parameter: ${noValidasi}`);
+      console.log(`[QR-DEBUG] data.no_validasi: ${data.no_validasi}`);
+      console.log(`[QR-DEBUG] nv (final): ${nv}`);
+      console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
+      console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
+      
       if (!qrAbsPath && nv) {
         // Coba generate QR dengan data real dari database jika pvUserid tersedia
         if (pvUserid && pool) {
           try {
+            console.log(`[QR-DEBUG] Attempting generateQrWithValidasiFromDB with userid: ${pvUserid}, nomorValidasi: ${nv}`);
             const saved = await generateQrWithValidasiFromDB({
               pool,
               userid: pvUserid,
@@ -311,7 +319,9 @@ const jenisPerolehanMap = {
             console.log(`[QR-GENERATED] QR dengan data real dari DB - userid: ${pvUserid}, nomor validasi: ${nv}, payload: ${saved.payload}`);
           } catch (dbError) {
             console.warn('[QR-WARNING] Gagal generate QR dengan data DB, fallback ke format default:', dbError.message);
+            console.warn('[QR-WARNING] Error details:', dbError);
             // Fallback ke format default
+            console.log(`[QR-DEBUG] Attempting generateQrWithValidasi with nomorValidasi: ${nv}`);
             const saved = await generateQrWithValidasi({
               basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
               nomorValidasi: nv,
@@ -323,6 +333,7 @@ const jenisPerolehanMap = {
           }
         } else {
           // Generate QR dengan format standar + nomor validasi (fallback)
+          console.log(`[QR-DEBUG] No pvUserid available, using generateQrWithValidasi with nomorValidasi: ${nv}`);
           const saved = await generateQrWithValidasi({
             basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
             nomorValidasi: nv,

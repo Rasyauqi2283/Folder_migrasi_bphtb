@@ -37,7 +37,7 @@ body {
 
 /* Transisi geser mainContent, footerContent, dan main */
 .shifted {
-    transform: translateX(190px); /* 250px - 60px = 190px difference */
+    transform: translateX(140px); /* 250px - 60px = 190px difference */
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smoother easing */
 }
 
@@ -48,8 +48,8 @@ main {
 }
 
 main.shifted {
-    transform: translateX(190px);
-    margin-left: 190px; /* 250px - 60px = 190px difference */
+    transform: translateX(140px);
+    margin-left: 140px; /* 250px - 60px = 190px difference */
     transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
 }
 

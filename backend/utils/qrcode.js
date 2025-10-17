@@ -42,12 +42,16 @@ export async function generateQrWithValidasi({
   filename, 
   size = 256 
 }) {
+  console.log(`[QR-UTILS] generateQrWithValidasi called with:`, { basePayload, nomorValidasi, filename, size });
+  
   if (!basePayload || !nomorValidasi) {
+    console.error(`[QR-UTILS] Missing required parameters:`, { basePayload, nomorValidasi });
     throw new Error('basePayload dan nomorValidasi wajib diisi');
   }
   
   // Format: basePayload + | + nomorValidasi
   const enhancedPayload = `${basePayload}|${nomorValidasi}`;
+  console.log(`[QR-UTILS] Enhanced payload created: ${enhancedPayload}`);
   
   const buf = await generateQrBuffer(enhancedPayload, size);
   const publicDir = path.resolve(process.cwd(), 'public');
@@ -57,6 +61,8 @@ export async function generateQrWithValidasi({
   const safeFilename = (String(filename || 'qr').replace(/[^A-Za-z0-9_\-\.]/g, '_')) + '.png';
   const outPath = path.join(outDir, safeFilename);
   await fs.promises.writeFile(outPath, buf);
+  
+  console.log(`[QR-UTILS] QR file saved to: ${outPath}`);
   
   return { 
     path: `/penting_F_simpan/qr_code_place/${safeFilename}`, 
@@ -106,30 +112,42 @@ export async function generateQrWithValidasiFromDB({
 
 // Generate QR payload with dynamic user data + nomor validasi
 export function generateQrPayload({ nomorValidasi, userData = null, customBase = null }) {
+  console.log(`[QR-UTILS] generateQrPayload called with:`, { nomorValidasi, userData, customBase });
+  
   let baseFormat;
   
   if (customBase) {
     baseFormat = customBase;
+    console.log(`[QR-UTILS] Using custom base: ${baseFormat}`);
   } else if (userData) {
     // Format: NIP/TANGGAL/SPECIAL_PARAFV//E-BPHTB BAPPENDA KAB BOGOR
     const { nip, special_parafv, cert_date } = userData;
     const formattedDate = cert_date ? new Date(cert_date).toLocaleDateString('id-ID') : new Date().toLocaleDateString('id-ID');
     baseFormat = `${nip}/${formattedDate}/${special_parafv}//E-BPHTB BAPPENDA KAB BOGOR`;
+    console.log(`[QR-UTILS] Using user data base: ${baseFormat}`);
   } else {
     // Fallback ke format default jika tidak ada data
     baseFormat = "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR";
+    console.log(`[QR-UTILS] Using default base: ${baseFormat}`);
   }
   
   if (!nomorValidasi) {
+    console.error(`[QR-UTILS] nomorValidasi is missing:`, { nomorValidasi });
     throw new Error('nomorValidasi wajib diisi untuk membuat QR unik');
   }
   
-  return `${baseFormat}|${nomorValidasi}`;
+  const finalPayload = `${baseFormat}|${nomorValidasi}`;
+  console.log(`[QR-UTILS] Final payload generated: ${finalPayload}`);
+  
+  return finalPayload;
 }
 
 // Generate QR payload dengan data user dari database
 export async function generateQrPayloadFromDB({ pool, userid, nomorValidasi }) {
+  console.log(`[QR-UTILS] generateQrPayloadFromDB called with:`, { userid, nomorValidasi });
+  
   if (!pool || !userid || !nomorValidasi) {
+    console.error(`[QR-UTILS] Missing required parameters:`, { pool: !!pool, userid, nomorValidasi });
     throw new Error('pool, userid, dan nomorValidasi wajib diisi');
   }
   
@@ -140,13 +158,16 @@ export async function generateQrPayloadFromDB({ pool, userid, nomorValidasi }) {
       FROM a_2_verified_users 
       WHERE userid = $1
     `;
+    console.log(`[QR-UTILS] Querying user data for userid: ${userid}`);
     const userResult = await pool.query(userQuery, [userid]);
     
     if (userResult.rows.length === 0) {
+      console.error(`[QR-UTILS] User not found for userid: ${userid}`);
       throw new Error(`User dengan userid ${userid} tidak ditemukan`);
     }
     
     const userData = userResult.rows[0];
+    console.log(`[QR-UTILS] User data found:`, userData);
     
     // Ambil tanggal pembuatan sertifikat terbaru dari pv_local_certs
     const certQuery = `
@@ -156,9 +177,11 @@ export async function generateQrPayloadFromDB({ pool, userid, nomorValidasi }) {
       ORDER BY created_at DESC 
       LIMIT 1
     `;
+    console.log(`[QR-UTILS] Querying certificate data for userid: ${userid}`);
     const certResult = await pool.query(certQuery, [userid]);
     
     const certDate = certResult.rows.length > 0 ? certResult.rows[0].created_at : new Date();
+    console.log(`[QR-UTILS] Certificate date: ${certDate}`);
     
     // Generate payload dengan data real
     const userDataForQR = {
@@ -166,12 +189,19 @@ export async function generateQrPayloadFromDB({ pool, userid, nomorValidasi }) {
       special_parafv: userData.special_parafv || 'Ini ST. ESTE. MT',
       cert_date: certDate
     };
+    console.log(`[QR-UTILS] User data for QR:`, userDataForQR);
     
-    return generateQrPayload({ nomorValidasi, userData: userDataForQR });
+    const payload = generateQrPayload({ nomorValidasi, userData: userDataForQR });
+    console.log(`[QR-UTILS] Final payload: ${payload}`);
+    
+    return payload;
     
   } catch (error) {
-    console.error('Error generating QR payload from DB:', error);
+    console.error('[QR-UTILS] Error generating QR payload from DB:', error);
+    console.log(`[QR-UTILS] Falling back to default payload for nomorValidasi: ${nomorValidasi}`);
     // Fallback ke format default jika ada error
-    return generateQrPayload({ nomorValidasi });
+    const fallbackPayload = generateQrPayload({ nomorValidasi });
+    console.log(`[QR-UTILS] Fallback payload: ${fallbackPayload}`);
+    return fallbackPayload;
   }
 }
