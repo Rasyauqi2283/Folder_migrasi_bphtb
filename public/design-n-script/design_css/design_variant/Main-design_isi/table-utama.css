@@ -77,6 +77,30 @@ main.shifted .main-content {
   height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
 }
 
+/* ===== ADMIN DASHBOARD INTEGRATION ===== */
+/* Ensure admin dashboard uses the same shifted system */
+.admin-dashboard .main-content {
+  /* Inherits from main .main-content styling */
+  /* Additional dashboard-specific adjustments */
+  overflow-y: auto; /* Allow vertical scrolling for dashboard content */
+}
+
+/* Dashboard welcome section adjustments */
+.admin-dashboard .welcome-section {
+  padding: 20px 20px 0 20px; /* Consistent padding with main-content */
+}
+
+/* Dashboard cards container adjustments */
+.admin-dashboard .content-cards {
+  padding: 0 20px 20px 20px; /* Consistent padding */
+  margin-bottom: 0; /* Remove extra margin */
+}
+
+/* Dashboard chart container adjustments */
+.admin-dashboard .card.chart {
+  margin: 0 20px 20px 20px; /* Consistent margin */
+}
+
 /* Remove any container constraints that might limit width */
 .data-masuk {
   width: 100%;
