@@ -266,7 +266,12 @@
 
         <!-- PV Actions Panel (Peneliti Validasi) -->
         <section id="pv-actions" style="max-width:1000px; margin:24px 0; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
-          <h3>Proses Validasi (PV) <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span></h3>
+          <h3>Proses Validasi (PV) - Dokumen Status "Menunggu" <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span></h3>
+          <div style="margin-bottom: 12px; padding: 8px; background: #EFF6FF; border: 1px solid #93C5FD; border-radius: 6px; color: #1E40AF;">
+            <strong>Info:</strong> Halaman ini menampilkan dokumen dengan status "Menunggu" untuk divalidasi. 
+            Dokumen yang sudah "Sudah Divalidasi" atau "Ditolak" dapat dilihat di halaman 
+            <a href="../Monitoring/monitoring_verifikasi.html" style="color: #1E40AF; text-decoration: underline;">Monitoring Verifikasi</a>.
+          </div>
           <div style="display:flex; gap:12px; align-items:center; margin:8px 0;">
             <label style="min-width:120px;">No. Validasi</label>
             <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih" style="flex:1; padding:8px;"/>
@@ -288,8 +293,11 @@
           </details>
           <div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap;">
             <button id="pv-verify">Verify</button>
-            <button id="pv-approve" style="background:#059669; color:#fff;" disabled>Setujui</button>
+            <button id="pv-approve" style="background:#059669; color:#fff;" disabled>Setujui & Kirim ke LSB</button>
             <button id="pv-reject" style="background:#DC2626; color:#fff;" disabled>Tolak</button>
+          </div>
+          <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
+            <strong>Catatan:</strong> Tombol "Setujui" sekarang akan otomatis mengirim dokumen ke LSB (Loket Serah Berkas) setelah disetujui.
           </div>
           <div id="pv-usermsg" style="margin-top:6px; color:#065F46; font-weight:600;"></div>
           <details id="pv-debug" style="margin-top:6px;">
@@ -642,6 +650,13 @@ if(btnApprove){
             
             if(js.success) {
                 log('Dokumen disetujui', js);
+                
+                // Tampilkan pesan khusus jika dokumen berhasil dikirim ke LSB
+                if(js.lsb_result && js.lsb_result.success) {
+                    alert(`✅ ${js.message}\n\n📤 Dokumen telah otomatis dikirim ke LSB (Loket Serah Berkas).\n📋 No. Booking: ${js.nobooking}\n🔢 No. Validasi: ${js.no_validasi}`);
+                } else {
+                    alert(`✅ ${js.message}`);
+                }
             } else {
                 log('Gagal: ' + (js.message || 'Unknown error'), js);
                 alert('Gagal: ' + (js.message || 'Unknown error'));

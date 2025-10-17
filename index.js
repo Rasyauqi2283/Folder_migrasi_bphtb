@@ -2760,7 +2760,9 @@ async function sendParafVEmail(creatorEmail, creatorName, nobooking, status, tra
 }
 // End Peneliti Endpoint //
 // START PARAF VALIDASI ENDPOINT //
-app.get('/api/paraf/get-berkas-till-clear', async (req, res) => {
+
+// API untuk Validasi_berkas.html - HANYA menampilkan status "Menunggu"
+app.get('/api/paraf/get-berkas-pending', async (req, res) => {
     // Validasi session dan divisi
     if (!req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
         return res.status(403).json({
@@ -2772,7 +2774,7 @@ app.get('/api/paraf/get-berkas-till-clear', async (req, res) => {
     try {
         const ParafVUserId = req.session.user.userid;
         
-        // Query yang diperbaiki
+        // Query yang diperbaiki - HANYA status "Menunggu"
         const query = `
             SELECT 
                 pv.nobooking,
@@ -2811,6 +2813,7 @@ app.get('/api/paraf/get-berkas-till-clear', async (req, res) => {
                 a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
             WHERE 
                 pc.trackstatus = 'Terverifikasi'
+                AND (pv.status_tertampil IS NULL OR pv.status_tertampil = 'Menunggu')
             ORDER BY 
                 pv.no_validasi DESC
             LIMIT 100;
@@ -2845,6 +2848,101 @@ app.get('/api/paraf/get-berkas-till-clear', async (req, res) => {
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
+});
+
+// API untuk monitoring_verifikasi.html - menampilkan status "Ditolak" dan "Sudah Divalidasi"
+app.get('/api/paraf/get-monitoring-documents', async (req, res) => {
+    // Validasi session dan divisi
+    if (!req.session.user || req.session.user.divisi !== 'Peneliti Validasi') {
+        return res.status(403).json({
+            success: false,
+            message: 'Akses ditolak. Hanya pengguna dengan divisi Paraf Validasi yang dapat mengakses data ini.'
+        });
+    }
+
+    try {
+        const ParafVUserId = req.session.user.userid;
+        
+        // Query untuk monitoring - HANYA status "Ditolak" dan "Sudah Divalidasi"
+        const query = `
+            SELECT 
+                pv.nobooking,
+                pv.no_validasi,
+                b.noppbb,
+                b.tahunajb,
+                b.namawajibpajak,
+                b.namapemilikobjekpajak,
+                b.akta_tanah_path,
+                b.sertifikat_tanah_path,
+                b.pelengkap_path,
+                pc.no_registrasi,
+                pv.status,
+                pv.trackstatus,
+                pv.status_tertampil,
+                pv.keterangan,
+                pv.updated_at,
+                uc.special_field AS namapembuat,
+                vu.tanda_tangan_path AS peneliti_tanda_tangan_path,
+                pvs.stempel_booking_path,
+                pc.persetujuan AS pc_persetujuan,
+                pc.tanda_paraf_path,
+                au.userid AS signer_userid
+            FROM 
+                pv_1_paraf_validate pv
+            JOIN 
+                pat_1_bookingsspd b ON pv.nobooking = b.nobooking
+            JOIN 
+                p_3_clear_to_paraf pc ON pv.nobooking = pc.nobooking
+            JOIN 
+                a_2_verified_users uc ON b.userid = uc.userid
+            LEFT JOIN 
+                a_2_verified_users vu ON vu.userid = $1
+            LEFT JOIN 
+                p_2_verif_sign pvs ON pvs.nobooking = pv.nobooking
+            LEFT JOIN 
+                a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
+            WHERE 
+                pc.trackstatus = 'Terverifikasi'
+                AND pv.status_tertampil IN ('Sudah Divalidasi', 'Ditolak')
+            ORDER BY 
+                pv.updated_at DESC, pv.no_validasi DESC
+            LIMIT 100;
+        `;
+        
+        const result = await pool.query(query, [ParafVUserId]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Tidak ada data yang ditemukan'
+            });
+        }
+
+        // Transformasi data
+        const transformedData = result.rows.map(row => ({
+            ...row,
+            peneliti_tanda_tangan_path: row.peneliti_tanda_tangan_path || null
+        }));
+
+        return res.status(200).json({
+            success: true,
+            data: transformedData
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Terjadi kesalahan server',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// API lama untuk kompatibilitas (akan dihapus nanti)
+app.get('/api/paraf/get-berkas-till-clear', async (req, res) => {
+    // Redirect ke API baru untuk pending documents
+    return res.redirect('/api/paraf/get-berkas-pending');
 });
 
 // Claim signer for Peneliti Validasi
@@ -3393,6 +3491,7 @@ app.post('/api/validasi/:no_validasi/verify', async (req, res) => {
 });
 
 // Keputusan akhir PV: approve/reject dokumen (versi gabungan lama + baru, dengan fix audit-table & locking)
+// + INTEGRASI OTOMATIS SEND-TO-LSB untuk dokumen yang disetujui
 app.post('/api/validasi/:no_validasi/decision', async (req, res) => {
     console.log('[PV-DEBUG] Decision endpoint reached');
   
@@ -3436,6 +3535,74 @@ app.post('/api/validasi/:no_validasi/decision', async (req, res) => {
         console.error('[PV-DEBUG] ensurePv1DebugLogExists error:', err.message);
         // Re-throw only if it's not permission-related? For safety, rethrow so caller can rollback.
         throw err;
+      }
+    }
+  
+    // Helper: Kirim ke LSB untuk dokumen yang disetujui
+    async function sendApprovedDocumentToLSB(client, nobooking, currentUser) {
+      try {
+        console.log('[PV-LSB] Starting send to LSB for approved document:', nobooking);
+        
+        // 1) Ambil data booking dari pat_1_bookingsspd
+        const bq = await client.query(
+          `SELECT nobooking, userid,
+                  COALESCE(namawajibpajak, '') AS namawajibpajak,
+                  COALESCE(namapemilikobjekpajak, '') AS namapemilikobjekpajak
+           FROM pat_1_bookingsspd
+           WHERE nobooking = $1
+           LIMIT 1`,
+          [nobooking]
+        );
+    
+        if (bq.rows.length === 0) {
+          throw new Error(`Booking dengan nobooking=${nobooking} tidak ditemukan di pat_1_bookingsspd`);
+        }
+    
+        const booking = bq.rows[0];
+        const namaWP = booking.namawajibpajak || '';
+        const namaPO = booking.namapemilikobjekpajak || '';
+    
+        // 2) Idempotent upsert ke lsb_1_serah_berkas
+        const existing = await client.query(
+          `SELECT id, status, trackstatus FROM lsb_1_serah_berkas WHERE nobooking = $1 LIMIT 1`,
+          [nobooking]
+        );
+        if (existing.rowCount > 0) {
+          const row = existing.rows[0];
+          if (String(row.trackstatus || '').toLowerCase() === 'diserahkan') {
+            console.log('[PV-LSB] Document already sent to LSB:', nobooking);
+            return { success: true, message: 'Sudah ada di LSB dan telah diserahkan', already_sent: true };
+          }
+          await client.query(
+            `UPDATE lsb_1_serah_berkas
+             SET status = 'Terselesaikan', trackstatus = 'Siap Diserahkan'
+             WHERE nobooking = $1`,
+            [nobooking]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO lsb_1_serah_berkas
+              (nobooking, userid, namawajibpajak, namapemilikobjekpajak,
+               status, trackstatus, keterangan)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [
+              nobooking,
+              booking.userid,
+              namaWP,
+              namaPO,
+              'Terselesaikan',
+              'Siap Diserahkan',
+              ''
+            ]
+          );
+        }
+        
+        console.log('[PV-LSB] Successfully sent to LSB:', nobooking);
+        return { success: true, message: 'Booking berhasil dikirim ke LSB' };
+        
+      } catch (error) {
+        console.error('[PV-LSB] Error sending to LSB:', error);
+        return { success: false, error: error.message };
       }
     }
   
@@ -3657,6 +3824,29 @@ if (row.nobooking) {
     }
   }
   
+      // ===== INTEGRASI OTOMATIS SEND-TO-LSB UNTUK DOKUMEN YANG DISETUJUI =====
+      let lsbResult = null;
+      if (decision === 'approve' && row.nobooking) {
+        console.log('[PV-LSB] Automatically sending approved document to LSB:', row.nobooking);
+        lsbResult = await sendApprovedDocumentToLSB(client, row.nobooking, currentUser);
+        
+        if (lsbResult.success) {
+          console.log('[PV-LSB] Successfully sent to LSB:', lsbResult.message);
+          
+          // Emit Admin notification dengan final-stage wording
+          try {
+            const bookingSel = await client.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1 LIMIT 1', [row.nobooking]);
+            const bookingId = bookingSel?.rows?.[0]?.bookingid;
+            if (bookingId) {
+              const { triggerNotificationByStatus } = await import('./backend/routesxcontroller/3_notification/notification_service.js');
+              await triggerNotificationByStatus(bookingId, 'verified_final', currentUser);
+            }
+          } catch (_) {}
+        } else {
+          console.warn('[PV-LSB] Failed to send to LSB:', lsbResult.error);
+          // Tidak rollback karena keputusan approval sudah valid, hanya warn
+        }
+      }
   
       // Audit log (pv_audit_log) — jangan swallow error
       try {
@@ -3669,7 +3859,7 @@ if (row.nobooking) {
       }
   
       await client.query('COMMIT');
-      console.log('[PV] decision commit', { no_validasi, nobooking: row.nobooking, pv: pvRow, srStatus });
+      console.log('[PV] decision commit', { no_validasi, nobooking: row.nobooking, pv: pvRow, srStatus, lsbResult });
   
       // Setelah commit, periksa state aktual (menggunakan pool.query agar bukan connection yang sama)
       try {
@@ -3683,17 +3873,28 @@ if (row.nobooking) {
         console.warn('[PV-DEBUG] After-commit check failed:', err.message);
       }
   
+      // Response message berdasarkan decision dan hasil LSB
+      let responseMessage = '';
+      if (decision === 'approve') {
+        if (lsbResult && lsbResult.success) {
+          responseMessage = 'Data telah berhasil disetujui, dokumen telah tertandatangani, dan otomatis dikirim ke LSB (Loket Serah Berkas).';
+        } else {
+          responseMessage = 'Data telah berhasil disetujui dan dokumen telah tertandatangani dengan baik. Silakan review PDF nobooking yang sudah tertandatangani.';
+        }
+      } else {
+        responseMessage = 'Data telah berhasil ditolak dan status dokumen diperbarui.';
+      }
+  
       return res.json({
         success:true,
         decision,
-        message: decision==='approve'
-          ? 'Data telah berhasil disetujui dan dokumen telah tertandatangani dengan baik, silahkan review 2 PDF nobooking yang sudah tertandatangani.'
-          : 'Data telah berhasil ditolak dan status dokumen diperbarui.',
+        message: responseMessage,
         no_validasi,
         nobooking: row.nobooking || pvRow.nobooking || null,
         pv_status_tertampil: pvRow.status_tertampil || null,
         pv_trackstatus: pvRow.trackstatus || null,
-        sr_status: srStatus
+        sr_status: srStatus,
+        lsb_result: lsbResult // Info hasil pengiriman ke LSB
       });
   
     } catch (e) {

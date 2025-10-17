@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monitoring Verifikasi SSPD | BAPPENDA</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/peneliti_kasie_design.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+
+    /* Tambahkan di head atau file CSS terpisah */
+<style>
+  .pv-badge { display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid transparent; }
+  .pv-badge.ok { background:#ECFDF5; color:#065F46; border-color:#A7F3D0; }
+  .pv-badge.warn { background:#FEF2F2; color:#991B1B; border-color:#FECACA; }
+  .pv-badge.info { background:#EFF6FF; color:#1E40AF; border-color:#93C5FD; }
+  
+  /* Gothic table theme (scoped to this page) */
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  /* Increase specificity to override base excel-table rules */
+  .main-content table.excel-table.gothic-table,
+  table.gothic-table {
+    background: #0b0f1a; /* near-black */
+    color: #e5e7eb; /* slate-200 */
+    border-color: #1f2937; /* slate-800 */
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 14px;
+    overflow: hidden; /* ensure rounded corners are visible */
+  }
+  .main-content table.excel-table.gothic-table thead th,
+  table.gothic-table thead th {
+    background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+    color: #f3f4f6; /* slate-100 */
+    border-bottom: 1px solid #374151; /* slate-700 */
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 12px 14px;
+  }
+  .main-content table.excel-table.gothic-table th, .main-content table.excel-table.gothic-table td,
+  table.gothic-table th, table.gothic-table td { border: 1px solid #1f2937; }
+  .main-content table.excel-table.gothic-table td,
+  table.gothic-table td { padding: 10px 12px; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(odd),
+  table.gothic-table tbody tr:nth-child(odd) { background: #0b0f1a; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(even),
+  table.gothic-table tbody tr:nth-child(even) { background: #0e1422; }
+  .main-content table.excel-table.gothic-table tbody tr:hover,
+  table.gothic-table tbody tr:hover { background: #111827; transition: background .2s ease; }
+
+  /* Rounded corners on header/footer cells for better rendering across browsers */
+  .main-content table.excel-table.gothic-table thead tr:first-child th:first-child,
+  table.gothic-table thead tr:first-child th:first-child { border-top-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table thead tr:first-child th:last-child,
+  table.gothic-table thead tr:first-child th:last-child { border-top-right-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:first-child,
+  table.gothic-table tbody tr:last-child td:first-child { border-bottom-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:last-child,
+  table.gothic-table tbody tr:last-child td:last-child { border-bottom-right-radius: 14px; }
+  
+  /* Use generic status-badge from table_utama with darker edges */
+  .status-badge { border: 1px solid rgba(0,0,0,.15); }
+  .status-badge.success { background: #10B981; color: #fff; }
+  .status-badge.error { background: #EF4444; color: #fff; }
+  .status-badge.warning { background: #F59E0B; color: #fff; }
+
+  /* Gothic dropdown styles */
+  tr.dropdown-row > td {
+    background: linear-gradient(180deg, #0e1422 0%, #0b0f1a 100%);
+    border-top: 1px solid #1f2937;
+    border-bottom: 1px solid #1f2937;
+    padding: 16px 18px;
+  }
+  .dropdown-content-wrapper {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 16px;
+    color: #d1d5db; /* slate-300 */
+  }
+  .document-info-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .document-info-section p { margin: 6px 0; color: #cbd5e1; }
+  .document-info-section strong { color: #e5e7eb; }
+
+  .document-links-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .document-links-title { color: #e5e7eb; margin: 0 0 8px 0; font-weight: 600; }
+  .document-links-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .document-link-item { background:#111827; border:1px solid #1f2937; border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px; }
+  .document-label { min-width: 120px; color:#9ca3af; }
+  .btn-view { padding:6px 10px; border-radius:6px; border:1px solid #334155; background:#1d4ed8; color:#fff; cursor:pointer; }
+  .btn-view:hover { filter:brightness(1.1); }
+
+  /* Scrollbar subtle for dark theme */
+  .table-scroll::-webkit-scrollbar { height: 10px; }
+  .table-scroll::-webkit-scrollbar-thumb { background:#1f2937; border-radius: 10px; }
+
+  /* Filter tabs */
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: #111827;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .filter-tab {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-tab.active {
+    background: #1d4ed8;
+    color: #fff;
+  }
+  .filter-tab:hover:not(.active) {
+    background: #374151;
+    color: #e5e7eb;
+  }
+</style>
+</head>
+<body class="paraf-validasi-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Monitoring Verifikasi SSPD</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../../../admin-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Validasi Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Verifikasi_SSPD/Validasi_berkas.html">Validasi Berkas SSPD Online</a>
+            <a href="">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="../Sinkronisasi_BSRE/Sertifikat_digital.html">Sertifikat Digital</a>
+          <a href="../Sinkronisasi_BSRE/autentikasi_bsre.html">AUTENTIKASI TANDA PARAF(BSRE)</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-television sidebar-icon"></i>
+                <span class="sidebar-text">Monitoring SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="monitoring_verifikasi.html">Monitoring Verifikasi SSPD</a>
+            <a href="../admins_Peneliti/adminv_monitoringsspd/adminv_Monitoring_SKPD_KurangBayar/admin_monitoring_skpd_kurangbayar.html">Monitoring SKPD Kurang Bayar</a>
+        </div>
+      </div>
+   </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="#faqpge" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="#logout" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">Semua</button>
+      <button class="filter-tab" data-filter="approved">Sudah Divalidasi</button>
+      <button class="filter-tab" data-filter="rejected">Ditolak</button>
+    </div>
+
+    <div class="table-scroll">
+    <table id="monitoringTable" class="excel-table gothic-table">
+        <thead>
+            <tr>
+                <th>No. Validasi</th>
+                <th>No. Registrasi</th>
+                <th>No. Booking</th>
+                <th>Tahun AJB</th>
+                <th>Status</th>
+                <th>Pembuat Booking</th>
+                <th>Tanggal Update</th>
+                <th>Keterangan</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+    </table>
+    </div>
+
+    <div id="paginationMonitoring" style="margin:12px 0; display:flex; align-items:center; justify-content:space-between;"></div>
+
+</main>
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
+  <script src="../../../design-n-script/script-backend/paraf_validasi.js"></script>
+
+<!-- Monitoring Script -->
+<script>
+(function(){
+  const API_MONITORING_ENDPOINT = '/api/paraf/get-monitoring-documents';
+  const PAGE_SIZE = 10;
+  let currentPage = 1;
+  let allData = [];
+  let filteredData = [];
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    setupFilterTabs();
+    loadMonitoringData();
+  });
+
+  // Setup filter tabs
+  function setupFilterTabs() {
+    const tabs = document.querySelectorAll('.filter-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Filter data
+        const filter = tab.dataset.filter;
+        filterData(filter);
+      });
+    });
+  }
+
+  // Load monitoring data
+  async function loadMonitoringData() {
+    try {
+      console.log('[MONITORING] Loading data...');
+      const response = await fetch(API_MONITORING_ENDPOINT, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Server returned unsuccessful response');
+      }
+
+      if (!Array.isArray(result.data)) {
+        throw new Error('Expected array data not found in response');
+      }
+
+      allData = result.data.map(item => transformRow(item));
+      filteredData = [...allData];
+      
+      console.log('[MONITORING] Data loaded:', allData.length, 'items');
+      renderTable();
+      renderPagination();
+      
+    } catch (error) {
+      console.error('[MONITORING] Error loading data:', error);
+      showError('Gagal memuat data monitoring: ' + error.message);
+    }
+  }
+
+  // Transform row data
+  function transformRow(row) {
+    const safe = (v) => (v === null || v === undefined) ? '' : v;
+    
+    return {
+      no_validasi: safe(row.no_validasi),
+      no_registrasi: safe(row.no_registrasi),
+      nobooking: safe(row.nobooking),
+      tahunajb: safe(row.tahunajb),
+      namawajibpajak: safe(row.namawajibpajak),
+      namapemilikobjekpajak: safe(row.namapemilikobjekpajak),
+      status_display: getStatusDisplay(row.status_tertampil),
+      pembuat_gelar: safe(row.namapembuat),
+      updated_at: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : '',
+      keterangan: safe(row.keterangan),
+      // Document paths
+      akta_tanah_path: safe(row.akta_tanah_path),
+      sertifikat_tanah_path: safe(row.sertifikat_tanah_path),
+      pelengkap_path: safe(row.pelengkap_path),
+      peneliti_tanda_tangan_path: safe(row.peneliti_tanda_tangan_path)
+    };
+  }
+
+  // Get status display
+  function getStatusDisplay(status) {
+    if (!status) return 'Menunggu';
+    const s = String(status).trim();
+    if (/^sudah\s*divalidasi$/i.test(s)) return 'Sudah Divalidasi';
+    if (/^ditolak$/i.test(s)) return 'Ditolak';
+    return 'Menunggu';
+  }
+
+  // Filter data based on status
+  function filterData(filter) {
+    if (filter === 'all') {
+      filteredData = [...allData];
+    } else if (filter === 'approved') {
+      filteredData = allData.filter(item => item.status_display === 'Sudah Divalidasi');
+    } else if (filter === 'rejected') {
+      filteredData = allData.filter(item => item.status_display === 'Ditolak');
+    }
+    
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  }
+
+  // Render table
+  function renderTable() {
+    const tbody = document.querySelector('#monitoringTable tbody.data-masuk');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (filteredData.length === 0) {
+      const row = tbody.insertRow();
+      const cell = row.insertCell(0);
+      cell.colSpan = 9;
+      cell.textContent = 'Tidak ada data yang ditemukan';
+      cell.style.textAlign = 'center';
+      cell.style.padding = '20px';
+      return;
+    }
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, filteredData.length);
+    const pageData = filteredData.slice(start, end);
+
+    pageData.forEach(item => {
+      renderTableRow(tbody, item);
+    });
+  }
+
+  // Render table row
+  function renderTableRow(tbody, item) {
+    const row = tbody.insertRow();
+    row.setAttribute('data-nobooking', item.nobooking);
+    row.setAttribute('data-novalidasi', item.no_validasi);
+
+    // Add cells
+    const cells = [
+      item.no_validasi,
+      item.no_registrasi,
+      item.nobooking,
+      item.tahunajb,
+      item.status_display,
+      item.pembuat_gelar,
+      item.updated_at,
+      item.keterangan
+    ];
+
+    cells.forEach(cellData => {
+      const cell = row.insertCell();
+      if (cellData === item.status_display) {
+        // Render status badge
+        cell.innerHTML = renderStatusBadge(cellData);
+      } else {
+        cell.textContent = cellData || '-';
+      }
+    });
+
+    // Add action cell
+    const actionCell = row.insertCell();
+    renderActionButton(actionCell, item);
+  }
+
+  // Render status badge
+  function renderStatusBadge(status) {
+    const s = String(status || 'Menunggu');
+    if (s === 'Sudah Divalidasi') return '<span class="status-badge success">Sudah Divalidasi</span>';
+    if (s === 'Ditolak') return '<span class="status-badge error">Ditolak</span>';
+    return '<span class="status-badge warning">Menunggu</span>';
+  }
+
+  // Render action button
+  function renderActionButton(container, item) {
+    const button = document.createElement('button');
+    button.className = 'btn-view';
+    button.textContent = 'Lihat Detail';
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showDetailModal(item);
+    });
+    container.appendChild(button);
+  }
+
+  // Show detail modal
+  function showDetailModal(item) {
+    // Create modal HTML
+    const modalHTML = `
+      <div id="detailModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+        <div style="background: #1f2937; color: #e5e7eb; padding: 24px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #f3f4f6;">Detail Dokumen</h3>
+            <button id="closeModal" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;">Tutup</button>
+          </div>
+          <div style="display: grid; gap: 12px;">
+            <div><strong>No. Validasi:</strong> ${item.no_validasi}</div>
+            <div><strong>No. Booking:</strong> ${item.nobooking}</div>
+            <div><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak}</div>
+            <div><strong>Nama Pemilik Objek Pajak:</strong> ${item.namapemilikobjekpajak}</div>
+            <div><strong>Status:</strong> ${renderStatusBadge(item.status_display)}</div>
+            <div><strong>Pembuat:</strong> ${item.pembuat_gelar}</div>
+            <div><strong>Tanggal Update:</strong> ${item.updated_at}</div>
+            ${item.keterangan ? `<div><strong>Keterangan:</strong> ${item.keterangan}</div>` : ''}
+          </div>
+          ${item.akta_tanah_path || item.sertifikat_tanah_path || item.pelengkap_path ? `
+            <div style="margin-top: 16px;">
+              <h4 style="margin: 0 0 8px 0;">Dokumen Terkait:</h4>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                ${item.akta_tanah_path ? `<button class="btn-view" onclick="viewDocument('${item.akta_tanah_path}')">Akta Tanah</button>` : ''}
+                ${item.sertifikat_tanah_path ? `<button class="btn-view" onclick="viewDocument('${item.sertifikat_tanah_path}')">Sertifikat Tanah</button>` : ''}
+                ${item.pelengkap_path ? `<button class="btn-view" onclick="viewDocument('${item.pelengkap_path}')">Dokumen Pelengkap</button>` : ''}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Add close functionality
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('detailModal').remove();
+    });
+
+    // Close on background click
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') {
+        document.getElementById('detailModal').remove();
+      }
+    });
+  }
+
+  // View document
+  function viewDocument(path) {
+    if (!path) return;
+    const fullPath = path.startsWith('/') ? path : '/' + path;
+    window.open(fullPath, '_blank');
+  }
+
+  // Render pagination
+  function renderPagination() {
+    const pagination = document.getElementById('paginationMonitoring');
+    if (!pagination) return;
+
+    const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, filteredData.length);
+
+    if (totalPages <= 1) {
+      pagination.innerHTML = `<div>Menampilkan ${filteredData.length} data</div>`;
+      return;
+    }
+
+    const info = document.createElement('div');
+    info.textContent = `Menampilkan ${start + 1} sampai ${end} dari ${filteredData.length} data`;
+
+    const controls = document.createElement('div');
+    controls.style.display = 'flex';
+    controls.style.gap = '8px';
+    controls.style.alignItems = 'center';
+
+    // Previous button
+    const prevBtn = createButton('<', currentPage <= 1, () => goToPage(currentPage - 1));
+    controls.appendChild(prevBtn);
+
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+      const pageBtn = createButton(String(i), false, () => goToPage(i));
+      if (i === currentPage) {
+        pageBtn.style.background = '#1d4ed8';
+        pageBtn.style.color = '#fff';
+      }
+      controls.appendChild(pageBtn);
+    }
+
+    // Next button
+    const nextBtn = createButton('>', currentPage >= totalPages, () => goToPage(currentPage + 1));
+    controls.appendChild(nextBtn);
+
+    pagination.innerHTML = '';
+    pagination.appendChild(info);
+    pagination.appendChild(controls);
+  }
+
+  // Create button helper
+  function createButton(text, disabled, onClick) {
+    const btn = document.createElement('button');
+    btn.textContent = text;
+    btn.disabled = disabled;
+    btn.style.padding = '6px 12px';
+    btn.style.border = '1px solid #374151';
+    btn.style.background = disabled ? '#374151' : '#1f2937';
+    btn.style.color = disabled ? '#6b7280' : '#e5e7eb';
+    btn.style.borderRadius = '6px';
+    btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  // Go to page
+  function goToPage(page) {
+    const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      renderTable();
+      renderPagination();
+    }
+  }
+
+  // Show error
+  function showError(message) {
+    const tbody = document.querySelector('#monitoringTable tbody.data-masuk');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 20px; color: #ef4444;">
+            ${message}
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  // Make functions globally available
+  window.viewDocument = viewDocument;
+})();
+</script>
+</body>
+</html>

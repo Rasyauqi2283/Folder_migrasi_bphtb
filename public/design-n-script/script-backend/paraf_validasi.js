@@ -1,5 +1,6 @@
 // Constants
-const API_ENDPOINT = '/api/paraf/get-berkas-till-clear';
+const API_ENDPOINT = '/api/paraf/get-berkas-pending'; // API baru untuk dokumen status "Menunggu"
+const API_MONITORING_ENDPOINT = '/api/paraf/get-monitoring-documents'; // API untuk monitoring dokumen "Ditolak" dan "Sudah Divalidasi"
 const REQUEST_TIMEOUT = 10000;
 const REQUIRED_FIELDS = [
     // Kolom yang ditampilkan pada tabel PV (ringkas)
