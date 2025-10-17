@@ -292,74 +292,46 @@ const jenisPerolehanMap = {
     doc.text('Cibinong, ' + formatDate(new Date()), rightX, footerY, { align: 'center' });
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
     doc.text(String(pvCn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' }); //<- bagian ini seharusnya pvCn
-    // Generate QR jika belum disediakan: payload dengan data real dari database + nomor validasi untuk keunikan
+    // Generate QR dengan data real dari sertifikat + nomor validasi untuk keunikan
     let qrAbsPath = qrImageAbsPath;
+    
+    const nv = String(noValidasi || data.no_validasi || '').trim();
+    console.log(`[QR-DEBUG] Starting QR generation for nobooking: ${nobooking}`);
+    console.log(`[QR-DEBUG] noValidasi parameter: ${noValidasi}`);
+    console.log(`[QR-DEBUG] data.no_validasi: ${data.no_validasi}`);
+    console.log(`[QR-DEBUG] nv (final): ${nv}`);
+    console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
+    console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
+    
+    // Wajibkan nomorValidasi dan pvUserid untuk dokumen yang sudah disetujui
+    if (!nv) {
+      throw new Error('Nomor validasi tidak tersedia untuk generate QR');
+    }
+    
+    if (!pvUserid) {
+      throw new Error('pvUserid tidak tersedia - QR harus menggunakan data real dari sertifikat');
+    }
+    
+    if (!pool) {
+      throw new Error('Database connection tidak tersedia untuk generate QR');
+    }
+    
+    console.log(`[QR-DEBUG] Semua parameter tersedia, generate QR dengan data real dari sertifikat...`);
+    
     try {
-      const nv = String(noValidasi || data.no_validasi || '').trim();
-      console.log(`[QR-DEBUG] Starting QR generation for nobooking: ${nobooking}`);
-      console.log(`[QR-DEBUG] noValidasi parameter: ${noValidasi}`);
-      console.log(`[QR-DEBUG] data.no_validasi: ${data.no_validasi}`);
-      console.log(`[QR-DEBUG] nv (final): ${nv}`);
-      console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
-      console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
-      
-      // Selalu generate QR baru jika nomorValidasi tersedia, terlepas dari apakah file sudah ada
-      if (nv) {
-        console.log(`[QR-DEBUG] nomorValidasi tersedia (${nv}), akan generate QR baru...`);
-        // Coba generate QR dengan data real dari database jika pvUserid tersedia
-        if (pvUserid && pool) {
-          try {
-            console.log(`[QR-DEBUG] Attempting generateQrWithValidasiFromDB with userid: ${pvUserid}, nomorValidasi: ${nv}`);
-            const saved = await generateQrWithValidasiFromDB({
-              pool,
-              userid: pvUserid,
-              nomorValidasi: nv,
-              filename: `validasi_${nv}`,
-              size: 256
-            });
-            qrAbsPath = saved.abs;
-            console.log(`[QR-GENERATED] QR dengan data real dari DB - userid: ${pvUserid}, nomor validasi: ${nv}, payload: ${saved.payload}`);
-          } catch (dbError) {
-            console.warn('[QR-WARNING] Gagal generate QR dengan data DB, fallback ke format default:', dbError.message);
-            console.warn('[QR-WARNING] Error details:', dbError);
-            // Fallback ke format default
-            console.log(`[QR-DEBUG] Attempting generateQrWithValidasi with nomorValidasi: ${nv}`);
-            const saved = await generateQrWithValidasi({
-              basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
-              nomorValidasi: nv,
-              filename: `validasi_${nv}`,
-              size: 256
-            });
-            qrAbsPath = saved.abs;
-            console.log(`[QR-GENERATED] QR dengan format default, nomor validasi: ${nv}, payload: ${saved.payload}`);
-          }
-        } else {
-          // Generate QR dengan format standar + nomor validasi (fallback)
-          console.log(`[QR-DEBUG] No pvUserid available, using generateQrWithValidasi with nomorValidasi: ${nv}`);
-          const saved = await generateQrWithValidasi({
-            basePayload: "3218301223/17-10-2025/Ini ST. ESTE. MT//E-BPHTB BAPPENDA KAB BOGOR",
-            nomorValidasi: nv,
-            filename: `validasi_${nv}`,
-            size: 256
-          });
-          qrAbsPath = saved.abs;
-          console.log(`[QR-GENERATED] QR dengan format default, nomor validasi: ${nv}, payload: ${saved.payload}`);
-        }
-      } else {
-        console.log(`[QR-DEBUG] Tidak ada nomorValidasi, menggunakan QR yang sudah ada atau tidak ada QR`);
-      }
-    } catch (error) { 
-      console.error('[QR-ERROR] Gagal generate QR dengan nomor validasi:', error);
-      // Fallback ke method lama jika ada error
-      try {
-        const nv = String(noValidasi || data.no_validasi || '').trim();
-        if (nv) {
-          const base = (process.env.PUBLIC_BASE_URL || 'https://bphtb-bappenda.up.railway.app').replace(/\/$/, '');
-          const payload = `${base}/verify?no_validasi=${encodeURIComponent(nv)}`;
-          const saved = await saveQrToPublic({ filename: `validasi_${nv}`, text: payload, size: 256 });
-          qrAbsPath = saved.abs;
-        }
-      } catch (_) { /* fallback silent */ }
+      console.log(`[QR-DEBUG] Generate QR dengan data real dari DB - userid: ${pvUserid}, nomorValidasi: ${nv}`);
+      const saved = await generateQrWithValidasiFromDB({
+        pool,
+        userid: pvUserid,
+        nomorValidasi: nv,
+        filename: `validasi_${nv}`,
+        size: 256
+      });
+      qrAbsPath = saved.abs;
+      console.log(`[QR-GENERATED] QR dengan data real dari sertifikat - userid: ${pvUserid}, nomor validasi: ${nv}, payload: ${saved.payload}`);
+    } catch (dbError) {
+      console.error('[QR-ERROR] Gagal generate QR dengan data sertifikat:', dbError);
+      throw new Error(`Gagal generate QR dengan data sertifikat: ${dbError.message}`);
     }
 
     if (qrAbsPath && fs.existsSync(qrAbsPath)) {

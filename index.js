@@ -3029,7 +3029,7 @@ app.post('/api/validasi/:no_validasi/prepare-document', async (req, res) => {
             const { saveQrToPublic } = await import('./backend/utils/qrcode.js');
             const saved = await saveQrToPublic({ filename: `qr_${no_validasi}`, text: qrPayload, size: 256 });
             // saved.abs -> absolute path; saved.path -> public path
-            await buildValidasiPdf({ pool, nobooking, noValidasi: no_validasi, outputPath: outfile, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath: saved.abs, passphrase });
+            await buildValidasiPdf({ pool, nobooking, noValidasi: no_validasi, outputPath: outfile, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath: saved.abs, passphrase, pvUserid: req.session.user.userid });
             // Simpan audit QR ke pv_2_signing_requests
             await client.query(
                 `UPDATE pv_2_signing_requests SET qr_payload = $1, qr_image_path = $2, qr_sig = $3, qr_alg = 'HMAC-SHA256', updated_at = NOW() WHERE id = $4`,
@@ -3037,7 +3037,7 @@ app.post('/api/validasi/:no_validasi/prepare-document', async (req, res) => {
             );
         } catch (e) {
             // Jika gagal QR, tetap build PDF tanpa QR
-            await buildValidasiPdf({ pool, nobooking, noValidasi: no_validasi, outputPath: outfile, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath: null, passphrase });
+            await buildValidasiPdf({ pool, nobooking, noValidasi: no_validasi, outputPath: outfile, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath: null, passphrase, pvUserid: req.session.user.userid });
         }
 
         // Compute SHA-256
@@ -4402,7 +4402,8 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
             pvTitle: data.pv_cn || 'Kepala Bidang Masyarakat',
             pvCn: data.pv_cn || 'Kepala Bidang Masyarakat',
             qrImageAbsPath: qrImageAbsPath,
-            passphrase: 'bappenda2025' // Default passphrase
+            passphrase: 'bappenda2025', // Default passphrase
+            pvUserid: data.avpv_userid // Userid dari Peneliti Validasi
         };
         
         // Generate PDF
