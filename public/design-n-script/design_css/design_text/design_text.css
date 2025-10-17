@@ -44,8 +44,7 @@ read-only{
 
 /* Footer container styling */
 .footer {
-    overflow-y: hidden;
-    overflow-x: hidden;
+    position: fixed;
     bottom: 0;
     left: 0;
     width: 100%;
@@ -53,11 +52,13 @@ read-only{
     background: linear-gradient(270deg, #3a7ca5, #5c8aa4, #4b9d8c, #085886, #0f2748);
     background-size: 500% 500%;
     animation: waveAnimation 15s infinite linear;
+    display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 20px;
     box-shadow: 0px -2px 5px rgba(0, 0, 0, 0.2);
     z-index: 8;
+    overflow: hidden;
 }
 
 /* Wave animation for footer */
@@ -70,11 +71,22 @@ read-only{
 /* Content inside the footer, moves with the sidebar */
 .footer-content {
     padding: 0 0 0 70px;
-    transition: margin-left 0.5s ease, transform 0.5s ease;
+    transition: margin-left 0.5s ease, transform 0.5s ease, padding 0.5s ease;
     margin-left: 0;
     color: white;
     font-size: 14px;
     transform: scale(1);
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+/* Footer content shifted styling */
+.footer-content.shifted {
+    padding: 0 0 0 70px; /* Keep consistent padding */
+    transform: translateX(140px);
+    margin-left: 140px; /* 250px - 60px = 190px difference */
+    transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.5s ease; /* Smooth transition */
 }
 
 /* .footer-content.shifted - moved to design_sidebar.css for consistency */
@@ -84,6 +96,7 @@ read-only{
     display: flex;
     gap: 10px;
     margin-right: 70px;
+    z-index: 9;
 }
 
 .footer-links a {

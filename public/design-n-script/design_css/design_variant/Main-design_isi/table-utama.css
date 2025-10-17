@@ -28,7 +28,7 @@ html, body {
   /* Dimensions - Fixed right gap, dynamic width based on sidebar state */
   width: calc(100vw - 70px - 15px); /* 70px left margin + 15px FIXED right margin */
   max-width: calc(100vw - 70px - 15px); /* Prevent any override */
-  height: calc(100vh - 80px); /* minus header margin */
+  height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
   
   /* Responsive to sidebar - Smooth transition controlled by .shifted class */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition for all properties */
@@ -74,6 +74,7 @@ main.shifted .main-content {
   /* Width adjustment for shifted state */
   width: calc(100vw - 250px - 15px); /* 250px sidebar + 15px right margin */
   max-width: calc(100vw - 250px - 15px);
+  height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
 }
 
 /* Remove any container constraints that might limit width */
