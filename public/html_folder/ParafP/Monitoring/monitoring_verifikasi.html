@@ -114,11 +114,19 @@
   .table-scroll::-webkit-scrollbar { height: 10px; }
   .table-scroll::-webkit-scrollbar-thumb { background:#1f2937; border-radius: 10px; }
 
+  /* Filter section */
+  .filter-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 20px;
+  }
+
   /* Filter tabs */
   .filter-tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 16px;
     background: #111827;
     border-radius: 8px;
     padding: 4px;
@@ -139,6 +147,143 @@
   .filter-tab:hover:not(.active) {
     background: #374151;
     color: #e5e7eb;
+  }
+
+  /* Table controls */
+  .table-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+
+  .page-size-selector label {
+    font-weight: 500;
+  }
+
+  .page-size-select {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 6px;
+    color: #e5e7eb;
+    padding: 6px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .page-size-select:focus {
+    outline: none;
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.2);
+  }
+
+  .page-size-selector span {
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  /* Pagination Styles */
+  .pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    padding: 0 20px;
+  }
+
+  .pagination-info {
+    color: #9ca3af;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .pagination-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .pagination-controls .page-btn {
+    min-width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #1f2937;
+    color: #e5e7eb;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .pagination-controls .page-btn:hover:not(:disabled) {
+    background: #374151;
+    border-color: #4b5563;
+    transform: translateY(-1px);
+  }
+
+  .pagination-controls .page-btn.active {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+  }
+
+  .pagination-controls .page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #111827;
+    border-color: #1f2937;
+  }
+
+  .pagination-controls .page-btn:disabled:hover {
+    transform: none;
+    background: #111827;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .filter-section {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+
+    .filter-tabs {
+      justify-content: center;
+    }
+
+    .table-controls {
+      justify-content: center;
+    }
+
+    .pagination-container {
+      flex-direction: column;
+      gap: 12px;
+      padding: 0 16px;
+    }
+
+    .pagination-controls {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .pagination-controls .page-btn {
+      min-width: 30px;
+      height: 30px;
+      font-size: 12px;
+    }
   }
 </style>
 </head>
@@ -266,11 +411,27 @@
   <!---->
   <!-- MAIN -->
   <main class="main-content">
-    <!-- Filter Tabs -->
-    <div class="filter-tabs">
-      <button class="filter-tab active" data-filter="all">Semua</button>
-      <button class="filter-tab" data-filter="approved">Sudah Divalidasi</button>
-      <button class="filter-tab" data-filter="rejected">Ditolak</button>
+    <!-- Filter Tabs and Controls -->
+    <div class="filter-section">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">Semua</button>
+        <button class="filter-tab" data-filter="approved">Sudah Divalidasi</button>
+        <button class="filter-tab" data-filter="rejected">Ditolak</button>
+      </div>
+      
+      <div class="table-controls">
+        <div class="page-size-selector">
+          <label for="pageSize">Tampilkan:</label>
+          <select id="pageSize" class="page-size-select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>data per halaman</span>
+        </div>
+      </div>
     </div>
 
     <div class="table-scroll">
@@ -294,7 +455,10 @@
     </table>
     </div>
 
-    <div id="paginationMonitoring" style="margin:12px 0; display:flex; align-items:center; justify-content:space-between;"></div>
+    <!-- Pagination Container -->
+    <div class="pagination-container" id="paginationMonitoring">
+      <!-- Pagination controls will be inserted here -->
+    </div>
 
 </main>
     <!-- Footer berada di dalam page-wrapper -->
@@ -326,7 +490,7 @@
 <script>
 (function(){
   const API_MONITORING_ENDPOINT = '/api/paraf/get-monitoring-documents';
-  const PAGE_SIZE = 10;
+  let PAGE_SIZE = 10;
   let currentPage = 1;
   let allData = [];
   let filteredData = [];
@@ -334,6 +498,8 @@
   // Initialize
   document.addEventListener('DOMContentLoaded', () => {
     setupFilterTabs();
+    setupPageSizeSelector();
+    setupKeyboardNavigation();
     loadMonitoringData();
   });
 
@@ -351,6 +517,22 @@
         filterData(filter);
       });
     });
+  }
+
+  // Setup page size selector
+  function setupPageSizeSelector() {
+    const pageSizeSelect = document.getElementById('pageSize');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', (e) => {
+        PAGE_SIZE = parseInt(e.target.value);
+        currentPage = 1; // Reset to first page when changing page size
+        renderTable();
+        renderPagination();
+        
+        // Show notification about page size change
+        console.log(`[MONITORING] Page size changed to ${PAGE_SIZE} items per page`);
+      });
+    }
   }
 
   // Load monitoring data
@@ -585,34 +767,49 @@
     const end = Math.min(start + PAGE_SIZE, filteredData.length);
 
     if (totalPages <= 1) {
-      pagination.innerHTML = `<div>Menampilkan ${filteredData.length} data</div>`;
+      pagination.innerHTML = `
+        <div class="pagination-info">
+          Menampilkan ${filteredData.length} data
+        </div>
+        <div class="pagination-controls"></div>
+      `;
       return;
     }
 
+    // Create pagination info
     const info = document.createElement('div');
+    info.className = 'pagination-info';
     info.textContent = `Menampilkan ${start + 1} sampai ${end} dari ${filteredData.length} data`;
 
+    // Create pagination controls
     const controls = document.createElement('div');
-    controls.style.display = 'flex';
-    controls.style.gap = '8px';
-    controls.style.alignItems = 'center';
+    controls.className = 'pagination-controls';
 
     // Previous button
-    const prevBtn = createButton('<', currentPage <= 1, () => goToPage(currentPage - 1));
+    const prevBtn = createPageButton('‹', currentPage <= 1, () => goToPage(currentPage - 1));
     controls.appendChild(prevBtn);
 
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-      const pageBtn = createButton(String(i), false, () => goToPage(i));
-      if (i === currentPage) {
-        pageBtn.style.background = '#1d4ed8';
-        pageBtn.style.color = '#fff';
+    // Page numbers with smart pagination
+    const pageNumbers = generatePageNumbers(currentPage, totalPages);
+    
+    pageNumbers.forEach((page, index) => {
+      if (page === '...') {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '...';
+        ellipsis.style.padding = '0 8px';
+        ellipsis.style.color = '#9ca3af';
+        controls.appendChild(ellipsis);
+      } else {
+        const pageBtn = createPageButton(String(page), false, () => goToPage(page));
+        if (page === currentPage) {
+          pageBtn.classList.add('active');
+        }
+        controls.appendChild(pageBtn);
       }
-      controls.appendChild(pageBtn);
-    }
+    });
 
     // Next button
-    const nextBtn = createButton('>', currentPage >= totalPages, () => goToPage(currentPage + 1));
+    const nextBtn = createPageButton('›', currentPage >= totalPages, () => goToPage(currentPage + 1));
     controls.appendChild(nextBtn);
 
     pagination.innerHTML = '';
@@ -620,17 +817,53 @@
     pagination.appendChild(controls);
   }
 
-  // Create button helper
-  function createButton(text, disabled, onClick) {
+  // Generate smart page numbers (show ellipsis for large page counts)
+  function generatePageNumbers(current, total) {
+    const pages = [];
+    const maxVisible = 7; // Maximum number of page buttons to show
+    
+    if (total <= maxVisible) {
+      // Show all pages if total is small
+      for (let i = 1; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Smart pagination with ellipsis
+      if (current <= 4) {
+        // Show first pages + ellipsis + last page
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(total);
+      } else if (current >= total - 3) {
+        // Show first page + ellipsis + last pages
+        pages.push(1);
+        pages.push('...');
+        for (let i = total - 4; i <= total; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show first + ellipsis + current range + ellipsis + last
+        pages.push(1);
+        pages.push('...');
+        for (let i = current - 1; i <= current + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(total);
+      }
+    }
+    
+    return pages;
+  }
+
+  // Create page button helper
+  function createPageButton(text, disabled, onClick) {
     const btn = document.createElement('button');
+    btn.className = 'page-btn';
     btn.textContent = text;
     btn.disabled = disabled;
-    btn.style.padding = '6px 12px';
-    btn.style.border = '1px solid #374151';
-    btn.style.background = disabled ? '#374151' : '#1f2937';
-    btn.style.color = disabled ? '#6b7280' : '#e5e7eb';
-    btn.style.borderRadius = '6px';
-    btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
     btn.addEventListener('click', onClick);
     return btn;
   }
@@ -638,11 +871,52 @@
   // Go to page
   function goToPage(page) {
     const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
-    if (page >= 1 && page <= totalPages) {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
       currentPage = page;
       renderTable();
       renderPagination();
+      
+      // Smooth scroll to top of table
+      const table = document.getElementById('monitoringTable');
+      if (table) {
+        table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
+  }
+
+  // Keyboard navigation for pagination
+  function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+      // Only handle keyboard navigation when pagination is visible and focused
+      const pagination = document.getElementById('paginationMonitoring');
+      if (!pagination || !pagination.offsetParent) return;
+
+      const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+      if (totalPages <= 1) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentPage > 1) {
+            goToPage(currentPage - 1);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentPage < totalPages) {
+            goToPage(currentPage + 1);
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          goToPage(1);
+          break;
+        case 'End':
+          e.preventDefault();
+          goToPage(totalPages);
+          break;
+      }
+    });
   }
 
   // Show error
