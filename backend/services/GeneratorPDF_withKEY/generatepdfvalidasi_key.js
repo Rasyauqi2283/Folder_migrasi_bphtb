@@ -303,7 +303,9 @@ const jenisPerolehanMap = {
       console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
       console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
       
-      if (!qrAbsPath && nv) {
+      // Selalu generate QR baru jika nomorValidasi tersedia, terlepas dari apakah file sudah ada
+      if (nv) {
+        console.log(`[QR-DEBUG] nomorValidasi tersedia (${nv}), akan generate QR baru...`);
         // Coba generate QR dengan data real dari database jika pvUserid tersedia
         if (pvUserid && pool) {
           try {
@@ -343,6 +345,8 @@ const jenisPerolehanMap = {
           qrAbsPath = saved.abs;
           console.log(`[QR-GENERATED] QR dengan format default, nomor validasi: ${nv}, payload: ${saved.payload}`);
         }
+      } else {
+        console.log(`[QR-DEBUG] Tidak ada nomorValidasi, menggunakan QR yang sudah ada atau tidak ada QR`);
       }
     } catch (error) { 
       console.error('[QR-ERROR] Gagal generate QR dengan nomor validasi:', error);
