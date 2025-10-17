@@ -1,24 +1,57 @@
-<!---->
-<!--Tempat ini merupakan halaman untuk autentikasi tanda paraf BSRE-->
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autentikasi BSRE</title>
+    <title>Autentikasi BSRE | BAPPENDA</title>
+    <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
     <style>
-        body{font-family: Arial, Helvetica, sans-serif; margin:20px;}
-        .card{border:1px solid #e5e5e5; border-radius:8px; padding:16px; max-width:900px}
+        /* BSRE Page Specific Styles */
+        .bsre-content {
+            margin: 20px;
+            max-width: 1200px;
+        }
+        .card{border:1px solid #e5e5e5; border-radius:8px; padding:16px; max-width:900px; background: #ffffff;}
         .row{display:flex; gap:12px; align-items:center; margin:8px 0}
-        label{min-width:140px}
-        input[type="text"], input[type="password"]{flex:1; padding:8px}
-        button{padding:8px 12px; cursor:pointer}
+        label{min-width:140px; font-weight: 500;}
+        input[type="text"], input[type="password"]{flex:1; padding:8px; border: 1px solid #d1d5db; border-radius: 6px;}
+        button{padding:8px 12px; cursor:pointer; border-radius: 6px; border: 1px solid #d1d5db; background: #ffffff;}
+        button:hover {background: #f9fafb;}
         .muted{color:#666; font-size:12px}
         .result{margin-top:10px; padding:10px; background:#f7f7f7; border-radius:6px}
         .tabs{display:flex; gap:8px; margin:16px 0}
-        .tab{padding:8px 12px; border:1px solid #ddd; border-radius:6px; cursor:pointer; user-select:none}
+        .tab{padding:8px 12px; border:1px solid #ddd; border-radius:6px; cursor:pointer; user-select:none; transition: all 0.2s;}
         .tab.active{background:#eef5ff; border-color:#a3c4ff}
+        .tab:hover:not(.active) {background: #f9fafb;}
         .hidden{display:none}
         canvas{border:1px dashed #bbb; border-radius:6px}
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .bsre-content {
+                margin: 16px;
+            }
+            .row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            label {
+                min-width: auto;
+            }
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
     </style>
     <script>
     async function getToken(){
@@ -203,7 +236,131 @@
     }
     </script>
 </head>
-<body>
+<body class="paraf-validasi-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Autentikasi BSRE</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../../../admin-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Validasi Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Verifikasi_SSPD/Validasi_berkas.html">Validasi Berkas SSPD Online</a>
+            <a href="../Verifikasi_SSPD/Validasi_berkas_offline.html">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="Sertifikat_digital.html">Sertifikat Digital</a>
+          <a href="autentikasi_bsre.html">AUTENTIKASI TANDA PARAF(BSRE)</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-television sidebar-icon"></i>
+                <span class="sidebar-text">Monitoring SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Monitoring/monitoring_verifikasi.html">Monitoring Verifikasi SSPD</a>
+            <a href="../Monitoring/monitoring_skpd_kurang.html">Monitoring SKPD Kurang Bayar</a>
+        </div>
+      </div>
+   </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="bsre-content">
     <div class="card">
         <div class="tabs">
             <div class="tab active" data-tab="tab-token" onclick="switchTab('tab-token')">Token Autentikasi</div>
@@ -274,6 +431,31 @@
             </div>
         </div>
     </div>
+    </div>
+</main>
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
     <script>initCanvas(); loadCurrentSignature();</script>
     <script type="module">
         import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
