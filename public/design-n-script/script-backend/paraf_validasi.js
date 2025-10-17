@@ -16,8 +16,21 @@ async function loadTableDataParafValidasi() {
     try {
         await validateUserAccess();
         console.debug('[PV][FE] fetchData:start');
-        const { data } = await fetchData();
+        const response = await fetchData();
+        const data = response.data || [];
         console.debug('[PV][FE] fetchData:done', { count: Array.isArray(data) ? data.length : null });
+        
+        // Handle empty data case
+        if (data.length === 0) {
+            console.log('[PV][FE] No data found - showing empty state');
+            const tbody = document.querySelector('.data-masuk');
+            if (tbody) {
+                clearTableBody(tbody);
+                showEmptyState(tbody, 'Tidak ada data "Menunggu" saat ini yang masuk');
+            }
+            return;
+        }
+        
         const mapped = Array.isArray(data) ? data.map((r,i)=>{ try{ const m=transformOldEndpointRow(r); return m; }catch(e){ console.warn('[PV][FE] transform error at', i, e?.message); throw e;} }) : [];
         console.debug('[PV][FE] map:done', { count: mapped.length });
         renderTable(mapped);
@@ -75,6 +88,12 @@ async function fetchData() {
             throw new Error('Expected array data not found in response');
         }
 
+        // Handle empty data case - return empty array instead of throwing error
+        if (responseData.data.length === 0) {
+            console.log('[PV][FE] No data found - returning empty array');
+            return { success: true, data: [] };
+        }
+
         return responseData;
     } catch (error) {
         clearTimeout(timeout);
@@ -95,8 +114,8 @@ function renderTable(data) {
 
     clearTableBody(tbody);
 
-    if (data.length === 0) {
-        showEmptyState(tbody, 'Tidak ada data yang valid untuk ditampilkan');
+    if (!data || data.length === 0) {
+        showEmptyState(tbody, 'Tidak ada data "Menunggu" saat ini yang masuk');
         return;
     }
 
@@ -125,104 +144,22 @@ function renderTableRow(tbody, item) {
         cell.setAttribute('data-field', field);
     });
 
-    // Add action button
-    const actionCell = row.insertCell();
-    renderActionButton(actionCell, item);
+    // Action column removed - approval is now handled through the PV actions panel
 
     // Add dropdown row
     const dropdownRow = createDropdownRow(item);
     tbody.appendChild(dropdownRow);
 }
 
-function renderActionButton(container, item) {
-    const button = document.createElement('button');
-    button.className = 'btn-kirim-document';
-    button.textContent = 'Kirim';
-    // disable jika status belum Sudah Divalidasi
-    const canSend = String(item.status_display || '').trim().toLowerCase() === 'sudah divalidasi';
-    if (!canSend) {
-        button.disabled = true;
-        button.title = 'Dokumen belum berstatus "Sudah Divalidasi"';
-        try { button.style.opacity = '0.6'; button.style.cursor = 'not-allowed'; } catch(_) {}
-    }
-
-    button.addEventListener('click', () => handleSendAction(button, container, item));
-    
-    container.appendChild(button);
-}
-
-async function handleSendAction(button, container, item) {
-    try {
-        // guard ulang
-        const canSend = String(item.status_display || '').trim().toLowerCase() === 'sudah divalidasi';
-        if (!canSend) {
-            throw new Error('Dokumen belum berstatus "Sudah Divalidasi"');
-        }
-
-        const confirmed = await showConfirmationDialog(
-            'Konfirmasi Pengiriman',
-            'Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?'
-        );
-
-        if (!confirmed) return;
-
-        validateItemFields(item, ['no_validasi', 'nobooking']);
-        
-        const result = await sendToLSB(item);
-        
-        if (result.success) {
-            updateUIAfterSuccess(button, container, result.no_validasi, item.nobooking);
-            showSuccessNotification(result.no_validasi);
-            try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-        } else {
-            throw new Error(result.message || "Gagal mengirim data ke LSB.");
-        }
-    } catch (error) {
-        console.error('Button Action Error:', error);
-        showUserNotification('Gagal Mengirim', error.message, 'error');
-    }
-}
-
-async function sendToLSB(item) {
-    const body = {
-        no_validasi: item.no_validasi,
-        nobooking: item.nobooking
-    };
-    const API_URL = 'https://bphtb-bappenda.up.railway.app';
-    const resp = await fetch(`${API_URL}/api/pv/send-to-lsb`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body)
-    });
-    const data = await resp.json().catch(() => ({ success:false, message:'Gagal parse respons' }));
-    if (!resp.ok) return { success:false, message: data.message || 'Gagal mengirim' };
-    return data;
-}
-
-function updateUIAfterSuccess(button, container, bookingId) {
-    try {
-        button.disabled = true;
-        button.textContent = 'Terkirim';
-        button.title = 'Sudah dikirim ke LSB';
-        const info = document.createElement('div');
-        info.className = 'validation-info';
-        info.textContent = `Nomor Validasi: ${bookingId}`;
-        container.appendChild(info);
-        try { localStorage.setItem(`validation_${bookingId}`, bookingId); } catch(_) {}
-    } catch(_) {}
-}
-
-function showSuccessNotification(nobooking) {
-    showUserNotification('Berhasil', `Data terkirim ke LSB. No Booking: ${nobooking}`, 'success');
-}
+// Action button functions removed - approval is now handled through the PV actions panel
+// The send-to-LSB functionality is now integrated into the approval process
 
 function createDropdownRow(item) {
     const row = document.createElement('tr');
     row.className = 'dropdown-row';
     
     const cell = document.createElement('td');
-    cell.colSpan = REQUIRED_FIELDS.length + 1; // +1 for action column
+    cell.colSpan = REQUIRED_FIELDS.length; // Removed +1 since we removed the action column
     cell.style.display = 'none';
     cell.innerHTML = generateDropdownContent(item);
     
@@ -283,7 +220,7 @@ function clearTableBody(tbody) {
 function showEmptyState(tbody, message) {
     const row = tbody.insertRow();
     const cell = row.insertCell(0);
-    cell.colSpan = REQUIRED_FIELDS.length + 1;
+    cell.colSpan = REQUIRED_FIELDS.length; // Removed +1 since we removed the action column
     cell.className = 'empty-state';
     cell.textContent = message;
 }
@@ -291,7 +228,7 @@ function showEmptyState(tbody, message) {
 function appendErrorRow(tbody, message) {
     const row = tbody.insertRow();
     const cell = row.insertCell(0);
-    cell.colSpan = REQUIRED_FIELDS.length + 1;
+    cell.colSpan = REQUIRED_FIELDS.length; // Removed +1 since we removed the action column
     cell.className = 'error-row';
     cell.textContent = message;
 }
@@ -300,13 +237,27 @@ function handleMainError(error) {
     console.error('Main Function Error:', error);
     
     const errorContainer = document.querySelector('.data-masuk') || document.body;
-    errorContainer.innerHTML = `
-        <div class="error-message">
-            <h3>Terjadi Kesalahan</h3>
-            <p>${error.message}</p>
-            <button onclick="loadTableDataParafValidasi()">Coba Lagi</button>
-        </div>
-    `;
+    
+    // Check if it's a "no data found" error
+    if (error.message && (error.message.includes('Tidak ada data yang ditemukan') || error.message.includes('Tidak ada data "Menunggu"'))) {
+        errorContainer.innerHTML = `
+            <tr>
+                <td colspan="${REQUIRED_FIELDS.length}" style="text-align: center; padding: 20px; color: #6b7280;">
+                    Tidak ada data "Menunggu" saat ini yang masuk
+                </td>
+            </tr>
+        `;
+    } else {
+        errorContainer.innerHTML = `
+            <tr>
+                <td colspan="${REQUIRED_FIELDS.length}" style="text-align: center; padding: 20px; color: #ef4444;">
+                    <h3>Terjadi Kesalahan</h3>
+                    <p>${error.message}</p>
+                    <button onclick="loadTableDataParafValidasi()" style="margin-top: 10px; padding: 8px 16px; background: #1d4ed8; color: white; border: none; border-radius: 6px; cursor: pointer;">Coba Lagi</button>
+                </td>
+            </tr>
+        `;
+    }
 }
 
 // Utility Functions
@@ -396,8 +347,11 @@ function generateDropdownContent(item) {
                     <h5>Dokumen Permohonan</h5>
                     <div class="form-actions">
                         <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
-                            <i class="fas fa-file-pdf"></i> Permohonan Dokumen
+                            <i class="fas fa-file-pdf"></i> Lihat Dokumen Permohonan
                         </button>
+                    </div>
+                    <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
+                        <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan panel "Proses Validasi (PV)" di atas.
                     </div>
                 </div>
 

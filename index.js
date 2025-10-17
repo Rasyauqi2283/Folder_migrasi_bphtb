@@ -2822,9 +2822,10 @@ app.get('/api/paraf/get-berkas-pending', async (req, res) => {
         const result = await pool.query(query, [ParafVUserId]);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Tidak ada data yang ditemukan'
+            return res.status(200).json({
+                success: true,
+                data: [],
+                message: 'Tidak ada data "Menunggu" yang ditemukan'
             });
         }
 
