@@ -35,6 +35,7 @@ export async function saveQrToPublic({ filename, text, size = 256 }) {
   return { path: `/penting_F_simpan/qr_code_place/${safe}`, abs: outPath };
 }
 
+
 // Enhanced QR generation with nomor validasi for uniqueness
 export async function generateQrWithValidasi({ 
   basePayload, 
