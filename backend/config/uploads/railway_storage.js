@@ -204,7 +204,6 @@ export async function uploadToRailway(file, options = {}) {
 // Get file info from Railway storage
 export async function getFileInfo(relativePath) {
   try {
-    console.log(`🔍 [RAILWAY-INFO] Getting file info for: ${relativePath}`);
     
     const fullPath = path.join(RAILWAY_STORAGE_CONFIG.basePath, relativePath);
     
@@ -228,15 +227,6 @@ export async function getFileInfo(relativePath) {
       lastModified: stats.mtime
     };
     
-    console.log(`✅ [RAILWAY-INFO] File info retrieved:`, {
-      fileName: fileInfo.fileName,
-      relativePath: fileInfo.relativePath,
-      size: fileInfo.size,
-      mimeType: fileInfo.mimeType,
-      isStored: fileInfo.isStored,
-      isImage: fileInfo.isImage,
-      isReady: fileInfo.isReady
-    });
 
     return {
       success: true,
@@ -255,7 +245,6 @@ export async function getFileInfo(relativePath) {
     };
 
   } catch (error) {
-    console.error(`❌ [RAILWAY-INFO] Failed to get file info:`, error);
     return {
       success: false,
       error: error.message,
