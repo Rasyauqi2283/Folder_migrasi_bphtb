@@ -27,9 +27,10 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
                 recipient_divisi,
                 title,
                 message,
+                booking_id,
                 is_read,
                 created_at
-            ) VALUES ($1, $2, $3, $4, $5, NOW())
+            ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
             RETURNING id
         `;
 
@@ -43,6 +44,10 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
         const recipientId = userQuery.rows.length > 0 ? userQuery.rows[0].id : null;
         const recipientDivisi = userQuery.rows.length > 0 ? userQuery.rows[0].divisi : null;
         
+        // Get booking_id from nobooking
+        const bookingQuery = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1', [nobooking]);
+        const bookingId = bookingQuery.rows.length > 0 ? bookingQuery.rows[0].bookingid : null;
+        
         if (!recipientId) {
             console.warn(`⚠️ [NOTIFICATION] User ID not found for userid: ${userid}`);
             return;
@@ -53,6 +58,7 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
             recipientDivisi,
             title,
             message,
+            bookingId,
             false // is_read
         ];
 
