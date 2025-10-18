@@ -35,9 +35,9 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
         `;
 
         
-        const title = trackstatus === 'Diolah' ? '🎉 Booking Dikirim ke LTB' : 
-                     trackstatus === 'Pending' ? '⏳ Booking dalam Antrian' : 
-                     '📋 Status Booking Diperbarui';
+        const title = trackstatus === 'Diolah' ? 'Booking Dikirim ke LTB' : 
+                     trackstatus === 'Pending' ? 'Booking dalam Antrian' : 
+                     'Status Booking Diperbarui';
 
         // Get user ID and divisi from userid
         const userQuery = await pool.query('SELECT id, divisi FROM a_2_verified_users WHERE userid = $1', [userid]);
