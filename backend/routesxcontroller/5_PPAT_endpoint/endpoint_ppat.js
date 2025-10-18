@@ -1484,23 +1484,32 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 
         // ✅ FIX: Insert ke ltb_1_terima_berkas_sspd dan bank_1_cek_hasil_transaksi
         // Ambil data booking lengkap untuk insert ke LTB dan Bank
+        // Generate no_registrasi terlebih dahulu
+        const noRegistrasiQuery = `
+            SELECT '2025O' || LPAD(
+                (COALESCE(MAX(CAST(SUBSTRING(no_registrasi FROM '^2025O(\d+)$') AS INTEGER)), 0) + 1)::text, 
+                6, '0'
+            ) as next_no_registrasi
+            FROM ltb_1_terima_berkas_sspd 
+            WHERE no_registrasi LIKE '2025O%'
+        `;
+        
+        const noRegistrasiResult = await client.query(noRegistrasiQuery);
+        const nextNoRegistrasi = noRegistrasiResult.rows[0].next_no_registrasi;
+        
         const bookingQuery = `
             SELECT 
                 b.*,
                 vu.nama as user_nama,
                 vu.divisi as user_divisi,
                 vu.email as user_email,
-                '2025O' || LPAD(
-                    (COALESCE(MAX(CAST(SUBSTRING(ltb.no_registrasi FROM '^2025O(\d+)$') AS INTEGER)), 0) + 1)::text, 
-                    6, '0'
-                ) as no_registrasi
+                $2 as no_registrasi
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON ltb.no_registrasi LIKE '2025O%'
             WHERE b.nobooking = $1
         `;
         
-        const bookingResult = await client.query(bookingQuery, [nobooking]);
+        const bookingResult = await client.query(bookingQuery, [nobooking, nextNoRegistrasi]);
         
         if (bookingResult.rows.length > 0) {
             const bookingData = bookingResult.rows[0];
