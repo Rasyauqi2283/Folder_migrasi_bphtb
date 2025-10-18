@@ -6,6 +6,7 @@
 import express from 'express';
 const AutoDeleteService = import('./auto_delete_service');
 const { pool } = import('../../../db.js');
+import { sendRejectionEmail } from '../../services/emailservice.js';
 
 const router = express.Router();
 
@@ -59,10 +60,47 @@ router.post('/ltb/reject-with-auto-delete', async (req, res) => {
             ['Ditolak', nobooking]
         );
         
+        // Ambil data user yang membuat booking untuk mengirim email
+        const userQuery = await pool.query(
+            'SELECT email, nama FROM a_2_verified_users WHERE userid = (SELECT userid FROM pat_1_bookingsspd WHERE nobooking = $1)',
+            [nobooking]
+        );
+        
+        // Ambil nama LTB yang menolak
+        const ltbQuery = await pool.query(
+            'SELECT nama FROM a_2_verified_users WHERE userid = $1',
+            [req.session.user.userid]
+        );
+        
+        const rejectedBy = ltbQuery.rows.length > 0 ? ltbQuery.rows[0].nama : 'LTB (Layanan Terpadu Berkas)';
+        
+        // Kirim email penolakan jika email user ditemukan
+        if (userQuery.rows.length > 0) {
+            const userEmail = userQuery.rows[0].email;
+            const userName = userQuery.rows[0].nama;
+            
+            try {
+                await sendRejectionEmail(
+                    userEmail,
+                    nobooking,
+                    rejectionReason,
+                    rejectedBy,
+                    'Dokumen Permohonan BPHTB'
+                );
+                console.log(`✅ Rejection email sent to ${userEmail} for nobooking: ${nobooking}`);
+            } catch (emailError) {
+                console.error(`❌ Failed to send rejection email to ${userEmail}:`, emailError.message);
+                // Jangan gagalkan proses penolakan jika email gagal
+            }
+        } else {
+            console.warn(`⚠️ No user email found for nobooking: ${nobooking}`);
+        }
+        
         console.log('LTB data rejected and added to auto-delete tracker', {
             nobooking,
             rejectionReason,
-            userid
+            userid,
+            rejectedBy
         });
         
         res.json({
@@ -135,10 +173,47 @@ router.post('/pv/reject-with-auto-delete', async (req, res) => {
             ['Ditolak', nobooking]
         );
         
+        // Ambil data user yang membuat booking untuk mengirim email
+        const userQuery = await pool.query(
+            'SELECT email, nama FROM a_2_verified_users WHERE userid = (SELECT userid FROM pat_1_bookingsspd WHERE nobooking = $1)',
+            [nobooking]
+        );
+        
+        // Ambil nama peneliti validasi yang menolak
+        const pvQuery = await pool.query(
+            'SELECT nama FROM a_2_verified_users WHERE userid = $1',
+            [req.session.user.userid]
+        );
+        
+        const rejectedBy = pvQuery.rows.length > 0 ? pvQuery.rows[0].nama : 'Peneliti Validasi';
+        
+        // Kirim email penolakan jika email user ditemukan
+        if (userQuery.rows.length > 0) {
+            const userEmail = userQuery.rows[0].email;
+            const userName = userQuery.rows[0].nama;
+            
+            try {
+                await sendRejectionEmail(
+                    userEmail,
+                    nobooking,
+                    rejectionReason,
+                    rejectedBy,
+                    'Dokumen Permohonan BPHTB'
+                );
+                console.log(`✅ Rejection email sent to ${userEmail} for nobooking: ${nobooking}`);
+            } catch (emailError) {
+                console.error(`❌ Failed to send rejection email to ${userEmail}:`, emailError.message);
+                // Jangan gagalkan proses penolakan jika email gagal
+            }
+        } else {
+            console.warn(`⚠️ No user email found for nobooking: ${nobooking}`);
+        }
+        
         console.log('PV data rejected and added to auto-delete tracker', {
             nobooking,
             rejectionReason,
-            userid
+            userid,
+            rejectedBy
         });
         
         res.json({

@@ -1639,6 +1639,37 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 message: 'Booking berhasil dikirim ke LTB dan Bank',
                 type: 'success'
             });
+
+            // 📧 Kirim email notifikasi pengiriman dokumen (Draft → Diolah)
+            try {
+                const { sendDocumentSubmissionEmail } = await import('../../services/emailservice.js');
+                
+                // Ambil data user untuk email
+                const userEmailQuery = await client.query(
+                    'SELECT email, divisi FROM a_2_verified_users WHERE userid = $1',
+                    [bookingData.userid]
+                );
+                
+                if (userEmailQuery.rows.length > 0) {
+                    const userEmail = userEmailQuery.rows[0].email;
+                    const userType = userEmailQuery.rows[0].divisi; // PPAT atau PPATS
+                    
+                    if (userEmail) {
+                        await sendDocumentSubmissionEmail(
+                            userEmail,
+                            nobooking,
+                            nextNoRegistrasi,
+                            userType
+                        );
+                        console.log(`✅ Document submission email sent to ${userEmail} for nobooking: ${nobooking}`);
+                    } else {
+                        console.warn(`⚠️ No email found for userid: ${bookingData.userid}`);
+                    }
+                }
+            } catch (emailError) {
+                console.error(`❌ Failed to send document submission email for nobooking ${nobooking}:`, emailError.message);
+                // Jangan gagalkan proses pengiriman jika email gagal
+            }
         } else {
             console.warn('⚠️ [SEND-NOW] Booking data not found for LTB/Bank insert');
         }

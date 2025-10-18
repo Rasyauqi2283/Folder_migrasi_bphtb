@@ -4192,6 +4192,56 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
             );
         } catch (_) {}
         await client.query('COMMIT');
+        
+        // Ambil data untuk email notifikasi
+        const emailDataQuery = await pool.query(
+            `SELECT 
+                b.userid,
+                b.no_registrasi,
+                vu.email,
+                vu.nama,
+                vu.divisi,
+                pv.no_validasi
+             FROM pat_1_bookingsspd b
+             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+             LEFT JOIN pv_1_paraf_validate pv ON b.nobooking = pv.nobooking
+             WHERE b.nobooking = $1
+             LIMIT 1`,
+            [nobooking]
+        );
+        
+        // Kirim email notifikasi penyelesaian dokumen jika data ditemukan
+        if (emailDataQuery.rows.length > 0) {
+            const emailData = emailDataQuery.rows[0];
+            const userEmail = emailData.email;
+            const noRegistrasi = emailData.no_registrasi;
+            const noValidasi = emailData.no_validasi;
+            const userType = emailData.divisi; // PPAT atau PPATS
+            
+            if (userEmail && noRegistrasi && noValidasi) {
+                try {
+                    const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
+                    await sendDocumentCompletionEmail(
+                        userEmail,
+                        nobooking,
+                        noRegistrasi,
+                        noValidasi,
+                        userType
+                    );
+                    console.log(`✅ Document completion email sent to ${userEmail} for nobooking: ${nobooking}`);
+                } catch (emailError) {
+                    console.error(`❌ Failed to send document completion email to ${userEmail}:`, emailError.message);
+                    // Jangan gagalkan proses penyerahan jika email gagal
+                }
+            } else {
+                console.warn(`⚠️ Missing email data for nobooking: ${nobooking}`, {
+                    userEmail: !!userEmail,
+                    noRegistrasi: !!noRegistrasi,
+                    noValidasi: !!noValidasi
+                });
+            }
+        }
+        
         // Mark-read otomatis untuk Peneliti Validasi (tahap sebelumnya)
         try {
             const bookingSel = await pool.query('SELECT bookingid FROM pat_1_bookingsspd WHERE nobooking = $1 LIMIT 1', [nobooking]);

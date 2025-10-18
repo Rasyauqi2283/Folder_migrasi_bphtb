@@ -602,3 +602,263 @@ export const sendResetEmail = async (to, link) => {
         throw new Error('Gagal mengirim email');
     }
 };
+
+// Mengirim notifikasi email pengiriman dokumen (Draft → Diolah)
+export const sendDocumentSubmissionEmail = async (email, nobooking, noRegistrasi, userType = 'PPAT') => {
+    try {
+        console.log(`📧 Sending document submission email to ${email} for nobooking: ${nobooking}`);
+        
+        // Ambil data user dari database untuk personalisasi
+        const userQuery = await pool.query(
+            'SELECT nama FROM a_2_verified_users WHERE email = $1', 
+            [email]
+        );
+        
+        const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
+        const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
+        
+        const mailOptions = {
+            to: email,
+            subject: `Dokumen Permohonan Telah Dikirim - ${nobooking}`,
+            text: `Halo ${userName},\n\nDokumen permohonan Anda telah berhasil dikirimkan ke sistem BAPPENDA.\n\nDetail Pengiriman:\n- Nomor Booking: ${nobooking}\n- Nomor Registrasi: ${noRegistrasi}\n- Status: Sedang Diolah\n\nMohon ditunggu hingga dokumen selesai diproses. Anda akan menerima notifikasi email ketika dokumen telah selesai.\n\nHormat kami,\nTim BAPPENDA`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">📤 Dokumen Telah Dikirim</h1>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+                        <p style="font-size: 16px; color: #333;">Halo <strong style="color: #2c3e50;">${userName}</strong>,</p>
+                        
+                        <p style="color: #666; line-height: 1.6;">Kami informasikan bahwa dokumen permohonan Anda telah berhasil dikirimkan ke sistem BAPPENDA dan sedang dalam proses pengolahan.</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2c3e50; margin-top: 0;">📋 Detail Pengiriman</h3>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Booking:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${nobooking}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Registrasi:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${noRegistrasi}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Jenis Pengguna:</strong> <span style="color: #28a745; font-weight: bold;">${userTypeFormal}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Status Saat Ini:</strong> <span style="color: #ffc107; font-weight: bold;">Sedang Diolah</span></p>
+                        </div>
+                        
+                        <div style="background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #0c5460;">⏳ Proses Selanjutnya:</h4>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>Dokumen sedang dalam tahap pengolahan dan verifikasi</li>
+                                <li>Tim BAPPENDA akan memeriksa kelengkapan dokumen</li>
+                                <li>Proses validasi akan dilakukan sesuai ketentuan yang berlaku</li>
+                                <li>Anda akan menerima notifikasi email ketika dokumen telah selesai</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 0; font-weight: bold;">✅ Status: Dokumen Berhasil Dikirim</p>
+                            <p style="margin: 5px 0 0 0;">Mohon ditunggu hingga dokumen selesai diproses oleh tim BAPPENDA.</p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app'}/login.html" 
+                               style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                📊 Cek Status Dokumen
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #e9ecef; margin: 30px 0;">
+                        
+                        <p style="color: #666; font-size: 14px; margin: 0;">
+                            <strong>Hormat kami,</strong><br>
+                            <span style="color: #2c3e50;">Tim Sistem BAPPENDA Kabupaten Bogor</span>
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+        
+        // Menggunakan sendEmailSafe untuk error handling yang robust
+        const result = await sendEmailSafe(mailOptions);
+        
+        if (result.success) {
+            console.log(`✅ Document submission email sent successfully to ${email} for nobooking: ${nobooking}`);
+            return { success: true, message: 'Document submission email sent successfully' };
+        } else {
+            console.error(`❌ Failed to send document submission email to ${email}:`, result.error);
+            return { success: false, error: result.error };
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error in sendDocumentSubmissionEmail for ${email}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Mengirim notifikasi email penyelesaian dokumen (Diolah → Diserahkan)
+export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi, noValidasi, userType = 'PPAT') => {
+    try {
+        console.log(`📧 Sending document completion email to ${email} for nobooking: ${nobooking}`);
+        
+        // Ambil data user dari database untuk personalisasi
+        const userQuery = await pool.query(
+            'SELECT nama FROM a_2_verified_users WHERE email = $1', 
+            [email]
+        );
+        
+        const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
+        const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
+        
+        const mailOptions = {
+            to: email,
+            subject: `Dokumen Permohonan Telah Selesai - ${nobooking}`,
+            text: `Halo ${userName},\n\nDokumen permohonan Anda telah dinyatakan lulus dan selesai diproses.\n\nDetail Penyelesaian:\n- Nomor Booking: ${nobooking}\n- Nomor Registrasi: ${noRegistrasi}\n- Nomor Validasi: ${noValidasi}\n- Status: Diserahkan\n\nDokumen telah selesai diproses dan dapat diambil sesuai ketentuan yang berlaku.\n\nHormat kami,\nTim BAPPENDA`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">🎉 Dokumen Telah Selesai</h1>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+                        <p style="font-size: 16px; color: #333;">Halo <strong style="color: #2c3e50;">${userName}</strong>,</p>
+                        
+                        <p style="color: #666; line-height: 1.6;">Kami informasikan bahwa dokumen permohonan Anda telah dinyatakan <strong style="color: #28a745;">lulus</strong> dan selesai diproses oleh tim BAPPENDA.</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2c3e50; margin-top: 0;">📋 Detail Penyelesaian</h3>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Booking:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${nobooking}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Registrasi:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${noRegistrasi}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Validasi:</strong> <span style="background: #d4edda; padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #155724; font-weight: bold;">${noValidasi}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Jenis Pengguna:</strong> <span style="color: #007bff; font-weight: bold;">${userTypeFormal}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Status:</strong> <span style="color: #28a745; font-weight: bold;">Diserahkan</span></p>
+                        </div>
+                        
+                        <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #155724;">✅ Status: Dokumen Lulus dan Selesai</h4>
+                            <p style="margin: 0;">Dokumen permohonan Anda telah berhasil diproses dan dinyatakan lulus sesuai dengan ketentuan yang berlaku.</p>
+                        </div>
+                        
+                        <div style="background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #0c5460;">📄 Informasi Dokumen:</h4>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>Dokumen telah divalidasi dan disetujui</li>
+                                <li>Nomor validasi telah diterbitkan: <strong>${noValidasi}</strong></li>
+                                <li>Dokumen siap untuk diambil sesuai prosedur</li>
+                                <li>QR Code telah terintegrasi untuk verifikasi keaslian</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app'}/login.html" 
+                               style="background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                📊 Lihat Dokumen Lengkap
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #e9ecef; margin: 30px 0;">
+                        
+                        <p style="color: #666; font-size: 14px; margin: 0;">
+                            <strong>Hormat kami,</strong><br>
+                            <span style="color: #2c3e50;">Tim Sistem BAPPENDA Kabupaten Bogor</span>
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+        
+        // Menggunakan sendEmailSafe untuk error handling yang robust
+        const result = await sendEmailSafe(mailOptions);
+        
+        if (result.success) {
+            console.log(`✅ Document completion email sent successfully to ${email} for nobooking: ${nobooking}`);
+            return { success: true, message: 'Document completion email sent successfully' };
+        } else {
+            console.error(`❌ Failed to send document completion email to ${email}:`, result.error);
+            return { success: false, error: result.error };
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error in sendDocumentCompletionEmail for ${email}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};
+
+// Mengirim notifikasi email penolakan dokumen
+export const sendRejectionEmail = async (email, nobooking, rejectionReason, rejectedBy, documentType = 'Dokumen Permohonan') => {
+    try {
+        console.log(`📧 Sending rejection email to ${email} for nobooking: ${nobooking}`);
+        
+        // Ambil data user dari database untuk personalisasi
+        const userQuery = await pool.query(
+            'SELECT nama FROM a_2_verified_users WHERE email = $1', 
+            [email]
+        );
+        
+        const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
+        
+        const mailOptions = {
+            to: email,
+            subject: `Dokumen Permohonan Ditolak - ${nobooking}`,
+            text: `Halo ${userName},\n\nDokumen permohonan dengan nomor booking ${nobooking} telah ditolak.\n\nAlasan penolakan: ${rejectionReason}\n\nDitolak oleh: ${rejectedBy}\n\nSilakan perbaiki dokumen sesuai dengan alasan penolakan dan ajukan kembali.\n\nHormat kami,\nTim BAPPENDA`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+                        <h1 style="margin: 0; font-size: 24px;">❌ Dokumen Ditolak</h1>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e9ecef;">
+                        <p style="font-size: 16px; color: #333;">Halo <strong style="color: #2c3e50;">${userName}</strong>,</p>
+                        
+                        <p style="color: #666; line-height: 1.6;">Kami informasikan bahwa dokumen permohonan Anda telah ditolak dan memerlukan perbaikan.</p>
+                        
+                        <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <h3 style="color: #2c3e50; margin-top: 0;">📋 Detail Penolakan</h3>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Nomor Booking:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${nobooking}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Jenis Dokumen:</strong> <span style="color: #6c757d;">${documentType}</span></p>
+                            <p style="margin: 10px 0;"><strong style="color: #495057;">Ditolak oleh:</strong> <span style="color: #dc3545; font-weight: bold;">${rejectedBy}</span></p>
+                        </div>
+                        
+                        <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #721c24;">📝 Alasan Penolakan:</h4>
+                            <p style="margin: 0; font-style: italic;">"${rejectionReason}"</p>
+                        </div>
+                        
+                        <div style="background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #0c5460;">📌 Langkah Selanjutnya:</h4>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>Perbaiki dokumen sesuai dengan alasan penolakan</li>
+                                <li>Pastikan semua dokumen lengkap dan sesuai ketentuan</li>
+                                <li>Ajukan kembali dokumen yang telah diperbaiki</li>
+                                <li>Data yang ditolak akan otomatis dihapus setelah 10 hari</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app'}/login.html" 
+                               style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                                🔄 Login untuk Ajukan Ulang
+                            </a>
+                        </div>
+                        
+                        <hr style="border: none; border-top: 1px solid #e9ecef; margin: 30px 0;">
+                        
+                        <p style="color: #666; font-size: 14px; margin: 0;">
+                            <strong>Hormat kami,</strong><br>
+                            <span style="color: #2c3e50;">Tim Sistem BAPPENDA</span>
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+        
+        // Menggunakan sendEmailSafe untuk error handling yang robust
+        const result = await sendEmailSafe(mailOptions);
+        
+        if (result.success) {
+            console.log(`✅ Rejection email sent successfully to ${email} for nobooking: ${nobooking}`);
+            return { success: true, message: 'Rejection email sent successfully' };
+        } else {
+            console.error(`❌ Failed to send rejection email to ${email}:`, result.error);
+            return { success: false, error: result.error };
+        }
+        
+    } catch (error) {
+        console.error(`❌ Error in sendRejectionEmail for ${email}:`, error.message);
+        return { success: false, error: error.message };
+    }
+};

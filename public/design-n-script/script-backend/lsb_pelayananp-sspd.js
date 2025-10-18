@@ -426,7 +426,7 @@ async function sendToPPAT_complete(item) {
                 namapemilikobjekpajak: item.namapemilikobjekpajak,
                 tanggal_terima: item.tanggal_terima,
                 status: 'Terselesaikan',  // Status yang dikirim dari frontend
-                trackstatus: 'Terselesaikan',  // Trackstatus yang dikirim dari frontend
+                trackstatus: 'Diserahkan',  // Trackstatus yang dikirim dari frontend
                 keterangan: item.keterangan,
             }),
         });
