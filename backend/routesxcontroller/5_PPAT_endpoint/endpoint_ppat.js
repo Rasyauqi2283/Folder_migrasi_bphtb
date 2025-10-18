@@ -26,10 +26,9 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
                 recipient_id,
                 title,
                 message,
-                booking_id,
                 is_read,
                 created_at
-            ) VALUES ($1, $2, $3, $4, $5, NOW())
+            ) VALUES ($1, $2, $3, $4, NOW())
             RETURNING id
         `;
 
@@ -51,7 +50,6 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
             recipientId,
             title,
             message,
-            nobooking,
             false // is_read
         ];
 
