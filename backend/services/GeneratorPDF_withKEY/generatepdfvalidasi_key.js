@@ -233,10 +233,14 @@ const jenisPerolehanMap = {
     doc.moveTo(50, bphtbTop).lineTo(550, bphtbTop).stroke();
     doc.moveTo(375, bphtbTop).lineTo(375, bphtbTop + 150).stroke();
 
-    const npop = Number(data.npop || data.harga_transaksi || 0);
+    // Perhitungan NPOP: bandingkan harga_transaksi vs total_njoppbb, ambil yang lebih besar
+    const hargaTransaksi = Number(data.harga_transaksi || 0);
+    const totalNJOPPBB = totalNJOP; // Sudah dihitung di atas
+    const npop = Math.max(hargaTransaksi, totalNJOPPBB);
+    
     const npoptkp = Number(data.npop_tkp || data.nilaiPerolehanObjekPajakTidakKenaPajak || 60000000);
-    const npopkp = Math.max(0, Number(data.npop_kp || (npop - npoptkp)));
-    const bphtbTerutang = Number(data.bphtb || Math.round(0.05 * npopkp));
+    const npopkp = Math.max(0, npop - npoptkp);
+    const bphtbTerutang = Math.round(0.05 * npopkp);
     const pengurangan = 0;
     const denda = 0;
     const harusDibayar = bphtbTerutang - pengurangan - denda;
@@ -252,7 +256,7 @@ const jenisPerolehanMap = {
         { label: '6. Denda  0,00', formula: '', code: '', value: '0,00' },
         { label: '7. Bea Perolehan Hak atas Tanah dan Bangunan yang harus dibayar', formula: '4 - 6', code: '6', value: formatNumber(harusDibayar) },
         { label: '8. Bea Perolehan Hak atas Tanah dan Bangunan yang telah dibayar', formula: '7', code: '7', value: formatNumber(telahDibayar) },
-        { label: '9. Bea Perolehan Hak atas Tanah dan Bangunan yang kurang dibayar', formula: '6 - 7', code: '8', value: formatNumber(kurangDibayar) }
+        { label: '9. Bea Perolehan Hak atas Tanah dan Bangunan yang kurang dibayar', formula: '7 - 8', code: '9', value: formatNumber(kurangDibayar) }
     ];
     const colX = [50, 330, 430, 450, 550];
     bphtbData.forEach((row, index) => {
@@ -282,11 +286,11 @@ const jenisPerolehanMap = {
     doc.text('No Booking', 55, footerY);
     doc.text(String(data.nobooking || ''), 55, footerY + 10);
     doc.text('Tgl Bayar', 55, footerY + 30);
-    doc.text(formatDate(data.tanggal_pembayaran), 55, footerY + 40);
+    doc.text(formatDate(data.tanggal_pembayaran) || 'Belum dibayar', 55, footerY + 40);
     doc.text('No Validasi', 55, footerY + 60);
     doc.text(String(noValidasi || data.no_validasi || ''), 55, footerY + 70);
     doc.text('PPAT / PPATS / NOTARIS', 55, footerY + 90);
-    doc.text(String(data.special_field || ''), 55, footerY + 100);
+    doc.text(String(data.special_field || 'Tidak diketahui'), 55, footerY + 100);
 
     // Tanda tangan kanan + QR
     const rightX = 350;
