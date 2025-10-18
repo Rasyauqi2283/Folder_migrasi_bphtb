@@ -21,18 +21,26 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     // 1) Ambil data dari DB
     const { rows } = await pool.query(
         `SELECT 
-            pb.*, bp.*, o.*, pp.*, vu.nama, vu.special_field,
-            pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path
+            pb.*, bp.*, o.*, pp.*, 
+            vu.nama, vu.special_field,
+            pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path,
+            -- Data dari user yang membuat QR (approved_by)
+            au.nip AS qr_user_nip, au.special_parafv AS qr_user_special_parafv,
+            pc_cert.subject_cn AS qr_user_subject_cn
         FROM pat_1_bookingsspd pb
         LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
         LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
         LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
-         LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid AND pb.nama = vu.nama
-         LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
+        LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid AND pb.nama = vu.nama
+        LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
         LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
         LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
+        -- Join untuk mendapatkan data user yang membuat QR
+        LEFT JOIN pv_2_signing_requests psr ON pav.no_validasi = psr.no_validasi
+        LEFT JOIN a_2_verified_users au ON psr.approved_by = au.userid
+        LEFT JOIN pv_local_certs pc_cert ON psr.approved_by = pc_cert.userid AND pc_cert.status = 'active'
         WHERE pb.nobooking = $1
-         LIMIT 1`,
+        LIMIT 1`,
         [nobooking]
     );
       if (rows.length === 0) {
@@ -94,7 +102,7 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
       .text('2. NPWPD/KTP', 55, boxA_Y + 25)
       .text('3. Alamat Wajib Pajak', 55, boxA_Y + 35)
       .text('4. Kode Pos', 55, boxA_Y + 45)
-      .text(': ' + (data.nama || ''), 205, boxA_Y + 15)
+      .text(': ' + (data.namawajibpajak || ''), 205, boxA_Y + 15)
       .text(': ' + (data.npwpwp || ''), 205, boxA_Y + 25)
       .text(': ' + (data.alamatwajibpajak || ''), 205, boxA_Y + 35)
       .text(': ' + (data.kodeposwp || ''), 205, boxA_Y + 45)
@@ -126,7 +134,7 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
       .text(': ' + (data.rt_rwobjekpajak || ''), 455, boxB_Y + 20)
       .text(': ' + (data.kecamatanlp || ''), 455, boxB_Y + 30)
       .text(': BOGOR', 455, boxB_Y + 40)
-      .text(':', 455, boxB_Y + 50);
+      .text(': ' + (data.kodeposop || ''), 455, boxB_Y + 50);
 
     // === TABEL PERHITUNGAN NJOP ===
     const njopTop = boxB_Y + 65;
@@ -296,7 +304,7 @@ const jenisPerolehanMap = {
     const rightX = 350;
     doc.text('Cibinong, ' + formatDate(new Date()), rightX, footerY, { align: 'center' });
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
-    doc.text(String(pvCn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' }); //<- bagian ini seharusnya pvCn
+    doc.text(String(data.qr_user_subject_cn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' });
     // Generate QR dengan data real dari sertifikat + nomor validasi untuk keunikan
     let qrAbsPath = qrImageAbsPath;
     
@@ -344,8 +352,8 @@ const jenisPerolehanMap = {
     } else {
         doc.text('Tempat QR CODE', rightX, footerY + 30, { align: 'center' });
     }
-    doc.text(String(pvTitle || ''), rightX, footerY + 150, { align: 'center' }); //<- bagian ini seharusnya pvTitle dan const teks 'pvName' akan dihapus di generate pdf
-    doc.text(String(pvNip || ''), rightX, footerY + 160, { align: 'center' });
+    doc.text(String(data.qr_user_special_parafv || 'Tidak diketahui'), rightX, footerY + 160, { align: 'center' });
+    doc.text(String(data.qr_user_nip || 'NIP Tidak Diketahui'), rightX, footerY + 170, { align: 'center' });
 
       doc.end();
       
