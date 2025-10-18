@@ -1491,7 +1491,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 vu.divisi as user_divisi,
                 vu.email as user_email,
                 '2025O' || LPAD(
-                    COALESCE(MAX(CAST(SUBSTRING(ltb.no_registrasi FROM '^2025O(\d+)$') AS INTEGER)), 0) + 1, 
+                    (COALESCE(MAX(CAST(SUBSTRING(ltb.no_registrasi FROM '^2025O(\d+)$') AS INTEGER)), 0) + 1)::text, 
                     6, '0'
                 ) as no_registrasi
             FROM pat_1_bookingsspd b
