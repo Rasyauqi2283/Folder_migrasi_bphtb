@@ -1490,9 +1490,13 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 vu.nama as user_nama,
                 vu.divisi as user_divisi,
                 vu.email as user_email,
-                '2025O' || LPAD(EXTRACT(EPOCH FROM NOW())::text, 6, '0') as no_registrasi
+                '2025O' || LPAD(
+                    COALESCE(MAX(CAST(SUBSTRING(ltb.no_registrasi FROM '^2025O(\d+)$') AS INTEGER)), 0) + 1, 
+                    6, '0'
+                ) as no_registrasi
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN ltb_1_terima_berkas_sspd ltb ON ltb.no_registrasi LIKE '2025O%'
             WHERE b.nobooking = $1
         `;
         
@@ -1652,19 +1656,56 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 
             // 📧 Kirim email notifikasi pengiriman dokumen (Draft → Diolah)
             try {
+                console.log(`🔍 [EMAIL-DEBUG] Starting email process for nobooking: ${nobooking}`);
+                console.log(`🔍 [EMAIL-DEBUG] Booking data:`, {
+                    userid: bookingData.userid,
+                    user_email: bookingData.user_email,
+                    user_divisi: bookingData.user_divisi,
+                    no_registrasi: bookingData.no_registrasi
+                });
+                
+                // Cek status email service
+                const { getEmailService } = await import('../../services/emailservice.js');
+                const emailServiceStatus = getEmailService();
+                console.log(`🔍 [EMAIL-DEBUG] Email service status:`, emailServiceStatus);
+                
+                if (!emailServiceStatus) {
+                    console.warn(`⚠️ [EMAIL-DEBUG] No email service available - check environment variables`);
+                    console.warn(`⚠️ [EMAIL-DEBUG] Required: SENDGRID_API_KEY or (EMAIL_USER + EMAIL_PASS)`);
+                }
+                
                 const { sendDocumentSubmissionEmail } = await import('../../services/emailservice.js');
                 const userEmail = bookingData.user_email;
                 const noRegistrasi = bookingData.no_registrasi || '-';
                 const userType = bookingData.user_divisi || 'PPAT';
                 
+                console.log(`🔍 [EMAIL-DEBUG] Email parameters:`, {
+                    userEmail,
+                    nobooking,
+                    noRegistrasi,
+                    userType
+                });
+                
                 if (userEmail) {
-                    await sendDocumentSubmissionEmail(userEmail, nobooking, noRegistrasi, userType);
-                    console.log(`✅ Document submission email sent to ${userEmail} for nobooking: ${nobooking}`);
+                    console.log(`📧 [EMAIL-DEBUG] Attempting to send email to: ${userEmail}`);
+                    const emailResult = await sendDocumentSubmissionEmail(userEmail, nobooking, noRegistrasi, userType);
+                    console.log(`✅ [EMAIL-DEBUG] Email result:`, emailResult);
+                    
+                    if (emailResult.success) {
+                        console.log(`✅ Document submission email sent to ${userEmail} for nobooking: ${nobooking}`);
+                    } else {
+                        console.error(`❌ [EMAIL-DEBUG] Email failed:`, emailResult.error);
+                    }
                 } else {
-                    console.warn(`⚠️ No email found for user ${bookingData.userid}, skipping email notification`);
+                    console.warn(`⚠️ [EMAIL-DEBUG] No email found for user ${bookingData.userid}, skipping email notification`);
                 }
             } catch (emailError) {
-                console.error(`❌ Failed to send document submission email for nobooking ${nobooking}:`, emailError.message);
+                console.error(`❌ [EMAIL-DEBUG] Failed to send document submission email for nobooking ${nobooking}:`, emailError);
+                console.error(`❌ [EMAIL-DEBUG] Error details:`, {
+                    message: emailError.message,
+                    stack: emailError.stack,
+                    name: emailError.name
+                });
             }
         } else {
             console.warn('⚠️ [SEND-NOW] Booking data not found for LTB/Bank insert');
