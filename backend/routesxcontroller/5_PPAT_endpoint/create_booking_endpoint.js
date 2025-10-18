@@ -97,28 +97,22 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 throw new Error('User does not have ppatk_khusus assigned');
             }
             
-            // Generate sequence number for this year
+            // Generate next sequence for this ppatk_khusus-year based on MAX existing nobooking
             const currentYear = new Date().getFullYear();
-            const sequenceQuery = `
-                SELECT COUNT(*) + 1 as next_sequence 
-                FROM pat_1_bookingsspd 
-                WHERE userid = $1 AND EXTRACT(YEAR FROM created_at) = $2
+            const prefix = `${ppatk_khusus}-${currentYear}-`;
+            const nextSeqQuery = `
+                SELECT COALESCE(MAX(CAST(SUBSTRING(nobooking FROM '^[^-]+-[^-]+-(\\d+)$') AS INTEGER)), 0) + 1 AS next_sequence
+                FROM pat_1_bookingsspd
+                WHERE nobooking LIKE $1
             `;
+            const sequenceResult = await pool.query(nextSeqQuery, [prefix + '%']);
+            const sequenceNumber = parseInt(sequenceResult.rows[0].next_sequence, 10);
             
-            const sequenceResult = await pool.query(sequenceQuery, [userid, currentYear]);
-            const sequenceNumber = sequenceResult.rows[0].next_sequence;
+            // Generate nobooking in format: {ppatk_khusus}-{tahun}-{sequence(6)}
+            const formattedSequence = String(sequenceNumber).padStart(6, '0');
+            const nobooking = `${ppatk_khusus}-${currentYear}-${formattedSequence}`;
             
-            // Generate nobooking in format: ppatk_khusus_tahun_sequence (6 digits)
-            const formattedSequence = sequenceNumber.toString().padStart(6, '0');
-            const nobooking = `${ppatk_khusus}_${currentYear}_${formattedSequence}`;
-            
-            console.log('📝 [PPATK] Generated nobooking:', {
-                ppatk_khusus,
-                currentYear,
-                sequenceNumber,
-                formattedSequence,
-                nobooking
-            });
+            console.log('📝 [PPATK] Generated nobooking:', { ppatk_khusus, currentYear, sequenceNumber, formattedSequence, nobooking });
             
             console.log('📝 [PPATK] Starting transaction for booking creation...');
             
