@@ -4197,7 +4197,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
         const emailDataQuery = await pool.query(
             `SELECT 
                 b.userid,
-                b.no_registrasi,
+                COALESCE(pv.no_registrasi, lsb.no_registrasi) AS no_registrasi,
                 vu.email,
                 vu.nama,
                 vu.divisi,
@@ -4205,6 +4205,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
              FROM pat_1_bookingsspd b
              LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
              LEFT JOIN pv_1_paraf_validate pv ON b.nobooking = pv.nobooking
+             LEFT JOIN lsb_1_serah_berkas lsb ON b.nobooking = lsb.nobooking
              WHERE b.nobooking = $1
              LIMIT 1`,
             [nobooking]
@@ -4268,7 +4269,6 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
                     const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
                     const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 hari
                     const tokenPayload = `${nobooking}.${noValidasi}.${expires}`;
-                    const crypto = require('crypto');
                     const signature = crypto.createHmac('sha256', secret).update(tokenPayload).digest('hex');
                     const token = Buffer.from(`${tokenPayload}.${signature}`).toString('base64url');
                     const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app';
@@ -4345,7 +4345,6 @@ app.get('/api/public/validasi-download/:token', async (req, res) => {
 
     // Verify HMAC signature
     const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
-    const crypto = require('crypto');
     const expected = crypto.createHmac('sha256', secret).update(`${nobooking}.${noValidasi}.${expires}`).digest('hex');
     if (expected !== signature) return res.status(401).send('Unauthorized');
 
