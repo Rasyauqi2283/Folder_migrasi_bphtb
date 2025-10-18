@@ -4219,7 +4219,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
             const noValidasi = emailData.no_validasi;
             const userType = emailData.divisi; // PPAT atau PPATS
             
-            if (userEmail && noRegistrasi && noValidasi) {
+            if (userEmail && noValidasi) {
                 try {
                     const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
                     // 1) Generate PDF final sebagai file sementara
@@ -4229,6 +4229,20 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
                     try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
 
                     try {
+                        // Cari userid Peneliti Validasi untuk QR
+                        let pvUserId = null;
+                        try {
+                            const r = await pool.query(
+                                `SELECT avpv.userid AS pv_userid
+                                 FROM pv_1_paraf_validate par
+                                 LEFT JOIN a_2_verified_users avpv ON avpv.tanda_tangan_path = par.tanda_tangan_validasi_path
+                                 WHERE par.nobooking = $1
+                                 LIMIT 1`,
+                                [nobooking]
+                            );
+                            pvUserId = r?.rows?.[0]?.pv_userid || null;
+                        } catch(_) {}
+
                         await buildValidasiPdf({
                             pool,
                             nobooking,
@@ -4240,7 +4254,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
                             pvCn: 'BAPPENDA',
                             qrImageAbsPath: null,
                             passphrase: 'bappenda2025',
-                            pvUserid: req.session.user.userid
+                            pvUserid: pvUserId
                         });
                     } catch (pdfErr) {
                         console.error('❌ [LSB] Gagal membuat PDF untuk lampiran email:', pdfErr.message);
@@ -4278,7 +4292,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
                     await sendDocumentCompletionEmail(
                         userEmail,
                         nobooking,
-                        noRegistrasi,
+                        (noRegistrasi || '-'),
                         noValidasi,
                         userType,
                         { attachments, publicDownloadUrl }

@@ -647,6 +647,7 @@ export const sendDocumentSubmissionEmail = async (email, nobooking, noRegistrasi
         const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
         
         const mailOptions = {
+            from: process.env.EMAIL_USER || 'noreply@bappenda.com',
             to: email,
             subject: `Dokumen Permohonan Telah Dikirim - ${nobooking}`,
             text: `Halo ${userName},\n\nDokumen permohonan Anda telah berhasil dikirimkan ke sistem BAPPENDA.\n\nDetail Pengiriman:\n- Nomor Booking: ${nobooking}\n- Nomor Registrasi: ${noRegistrasi}\n- Status: Sedang Diolah\n\nMohon ditunggu hingga dokumen selesai diproses. Anda akan menerima notifikasi email ketika dokumen telah selesai.\n\nHormat kami,\nTim BAPPENDA`,
@@ -734,7 +735,8 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
         const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
         const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
         
-    const mailOptions = {
+        const mailOptions = {
+            from: process.env.EMAIL_USER || 'noreply@bappenda.com',
             to: email,
             subject: `Dokumen Permohonan Telah Selesai - ${nobooking}`,
             text: `Halo ${userName},\n\nDokumen permohonan Anda telah dinyatakan lulus dan selesai diproses.\n\nDetail Penyelesaian:\n- Nomor Booking: ${nobooking}\n- Nomor Registrasi: ${noRegistrasi}\n- Nomor Validasi: ${noValidasi}\n- Status: Diserahkan\n\nDokumen telah selesai diproses dan dapat diambil sesuai ketentuan yang berlaku.\n\nHormat kami,\nTim BAPPENDA`,
@@ -830,6 +832,7 @@ export const sendRejectionEmail = async (email, nobooking, rejectionReason, reje
         const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
         
         const mailOptions = {
+            from: process.env.EMAIL_USER || 'noreply@bappenda.com',
             to: email,
             subject: `Dokumen Permohonan Ditolak - ${nobooking}`,
             text: `Halo ${userName},\n\nDokumen permohonan dengan nomor booking ${nobooking} telah ditolak.\n\nAlasan penolakan: ${rejectionReason}\n\nDitolak oleh: ${rejectedBy}\n\nSilakan perbaiki dokumen sesuai dengan alasan penolakan dan ajukan kembali.\n\nHormat kami,\nTim BAPPENDA`,
