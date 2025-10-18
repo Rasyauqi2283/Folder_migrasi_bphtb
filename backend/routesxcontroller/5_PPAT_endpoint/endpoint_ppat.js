@@ -24,11 +24,12 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
         const notificationQuery = `
             INSERT INTO sys_notifications (
                 recipient_id,
+                recipient_divisi,
                 title,
                 message,
                 is_read,
                 created_at
-            ) VALUES ($1, $2, $3, $4, NOW())
+            ) VALUES ($1, $2, $3, $4, $5, NOW())
             RETURNING id
         `;
 
@@ -37,9 +38,10 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
                      trackstatus === 'Pending' ? '⏳ Booking dalam Antrian' : 
                      '📋 Status Booking Diperbarui';
 
-        // Get user ID from userid
-        const userQuery = await pool.query('SELECT id FROM a_2_verified_users WHERE userid = $1', [userid]);
+        // Get user ID and divisi from userid
+        const userQuery = await pool.query('SELECT id, divisi FROM a_2_verified_users WHERE userid = $1', [userid]);
         const recipientId = userQuery.rows.length > 0 ? userQuery.rows[0].id : null;
+        const recipientDivisi = userQuery.rows.length > 0 ? userQuery.rows[0].divisi : null;
         
         if (!recipientId) {
             console.warn(`⚠️ [NOTIFICATION] User ID not found for userid: ${userid}`);
@@ -48,6 +50,7 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
 
         const notificationParams = [
             recipientId,
+            recipientDivisi,
             title,
             message,
             false // is_read
