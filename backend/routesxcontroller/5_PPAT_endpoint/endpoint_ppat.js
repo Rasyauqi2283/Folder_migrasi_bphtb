@@ -22,12 +22,12 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
 
         // 1. Insert notification ke database
         const notificationQuery = `
-            INSERT INTO notifications (
-                userid,
+            INSERT INTO sys_notifications (
+                recipient_id,
                 title,
                 message,
                 type,
-                related_booking,
+                booking_id,
                 trackstatus,
                 is_read,
                 created_at
@@ -39,8 +39,17 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
                      trackstatus === 'Pending' ? '⏳ Booking dalam Antrian' : 
                      '📋 Status Booking Diperbarui';
 
+        // Get user ID from userid
+        const userQuery = await pool.query('SELECT id FROM a_2_verified_users WHERE userid = $1', [userid]);
+        const recipientId = userQuery.rows.length > 0 ? userQuery.rows[0].id : null;
+        
+        if (!recipientId) {
+            console.warn(`⚠️ [NOTIFICATION] User ID not found for userid: ${userid}`);
+            return;
+        }
+
         const notificationParams = [
-            userid,
+            recipientId,
             title,
             message,
             type,
