@@ -1524,7 +1524,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 // Update existing record
                 const updateLtbQuery = `
                     UPDATE ltb_1_terima_berkas_sspd 
-                    SET trackstatus = $1, updated_at = NOW()
+                    SET trackstatus = $1
                     WHERE nobooking = $2
                     RETURNING id
                 `;
@@ -1579,7 +1579,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 // Update existing record
                 const updateBankQuery = `
                     UPDATE bank_1_cek_hasil_transaksi 
-                    SET status_verifikasi = $1, status_dibank = $2, updated_at = NOW()
+                    SET status_verifikasi = $1, status_dibank = $2
                     WHERE nobooking = $3
                     RETURNING id
                 `;
@@ -1767,7 +1767,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                         // Update existing record
                         const updateLtbQuery = `
                             UPDATE ltb_1_terima_berkas_sspd 
-                            SET trackstatus = $1, updated_at = NOW()
+                            SET trackstatus = $1
                             WHERE nobooking = $2
                             RETURNING id
                         `;
@@ -1822,7 +1822,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                         // Update existing record
                         const updateBankQuery = `
                             UPDATE bank_1_cek_hasil_transaksi 
-                            SET status_verifikasi = $1, status_dibank = $2, updated_at = NOW()
+                            SET status_verifikasi = $1, status_dibank = $2
                             WHERE nobooking = $3
                             RETURNING id
                         `;
