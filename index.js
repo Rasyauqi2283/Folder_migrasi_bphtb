@@ -4221,13 +4221,70 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
             if (userEmail && noRegistrasi && noValidasi) {
                 try {
                     const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
+                    // 1) Generate PDF final sebagai file sementara
+                    const ts = Date.now();
+                    const outName = `validasi_${nobooking}_${ts}.pdf`;
+                    const outPath = path.join(process.cwd(), 'temp_uploads', outName);
+                    try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
+
+                    try {
+                        await buildValidasiPdf({
+                            pool,
+                            nobooking,
+                            noValidasi,
+                            outputPath: outPath,
+                            pvName: 'Peneliti Validasi',
+                            pvNip: 'NIP Tidak Diketahui',
+                            pvTitle: 'Pejabat Penandatangan',
+                            pvCn: 'BAPPENDA',
+                            qrImageAbsPath: null,
+                            passphrase: 'bappenda2025',
+                            pvUserid: req.session.user.userid
+                        });
+                    } catch (pdfErr) {
+                        console.error('❌ [LSB] Gagal membuat PDF untuk lampiran email:', pdfErr.message);
+                    }
+
+                    // 2) Attachment jika file kecil
+                    let attachments = [];
+                    try {
+                        if (fs.existsSync(outPath)) {
+                            const stats = fs.statSync(outPath);
+                            const sizeMb = stats.size / (1024 * 1024);
+                            if (sizeMb <= 10) {
+                                const b64 = fs.readFileSync(outPath).toString('base64');
+                                attachments.push({
+                                    filename: `Validasi_${nobooking}.pdf`,
+                                    contentBase64: b64,
+                                    mimeType: 'application/pdf'
+                                });
+                            }
+                        }
+                    } catch (attErr) {
+                        console.warn('⚠️ [LSB] Tidak dapat menyiapkan attachment PDF:', attErr.message);
+                    }
+
+                    // 3) Buat signed link publik yang kedaluwarsa
+                    const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
+                    const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 hari
+                    const tokenPayload = `${nobooking}.${noValidasi}.${expires}`;
+                    const crypto = require('crypto');
+                    const signature = crypto.createHmac('sha256', secret).update(tokenPayload).digest('hex');
+                    const token = Buffer.from(`${tokenPayload}.${signature}`).toString('base64url');
+                    const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app';
+                    const publicDownloadUrl = `${baseUrl}/api/public/validasi-download/${token}`;
+
+                    // 4) Kirim email
                     await sendDocumentCompletionEmail(
                         userEmail,
                         nobooking,
                         noRegistrasi,
                         noValidasi,
-                        userType
+                        userType,
+                        { attachments, publicDownloadUrl }
                     );
+                    // Hapus file temp jika ada
+                    try { if (fs.existsSync(outPath)) fs.unlinkSync(outPath); } catch(_) {}
                     console.log(`✅ Document completion email sent to ${userEmail} for nobooking: ${nobooking}`);
                 } catch (emailError) {
                     console.error(`❌ Failed to send document completion email to ${userEmail}:`, emailError.message);
@@ -4262,6 +4319,79 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
     } finally {
         client.release();
     }
+});
+
+
+// Public download endpoint untuk validasi PDF dengan token bertanda tangan
+app.get('/api/public/validasi-download/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token) return res.status(400).send('Bad Request');
+
+    // Decode token: base64url(nobooking.noValidasi.expires.signature)
+    let decoded;
+    try {
+      decoded = Buffer.from(token, 'base64url').toString('utf8');
+    } catch (_) {
+      return res.status(400).send('Invalid token');
+    }
+
+    const parts = decoded.split('.');
+    if (parts.length !== 4) return res.status(400).send('Invalid token');
+    const [nobooking, noValidasi, expiresStr, signature] = parts;
+    const expires = Number(expiresStr);
+    if (!nobooking || !noValidasi || !expires || !signature) return res.status(400).send('Invalid token');
+    if (Date.now() > expires) return res.status(410).send('Link expired');
+
+    // Verify HMAC signature
+    const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
+    const crypto = require('crypto');
+    const expected = crypto.createHmac('sha256', secret).update(`${nobooking}.${noValidasi}.${expires}`).digest('hex');
+    if (expected !== signature) return res.status(401).send('Unauthorized');
+
+    // Generate PDF on the fly to stream (no session needed)
+    const ts = Date.now();
+    const outName = `validasi_${nobooking}_${ts}.pdf`;
+    const outPath = path.join(process.cwd(), 'temp_uploads', outName);
+    try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
+
+    // Ambil userid PV dari data validasi untuk QR
+    let pvUserId = null;
+    try {
+      const r = await pool.query(
+        `SELECT avpv.userid AS pv_userid
+         FROM pv_1_paraf_validate par
+         LEFT JOIN a_2_verified_users avpv ON avpv.tanda_tangan_path = par.tanda_tangan_validasi_path
+         WHERE par.nobooking = $1
+         LIMIT 1`,
+        [nobooking]
+      );
+      pvUserId = r?.rows?.[0]?.pv_userid || null;
+    } catch (_) {}
+
+    await buildValidasiPdf({
+      pool,
+      nobooking,
+      noValidasi,
+      outputPath: outPath,
+      pvName: 'Peneliti Validasi',
+      pvNip: 'NIP Tidak Diketahui',
+      pvTitle: 'Pejabat Penandatangan',
+      pvCn: 'BAPPENDA',
+      qrImageAbsPath: null,
+      passphrase: 'bappenda2025',
+      pvUserid: pvUserId
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="validasi_${nobooking}.pdf"`);
+    const s = fs.createReadStream(outPath);
+    s.pipe(res);
+    s.on('close', () => { try { fs.unlinkSync(outPath); } catch(_) {} });
+  } catch (e) {
+    console.error('public download error:', e.message);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 

@@ -148,10 +148,16 @@ export async function sendEmailSafe(mailOptions) {
       return { skipped: true };
     }
 
+    // Jika ada attachments, gunakan jalur yang mendukung lampiran
+    if (Array.isArray(mailOptions.attachments) && mailOptions.attachments.length > 0) {
+      const result = await sendEmailWithFallback(mailOptions);
+      return { success: true, info: result };
+    }
+
     // Extract email data from mailOptions
     const { to, subject, text, html } = mailOptions;
     
-    // Use universal email function with SendGrid
+    // Use universal email function with SendGrid/SMTP (tanpa lampiran)
     const result = await sendEmail(to, subject, text, html);
     
     console.log('✅ Email sent successfully', { 
@@ -239,7 +245,15 @@ export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
                     from: mailOptions.from,
                     subject: mailOptions.subject,
                     text: mailOptions.text,
-                    html: mailOptions.html
+          html: mailOptions.html,
+          attachments: Array.isArray(mailOptions.attachments)
+            ? mailOptions.attachments.map(att => ({
+                content: att.contentBase64 || att.content || att.base64, // base64 string
+                filename: att.filename,
+                type: att.contentType || att.mimeType || 'application/octet-stream',
+                disposition: att.disposition || 'attachment'
+              }))
+            : undefined
                 };
                 
                 info = await Promise.race([
@@ -260,8 +274,23 @@ export const sendEmailWithFallback = async (mailOptions, maxRetries = 2) => {
                     throw new Error('SMTP connection failed');
                 }
                 
-                info = await Promise.race([
-                    gmailTransporter.sendMail(mailOptions),
+        const smtpOptions = {
+          from: mailOptions.from,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+          text: mailOptions.text,
+          html: mailOptions.html,
+          attachments: Array.isArray(mailOptions.attachments)
+            ? mailOptions.attachments.map(att => ({
+                filename: att.filename,
+                content: att.buffer || (att.contentBase64 ? Buffer.from(att.contentBase64, 'base64') : att.content),
+                contentType: att.contentType || att.mimeType || 'application/octet-stream'
+              }))
+            : undefined
+        };
+
+        info = await Promise.race([
+          gmailTransporter.sendMail(smtpOptions),
                     new Promise((_, reject) => 
                         setTimeout(() => reject(new Error('Gmail SMTP timeout after 20 seconds')), 20000)
                     )
@@ -691,9 +720,10 @@ export const sendDocumentSubmissionEmail = async (email, nobooking, noRegistrasi
 };
 
 // Mengirim notifikasi email penyelesaian dokumen (Diolah → Diserahkan)
-export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi, noValidasi, userType = 'PPAT') => {
+export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi, noValidasi, userType = 'PPAT', options = {}) => {
     try {
         console.log(`📧 Sending document completion email to ${email} for nobooking: ${nobooking}`);
+    const { attachments = [], publicDownloadUrl = null } = options || {};
         
         // Ambil data user dari database untuk personalisasi
         const userQuery = await pool.query(
@@ -704,11 +734,11 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
         const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
         const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
         
-        const mailOptions = {
+    const mailOptions = {
             to: email,
             subject: `Dokumen Permohonan Telah Selesai - ${nobooking}`,
             text: `Halo ${userName},\n\nDokumen permohonan Anda telah dinyatakan lulus dan selesai diproses.\n\nDetail Penyelesaian:\n- Nomor Booking: ${nobooking}\n- Nomor Registrasi: ${noRegistrasi}\n- Nomor Validasi: ${noValidasi}\n- Status: Diserahkan\n\nDokumen telah selesai diproses dan dapat diambil sesuai ketentuan yang berlaku.\n\nHormat kami,\nTim BAPPENDA`,
-            html: `
+      html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
                         <h1 style="margin: 0; font-size: 24px;">🎉 Dokumen Telah Selesai</h1>
@@ -742,6 +772,13 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
                                 <li>QR Code telah terintegrasi untuk verifikasi keaslian</li>
                             </ul>
                         </div>
+
+            ${publicDownloadUrl ? `
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${publicDownloadUrl}" style="background: #10b981; color: white; padding: 12px 18px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">⬇️ Unduh Dokumen Tanpa Login</a>
+              <p style="margin-top:8px; color:#6b7280; font-size:12px;">Tautan berlaku terbatas waktu untuk keamanan.</p>
+            </div>
+            ` : ''}
                         
                         <div style="text-align: center; margin: 30px 0;">
                             <a href="${process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app'}/login.html" 
@@ -758,8 +795,9 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
                         </p>
                     </div>
                 </div>
-            `
-        };
+      `,
+      attachments: attachments
+    };
         
         // Menggunakan sendEmailSafe untuk error handling yang robust
         const result = await sendEmailSafe(mailOptions);
