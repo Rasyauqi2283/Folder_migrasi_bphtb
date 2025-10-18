@@ -97,22 +97,9 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 throw new Error('User does not have ppatk_khusus assigned');
             }
             
-            // Generate next sequence for this ppatk_khusus-year based on MAX existing nobooking
-            const currentYear = new Date().getFullYear();
-            const prefix = `${ppatk_khusus}-${currentYear}-`;
-            const nextSeqQuery = `
-                SELECT COALESCE(MAX(CAST(SUBSTRING(nobooking FROM '^[^-]+-[^-]+-(\\d+)$') AS INTEGER)), 0) + 1 AS next_sequence
-                FROM pat_1_bookingsspd
-                WHERE nobooking LIKE $1
-            `;
-            const sequenceResult = await pool.query(nextSeqQuery, [prefix + '%']);
-            const sequenceNumber = parseInt(sequenceResult.rows[0].next_sequence, 10);
-            
-            // Generate nobooking in format: {ppatk_khusus}-{tahun}-{sequence(6)}
-            const formattedSequence = String(sequenceNumber).padStart(6, '0');
-            const nobooking = `${ppatk_khusus}-${currentYear}-${formattedSequence}`;
-            
-            console.log('📝 [PPATK] Generated nobooking:', { ppatk_khusus, currentYear, sequenceNumber, formattedSequence, nobooking });
+            // Let database trigger generate nobooking automatically
+            // Trigger trg_nobooking will handle nobooking generation based on ppatk_khusus and year
+            console.log('📝 [PPATK] Letting database trigger generate nobooking for ppatk_khusus:', ppatk_khusus);
             
             console.log('📝 [PPATK] Starting transaction for booking creation...');
             
@@ -121,10 +108,9 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
             try {
                 await client.query('BEGIN');
                 
-                // 1. Insert booking data (parent table)
+                // 1. Insert booking data (parent table) - let trigger generate nobooking
                 const insertBookingQuery = `
                     INSERT INTO pat_1_bookingsspd (
-                        nobooking,
                         jenis_wajib_pajak,
                         userid,
                         noppbb,
@@ -147,12 +133,11 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                         npwpop,
                         kodeposop,
                         trackstatus
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
                     RETURNING nobooking
                 `;
                 
                 const bookingParams = [
-                    nobooking,
                     jenis_wajib_pajak,
                     userid,
                     noppbb,
