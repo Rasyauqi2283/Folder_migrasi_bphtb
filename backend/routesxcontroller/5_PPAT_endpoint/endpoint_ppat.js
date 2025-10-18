@@ -26,12 +26,11 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
                 recipient_id,
                 title,
                 message,
-                type,
                 booking_id,
                 trackstatus,
                 is_read,
                 created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
             RETURNING id
         `;
 
@@ -53,7 +52,6 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
             recipientId,
             title,
             message,
-            type,
             nobooking,
             trackstatus,
             false // is_read
@@ -1490,7 +1488,9 @@ app.post('/api/ppatk/send-now', async (req, res) => {
             SELECT 
                 b.*,
                 vu.nama as user_nama,
-                vu.divisi as user_divisi
+                vu.divisi as user_divisi,
+                vu.email as user_email,
+                COALESCE(b.no_registrasi, '2025O' || LPAD(EXTRACT(EPOCH FROM NOW())::text, 6, '0')) as no_registrasi
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             WHERE b.nobooking = $1
@@ -1650,7 +1650,22 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 type: 'success'
             });
 
-            // Email khusus tahap ini dinonaktifkan sesuai kebijakan (hanya kirim saat PPAT→LTB dan LSB→PPAT)
+            // 📧 Kirim email notifikasi pengiriman dokumen (Draft → Diolah)
+            try {
+                const { sendDocumentSubmissionEmail } = await import('../../services/emailservice.js');
+                const userEmail = bookingData.user_email;
+                const noRegistrasi = bookingData.no_registrasi || '-';
+                const userType = bookingData.user_divisi || 'PPAT';
+                
+                if (userEmail) {
+                    await sendDocumentSubmissionEmail(userEmail, nobooking, noRegistrasi, userType);
+                    console.log(`✅ Document submission email sent to ${userEmail} for nobooking: ${nobooking}`);
+                } else {
+                    console.warn(`⚠️ No email found for user ${bookingData.userid}, skipping email notification`);
+                }
+            } catch (emailError) {
+                console.error(`❌ Failed to send document submission email for nobooking ${nobooking}:`, emailError.message);
+            }
         } else {
             console.warn('⚠️ [SEND-NOW] Booking data not found for LTB/Bank insert');
         }
