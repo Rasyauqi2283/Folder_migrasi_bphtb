@@ -1490,7 +1490,7 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                 vu.nama as user_nama,
                 vu.divisi as user_divisi,
                 vu.email as user_email,
-                COALESCE(b.no_registrasi, '2025O' || LPAD(EXTRACT(EPOCH FROM NOW())::text, 6, '0')) as no_registrasi
+                '2025O' || LPAD(EXTRACT(EPOCH FROM NOW())::text, 6, '0') as no_registrasi
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             WHERE b.nobooking = $1
