@@ -322,12 +322,158 @@
     color: #fff;
   }
 
+  /* ========== PAGINATION STYLES ========== */
+  .pagination-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border: 1px solid rgba(20,30,50,0.06);
+    border-radius: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .pagination-info {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(74,144,226,0.2);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+  }
+
+  .pagination-btn:hover:not(:disabled) {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .pagination-btn:disabled {
+    background: #f5f5f5;
+    color: #ccc;
+    border-color: #e0e0e0;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .page-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid rgba(74,144,226,0.2);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .page-number:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .page-number.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .page-number.ellipsis {
+    cursor: default;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .page-number.ellipsis:hover {
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pagination-size label {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .pagination-select {
+    padding: 6px 10px;
+    border: 1px solid rgba(74,144,226,0.2);
+    background: #fff;
+    color: var(--accent);
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .pagination-select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(74,144,226,0.1);
+  }
+
   /* responsive */
   @media (max-width:1100px){
     .main-layout{ grid-template-columns: 1fr; }
     .notifications-panel{ order:1 }
     .status-panel{ order:2 }
     .search{ min-width:160px; }
+    
+    .pagination-container {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 16px;
+    }
+    
+    .pagination-controls {
+      justify-content: center;
+    }
+    
+    .pagination-size {
+      justify-content: center;
+    }
   }
 
 </style>
@@ -680,6 +826,39 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+          <div class="pagination-info">
+            <span id="paginationInfo">Menampilkan 0 dari 0 data</span>
+          </div>
+          <div class="pagination-controls">
+            <button id="firstPage" class="pagination-btn" disabled>
+              <i class="fa fa-angle-double-left"></i>
+            </button>
+            <button id="prevPage" class="pagination-btn" disabled>
+              <i class="fa fa-angle-left"></i>
+            </button>
+            <div class="pagination-pages" id="paginationPages">
+              <!-- Page numbers will be inserted here -->
+            </div>
+            <button id="nextPage" class="pagination-btn" disabled>
+              <i class="fa fa-angle-right"></i>
+            </button>
+            <button id="lastPage" class="pagination-btn" disabled>
+              <i class="fa fa-angle-double-right"></i>
+            </button>
+          </div>
+          <div class="pagination-size">
+            <label for="pageSize">Per halaman:</label>
+            <select id="pageSize" class="pagination-select">
+              <option value="10" selected>10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
       </section>
 
       <!-- Status PPAT sidebar -->
@@ -726,6 +905,13 @@ let currentCategory = 'ppat_ltb'; // default
 window.currentCategory = currentCategory;
 const segButtons = document.querySelectorAll('.segmented .seg-btn');
 const notifBody = document.getElementById('notifBody');
+
+// Pagination state
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let totalItems = 0;
+let allData = []; // Store all data for client-side pagination
 
 // Function to update table headers based on category
 function updateTableHeaders(category) {
@@ -808,6 +994,9 @@ segButtons.forEach(btn=>{
     // Update global variable
     window.currentCategory = currentCategory;
     
+    // Reset pagination when switching categories
+    currentPage = 1;
+    
     // Update table headers based on category
     updateTableHeaders(currentCategory);
     
@@ -826,12 +1015,16 @@ segButtons.forEach(btn=>{
 
 /* search */
 notifSearch.addEventListener('input', ()=> {
+  // Reset pagination when searching
+  currentPage = 1;
   if (window.loadNotificationsFromScope) {
     window.loadNotificationsFromScope();
   }
 });
 clearSearch.addEventListener('click', ()=>{ 
   notifSearch.value=''; 
+  // Reset pagination when clearing search
+  currentPage = 1;
   if (window.loadNotificationsFromScope) {
     window.loadNotificationsFromScope();
   }
@@ -1504,7 +1697,7 @@ renderNotifications();
         const tbody = qs('#notifTable tbody');
         
         // Show loading indicator
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--muted)">Loading...</td></tr>';
         
         let url = '';
         let expectedCols = 9;
@@ -1513,17 +1706,18 @@ renderNotifications();
         const searchInput = qs('#notifSearch');
         const search = (searchInput?.value || '').trim();
         
+        // Fetch all data first (without pagination) for client-side pagination
         if (currentCat === 'ppat_ltb') {
-          url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=1000${search ? `&search=${encodeURIComponent(search)}` : ''}`;
         } else if (currentCat === 'ltb_lsb') {
-          url = `/api/admin/notification-warehouse/peneliti-lsb?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          url = `/api/admin/notification-warehouse/peneliti-lsb?page=1&limit=1000${search ? `&search=${encodeURIComponent(search)}` : ''}`;
           expectedCols = 10; // Additional column for peneliti workflow
         } else if (currentCat === 'lsb_ppat') {
-          url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`;
+          url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=1000${search ? `&search=${encodeURIComponent(search)}` : ''}`;
           expectedCols = 9;
         } else {
           // For other categories, use sample data for now
-          url = '/api/admin/status-ppat/notifications?page=1&limit=50';
+          url = '/api/admin/status-ppat/notifications?page=1&limit=1000';
         }
         
         console.log('🔍 Fetching from URL:', url);
@@ -1555,18 +1749,41 @@ renderNotifications();
                   updated: new Date().toLocaleDateString('id-ID')
                 }
               ],
-              pagination: { page: 1, limit: 50, total: 1, totalPages: 1 }
+              pagination: { page: 1, limit: 1000, total: 1, totalPages: 1 }
             };
           } else {
             throw apiError; // Re-throw for other categories
           }
         }
         
+        // Store all data for pagination
+        allData = js.data || [];
+        totalItems = allData.length;
+        totalPages = Math.ceil(totalItems / pageSize);
+        
+        // Reset to first page if current page exceeds total pages
+        if (currentPage > totalPages) {
+          currentPage = 1;
+        }
+        
+        // Apply pagination
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = allData.slice(startIndex, endIndex);
+        
+        console.log('📊 Pagination info:', {
+          totalItems: totalItems,
+          totalPages: totalPages,
+          currentPage: currentPage,
+          pageSize: pageSize,
+          startIndex: startIndex,
+          endIndex: endIndex,
+          paginatedDataLength: paginatedData.length
+        });
+        
         tbody.innerHTML='';
         
-        const rows = js.data || [];
-        
-        if(!rows.length){
+        if(!paginatedData.length){
           const tr = tbody.insertRow(); 
           const td = tr.insertCell(); 
           td.colSpan = expectedCols;
@@ -1581,10 +1798,13 @@ renderNotifications();
             message = 'Tidak ada Data masuk, 0 to 0 Data Pages';
           }
           td.textContent = message;
+          
+          // Hide pagination if no data
+          updatePaginationUI();
           return;
         }
         
-        rows.forEach(r=>{
+        paginatedData.forEach(r=>{
           const tr = tbody.insertRow();
           let vals = [];
           
@@ -1650,10 +1870,13 @@ renderNotifications();
           });
         });
         
-        // Update last notification count
-        lastNotificationCount = rows.length;
+        // Update pagination UI
+        updatePaginationUI();
         
-        console.log(`✅ Loaded ${rows.length} notifications for ${currentCat}`);
+        // Update last notification count
+        lastNotificationCount = paginatedData.length;
+        
+        console.log(`✅ Loaded ${paginatedData.length} notifications for ${currentCat} (page ${currentPage}/${totalPages})`);
       }catch(e){
         console.error('❌ Error loading notifications:', e);
         const tbody = qs('#notifTable tbody');
@@ -1675,6 +1898,9 @@ renderNotifications();
         td.style.color = 'var(--danger)';
         td.style.padding = '20px';
         td.style.textAlign = 'center';
+        
+        // Hide pagination on error
+        updatePaginationUI();
       }
     }
 
@@ -1749,6 +1975,152 @@ renderNotifications();
         userList.innerHTML = '<div style="padding:40px;text-align:center;color:var(--danger)">Gagal memuat data: ' + e.message + '</div>';
       }
     }
+
+    // Pagination functions
+    function updatePaginationUI() {
+      const paginationContainer = document.getElementById('paginationContainer');
+      const paginationInfo = document.getElementById('paginationInfo');
+      const paginationPages = document.getElementById('paginationPages');
+      
+      if (!paginationContainer || !paginationInfo || !paginationPages) return;
+      
+      // Show/hide pagination based on data
+      if (totalItems <= pageSize) {
+        paginationContainer.style.display = 'none';
+        return;
+      }
+      
+      paginationContainer.style.display = 'flex';
+      
+      // Update pagination info
+      const startItem = (currentPage - 1) * pageSize + 1;
+      const endItem = Math.min(currentPage * pageSize, totalItems);
+      paginationInfo.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} data`;
+      
+      // Update pagination buttons
+      updatePaginationButtons();
+      
+      // Generate page numbers
+      generatePageNumbers();
+    }
+    
+    function updatePaginationButtons() {
+      const firstBtn = document.getElementById('firstPage');
+      const prevBtn = document.getElementById('prevPage');
+      const nextBtn = document.getElementById('nextPage');
+      const lastBtn = document.getElementById('lastPage');
+      
+      if (firstBtn) firstBtn.disabled = currentPage === 1;
+      if (prevBtn) prevBtn.disabled = currentPage === 1;
+      if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+      if (lastBtn) lastBtn.disabled = currentPage === totalPages;
+    }
+    
+    function generatePageNumbers() {
+      const paginationPages = document.getElementById('paginationPages');
+      if (!paginationPages) return;
+      
+      paginationPages.innerHTML = '';
+      
+      const maxVisiblePages = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+      
+      // Adjust start page if we're near the end
+      if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+      
+      // Add first page and ellipsis if needed
+      if (startPage > 1) {
+        addPageNumber(1);
+        if (startPage > 2) {
+          addEllipsis();
+        }
+      }
+      
+      // Add page numbers
+      for (let i = startPage; i <= endPage; i++) {
+        addPageNumber(i);
+      }
+      
+      // Add ellipsis and last page if needed
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          addEllipsis();
+        }
+        addPageNumber(totalPages);
+      }
+    }
+    
+    function addPageNumber(pageNum) {
+      const paginationPages = document.getElementById('paginationPages');
+      if (!paginationPages) return;
+      
+      const pageBtn = document.createElement('button');
+      pageBtn.className = `page-number ${pageNum === currentPage ? 'active' : ''}`;
+      pageBtn.textContent = pageNum;
+      pageBtn.onclick = () => goToPage(pageNum);
+      
+      paginationPages.appendChild(pageBtn);
+    }
+    
+    function addEllipsis() {
+      const paginationPages = document.getElementById('paginationPages');
+      if (!paginationPages) return;
+      
+      const ellipsis = document.createElement('span');
+      ellipsis.className = 'page-number ellipsis';
+      ellipsis.textContent = '...';
+      
+      paginationPages.appendChild(ellipsis);
+    }
+    
+    function goToPage(page) {
+      if (page < 1 || page > totalPages || page === currentPage) return;
+      
+      currentPage = page;
+      loadNotifications();
+    }
+    
+    function changePageSize(newSize) {
+      pageSize = parseInt(newSize);
+      currentPage = 1; // Reset to first page
+      loadNotifications();
+    }
+    
+    // Pagination event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // First page button
+      const firstBtn = document.getElementById('firstPage');
+      if (firstBtn) {
+        firstBtn.onclick = () => goToPage(1);
+      }
+      
+      // Previous page button
+      const prevBtn = document.getElementById('prevPage');
+      if (prevBtn) {
+        prevBtn.onclick = () => goToPage(currentPage - 1);
+      }
+      
+      // Next page button
+      const nextBtn = document.getElementById('nextPage');
+      if (nextBtn) {
+        nextBtn.onclick = () => goToPage(currentPage + 1);
+      }
+      
+      // Last page button
+      const lastBtn = document.getElementById('lastPage');
+      if (lastBtn) {
+        lastBtn.onclick = () => goToPage(totalPages);
+      }
+      
+      // Page size selector
+      const pageSizeSelect = document.getElementById('pageSize');
+      if (pageSizeSelect) {
+        pageSizeSelect.onchange = (e) => changePageSize(e.target.value);
+      }
+    });
 
     // Expose loadNotifications to global scope
     window.loadNotificationsFromScope = loadNotifications;
