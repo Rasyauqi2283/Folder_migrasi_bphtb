@@ -731,6 +731,9 @@
           </div>
           <div class="ltb-ping-footer">
             <small>LTB Division • ${new Date().toLocaleTimeString()}</small>
+            <div class="ltb-ping-countdown">
+              <small>Notifikasi akan hilang dalam <span class="countdown-timer">60</span> detik</small>
+            </div>
           </div>
         </div>
       `;
@@ -802,18 +805,41 @@
             color: #6c757d;
             font-size: 12px;
           }
+          
+          .ltb-ping-countdown {
+            margin-top: 8px;
+            text-align: center;
+            color: #28a745;
+            font-weight: 600;
+          }
+          
+          .countdown-timer {
+            font-weight: bold;
+            color: #28a745;
+          }
         `;
         document.head.appendChild(style);
       }
       
       document.body.appendChild(notification);
       
-      // Auto-remove after 15 seconds (longer for LTB)
-      setTimeout(() => {
-        if (notification.parentElement) {
-          notification.remove();
+      // Countdown timer
+      let timeLeft = 60;
+      const countdownElement = notification.querySelector('.countdown-timer');
+      
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (countdownElement) {
+          countdownElement.textContent = timeLeft;
         }
-      }, 15000);
+        
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }
+      }, 1000);
     }
   </script>
 </body>

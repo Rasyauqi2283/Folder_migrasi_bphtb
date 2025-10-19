@@ -1187,10 +1187,10 @@ function showPingSuccessNotification(nobooking) {
   
   document.body.appendChild(notification);
   
-  // Remove after 3 seconds
+  // Remove after 10 seconds
   setTimeout(() => {
     notification.remove();
-  }, 3000);
+  }, 10000);
 }
 
 // Function to show fallback notification when ping API is not available

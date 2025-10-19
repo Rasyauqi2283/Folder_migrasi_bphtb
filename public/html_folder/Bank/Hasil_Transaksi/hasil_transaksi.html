@@ -980,6 +980,9 @@
           </div>
           <div class="bank-ping-footer">
             <small>Bank Division • ${new Date().toLocaleTimeString()}</small>
+            <div class="bank-ping-countdown">
+              <small>Notifikasi akan hilang dalam <span class="countdown-timer">60</span> detik</small>
+            </div>
           </div>
         </div>
       `;
@@ -1051,18 +1054,41 @@
             color: #6c757d;
             font-size: 12px;
           }
+          
+          .bank-ping-countdown {
+            margin-top: 8px;
+            text-align: center;
+            color: #dc3545;
+            font-weight: 600;
+          }
+          
+          .countdown-timer {
+            font-weight: bold;
+            color: #dc3545;
+          }
         `;
         document.head.appendChild(style);
       }
       
       document.body.appendChild(notification);
       
-      // Auto-remove after 15 seconds (longer for Bank)
-      setTimeout(() => {
-        if (notification.parentElement) {
-          notification.remove();
+      // Countdown timer
+      let timeLeft = 60;
+      const countdownElement = notification.querySelector('.countdown-timer');
+      
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (countdownElement) {
+          countdownElement.textContent = timeLeft;
         }
-      }, 15000);
+        
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }
+      }, 1000);
     }
   </script>
   
