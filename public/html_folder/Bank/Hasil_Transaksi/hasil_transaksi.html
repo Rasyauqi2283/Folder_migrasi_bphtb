@@ -339,6 +339,74 @@
     .bank-table td:nth-child(5) {
       max-width: 300px;
     }
+
+    /* ========== REAL-TIME CONTROLS ========== */
+    .real-time-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+    
+    .real-time-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    
+    .indicator-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #28a745;
+      animation: pulse 2s infinite;
+    }
+    
+    .indicator-dot.paused {
+      background: #6c757d;
+      animation: none;
+    }
+    
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+      }
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #218838;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .btn-warning:hover {
+      background: #e0a800;
+    }
   </style>
 </head>
 <body class="bank-page">
@@ -368,6 +436,16 @@
       <button id="reloadBtn">
         <span>🔄</span> Muat Ulang
       </button>
+      
+      <div class="real-time-controls">
+        <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+          <i class="fa fa-pause"></i> Pause Real-time
+        </button>
+        <div class="real-time-indicator" id="realTimeIndicator">
+          <div class="indicator-dot"></div>
+          <span>Real-time</span>
+        </div>
+      </div>
     </div>
 
     <!-- Table Container -->
@@ -580,7 +658,214 @@
         // Set initial filter options for pending tab
         updateFilterOptions('pending');
         load();
+        
+        // Initialize real-time monitoring
+        initializeRealTime();
       });
+    })();
+
+    // Real-time monitoring system for Bank
+    (function(){
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      
+      // Function to start real-time monitoring
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+        }
+        
+        // Check for new data every 3 seconds
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          
+          try {
+            await checkForNewData();
+          } catch (error) {
+            console.error('❌ Error in Bank real-time monitoring:', error);
+          }
+        }, 3000);
+        
+        console.log('🔄 Bank Real-time monitoring started');
+      }
+      
+      // Function to stop real-time monitoring
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+        console.log('⏹️ Bank Real-time monitoring stopped');
+      }
+      
+      // Function to check for new data
+      async function checkForNewData() {
+        try {
+          // Get current data count from the table
+          const tbody = document.querySelector('#trxTable tbody');
+          const currentCount = tbody ? tbody.children.length : 0;
+          
+          // If count increased, show notification and reload
+          if (currentCount > lastDataCount && lastDataCount > 0) {
+            console.log(`🆕 New Bank data detected! Count: ${lastDataCount} → ${currentCount}`);
+            lastDataCount = currentCount;
+            
+            // Show new data notification
+            showNewDataNotification();
+            
+            // Reload the table data
+            if (window.load) {
+              window.load();
+            }
+          } else if (currentCount !== lastDataCount) {
+            // Update count even if it decreased
+            lastDataCount = currentCount;
+          }
+        } catch (error) {
+          console.error('❌ Error checking for new Bank data:', error);
+        }
+      }
+      
+      // Function to show new data notification
+      function showNewDataNotification() {
+        // Remove existing notification
+        const existingNotification = document.querySelector('.new-data-notification');
+        if (existingNotification) {
+          existingNotification.remove();
+        }
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = 'new-data-notification';
+        notification.innerHTML = `
+          <div class="notification-content">
+            <i class="fa fa-bell" style="color: #28a745; margin-right: 8px;"></i>
+            <span>Data baru tersedia di Bank!</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('new-data-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'new-data-notification-styles';
+          style.textContent = `
+            .new-data-notification {
+              position: fixed;
+              top: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: #d4edda;
+              border: 1px solid #c3e6cb;
+              border-radius: 8px;
+              padding: 12px 16px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              z-index: 10000;
+              animation: slideInDown 0.3s ease-out;
+            }
+            
+            .notification-content {
+              display: flex;
+              align-items: center;
+              font-size: 14px;
+              color: #155724;
+            }
+            
+            .notification-close {
+              background: none;
+              border: none;
+              font-size: 16px;
+              cursor: pointer;
+              color: #155724;
+              margin-left: 12px;
+              padding: 0;
+              width: 20px;
+              height: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            
+            .notification-close:hover {
+              color: #0c5460;
+            }
+            
+            @keyframes slideInDown {
+              from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 5000);
+      }
+      
+      // Function to toggle real-time monitoring
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+      
+      // Function to update real-time button state
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+        
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+          }
+        }
+        
+        if (dot) {
+          if (isEnabled) {
+            dot.classList.remove('paused');
+          } else {
+            dot.classList.add('paused');
+          }
+        }
+      }
+      
+      // Initialize real-time monitoring
+      function initializeRealTime() {
+        // Get initial count
+        const tbody = document.querySelector('#trxTable tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        
+        startRealTimeMonitoring();
+      }
+      
+      // Expose functions to global scope
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
     })();
   </script>
   

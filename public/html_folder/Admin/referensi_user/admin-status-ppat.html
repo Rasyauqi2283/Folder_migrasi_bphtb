@@ -61,6 +61,46 @@
     justify-content:space-between;
     margin-bottom:12px;
   }
+  
+  /* ========== REAL-TIME CONTROLS ========== */
+  .real-time-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .real-time-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: pulse 2s infinite;
+  }
+  
+  .indicator-dot.paused {
+    background: #6c757d;
+    animation: none;
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+  }
   .title {font-size:20px; font-weight:700; color:var(--accent);}
 
   /* segmented buttons */
@@ -607,6 +647,16 @@
               <input id="notifSearch" placeholder="Cari NoBooking / UserID / WP..." />
               <button id="clearSearch" title="Clear" style="background:none;border:none;color:var(--muted);cursor:pointer">✕</button>
             </div>
+            
+            <div class="real-time-controls">
+              <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+                <i class="fa fa-pause"></i> Pause Real-time
+              </button>
+              <div class="real-time-indicator" id="realTimeIndicator">
+                <div class="indicator-dot"></div>
+                <span>Real-time</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -765,6 +815,11 @@ segButtons.forEach(btn=>{
     // Call loadNotifications from the IIFE scope
     if (window.loadNotificationsFromScope) {
       window.loadNotificationsFromScope();
+    }
+    
+    // Reset real-time monitoring for new category
+    if (window.checkForNewNotifications) {
+      window.checkForNewNotifications();
     }
   });
 });
@@ -1507,6 +1562,9 @@ renderNotifications();
           });
         });
         
+        // Update last notification count
+        lastNotificationCount = rows.length;
+        
         console.log(`✅ Loaded ${rows.length} notifications for ${currentCat}`);
       }catch(e){
         console.error('❌ Error loading notifications:', e);
@@ -1607,9 +1665,226 @@ renderNotifications();
     // Expose loadNotifications to global scope
     window.loadNotificationsFromScope = loadNotifications;
     
+    // Real-time notification system
+    let realTimeInterval = null;
+    let lastNotificationCount = 0;
+    let isRealTimeEnabled = true;
+    
+    // Function to start real-time monitoring
+    function startRealTimeMonitoring() {
+      if (realTimeInterval) {
+        clearInterval(realTimeInterval);
+      }
+      
+      // Check for new notifications every 3 seconds
+      realTimeInterval = setInterval(async () => {
+        if (!isRealTimeEnabled) return;
+        
+        try {
+          await checkForNewNotifications();
+        } catch (error) {
+          console.error('❌ Error in real-time monitoring:', error);
+        }
+      }, 3000);
+      
+      console.log('🔄 Real-time monitoring started');
+    }
+    
+    // Function to stop real-time monitoring
+    function stopRealTimeMonitoring() {
+      if (realTimeInterval) {
+        clearInterval(realTimeInterval);
+        realTimeInterval = null;
+      }
+      console.log('⏹️ Real-time monitoring stopped');
+    }
+    
+    // Function to check for new notifications
+    async function checkForNewNotifications() {
+      const currentCat = window.currentCategory || 'ppat_ltb';
+      let url = '';
+      
+      if (currentCat === 'ppat_ltb') {
+        url = `/api/admin/notification-warehouse/ppat-ltb?page=1&limit=50&count_only=true`;
+      } else if (currentCat === 'ltb_lsb') {
+        url = `/api/admin/notification-warehouse/peneliti-lsb?page=1&limit=50&count_only=true`;
+      } else if (currentCat === 'lsb_ppat') {
+        url = `/api/admin/notification-warehouse/lsb-ppat?page=1&limit=50&count_only=true`;
+      }
+      
+      if (!url) return;
+      
+      try {
+        const response = await fetch(url, { credentials: 'include' });
+        const result = await response.json();
+        
+        if (result.success && result.pagination) {
+          const currentCount = result.pagination.total;
+          
+          // If count increased, reload the table
+          if (currentCount > lastNotificationCount) {
+            console.log(`🆕 New notifications detected! Count: ${lastNotificationCount} → ${currentCount}`);
+            lastNotificationCount = currentCount;
+            
+            // Show new notification indicator
+            showNewNotificationIndicator();
+            
+            // Reload the table
+            await loadNotifications();
+          } else if (currentCount !== lastNotificationCount) {
+            // Update count even if it decreased (deletions)
+            lastNotificationCount = currentCount;
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error checking for new notifications:', error);
+      }
+    }
+    
+    // Function to show new notification indicator
+    function showNewNotificationIndicator() {
+      // Remove existing indicator
+      const existingIndicator = document.querySelector('.new-notification-indicator');
+      if (existingIndicator) {
+        existingIndicator.remove();
+      }
+      
+      // Create new indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'new-notification-indicator';
+      indicator.innerHTML = `
+        <div class="indicator-content">
+          <i class="fa fa-bell" style="color: #28a745; margin-right: 8px;"></i>
+          <span>Data baru tersedia!</span>
+          <button class="indicator-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+        </div>
+      `;
+      
+      // Add styles
+      if (!document.getElementById('new-notification-indicator-styles')) {
+        const style = document.createElement('style');
+        style.id = 'new-notification-indicator-styles';
+        style.textContent = `
+          .new-notification-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            animation: slideInDown 0.3s ease-out;
+          }
+          
+          .indicator-content {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+            color: #155724;
+          }
+          
+          .indicator-close {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #155724;
+            margin-left: 12px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .indicator-close:hover {
+            color: #0c5460;
+          }
+          
+          @keyframes slideInDown {
+            from {
+              transform: translateX(-50%) translateY(-100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(-50%) translateY(0);
+              opacity: 1;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(indicator);
+      
+      // Auto remove after 5 seconds
+      setTimeout(() => {
+        if (indicator.parentElement) {
+          indicator.remove();
+        }
+      }, 5000);
+    }
+    
+    // Function to toggle real-time monitoring
+    function toggleRealTimeMonitoring() {
+      isRealTimeEnabled = !isRealTimeEnabled;
+      
+      if (isRealTimeEnabled) {
+        startRealTimeMonitoring();
+        updateRealTimeButton(true);
+      } else {
+        stopRealTimeMonitoring();
+        updateRealTimeButton(false);
+      }
+    }
+    
+    // Function to update real-time button state
+    function updateRealTimeButton(isEnabled) {
+      const button = document.getElementById('realTimeToggle');
+      const indicator = document.getElementById('realTimeIndicator');
+      const dot = indicator?.querySelector('.indicator-dot');
+      
+      if (button) {
+        if (isEnabled) {
+          button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+          button.className = 'btn btn-warning btn-sm';
+        } else {
+          button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+          button.className = 'btn btn-success btn-sm';
+        }
+      }
+      
+      if (dot) {
+        if (isEnabled) {
+          dot.classList.remove('paused');
+        } else {
+          dot.classList.add('paused');
+        }
+      }
+    }
+    
+    // Initialize real-time monitoring
+    function initializeRealTime() {
+      // Get initial count
+      checkForNewNotifications().then(() => {
+        startRealTimeMonitoring();
+      });
+    }
+    
+    // Expose functions to global scope
+    window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+    window.startRealTimeMonitoring = startRealTimeMonitoring;
+    window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+    window.checkForNewNotifications = checkForNewNotifications;
+    
     document.addEventListener('DOMContentLoaded', ()=>{
       loadNotifications();
       loadUsers();
+      initializeRealTime();
       
       // Event handlers for users
       const reload = qs('#reloadUsers'); 
