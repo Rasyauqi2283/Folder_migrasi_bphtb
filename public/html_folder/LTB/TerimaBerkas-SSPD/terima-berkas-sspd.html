@@ -662,15 +662,26 @@
         clearInterval(pingPollingInterval);
       }
       
+      console.log('🔄 Starting LTB ping polling...');
+      
       pingPollingInterval = setInterval(async () => {
         try {
+          console.log('🔍 LTB polling for new pings...');
           const response = await fetch(`/api/admin/notification-warehouse/poll-ping?division=ltb&last_check=${encodeURIComponent(lastPingCheck)}`);
-          const data = await response.json();
           
-          if (data.success && data.notifications.length > 0) {
+          if (!response.ok) {
+            console.warn('⚠️ LTB polling response not OK:', response.status);
+            return;
+          }
+          
+          const data = await response.json();
+          console.log('📊 LTB polling response:', data);
+          
+          if (data.success && data.notifications && data.notifications.length > 0) {
             console.log(`🔔 LTB received ${data.notifications.length} new ping notifications`);
             
             data.notifications.forEach(notification => {
+              console.log('📨 LTB processing notification:', notification);
               showLTBPingNotification(notification);
             });
             
@@ -678,6 +689,8 @@
             if (typeof load === 'function') {
               load();
             }
+          } else {
+            console.log('📭 LTB no new notifications');
           }
           
           lastPingCheck = data.last_check;

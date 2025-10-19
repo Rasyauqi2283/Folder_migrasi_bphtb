@@ -552,7 +552,7 @@
             qs.push('q='+encodeURIComponent(q));
           }
           
-          const url = '/api/bank/transaksi?page=1&limit=50' + (qs.length?'&'+qs.join('&'):'');
+          const url = '/api/bank/transaksi?page=1&limit=10' + (qs.length?'&'+qs.join('&'):'');
           console.log('🔍 [BANK] Loading data with URL:', url);
           console.log('🔍 [BANK] Current tab:', currentTab);
           console.log('🔍 [BANK] Filter status:', st);
@@ -911,15 +911,26 @@
         clearInterval(pingPollingInterval);
       }
       
+      console.log('🔄 Starting Bank ping polling...');
+      
       pingPollingInterval = setInterval(async () => {
         try {
+          console.log('🔍 Bank polling for new pings...');
           const response = await fetch(`/api/admin/notification-warehouse/poll-ping?division=bank&last_check=${encodeURIComponent(lastPingCheck)}`);
-          const data = await response.json();
           
-          if (data.success && data.notifications.length > 0) {
+          if (!response.ok) {
+            console.warn('⚠️ Bank polling response not OK:', response.status);
+            return;
+          }
+          
+          const data = await response.json();
+          console.log('📊 Bank polling response:', data);
+          
+          if (data.success && data.notifications && data.notifications.length > 0) {
             console.log(`🔔 Bank received ${data.notifications.length} new ping notifications`);
             
             data.notifications.forEach(notification => {
+              console.log('📨 Bank processing notification:', notification);
               showBankPingNotification(notification);
             });
             
@@ -927,6 +938,8 @@
             if (typeof load === 'function') {
               load();
             }
+          } else {
+            console.log('📭 Bank no new notifications');
           }
           
           lastPingCheck = data.last_check;

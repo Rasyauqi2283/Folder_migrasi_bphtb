@@ -46,7 +46,7 @@ async function loadTableDataLTB() {
             console.log('✅ [FRONTEND] Table body found:', tbody);
 
             // Pagination setup
-            const PAGE_SIZE = 12;
+            const PAGE_SIZE = 10;
             const rows = Array.isArray(data.data) ? data.data : [];
             let currentPage = 1;
 
