@@ -1,0 +1,103 @@
+/* ===== DASHBOARD VIEWPORT FIX ===== */
+/* Ultra-strict constraints to prevent main content from exceeding viewport */
+
+/* TEMBOK: Force main content to stay within viewport boundaries */
+body.dashboard-responsive .main-content {
+    /* Normal state: sidebar collapsed (60px) */
+    width: calc(100vw - 60px - 15px) !important;
+    max-width: calc(100vw - 60px - 15px) !important;
+    min-width: calc(100vw - 60px - 15px) !important;
+    margin-left: 60px !important;
+    margin-right: 15px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    position: relative !important;
+}
+
+/* TEMBOK: When sidebar expanded, force content to shrink */
+body.dashboard-responsive main.shifted .main-content {
+    width: calc(100vw - 250px - 15px) !important;
+    max-width: calc(100vw - 250px - 15px) !important;
+    min-width: calc(100vw - 250px - 15px) !important;
+    margin-left: 250px !important;
+    margin-right: 15px !important;
+}
+
+/* TEMBOK: Force all child elements to respect container bounds */
+body.dashboard-responsive .main-content * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* TEMBOK: Specific constraints for dashboard elements */
+body.dashboard-responsive .welcome-section,
+body.dashboard-responsive .content_admin,
+body.dashboard-responsive .content-cards,
+body.dashboard-responsive .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+/* TEMBOK: Chart container specific fix */
+body.dashboard-responsive .card.chart {
+    width: calc(100% - 40px) !important;
+    max-width: calc(100% - 40px) !important;
+    margin: 0 20px 20px 20px !important;
+}
+
+/* TEMBOK: Welcome banner specific fix */
+body.dashboard-responsive .welcome-banner {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* TEMBOK: Responsive breakpoints */
+@media (max-width: 1199px) {
+    body.dashboard-responsive .main-content {
+        width: calc(100vw - 60px - 15px) !important;
+        max-width: calc(100vw - 60px - 15px) !important;
+        margin-left: 60px !important;
+        margin-right: 15px !important;
+    }
+    
+    body.dashboard-responsive main.shifted .main-content {
+        width: calc(100vw - 250px - 15px) !important;
+        max-width: calc(100vw - 250px - 15px) !important;
+        margin-left: 250px !important;
+        margin-right: 15px !important;
+    }
+}
+
+@media (max-width: 767px) {
+    body.dashboard-responsive .main-content {
+        width: calc(100vw - 60px - 15px) !important;
+        max-width: calc(100vw - 60px - 15px) !important;
+        margin-left: 60px !important;
+        margin-right: 15px !important;
+    }
+    
+    body.dashboard-responsive main.shifted .main-content {
+        width: calc(100vw - 250px - 15px) !important;
+        max-width: calc(100vw - 250px - 15px) !important;
+        margin-left: 250px !important;
+        margin-right: 15px !important;
+    }
+}
+
+/* TEMBOK: Ensure no element can break out of viewport */
+body.dashboard-responsive {
+    overflow-x: hidden !important;
+}
+
+/* TEMBOK: Exception for header, sidebar, footer */
+body.dashboard-responsive header,
+body.dashboard-responsive aside,
+body.dashboard-responsive footer,
+body.dashboard-responsive header *,
+body.dashboard-responsive aside *,
+body.dashboard-responsive footer * {
+    max-width: none !important;
+    overflow-x: visible !important;
+}
