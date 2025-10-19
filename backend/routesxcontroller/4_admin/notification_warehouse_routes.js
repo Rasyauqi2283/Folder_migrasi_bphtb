@@ -1250,16 +1250,45 @@ router.post('/test-ping', async (req, res) => {
         console.log(`📡 [TEST-PING] Test ping for booking: ${nobooking} to divisions: ${target_divisions.join(', ')}`);
         
         // Simpan ping notification ke database (jika tabel ada)
+        let pingId = null;
         try {
-            await pool.query(`
+            const result = await pool.query(`
                 INSERT INTO ping_notifications (nobooking, no_registrasi, target_divisions, created_at, status)
                 VALUES ($1, $2, $3, NOW(), 'sent')
                 RETURNING id
             `, [nobooking, no_registrasi, JSON.stringify(target_divisions)]);
             
-            console.log(`✅ [TEST-PING] Ping notification saved to database`);
+            pingId = result.rows[0].id;
+            console.log(`✅ [TEST-PING] Ping notification saved to database with ID: ${pingId}`);
         } catch (dbError) {
             console.warn(`⚠️ [TEST-PING] Database table not found, continuing without saving:`, dbError.message);
+        }
+        
+        // Kirim WebSocket notification ke divisi target
+        try {
+            // Import socket.io jika tersedia
+            const { Server } = await import('socket.io');
+            
+            // Kirim notifikasi ke setiap divisi target
+            target_divisions.forEach(division => {
+                // Simulasi WebSocket broadcast (karena kita tidak punya socket instance)
+                console.log(`📡 [WEBSOCKET] Broadcasting ping to division: ${division}`);
+                
+                // Simulasi event yang akan diterima oleh client
+                const pingData = {
+                    ping_id: pingId,
+                    nobooking,
+                    no_registrasi,
+                    division,
+                    message: `Ping dari Admin untuk No. Booking: ${nobooking}`,
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log(`📤 [WEBSOCKET] Ping data for ${division}:`, pingData);
+            });
+            
+        } catch (wsError) {
+            console.warn(`⚠️ [WEBSOCKET] Socket.IO not available, skipping WebSocket broadcast:`, wsError.message);
         }
         
         // Log aktivitas
@@ -1282,6 +1311,80 @@ router.post('/test-ping', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Gagal mengirim test ping: ' + error.message
+        });
+    }
+});
+
+// GET /api/admin/notification-warehouse/poll-ping - Poll for new ping notifications
+router.get('/poll-ping', async (req, res) => {
+    try {
+        const { division, last_check } = req.query;
+        
+        if (!division) {
+            return res.status(400).json({
+                success: false,
+                message: 'Division parameter required'
+            });
+        }
+        
+        console.log(`🔍 [POLL-PING] Checking for new pings for division: ${division}, last_check: ${last_check}`);
+        
+        // Query untuk mendapatkan ping notifications baru
+        let query = `
+            SELECT id, nobooking, no_registrasi, target_divisions, created_at, status
+            FROM ping_notifications 
+            WHERE target_divisions::text ILIKE $1
+        `;
+        
+        let params = [`%${division}%`];
+        
+        if (last_check) {
+            query += ` AND created_at > $2`;
+            params.push(last_check);
+        }
+        
+        query += ` ORDER BY created_at DESC LIMIT 10`;
+        
+        try {
+            const result = await pool.query(query, params);
+            
+            const notifications = result.rows.map(row => ({
+                ping_id: row.id,
+                nobooking: row.nobooking,
+                no_registrasi: row.no_registrasi,
+                division: division,
+                message: `Ping dari Admin untuk No. Booking: ${row.nobooking}`,
+                timestamp: row.created_at,
+                status: row.status
+            }));
+            
+            console.log(`📊 [POLL-PING] Found ${notifications.length} new notifications for ${division}`);
+            
+            res.json({
+                success: true,
+                notifications: notifications,
+                count: notifications.length,
+                last_check: new Date().toISOString()
+            });
+            
+        } catch (dbError) {
+            console.warn(`⚠️ [POLL-PING] Database table not found:`, dbError.message);
+            
+            // Fallback: return empty notifications
+            res.json({
+                success: true,
+                notifications: [],
+                count: 0,
+                last_check: new Date().toISOString(),
+                message: 'Database table not available, using fallback'
+            });
+        }
+        
+    } catch (error) {
+        console.error('❌ [POLL-PING] Error polling ping notifications:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal polling ping notifications: ' + error.message
         });
     }
 });

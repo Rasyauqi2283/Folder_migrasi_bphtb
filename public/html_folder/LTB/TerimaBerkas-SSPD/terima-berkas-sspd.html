@@ -628,9 +628,15 @@
   <script src="../../js/websocket-client.js"></script>
   
   <script>
-    // WebSocket integration for LTB
+    // Ping notification system for LTB
+    let lastPingCheck = new Date().toISOString();
+    let pingPollingInterval = null;
+    
     document.addEventListener('DOMContentLoaded', () => {
-      // Wait for WebSocket to be available
+      // Start ping polling
+      startPingPolling();
+      
+      // Try WebSocket integration as fallback
       setTimeout(() => {
         if (window.bappendaWS) {
           // Set user ID (you can get this from session or user data)
@@ -638,20 +644,8 @@
           
           // Listen for ping notifications
           window.bappendaWS.on('ping_received', (data) => {
-            console.log('🔔 LTB received ping:', data);
-            
-            // Show custom notification for LTB
+            console.log('🔔 LTB received ping via WebSocket:', data);
             showLTBPingNotification(data);
-            
-            // Refresh table data
-            if (typeof load === 'function') {
-              load();
-            }
-          });
-          
-          // Listen for data updates
-          window.bappendaWS.on('data_updated', (data) => {
-            console.log('📊 LTB data updated:', data);
             if (typeof load === 'function') {
               load();
             }
@@ -661,6 +655,48 @@
         }
       }, 2000);
     });
+    
+    // Start ping polling
+    function startPingPolling() {
+      if (pingPollingInterval) {
+        clearInterval(pingPollingInterval);
+      }
+      
+      pingPollingInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/api/admin/notification-warehouse/poll-ping?division=ltb&last_check=${encodeURIComponent(lastPingCheck)}`);
+          const data = await response.json();
+          
+          if (data.success && data.notifications.length > 0) {
+            console.log(`🔔 LTB received ${data.notifications.length} new ping notifications`);
+            
+            data.notifications.forEach(notification => {
+              showLTBPingNotification(notification);
+            });
+            
+            // Refresh table data
+            if (typeof load === 'function') {
+              load();
+            }
+          }
+          
+          lastPingCheck = data.last_check;
+        } catch (error) {
+          console.error('❌ Error polling ping notifications:', error);
+        }
+      }, 3000); // Poll every 3 seconds
+      
+      console.log('✅ LTB ping polling started');
+    }
+    
+    // Stop ping polling
+    function stopPingPolling() {
+      if (pingPollingInterval) {
+        clearInterval(pingPollingInterval);
+        pingPollingInterval = null;
+        console.log('⏹️ LTB ping polling stopped');
+      }
+    }
     
     // Custom LTB ping notification
     function showLTBPingNotification(data) {
