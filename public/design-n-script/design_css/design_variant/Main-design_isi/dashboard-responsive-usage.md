@@ -10,6 +10,7 @@ File `dashboard-responsive.css` adalah sistem CSS yang memberikan layout respons
 - ✅ **No horizontal overflow** ketika sidebar expand/collapse
 - ✅ **Smooth transitions** dengan cubic-bezier animations
 - ✅ **GPU acceleration** untuk performa optimal
+- ✅ **Tembok System** - Strict viewport constraints untuk mencegah overflow
 
 ### 📱 **Breakpoints Responsive**
 - **Large Desktop (1400px+)**: 3-column grid dengan ukuran fixed
@@ -212,11 +213,27 @@ File `dashboard-responsive.css` adalah sistem CSS yang memberikan layout respons
 
 ### **Masalah Umum:**
 
-#### **1. Content Overflow:**
+#### **1. Content Overflow (Tembok System):**
 ```css
-/* Pastikan semua container menggunakan box-sizing */
+/* TEMBOK: Global constraints untuk mencegah overflow */
 .dashboard-responsive * {
+    max-width: 100%;
     box-sizing: border-box;
+}
+
+.dashboard-responsive {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Main content constraints */
+.dashboard-responsive .main-content {
+    max-width: calc(100vw - 60px - 15px); /* Normal state */
+    overflow-x: hidden;
+}
+
+main.shifted .dashboard-responsive .main-content {
+    max-width: calc(100vw - 250px - 15px); /* Expanded state */
 }
 ```
 
@@ -233,6 +250,25 @@ main.shifted .main-content {
 ```css
 /* Pastikan viewport meta tag ada */
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+/* TEMBOK: Mobile constraints */
+@media (max-width: 767px) {
+    .dashboard-responsive .main-content {
+        max-width: calc(100vw - 60px - 15px);
+        width: calc(100vw - 60px - 15px);
+    }
+}
+```
+
+#### **4. Chart Container Overflow:**
+```css
+/* TEMBOK: Chart container constraints */
+.dashboard-responsive .card.chart {
+    margin: 0 20px 20px 20px;
+    max-width: calc(100% - 40px);
+    width: calc(100% - 40px);
+    overflow-x: hidden;
+}
 ```
 
 ## Performance Tips
