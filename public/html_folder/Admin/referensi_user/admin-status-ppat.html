@@ -898,6 +898,17 @@ async function sendPingNotification(nobooking, noRegistrasi) {
       })
     });
     
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // Server returned HTML (404/500 page) instead of JSON
+      if (response.status === 404) {
+        throw new Error('Endpoint API tidak ditemukan. Backend belum mengimplementasikan fitur ping.');
+      } else {
+        throw new Error(`Server error (${response.status}). Silakan hubungi administrator.`);
+      }
+    }
+    
     const result = await response.json();
     
     if (result.success) {
@@ -913,7 +924,14 @@ async function sendPingNotification(nobooking, noRegistrasi) {
     
   } catch (error) {
     console.error('❌ Error sending ping:', error);
-    alert('Gagal mengirim ping: ' + error.message);
+    
+    // Show user-friendly error message
+    if (error.message.includes('Endpoint API tidak ditemukan')) {
+      // Backend belum mengimplementasikan fitur ping
+      showPingFallbackNotification(nobooking, noRegistrasi);
+    } else {
+      alert('Gagal mengirim ping: ' + error.message);
+    }
   } finally {
     // Reset button state
     const button = document.querySelector(`button[data-nobook="${nobooking}"]`);
@@ -980,6 +998,76 @@ function showPingSuccessNotification(nobooking) {
   setTimeout(() => {
     notification.remove();
   }, 3000);
+}
+
+// Function to show fallback notification when ping API is not available
+function showPingFallbackNotification(nobooking, noRegistrasi) {
+  const notification = document.createElement('div');
+  notification.className = 'ping-fallback-notification';
+  notification.innerHTML = `
+    <div class="ping-content">
+      <i class="fa fa-info-circle" style="color: #ffc107; margin-right: 8px;"></i>
+      <span>Fitur Ping belum tersedia di backend. No. Booking: <strong>${nobooking}</strong> akan diproses secara normal.</span>
+      <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+    </div>
+  `;
+  
+  // Add styles
+  if (!document.getElementById('ping-fallback-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ping-fallback-styles';
+    style.textContent = `
+      .ping-fallback-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 400px;
+      }
+      
+      .ping-content {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        color: #856404;
+      }
+      
+      .notification-close {
+        background: none;
+        border: none;
+        font-size: 16px;
+        cursor: pointer;
+        color: #856404;
+        margin-left: 12px;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .notification-close:hover {
+        color: #533f03;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 8 seconds (longer for info message)
+  setTimeout(() => {
+    if (notification.parentElement) {
+      notification.remove();
+    }
+  }, 8000);
 }
 
 // Function to show notification in top-right corner for 1 minute
@@ -1716,6 +1804,19 @@ renderNotifications();
       
       try {
         const response = await fetch(url, { credentials: 'include' });
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          if (response.status === 404) {
+            console.warn('⚠️ API endpoint tidak ditemukan:', url);
+            return; // Skip this check silently
+          } else {
+            console.error('❌ Server error:', response.status, url);
+            return;
+          }
+        }
+        
         const result = await response.json();
         
         if (result.success && result.pagination) {
@@ -1738,6 +1839,7 @@ renderNotifications();
         }
       } catch (error) {
         console.error('❌ Error checking for new notifications:', error);
+        // Don't show alert for real-time monitoring errors to avoid spam
       }
     }
     
