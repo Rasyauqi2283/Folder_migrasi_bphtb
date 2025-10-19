@@ -3,9 +3,22 @@
 
 /* ===== GLOBAL CONSTRAINTS ===== */
 /* Tembok: Prevent all dashboard elements from overflowing viewport */
-.dashboard-responsive * {
+.dashboard-responsive .main-content *,
+.dashboard-responsive .welcome-section *,
+.dashboard-responsive .content_admin *,
+.dashboard-responsive .card * {
     max-width: 100%;
     box-sizing: border-box;
+}
+
+/* Exception: Don't apply global constraints to header, sidebar, footer */
+.dashboard-responsive header,
+.dashboard-responsive aside,
+.dashboard-responsive footer,
+.dashboard-responsive header *,
+.dashboard-responsive aside *,
+.dashboard-responsive footer * {
+    max-width: none;
 }
 
 /* Ensure all containers respect the viewport boundaries */
@@ -23,6 +36,40 @@
 .dashboard-responsive {
     max-width: 100vw;
     overflow-x: hidden;
+}
+
+/* Exception: Header, sidebar, footer should not be constrained */
+.dashboard-responsive header,
+.dashboard-responsive aside,
+.dashboard-responsive footer {
+    max-width: none;
+    overflow-x: visible;
+}
+
+/* Ensure header elements maintain their original styling */
+.dashboard-responsive .header-left,
+.dashboard-responsive .logo-container,
+.dashboard-responsive .teks-container,
+.dashboard-responsive .header-title,
+.dashboard-responsive .header-right,
+.dashboard-responsive .profile-pic-container {
+    max-width: none;
+    box-sizing: border-box;
+}
+
+/* Ensure logo and decorative images are not constrained */
+.dashboard-responsive .logo,
+.dashboard-responsive .dekorasi-image,
+.dashboard-responsive .profile-pic {
+    max-width: none;
+}
+
+/* Ensure header text elements maintain their styling */
+.dashboard-responsive .large-text,
+.dashboard-responsive .small-text,
+.dashboard-responsive .header-title {
+    max-width: none;
+    white-space: nowrap;
 }
 
 /* Ensure main content never exceeds viewport */
