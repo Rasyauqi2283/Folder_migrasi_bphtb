@@ -9,7 +9,7 @@ import {
     deleteSignature, 
     listSignatures,
     testRailwayStorage 
-} from '../../config/RailwayStorageService.js';
+} from '../../../backend/config/RailwayStorageService.js';
 
 const router = express.Router();
 

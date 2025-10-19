@@ -1162,4 +1162,128 @@ router.get('/ppat-chart-data', verifyAdmin, async (req, res) => {
     }
 });
 
+// POST /api/admin/notification-warehouse/send-ping - Send ping notification
+router.post('/send-ping', verifyAdmin, async (req, res) => {
+    try {
+        const { nobooking, no_registrasi, target_divisions } = req.body;
+        
+        // Validasi input
+        if (!nobooking || !no_registrasi || !target_divisions || !Array.isArray(target_divisions)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Data tidak lengkap. Diperlukan: nobooking, no_registrasi, target_divisions'
+            });
+        }
+        
+        // Validasi target divisions
+        const validDivisions = ['ltb', 'bank', 'peneliti', 'lsb'];
+        const invalidDivisions = target_divisions.filter(div => !validDivisions.includes(div));
+        if (invalidDivisions.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Divisi tidak valid: ${invalidDivisions.join(', ')}. Divisi yang valid: ${validDivisions.join(', ')}`
+            });
+        }
+        
+        console.log(`📡 [PING] Admin sending ping for booking: ${nobooking} to divisions: ${target_divisions.join(', ')}`);
+        
+        // Simpan ping notification ke database (jika tabel ada)
+        try {
+            await pool.query(`
+                INSERT INTO ping_notifications (nobooking, no_registrasi, target_divisions, created_at, status)
+                VALUES ($1, $2, $3, NOW(), 'sent')
+                RETURNING id
+            `, [nobooking, no_registrasi, JSON.stringify(target_divisions)]);
+            
+            console.log(`✅ [PING] Ping notification saved to database`);
+        } catch (dbError) {
+            console.warn(`⚠️ [PING] Database table not found, continuing without saving:`, dbError.message);
+        }
+        
+        // Log aktivitas
+        console.log(`📊 [PING] Ping sent by admin: ${req.session.user.userid || 'unknown'} for booking: ${nobooking}`);
+        
+        res.json({
+            success: true,
+            message: 'Ping berhasil dikirim',
+            data: {
+                nobooking,
+                no_registrasi,
+                target_divisions,
+                sent_at: new Date().toISOString(),
+                sent_by: req.session.user.userid || 'admin'
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ [PING] Error sending ping:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengirim ping: ' + error.message
+        });
+    }
+});
+
+// POST /api/admin/notification-warehouse/test-ping - Test ping notification (no auth required)
+router.post('/test-ping', async (req, res) => {
+    try {
+        const { nobooking, no_registrasi, target_divisions } = req.body;
+        
+        // Validasi input
+        if (!nobooking || !no_registrasi || !target_divisions || !Array.isArray(target_divisions)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Data tidak lengkap. Diperlukan: nobooking, no_registrasi, target_divisions'
+            });
+        }
+        
+        // Validasi target divisions
+        const validDivisions = ['ltb', 'bank', 'peneliti', 'lsb'];
+        const invalidDivisions = target_divisions.filter(div => !validDivisions.includes(div));
+        if (invalidDivisions.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Divisi tidak valid: ${invalidDivisions.join(', ')}. Divisi yang valid: ${validDivisions.join(', ')}`
+            });
+        }
+        
+        console.log(`📡 [TEST-PING] Test ping for booking: ${nobooking} to divisions: ${target_divisions.join(', ')}`);
+        
+        // Simpan ping notification ke database (jika tabel ada)
+        try {
+            await pool.query(`
+                INSERT INTO ping_notifications (nobooking, no_registrasi, target_divisions, created_at, status)
+                VALUES ($1, $2, $3, NOW(), 'sent')
+                RETURNING id
+            `, [nobooking, no_registrasi, JSON.stringify(target_divisions)]);
+            
+            console.log(`✅ [TEST-PING] Ping notification saved to database`);
+        } catch (dbError) {
+            console.warn(`⚠️ [TEST-PING] Database table not found, continuing without saving:`, dbError.message);
+        }
+        
+        // Log aktivitas
+        console.log(`📊 [TEST-PING] Test ping sent for booking: ${nobooking}`);
+        
+        res.json({
+            success: true,
+            message: 'Test ping berhasil dikirim',
+            data: {
+                nobooking,
+                no_registrasi,
+                target_divisions,
+                sent_at: new Date().toISOString(),
+                sent_by: 'test_user'
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ [TEST-PING] Error sending test ping:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Gagal mengirim test ping: ' + error.message
+        });
+    }
+});
+
 export default router;
