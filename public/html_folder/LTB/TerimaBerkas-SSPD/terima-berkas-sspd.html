@@ -622,5 +622,150 @@
       });
     })();
   </script>
+
+  <!-- WebSocket Client -->
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script src="../../js/websocket-client.js"></script>
+  
+  <script>
+    // WebSocket integration for LTB
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wait for WebSocket to be available
+      setTimeout(() => {
+        if (window.bappendaWS) {
+          // Set user ID (you can get this from session or user data)
+          window.bappendaWS.setUserId('ltb_user_001');
+          
+          // Listen for ping notifications
+          window.bappendaWS.on('ping_received', (data) => {
+            console.log('🔔 LTB received ping:', data);
+            
+            // Show custom notification for LTB
+            showLTBPingNotification(data);
+            
+            // Refresh table data
+            if (typeof load === 'function') {
+              load();
+            }
+          });
+          
+          // Listen for data updates
+          window.bappendaWS.on('data_updated', (data) => {
+            console.log('📊 LTB data updated:', data);
+            if (typeof load === 'function') {
+              load();
+            }
+          });
+          
+          console.log('✅ LTB WebSocket integration ready');
+        }
+      }, 2000);
+    });
+    
+    // Custom LTB ping notification
+    function showLTBPingNotification(data) {
+      const { nobooking, no_registrasi, message } = data;
+      
+      const notification = document.createElement('div');
+      notification.className = 'ltb-ping-notification';
+      notification.innerHTML = `
+        <div class="ltb-ping-content">
+          <div class="ltb-ping-header">
+            <i class="fa fa-bell" style="color: #28a745; margin-right: 8px;"></i>
+            <span class="ltb-ping-title">Ping dari Admin</span>
+            <button class="ltb-ping-close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
+          </div>
+          <div class="ltb-ping-body">
+            <p><strong>No. Booking:</strong> ${nobooking}</p>
+            <p><strong>No. Registrasi:</strong> ${no_registrasi}</p>
+            <p><strong>Pesan:</strong> ${message}</p>
+          </div>
+          <div class="ltb-ping-footer">
+            <small>LTB Division • ${new Date().toLocaleTimeString()}</small>
+          </div>
+        </div>
+      `;
+      
+      // Add LTB-specific styles
+      if (!document.getElementById('ltb-ping-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ltb-ping-styles';
+        style.textContent = `
+          .ltb-ping-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #fff;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 400px;
+            min-width: 300px;
+          }
+          
+          .ltb-ping-content {
+            padding: 16px;
+          }
+          
+          .ltb-ping-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+          }
+          
+          .ltb-ping-title {
+            font-weight: 600;
+            color: #28a745;
+          }
+          
+          .ltb-ping-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .ltb-ping-close:hover {
+            color: #dc3545;
+          }
+          
+          .ltb-ping-body p {
+            margin: 4px 0;
+            font-size: 14px;
+          }
+          
+          .ltb-ping-footer {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 12px;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(notification);
+      
+      // Auto-remove after 15 seconds (longer for LTB)
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.remove();
+        }
+      }, 15000);
+    }
+  </script>
 </body>
 </html>
