@@ -852,10 +852,10 @@
           <div class="pagination-size">
             <label for="pageSize">Per halaman:</label>
             <select id="pageSize" class="pagination-select">
-              <option value="10" selected>10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
+              <option value="8" selected>8</option>
+              <option value="16">16</option>
+              <option value="24">24</option>
+              <option value="32">32</option>
             </select>
           </div>
         </div>
@@ -908,7 +908,7 @@ const notifBody = document.getElementById('notifBody');
 
 // Pagination state
 let currentPage = 1;
-let pageSize = 10;
+let pageSize = 8;
 let totalPages = 1;
 let totalItems = 0;
 let allData = []; // Store all data for client-side pagination
