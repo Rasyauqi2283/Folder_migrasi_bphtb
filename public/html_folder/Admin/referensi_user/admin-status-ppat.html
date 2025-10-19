@@ -790,8 +790,15 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
   const nb = b.dataset.nobook;
   const noRegistrasi = b.dataset.noRegistrasi;
   
-  console.log('🔍 Opening detail for:', { nobooking: nb, noRegistrasi });
+  console.log('🔍 Button clicked:', { nobooking: nb, noRegistrasi, buttonText: b.textContent });
   
+  // Handle Kirim Ping button for ppat_ltb category
+  if (b.classList.contains('btn-ping') && window.currentCategory === 'ppat_ltb') {
+    await sendPingNotification(nb, noRegistrasi);
+    return;
+  }
+  
+  // Handle Lihat button for other categories
   if (window.currentCategory === 'ppat_ltb' && noRegistrasi) {
     try {
       // Fetch detail from backend
@@ -809,6 +816,252 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
   alert('Open detail/preview untuk ' + nb + '  (integrasikan modal / viewPDF backend)');
   }
 });
+
+// Function to send ping notification to LTB and BANK
+async function sendPingNotification(nobooking, noRegistrasi) {
+  try {
+    console.log('📡 Sending ping notification for:', { nobooking, noRegistrasi });
+    
+    // Show loading state
+    const button = document.querySelector(`button[data-nobook="${nobooking}"]`);
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Mengirim...';
+    }
+    
+    // Send ping request to backend
+    const response = await fetch('/api/admin/notification-warehouse/send-ping', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        nobooking: nobooking,
+        no_registrasi: noRegistrasi,
+        target_divisions: ['ltb', 'bank'] // Send to LTB and BANK
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Show success notification
+      showPingSuccessNotification(nobooking);
+      
+      // Show notification in top-right corner for 1 minute
+      showTopRightNotification(nobooking, noRegistrasi);
+      
+    } else {
+      throw new Error(result.message || 'Gagal mengirim ping');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending ping:', error);
+    alert('Gagal mengirim ping: ' + error.message);
+  } finally {
+    // Reset button state
+    const button = document.querySelector(`button[data-nobook="${nobooking}"]`);
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Kirim Ping';
+    }
+  }
+}
+
+// Function to show ping success notification
+function showPingSuccessNotification(nobooking) {
+  const notification = document.createElement('div');
+  notification.className = 'ping-success-notification';
+  notification.innerHTML = `
+    <div class="ping-content">
+      <i class="fa fa-check-circle" style="color: #28a745; margin-right: 8px;"></i>
+      <span>Ping berhasil dikirim untuk No. Booking: <strong>${nobooking}</strong></span>
+    </div>
+  `;
+  
+  // Add styles
+  if (!document.getElementById('ping-notification-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ping-notification-styles';
+    style.textContent = `
+      .ping-success-notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      .ping-content {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        color: #155724;
+      }
+      
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Function to show notification in top-right corner for 1 minute
+function showTopRightNotification(nobooking, noRegistrasi) {
+  const notification = document.createElement('div');
+  notification.className = 'top-right-ping-notification';
+  notification.innerHTML = `
+    <div class="ping-header">
+      <i class="fa fa-bell" style="color: #007bff; margin-right: 8px;"></i>
+      <span><strong>Ping Notification</strong></span>
+      <button class="close-ping" onclick="this.parentElement.parentElement.remove()">&times;</button>
+    </div>
+    <div class="ping-body">
+      <p><strong>No. Booking:</strong> ${nobooking}</p>
+      <p><strong>No. Registrasi:</strong> ${noRegistrasi}</p>
+      <p><strong>Target:</strong> LTB & BANK</p>
+      <p><strong>Status:</strong> <span style="color: #28a745;">Aktif</span></p>
+    </div>
+    <div class="ping-footer">
+      <small>Notifikasi akan hilang dalam <span class="countdown">60</span> detik</small>
+    </div>
+  `;
+  
+  // Add styles
+  if (!document.getElementById('top-right-ping-styles')) {
+    const style = document.createElement('style');
+    style.id = 'top-right-ping-styles';
+    style.textContent = `
+      .top-right-ping-notification {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        width: 300px;
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      .ping-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #dee2e6;
+        background: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+      }
+      
+      .ping-body {
+        padding: 16px;
+      }
+      
+      .ping-body p {
+        margin: 4px 0;
+        font-size: 13px;
+      }
+      
+      .ping-footer {
+        padding: 8px 16px;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+        text-align: center;
+        font-size: 12px;
+        color: #6c757d;
+      }
+      
+      .close-ping {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #6c757d;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .close-ping:hover {
+        color: #dc3545;
+      }
+      
+      .countdown {
+        font-weight: bold;
+        color: #dc3545;
+      }
+      
+      .btn-ping {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      
+      .btn-ping:hover {
+        background: linear-gradient(135deg, #0056b3, #004085);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+      }
+      
+      .btn-ping:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Countdown timer
+  let timeLeft = 60;
+  const countdownElement = notification.querySelector('.countdown');
+  
+  const timer = setInterval(() => {
+    timeLeft--;
+    countdownElement.textContent = timeLeft;
+    
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      notification.remove();
+    }
+  }, 1000);
+}
 
 // Function to show notification detail modal
 function showNotificationDetail(data) {
@@ -1245,7 +1498,11 @@ renderNotifications();
             const td = tr.insertCell(); 
             td.textContent = v; 
             if(idx === vals.length - 1){ // Last column is action button
-              td.innerHTML = `<button class="btn-sm" data-no-registrasi="${r.no_registrasi||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
+              if (currentCat === 'ppat_ltb') {
+                td.innerHTML = `<button class="btn-sm btn-ping" data-no-registrasi="${r.no_registrasi||''}" data-nobook="${r.nobooking||''}">Kirim Ping</button>`; 
+              } else {
+                td.innerHTML = `<button class="btn-sm" data-no-registrasi="${r.no_registrasi||''}" data-nobook="${r.nobooking||''}">Lihat</button>`; 
+              }
             }
           });
         });

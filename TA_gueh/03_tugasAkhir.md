@@ -406,8 +406,8 @@ Kepala bidang SDM menyampaikan kekhawatiran mengenai tingkat stres pegawai yang 
 Perencanaan iterasi ketiga dirancang untuk mengatasi masalah beban kerja yang tidak terkontrol melalui implementasi sistem kuotasi yang cerdas dan berkelanjutan. Rencana pengembangan mencakup:
 
 **Database Structure (2 Tabel Baru):**
-- `daily_counter` - Counter harian untuk tracking kuota
-- `ppatk_send_queue` - Queue pengiriman PPATK
+- `daily_counter` - Counter harian untuk tracking kuota (date, counter)
+- `ppatk_send_queue` - Queue pengiriman PPATK untuk antrian booking
 
 **Sistem Kuotasi Dinamis:**
 - Implementasi batas maksimal 80 booking per hari dengan distribusi merata
@@ -420,6 +420,7 @@ Perencanaan iterasi ketiga dirancang untuk mengatasi masalah beban kerja yang ti
 - Sistem notifikasi otomatis saat kuota mencapai 70%, 80%, dan 90%
 - Alert sistem untuk manajemen saat terjadi overload atau bottleneck
 - Laporan harian dan mingguan untuk evaluasi performa sistem
+- Notifikasi real-time menggunakan database `sys_notifications` (dari Iterasi 2)
 
 **Manajemen Antrian dan Penjadwalan:**
 - Sistem queue otomatis untuk booking yang melebihi kapasitas harian
