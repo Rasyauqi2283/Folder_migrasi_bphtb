@@ -330,48 +330,88 @@ main.shifted .main-content .main-region {
   box-sizing: border-box !important;
 }
 
-/* ===== SIMPLE REAL-TIME CONTROLS FIX ===== */
-/* Ensure real-time controls stay within viewport when sidebar expands */
-main.shifted .main-content .real-time-controls {
-  /* Simple solution: move to fixed position when sidebar expands */
+/* ===== HARMONIKA APPROACH: MAIN CONTENT STAYS IN PLACE ===== */
+/* When sidebar expands, main content stays in the same position (like harmonika) */
+main.shifted .main-content {
+  /* Keep main content in the same position - no shifting */
   position: fixed !important;
-  top: 80px !important;
-  right: 20px !important;
-  z-index: 1000 !important;
+  left: 250px !important; /* Start after sidebar width */
+  top: 0 !important;
+  width: calc(100vw - 250px) !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   
-  /* Ensure visibility */
-  background: rgba(255, 255, 255, 0.95) !important;
-  padding: 8px 12px !important;
-  border-radius: 6px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
-  backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(0,0,0,0.1) !important;
-  
-  /* Ensure it fits within viewport */
-  max-width: min(200px, calc(100vw - 250px - 40px)) !important;
-  
-  /* Make it slightly more compact */
-  transform: scale(0.9) !important;
-  transform-origin: top right !important;
+  /* Ensure proper z-index */
+  z-index: 1 !important;
 }
 
-/* Ensure real-time button is readable */
-main.shifted .main-content .real-time-controls button {
-  font-size: 11px !important;
-  padding: 4px 8px !important;
-  max-width: 120px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+/* Real-time controls stay in their natural position */
+main.shifted .main-content .real-time-controls {
+  /* Keep real-time controls in their natural position */
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  
+  /* No special positioning needed - they stay where they are */
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  
+  /* Ensure they don't overflow */
+  max-width: 200px !important;
+  flex-shrink: 0 !important;
 }
 
-/* Ensure real-time indicator is readable */
-main.shifted .main-content .real-time-controls .real-time-indicator {
-  font-size: 10px !important;
-  max-width: 80px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+/* Ensure all content within main-content respects the harmonika approach */
+main.shifted .main-content * {
+  /* All child elements stay in their natural positions */
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* Ensure tables and cards don't break the layout */
+main.shifted .main-content table,
+main.shifted .main-content .card,
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ===== HARMONIKA APPROACH: RESPONSIVE ADJUSTMENTS ===== */
+/* Ensure harmonika approach works on different screen sizes */
+@media (max-width: 1200px) {
+  main.shifted .main-content {
+    left: 250px !important;
+    width: calc(100vw - 250px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main.shifted .main-content {
+    left: 250px !important;
+    width: calc(100vw - 250px) !important;
+  }
+  
+  /* On mobile, real-time controls might need to be more compact */
+  main.shifted .main-content .real-time-controls {
+    max-width: 150px !important;
+  }
+}
+
+/* ===== HARMONIKA APPROACH: SMOOTH TRANSITIONS ===== */
+/* Add smooth transitions for the harmonika effect */
+main .main-content {
+  transition: left 0.3s ease-in-out, width 0.3s ease-in-out !important;
+}
+
+/* Ensure real-time controls have smooth transitions too */
+main .main-content .real-time-controls {
+  transition: all 0.3s ease-in-out !important;
 }
 
 /* Dashboard welcome section adjustments */
