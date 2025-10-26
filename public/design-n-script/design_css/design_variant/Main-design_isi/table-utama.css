@@ -330,6 +330,283 @@ main.shifted .main-content .main-region {
   box-sizing: border-box !important;
 }
 
+/* ===== REAL-TIME CONTROLS SPECIFIC FIX ===== */
+/* Ensure real-time controls stay within viewport when sidebar expands */
+main.shifted .main-content .real-time-controls {
+  position: relative !important;
+  right: 0 !important;
+  max-width: 200px !important;
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Force real-time controls to wrap or adjust when sidebar expands */
+main.shifted .main-content .real-time-controls {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+}
+
+/* Ensure real-time button doesn't overflow */
+main.shifted .main-content .real-time-controls button {
+  white-space: nowrap !important;
+  font-size: 12px !important;
+  padding: 6px 12px !important;
+  max-width: 150px !important;
+}
+
+/* Ensure real-time indicator stays compact */
+main.shifted .main-content .real-time-controls .real-time-indicator {
+  font-size: 11px !important;
+  white-space: nowrap !important;
+}
+
+/* Alternative: Move real-time controls to a more visible position when sidebar expands */
+@media (min-width: 1200px) {
+  main.shifted .main-content .real-time-controls {
+    position: fixed !important;
+    top: 80px !important;
+    right: 20px !important;
+    z-index: 1000 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    backdrop-filter: blur(10px) !important;
+  }
+}
+
+/* ===== ADDITIONAL REAL-TIME CONTROLS FIXES ===== */
+/* Ensure real-time controls container doesn't overflow */
+main.shifted .main-content > div:has(.real-time-controls) {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+/* Force real-time controls to stay within bounds */
+main.shifted .main-content .real-time-controls {
+  order: 2 !important;
+  flex-shrink: 0 !important;
+  min-width: 0 !important;
+}
+
+/* Ensure title/header doesn't push real-time controls out */
+main.shifted .main-content h1,
+main.shifted .main-content h2,
+main.shifted .main-content h3,
+main.shifted .main-content .page-title {
+  flex: 1 !important;
+  min-width: 0 !important;
+  margin-right: 10px !important;
+}
+
+/* Mobile responsive adjustments for real-time controls */
+@media (max-width: 768px) {
+  main.shifted .main-content .real-time-controls {
+    position: static !important;
+    width: 100% !important;
+    justify-content: center !important;
+    margin-top: 10px !important;
+  }
+  
+  main.shifted .main-content .real-time-controls button {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* ===== CRITICAL FIX FOR REAL-TIME CONTROLS OVERFLOW ===== */
+/* Force real-time controls to stay within viewport bounds */
+main.shifted .main-content .real-time-controls {
+  /* Override any existing positioning */
+  position: relative !important;
+  right: auto !important;
+  left: auto !important;
+  
+  /* Ensure it doesn't exceed container width */
+  max-width: min(200px, calc(100vw - 250px - 50px)) !important;
+  
+  /* Force text wrapping if needed */
+  white-space: normal !important;
+  
+  /* Ensure proper alignment */
+  text-align: right !important;
+}
+
+/* Force real-time button to be more compact */
+main.shifted .main-content .real-time-controls button {
+  max-width: 120px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+}
+
+/* Force real-time indicator to be more compact */
+main.shifted .main-content .real-time-controls .real-time-indicator {
+  font-size: 10px !important;
+  max-width: 80px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Alternative solution: Move real-time controls to header area when sidebar expands */
+@media (min-width: 1200px) {
+  main.shifted .main-content .real-time-controls {
+    position: fixed !important;
+    top: 60px !important;
+    right: 20px !important;
+    z-index: 1000 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+  }
+}
+
+/* ===== FINAL SOLUTION FOR REAL-TIME CONTROLS ===== */
+/* Ensure real-time controls are always visible when sidebar expands */
+main.shifted .main-content .real-time-controls {
+  /* Force positioning to stay within bounds */
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  
+  /* Ensure it doesn't exceed viewport */
+  max-width: min(180px, calc(100vw - 250px - 30px)) !important;
+  
+  /* Make it more compact */
+  transform: scale(0.9) !important;
+  transform-origin: top right !important;
+}
+
+/* Ensure the parent container has relative positioning */
+main.shifted .main-content > div:has(.real-time-controls) {
+  position: relative !important;
+  padding-right: 200px !important;
+}
+
+/* Fallback: If the above doesn't work, use fixed positioning */
+@media (min-width: 1200px) {
+  main.shifted .main-content .real-time-controls {
+    position: fixed !important;
+    top: 80px !important;
+    right: 20px !important;
+    z-index: 1000 !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    max-width: 200px !important;
+  }
+}
+
+/* ===== ULTIMATE SOLUTION FOR REAL-TIME CONTROLS ===== */
+/* Force real-time controls to always stay visible */
+main.shifted .main-content .real-time-controls {
+  /* Use fixed positioning to ensure it's always visible */
+  position: fixed !important;
+  top: 70px !important;
+  right: 20px !important;
+  z-index: 1000 !important;
+  
+  /* Ensure it has a background so it's visible */
+  background: rgba(255, 255, 255, 0.95) !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(0,0,0,0.1) !important;
+  
+  /* Ensure it doesn't exceed viewport */
+  max-width: min(180px, calc(100vw - 250px - 40px)) !important;
+  
+  /* Make it more compact */
+  transform: scale(0.85) !important;
+  transform-origin: top right !important;
+}
+
+/* Ensure real-time button is compact */
+main.shifted .main-content .real-time-controls button {
+  font-size: 10px !important;
+  padding: 3px 6px !important;
+  max-width: 100px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Ensure real-time indicator is compact */
+main.shifted .main-content .real-time-controls .real-time-indicator {
+  font-size: 9px !important;
+  max-width: 60px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* ===== FINAL OVERRIDE FOR REAL-TIME CONTROLS ===== */
+/* This will override all previous rules and ensure real-time controls are always visible */
+main.shifted .main-content .real-time-controls {
+  /* Force fixed positioning */
+  position: fixed !important;
+  top: 60px !important;
+  right: 15px !important;
+  z-index: 1000 !important;
+  
+  /* Ensure visibility */
+  background: rgba(255, 255, 255, 0.95) !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+  backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(0,0,0,0.15) !important;
+  
+  /* Ensure it fits within viewport */
+  max-width: min(160px, calc(100vw - 250px - 30px)) !important;
+  
+  /* Make it compact */
+  transform: scale(0.8) !important;
+  transform-origin: top right !important;
+  
+  /* Ensure it's always visible */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 2px !important;
+}
+
+/* Override button styling for compactness */
+main.shifted .main-content .real-time-controls button {
+  font-size: 9px !important;
+  padding: 2px 4px !important;
+  max-width: 80px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.2 !important;
+}
+
+/* Override indicator styling for compactness */
+main.shifted .main-content .real-time-controls .real-time-indicator {
+  font-size: 8px !important;
+  max-width: 50px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.2 !important;
+}
+
 /* Dashboard welcome section adjustments */
 .admin-dashboard .welcome-section {
   padding: 20px 20px 0 20px; /* Consistent padding with main-content */
