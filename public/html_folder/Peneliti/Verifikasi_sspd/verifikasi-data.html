@@ -144,6 +144,348 @@ main.shifted #verifikasi_p1_design {
         opacity: 1;
       }
     }
+
+    /* ===== CRITICAL FIX FOR REAL-TIME CONTROLS OVERFLOW ===== */
+    /* Ensure real-time controls stay within viewport when sidebar expands */
+    main.shifted .real-time-controls {
+      position: fixed !important;
+      top: 60px !important;
+      right: 15px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility */
+      background: rgba(255, 255, 255, 0.95) !important;
+      padding: 4px 8px !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+      backdrop-filter: blur(6px) !important;
+      border: 1px solid rgba(0,0,0,0.15) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(160px, calc(100vw - 250px - 30px)) !important;
+      
+      /* Make it compact */
+      transform: scale(0.8) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 2px !important;
+    }
+
+    /* Override button styling for compactness */
+    main.shifted .real-time-controls button {
+      font-size: 9px !important;
+      padding: 2px 4px !important;
+      max-width: 80px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Override indicator styling for compactness */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 8px !important;
+      max-width: 50px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.2 !important;
+    }
+
+    /* Ensure the container doesn't push real-time controls out */
+    main.shifted > div:has(.real-time-controls) {
+      position: relative !important;
+      padding-right: 0 !important;
+      margin-right: 0 !important;
+    }
+
+    /* ===== ALTERNATIVE SOLUTION: MOVE TO HEADER AREA ===== */
+    /* If the above doesn't work, move real-time controls to header area */
+    main.shifted .real-time-controls {
+      position: fixed !important;
+      top: 80px !important;
+      right: 20px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility with better background */
+      background: rgba(255, 255, 255, 0.98) !important;
+      padding: 6px 10px !important;
+      border-radius: 6px !important;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.25) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(0,0,0,0.2) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(180px, calc(100vw - 250px - 40px)) !important;
+      
+      /* Make it more compact */
+      transform: scale(0.85) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 3px !important;
+    }
+
+    /* Override button styling for better visibility */
+    main.shifted .real-time-controls button {
+      font-size: 10px !important;
+      padding: 3px 6px !important;
+      max-width: 100px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.3 !important;
+      background: #28a745 !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 3px !important;
+    }
+
+    /* Override indicator styling for better visibility */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 9px !important;
+      max-width: 60px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.3 !important;
+      color: #333 !important;
+    }
+
+    /* ===== FINAL OVERRIDE: FORCE REAL-TIME CONTROLS TO STAY VISIBLE ===== */
+    /* This will override all previous rules and ensure real-time controls are always visible */
+    main.shifted .real-time-controls {
+      /* Force fixed positioning */
+      position: fixed !important;
+      top: 70px !important;
+      right: 10px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility */
+      background: rgba(255, 255, 255, 0.98) !important;
+      padding: 4px 8px !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+      backdrop-filter: blur(6px) !important;
+      border: 1px solid rgba(0,0,0,0.25) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(150px, calc(100vw - 250px - 20px)) !important;
+      
+      /* Make it compact */
+      transform: scale(0.8) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 2px !important;
+    }
+
+    /* Override button styling for maximum compactness */
+    main.shifted .real-time-controls button {
+      font-size: 8px !important;
+      padding: 2px 4px !important;
+      max-width: 70px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.2 !important;
+      background: #28a745 !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 2px !important;
+    }
+
+    /* Override indicator styling for maximum compactness */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 8px !important;
+      max-width: 50px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.2 !important;
+      color: #333 !important;
+    }
+
+    /* ===== ULTIMATE SOLUTION: MOVE TO TOP-RIGHT CORNER ===== */
+    /* This will ensure real-time controls are always visible in the top-right corner */
+    main.shifted .real-time-controls {
+      /* Force fixed positioning to top-right corner */
+      position: fixed !important;
+      top: 60px !important;
+      right: 5px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility with strong background */
+      background: rgba(255, 255, 255, 0.98) !important;
+      padding: 3px 6px !important;
+      border-radius: 3px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(0,0,0,0.3) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(140px, calc(100vw - 250px - 10px)) !important;
+      
+      /* Make it very compact */
+      transform: scale(0.75) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 1px !important;
+    }
+
+    /* Override button styling for ultimate compactness */
+    main.shifted .real-time-controls button {
+      font-size: 7px !important;
+      padding: 1px 3px !important;
+      max-width: 60px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.1 !important;
+      background: #28a745 !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 2px !important;
+    }
+
+    /* Override indicator styling for ultimate compactness */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 7px !important;
+      max-width: 40px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.1 !important;
+      color: #333 !important;
+    }
+
+    /* ===== FINAL SOLUTION: FORCE REAL-TIME CONTROLS TO STAY VISIBLE ===== */
+    /* This will override all previous rules and ensure real-time controls are always visible */
+    main.shifted .real-time-controls {
+      /* Force fixed positioning */
+      position: fixed !important;
+      top: 50px !important;
+      right: 0px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility */
+      background: rgba(255, 255, 255, 0.98) !important;
+      padding: 2px 4px !important;
+      border-radius: 2px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(0,0,0,0.4) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(120px, calc(100vw - 250px - 5px)) !important;
+      
+      /* Make it very compact */
+      transform: scale(0.7) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 1px !important;
+    }
+
+    /* Override button styling for final compactness */
+    main.shifted .real-time-controls button {
+      font-size: 6px !important;
+      padding: 1px 2px !important;
+      max-width: 50px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.0 !important;
+      background: #28a745 !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 1px !important;
+    }
+
+    /* Override indicator styling for final compactness */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 6px !important;
+      max-width: 30px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 1.0 !important;
+      color: #333 !important;
+    }
+
+    /* ===== ULTIMATE OVERRIDE: FORCE REAL-TIME CONTROLS TO STAY VISIBLE ===== */
+    /* This will override all previous rules and ensure real-time controls are always visible */
+    main.shifted .real-time-controls {
+      /* Force fixed positioning */
+      position: fixed !important;
+      top: 40px !important;
+      right: -5px !important;
+      z-index: 1000 !important;
+      
+      /* Ensure visibility */
+      background: rgba(255, 255, 255, 0.98) !important;
+      padding: 1px 3px !important;
+      border-radius: 1px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.6) !important;
+      backdrop-filter: blur(8px) !important;
+      border: 1px solid rgba(0,0,0,0.5) !important;
+      
+      /* Ensure it fits within viewport */
+      max-width: min(100px, calc(100vw - 250px)) !important;
+      
+      /* Make it very compact */
+      transform: scale(0.6) !important;
+      transform-origin: top right !important;
+      
+      /* Ensure it's always visible */
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: flex-end !important;
+      gap: 0px !important;
+    }
+
+    /* Override button styling for ultimate compactness */
+    main.shifted .real-time-controls button {
+      font-size: 5px !important;
+      padding: 0px 1px !important;
+      max-width: 40px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 0.9 !important;
+      background: #28a745 !important;
+      color: white !important;
+      border: none !important;
+      border-radius: 1px !important;
+    }
+
+    /* Override indicator styling for ultimate compactness */
+    main.shifted .real-time-controls .real-time-indicator {
+      font-size: 5px !important;
+      max-width: 25px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      line-height: 0.9 !important;
+      color: #333 !important;
+    }
     </style>
 </head>
 <body>
