@@ -415,6 +415,22 @@
       let realTimeInterval = null;
       let lastDataCount = 0;
       let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+      
+      // Track user activity
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        
+        // Reset interaction flag after 5 seconds of inactivity
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) {
+            userIsInteracting = false;
+          }
+        }, 5000);
+      }
       
       // Function to start real-time monitoring
       function startRealTimeMonitoring() {
@@ -422,16 +438,22 @@
           clearInterval(realTimeInterval);
         }
         
-        // Check for new data every 3 seconds
+        // Check for new data every 5 seconds (reduced frequency)
         realTimeInterval = setInterval(async () => {
           if (!isRealTimeEnabled) return;
+          
+          // Skip if user is actively interacting
+          if (userIsInteracting) {
+            console.log('⏸️ Skipping LTB real-time check - user is interacting');
+            return;
+          }
           
           try {
             await checkForNewData();
           } catch (error) {
-            console.error('❌ Error in real-time monitoring:', error);
+            console.error('❌ Error in LTB real-time monitoring:', error);
           }
-        }, 3000);
+        }, 5000); // Increased from 3 to 5 seconds
         
         console.log('🔄 LTB Real-time monitoring started');
       }
@@ -452,18 +474,31 @@
           const tbody = document.querySelector('#ltbBerkasTable tbody');
           const currentCount = tbody ? tbody.children.length : 0;
           
-          // If count increased, show notification and reload
+          // If count increased, show notification and reload with debouncing
           if (currentCount > lastDataCount && lastDataCount > 0) {
             console.log(`🆕 New LTB data detected! Count: ${lastDataCount} → ${currentCount}`);
             lastDataCount = currentCount;
             
-            // Show new data notification
-            showNewDataNotification();
-            
-            // Reload the table data
-            if (window.loadLTBData) {
-              window.loadLTBData();
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
             }
+            
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleLTBNotification();
+                
+                // Reload the table data
+                if (window.loadLTBData) {
+                  window.loadLTBData();
+                }
+              } else {
+                console.log('⏸️ Skipping LTB refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
           } else if (currentCount !== lastDataCount) {
             // Update count even if it decreased
             lastDataCount = currentCount;
@@ -473,7 +508,80 @@
         }
       }
       
-      // Function to show new data notification
+      // Function to show subtle LTB notification (less intrusive)
+      function showSubtleLTBNotification() {
+        // Remove existing indicators
+        const existingIndicator = document.querySelector('.subtle-ltb-notification');
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
+        
+        // Create subtle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'subtle-ltb-notification';
+        indicator.innerHTML = `
+          <div class="subtle-content">
+            <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+            <span>Data LTB baru tersedia</span>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('subtle-ltb-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'subtle-ltb-notification-styles';
+          style.textContent = `
+            .subtle-ltb-notification {
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              background: rgba(40, 167, 69, 0.9);
+              color: white;
+              border-radius: 20px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 9998;
+              animation: slideInRight 0.3s ease-out;
+              font-size: 12px;
+              font-weight: 500;
+              backdrop-filter: blur(10px);
+            }
+            
+            .subtle-content {
+              display: flex;
+              align-items: center;
+            }
+            
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(indicator);
+        
+        // Auto remove after 3 seconds (shorter duration)
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+              if (indicator.parentElement) {
+                indicator.remove();
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // Function to show new data notification (kept for manual refresh)
       function showNewDataNotification() {
         // Remove existing notification
         const existingNotification = document.querySelector('.new-data-notification');
@@ -612,6 +720,7 @@
       window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
       window.startRealTimeMonitoring = startRealTimeMonitoring;
       window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
       
       // Initialize when page loads
       document.addEventListener('DOMContentLoaded', () => {
@@ -619,6 +728,35 @@
         setTimeout(() => {
           initializeRealTime();
         }, 1000);
+        
+        // Track user interactions to prevent unwanted refreshes
+        const table = document.querySelector('#ltbBerkasTable');
+        if (table) {
+          // Track clicks on buttons and interactive elements
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+              trackUserActivity();
+              console.log('👆 User clicked LTB button - tracking activity');
+            }
+          });
+          
+          // Track mouse movements over the table
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        
+        // Track clicks on real-time toggle button
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) {
+          realTimeToggle.addEventListener('click', trackUserActivity);
+        }
+        
+        // Track search input
+        const searchInput = document.getElementById('ltbSearch');
+        if (searchInput) {
+          searchInput.addEventListener('focus', trackUserActivity);
+          searchInput.addEventListener('input', trackUserActivity);
+        }
       });
     })();
   </script>

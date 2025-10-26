@@ -1040,6 +1040,11 @@ document.getElementById('notifTable').addEventListener('click', async (e)=>{
   
   console.log('🔍 Button clicked:', { nobooking: nb, noRegistrasi, buttonText: b.textContent });
   
+  // Track user activity when clicking buttons
+  if (window.trackUserActivity) {
+    window.trackUserActivity();
+  }
+  
   // Handle Kirim Ping button for ppat_ltb category
   if (b.classList.contains('btn-ping') && window.currentCategory === 'ppat_ltb') {
     await sendPingNotification(nb, noRegistrasi);
@@ -2129,6 +2134,22 @@ renderNotifications();
     let realTimeInterval = null;
     let lastNotificationCount = 0;
     let isRealTimeEnabled = true;
+    let userIsInteracting = false;
+    let lastUserActivity = Date.now();
+    let refreshDebounceTimer = null;
+    
+    // Track user activity
+    function trackUserActivity() {
+      lastUserActivity = Date.now();
+      userIsInteracting = true;
+      
+      // Reset interaction flag after 5 seconds of inactivity
+      setTimeout(() => {
+        if (Date.now() - lastUserActivity >= 5000) {
+          userIsInteracting = false;
+        }
+      }, 5000);
+    }
     
     // Function to start real-time monitoring
     function startRealTimeMonitoring() {
@@ -2136,16 +2157,22 @@ renderNotifications();
         clearInterval(realTimeInterval);
       }
       
-      // Check for new notifications every 3 seconds
+      // Check for new notifications every 5 seconds (reduced frequency)
       realTimeInterval = setInterval(async () => {
         if (!isRealTimeEnabled) return;
+        
+        // Skip if user is actively interacting
+        if (userIsInteracting) {
+          console.log('⏸️ Skipping real-time check - user is interacting');
+          return;
+        }
         
         try {
           await checkForNewNotifications();
         } catch (error) {
           console.error('❌ Error in real-time monitoring:', error);
         }
-      }, 3000);
+      }, 5000); // Increased from 3 to 5 seconds
       
       console.log('🔄 Real-time monitoring started');
     }
@@ -2194,16 +2221,29 @@ renderNotifications();
         if (result.success && result.pagination) {
           const currentCount = result.pagination.total;
           
-          // If count increased, reload the table
+          // If count increased, reload the table with debouncing
           if (currentCount > lastNotificationCount) {
             console.log(`🆕 New notifications detected! Count: ${lastNotificationCount} → ${currentCount}`);
             lastNotificationCount = currentCount;
             
-            // Show new notification indicator
-            showNewNotificationIndicator();
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
             
-            // Reload the table
-            await loadNotifications();
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleNotificationIndicator();
+                
+                // Reload the table
+                await loadNotifications();
+              } else {
+                console.log('⏸️ Skipping refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
           } else if (currentCount !== lastNotificationCount) {
             // Update count even if it decreased (deletions)
             lastNotificationCount = currentCount;
@@ -2215,7 +2255,80 @@ renderNotifications();
       }
     }
     
-    // Function to show new notification indicator
+    // Function to show subtle notification indicator (less intrusive)
+    function showSubtleNotificationIndicator() {
+      // Remove existing indicators
+      const existingIndicator = document.querySelector('.subtle-notification-indicator');
+      if (existingIndicator) {
+        existingIndicator.remove();
+      }
+      
+      // Create subtle indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'subtle-notification-indicator';
+      indicator.innerHTML = `
+        <div class="subtle-content">
+          <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+          <span>Data baru tersedia</span>
+        </div>
+      `;
+      
+      // Add styles
+      if (!document.getElementById('subtle-notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'subtle-notification-styles';
+        style.textContent = `
+          .subtle-notification-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(40, 167, 69, 0.9);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 9998;
+            animation: slideInRight 0.3s ease-out;
+            font-size: 12px;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+          }
+          
+          .subtle-content {
+            display: flex;
+            align-items: center;
+          }
+          
+          @keyframes slideInRight {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(indicator);
+      
+      // Auto remove after 3 seconds (shorter duration)
+      setTimeout(() => {
+        if (indicator.parentElement) {
+          indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+          setTimeout(() => {
+            if (indicator.parentElement) {
+              indicator.remove();
+            }
+          }, 300);
+        }
+      }, 3000);
+    }
+    
+    // Function to show new notification indicator (kept for manual refresh)
     function showNewNotificationIndicator() {
       // Remove existing indicator
       const existingIndicator = document.querySelector('.new-notification-indicator');
@@ -2326,17 +2439,21 @@ renderNotifications();
         if (isEnabled) {
           button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
           button.className = 'btn btn-warning btn-sm';
+          button.title = 'Klik untuk menghentikan auto-refresh';
         } else {
           button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
           button.className = 'btn btn-success btn-sm';
+          button.title = 'Klik untuk memulai auto-refresh';
         }
       }
       
       if (dot) {
         if (isEnabled) {
           dot.classList.remove('paused');
+          dot.title = 'Real-time monitoring aktif';
         } else {
           dot.classList.add('paused');
+          dot.title = 'Real-time monitoring dihentikan';
         }
       }
     }
@@ -2354,6 +2471,7 @@ renderNotifications();
     window.startRealTimeMonitoring = startRealTimeMonitoring;
     window.stopRealTimeMonitoring = stopRealTimeMonitoring;
     window.checkForNewNotifications = checkForNewNotifications;
+    window.trackUserActivity = trackUserActivity;
     
     document.addEventListener('DOMContentLoaded', ()=>{
       loadNotifications();
@@ -2376,6 +2494,41 @@ renderNotifications();
             loadUsers();
           }, 500); // Debounce search
         });
+      }
+      
+      // Track user interactions to prevent unwanted refreshes
+      const table = qs('#notifTable');
+      if (table) {
+        // Track clicks on buttons and interactive elements
+        table.addEventListener('click', (e) => {
+          if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+            trackUserActivity();
+            console.log('👆 User clicked button - tracking activity');
+          }
+        });
+        
+        // Track mouse movements over the table
+        table.addEventListener('mouseenter', trackUserActivity);
+        table.addEventListener('mousemove', trackUserActivity);
+      }
+      
+      // Track clicks on segmented buttons
+      const segButtons = qs('.segmented');
+      if (segButtons) {
+        segButtons.addEventListener('click', trackUserActivity);
+      }
+      
+      // Track search input
+      const searchInput = qs('#notifSearch');
+      if (searchInput) {
+        searchInput.addEventListener('focus', trackUserActivity);
+        searchInput.addEventListener('input', trackUserActivity);
+      }
+      
+      // Track real-time toggle button
+      const realTimeToggle = qs('#realTimeToggle');
+      if (realTimeToggle) {
+        realTimeToggle.addEventListener('click', trackUserActivity);
       }
     });
 

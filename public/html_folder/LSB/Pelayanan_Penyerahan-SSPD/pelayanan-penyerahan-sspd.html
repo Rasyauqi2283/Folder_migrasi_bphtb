@@ -17,6 +17,52 @@
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
 
+    <style>
+      /* Real-time controls styling for LSB */
+      .real-time-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+      }
+      
+      .real-time-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #9ca3af;
+      }
+      
+      .indicator-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #28a745;
+        animation: pulse 2s infinite;
+      }
+      
+      .indicator-dot.paused {
+        background: #6c757d;
+        animation: none;
+      }
+      
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+    </style>
+
 </head>
 <body>
   <!-- Header Section -->
@@ -117,7 +163,20 @@
   <!---->
   <!-- MAIN -->
   <main id="pelayanan_penyerahan_sspd_design" class="main-content">
-    <button class="btn viewpdf" onclick="viewDocument()">Unduh Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <button class="btn viewpdf" onclick="viewDocument()">Unduh Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+      
+      <!-- Real-time controls -->
+      <div class="real-time-controls">
+        <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+          <i class="fa fa-pause"></i> Pause Real-time
+        </button>
+        <div class="real-time-indicator" id="realTimeIndicator">
+          <div class="indicator-dot"></div>
+          <span>Real-time</span>
+        </div>
+      </div>
+    </div>
 
     <table id="LSBTable">
         <thead>
@@ -163,6 +222,275 @@
   <!---->
   <script src="../../../design-n-script/script-backend/header-backend.js"></script>
   <script src="../../../design-n-script/script-backend/lsb_pelayananp-sspd.js"></script>
+  
+  <!-- Real-time monitoring script for LSB -->
+  <script>
+    (function(){
+      // Real-time notification system for LSB
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+      
+      // Track user activity
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        
+        // Reset interaction flag after 5 seconds of inactivity
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) {
+            userIsInteracting = false;
+          }
+        }, 5000);
+      }
+      
+      // Function to start real-time monitoring
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+        }
+        
+        // Check for new data every 5 seconds (reduced frequency)
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          
+          // Skip if user is actively interacting
+          if (userIsInteracting) {
+            console.log('⏸️ Skipping LSB real-time check - user is interacting');
+            return;
+          }
+          
+          try {
+            await checkForNewData();
+          } catch (error) {
+            console.error('❌ Error in LSB real-time monitoring:', error);
+          }
+        }, 5000); // Check every 5 seconds
+        
+        console.log('🔄 LSB Real-time monitoring started');
+      }
+      
+      // Function to stop real-time monitoring
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+        console.log('⏹️ LSB Real-time monitoring stopped');
+      }
+      
+      // Function to check for new data
+      async function checkForNewData() {
+        try {
+          // Get current data count from the table
+          const tbody = document.querySelector('#LSBTable tbody');
+          const currentCount = tbody ? tbody.children.length : 0;
+          
+          // If count increased, show notification and reload with debouncing
+          if (currentCount > lastDataCount && lastDataCount > 0) {
+            console.log(`🆕 New LSB data detected! Count: ${lastDataCount} → ${currentCount}`);
+            lastDataCount = currentCount;
+            
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
+            
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleLSBNotification();
+                
+                // Reload the table data
+                if (window.loadLSBData) {
+                  window.loadLSBData();
+                }
+              } else {
+                console.log('⏸️ Skipping LSB refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
+          } else if (currentCount !== lastDataCount) {
+            // Update count even if it decreased
+            lastDataCount = currentCount;
+          }
+        } catch (error) {
+          console.error('❌ Error checking for new LSB data:', error);
+        }
+      }
+      
+      // Function to show subtle LSB notification (less intrusive)
+      function showSubtleLSBNotification() {
+        // Remove existing indicators
+        const existingIndicator = document.querySelector('.subtle-lsb-notification');
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
+        
+        // Create subtle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'subtle-lsb-notification';
+        indicator.innerHTML = `
+          <div class="subtle-content">
+            <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+            <span>Data LSB baru tersedia</span>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('subtle-lsb-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'subtle-lsb-notification-styles';
+          style.textContent = `
+            .subtle-lsb-notification {
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              background: rgba(40, 167, 69, 0.9);
+              color: white;
+              border-radius: 20px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 9998;
+              animation: slideInRight 0.3s ease-out;
+              font-size: 12px;
+              font-weight: 500;
+              backdrop-filter: blur(10px);
+            }
+            
+            .subtle-content {
+              display: flex;
+              align-items: center;
+            }
+            
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(indicator);
+        
+        // Auto remove after 3 seconds (shorter duration)
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+              if (indicator.parentElement) {
+                indicator.remove();
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // Function to toggle real-time monitoring
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+      
+      // Function to update real-time button state
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+        
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+            button.title = 'Klik untuk menghentikan auto-refresh';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+            button.title = 'Klik untuk memulai auto-refresh';
+          }
+        }
+        
+        if (dot) {
+          if (isEnabled) {
+            dot.classList.remove('paused');
+            dot.title = 'Real-time monitoring aktif';
+          } else {
+            dot.classList.add('paused');
+            dot.title = 'Real-time monitoring dihentikan';
+          }
+        }
+      }
+      
+      // Initialize real-time monitoring
+      function initializeRealTime() {
+        // Get initial count
+        const tbody = document.querySelector('#LSBTable tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        
+        startRealTimeMonitoring();
+      }
+      
+      // Expose functions to global scope
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
+      
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', () => {
+        // Wait a bit for the table to load
+        setTimeout(() => {
+          initializeRealTime();
+        }, 1000);
+        
+        // Track user interactions to prevent unwanted refreshes
+        const table = document.querySelector('#LSBTable');
+        if (table) {
+          // Track clicks on buttons and interactive elements
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+              trackUserActivity();
+              console.log('👆 User clicked LSB button - tracking activity');
+            }
+          });
+          
+          // Track mouse movements over the table
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        
+        // Track clicks on real-time toggle button
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) {
+          realTimeToggle.addEventListener('click', trackUserActivity);
+        }
+        
+        // Track clicks on viewpdf button
+        const viewpdfBtn = document.querySelector('.btn.viewpdf');
+        if (viewpdfBtn) {
+          viewpdfBtn.addEventListener('click', trackUserActivity);
+        }
+      });
+    })();
+  </script>
+  
   <script type="module">
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
     initNotifications();

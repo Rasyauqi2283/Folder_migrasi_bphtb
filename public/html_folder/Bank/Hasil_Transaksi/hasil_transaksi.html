@@ -630,27 +630,94 @@
       }
 
       document.addEventListener('click', (e)=>{
-        const acc = e.target.closest('button[data-acc]'); if(acc){ approve(acc.getAttribute('data-acc')); }
-        const rej = e.target.closest('button[data-rej]'); if(rej){ reject(rej.getAttribute('data-rej')); }
+        const acc = e.target.closest('button[data-acc]'); 
+        if(acc){ 
+          // Track user activity when clicking buttons
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+          approve(acc.getAttribute('data-acc')); 
+        }
+        const rej = e.target.closest('button[data-rej]'); 
+        if(rej){ 
+          // Track user activity when clicking buttons
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+          reject(rej.getAttribute('data-rej')); 
+        }
       });
       
       // Event listeners
       filter.addEventListener('change', () => {
         console.log('🔍 [BANK] Filter changed to:', filter.value);
+        // Track user activity
+        if (window.trackUserActivity) {
+          window.trackUserActivity();
+        }
         load();
       });
       
       search.addEventListener('keyup', (e)=>{ 
         if(e.key==='Enter') {
           console.log('🔍 [BANK] Search triggered:', search.value);
+          // Track user activity
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
           load(); 
+        }
+      });
+      
+      search.addEventListener('input', () => {
+        // Track user activity when typing
+        if (window.trackUserActivity) {
+          window.trackUserActivity();
         }
       });
       
       reload.addEventListener('click', () => {
         console.log('🔄 [BANK] Reload clicked');
+        // Track user activity
+        if (window.trackUserActivity) {
+          window.trackUserActivity();
+        }
         load();
       });
+      
+      // Track clicks on navigation tabs
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+        });
+      });
+      
+      // Track clicks on real-time toggle button
+      const realTimeToggle = document.getElementById('realTimeToggle');
+      if (realTimeToggle) {
+        realTimeToggle.addEventListener('click', () => {
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+        });
+      }
+      
+      // Track mouse movements over the table
+      const table = document.querySelector('#trxTable');
+      if (table) {
+        table.addEventListener('mouseenter', () => {
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+        });
+        table.addEventListener('mousemove', () => {
+          if (window.trackUserActivity) {
+            window.trackUserActivity();
+          }
+        });
+      }
       
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', () => {
@@ -669,6 +736,22 @@
       let realTimeInterval = null;
       let lastDataCount = 0;
       let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+      
+      // Track user activity
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        
+        // Reset interaction flag after 5 seconds of inactivity
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) {
+            userIsInteracting = false;
+          }
+        }, 5000);
+      }
       
       // Function to start real-time monitoring
       function startRealTimeMonitoring() {
@@ -676,16 +759,22 @@
           clearInterval(realTimeInterval);
         }
         
-        // Check for new data every 3 seconds
+        // Check for new data every 5 seconds (reduced frequency)
         realTimeInterval = setInterval(async () => {
           if (!isRealTimeEnabled) return;
+          
+          // Skip if user is actively interacting
+          if (userIsInteracting) {
+            console.log('⏸️ Skipping Bank real-time check - user is interacting');
+            return;
+          }
           
           try {
             await checkForNewData();
           } catch (error) {
             console.error('❌ Error in Bank real-time monitoring:', error);
           }
-        }, 3000);
+        }, 5000); // Increased from 3 to 5 seconds
         
         console.log('🔄 Bank Real-time monitoring started');
       }
@@ -706,18 +795,31 @@
           const tbody = document.querySelector('#trxTable tbody');
           const currentCount = tbody ? tbody.children.length : 0;
           
-          // If count increased, show notification and reload
+          // If count increased, show notification and reload with debouncing
           if (currentCount > lastDataCount && lastDataCount > 0) {
             console.log(`🆕 New Bank data detected! Count: ${lastDataCount} → ${currentCount}`);
             lastDataCount = currentCount;
             
-            // Show new data notification
-            showNewDataNotification();
-            
-            // Reload the table data
-            if (window.load) {
-              window.load();
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
             }
+            
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleBankNotification();
+                
+                // Reload the table data
+                if (window.load) {
+                  window.load();
+                }
+              } else {
+                console.log('⏸️ Skipping Bank refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
           } else if (currentCount !== lastDataCount) {
             // Update count even if it decreased
             lastDataCount = currentCount;
@@ -727,7 +829,80 @@
         }
       }
       
-      // Function to show new data notification
+      // Function to show subtle Bank notification (less intrusive)
+      function showSubtleBankNotification() {
+        // Remove existing indicators
+        const existingIndicator = document.querySelector('.subtle-bank-notification');
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
+        
+        // Create subtle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'subtle-bank-notification';
+        indicator.innerHTML = `
+          <div class="subtle-content">
+            <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+            <span>Data Bank baru tersedia</span>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('subtle-bank-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'subtle-bank-notification-styles';
+          style.textContent = `
+            .subtle-bank-notification {
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              background: rgba(40, 167, 69, 0.9);
+              color: white;
+              border-radius: 20px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 9998;
+              animation: slideInRight 0.3s ease-out;
+              font-size: 12px;
+              font-weight: 500;
+              backdrop-filter: blur(10px);
+            }
+            
+            .subtle-content {
+              display: flex;
+              align-items: center;
+            }
+            
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(indicator);
+        
+        // Auto remove after 3 seconds (shorter duration)
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+              if (indicator.parentElement) {
+                indicator.remove();
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // Function to show new data notification (kept for manual refresh)
       function showNewDataNotification() {
         // Remove existing notification
         const existingNotification = document.querySelector('.new-data-notification');
@@ -866,6 +1041,7 @@
       window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
       window.startRealTimeMonitoring = startRealTimeMonitoring;
       window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
     })();
   </script>
   
