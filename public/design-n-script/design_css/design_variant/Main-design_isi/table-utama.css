@@ -75,6 +75,80 @@ main.shifted .main-content {
   width: calc(100vw - 250px - 15px); /* 250px sidebar + 15px right margin */
   max-width: calc(100vw - 250px - 15px);
   height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
+  
+  /* Ensure content doesn't overflow */
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Ensure all child elements respect the container width */
+main.shifted .main-content * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Specific adjustments for tables when shifted */
+main.shifted .main-content table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+/* Specific adjustments for cards when shifted */
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Specific adjustments for table containers when shifted */
+main.shifted .main-content .table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+/* Ensure real-time controls don't overflow */
+main.shifted .main-content .real-time-controls {
+  flex-shrink: 0;
+  max-width: 200px;
+}
+
+/* Force all elements to respect the shifted width - CRITICAL FIX */
+main.shifted .main-content,
+main.shifted .main-content * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure no horizontal overflow on shifted content */
+main.shifted .main-content {
+  overflow-x: hidden !important;
+}
+
+/* Ensure all containers respect the shifted width */
+main.shifted .main-content > * {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments for shifted state */
+@media (max-width: 1200px) {
+  main.shifted .main-content {
+    width: calc(100vw - 250px - 10px);
+    max-width: calc(100vw - 250px - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  main.shifted .main-content {
+    width: calc(100vw - 250px - 5px);
+    max-width: calc(100vw - 250px - 5px);
+  }
 }
 
 /* ===== ADMIN DASHBOARD INTEGRATION ===== */
@@ -83,6 +157,177 @@ main.shifted .main-content {
   /* Inherits from main .main-content styling */
   /* Additional dashboard-specific adjustments */
   overflow-y: auto; /* Allow vertical scrolling for dashboard content */
+}
+
+/* ===== CRITICAL FIX FOR SIDEBAR EXPANSION ===== */
+/* Ensure all elements respect the shifted width when sidebar expands */
+main.shifted .main-content {
+  /* Force width recalculation */
+  width: calc(100vw - 250px - 15px) !important;
+  max-width: calc(100vw - 250px - 15px) !important;
+  
+  /* Prevent horizontal overflow */
+  overflow-x: hidden !important;
+  
+  /* Ensure proper box sizing */
+  box-sizing: border-box !important;
+}
+
+/* Force all child elements to respect container width */
+main.shifted .main-content * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure tables don't break the layout */
+main.shifted .main-content table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Ensure cards and containers don't overflow */
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container,
+main.shifted .main-content .content-cards {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page containers respect the shifted width */
+main.shifted .main-content .page-container,
+main.shifted .main-content .content-container,
+main.shifted .main-content .main-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page sections respect the shifted width */
+main.shifted .main-content .page-section,
+main.shifted .main-content .content-section,
+main.shifted .main-content .main-section {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page blocks respect the shifted width */
+main.shifted .main-content .page-block,
+main.shifted .main-content .content-block,
+main.shifted .main-content .main-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page panels respect the shifted width */
+main.shifted .main-content .page-panel,
+main.shifted .main-content .content-panel,
+main.shifted .main-content .main-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page boxes respect the shifted width */
+main.shifted .main-content .page-box,
+main.shifted .main-content .content-box,
+main.shifted .main-content .main-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page wrappers respect the shifted width */
+main.shifted .main-content .page-wrapper,
+main.shifted .main-content .content-wrapper,
+main.shifted .main-content .main-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page elements respect the shifted width */
+main.shifted .main-content .page-element,
+main.shifted .main-content .content-element,
+main.shifted .main-content .main-element {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page components respect the shifted width */
+main.shifted .main-content .page-component,
+main.shifted .main-content .content-component,
+main.shifted .main-content .main-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page modules respect the shifted width */
+main.shifted .main-content .page-module,
+main.shifted .main-content .content-module,
+main.shifted .main-content .main-module {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page widgets respect the shifted width */
+main.shifted .main-content .page-widget,
+main.shifted .main-content .content-widget,
+main.shifted .main-content .main-widget {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page items respect the shifted width */
+main.shifted .main-content .page-item,
+main.shifted .main-content .content-item,
+main.shifted .main-content .main-item {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page parts respect the shifted width */
+main.shifted .main-content .page-part,
+main.shifted .main-content .content-part,
+main.shifted .main-content .main-part {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page areas respect the shifted width */
+main.shifted .main-content .page-area,
+main.shifted .main-content .content-area,
+main.shifted .main-content .main-area {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page zones respect the shifted width */
+main.shifted .main-content .page-zone,
+main.shifted .main-content .content-zone,
+main.shifted .main-content .main-zone {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page regions respect the shifted width */
+main.shifted .main-content .page-region,
+main.shifted .main-content .content-region,
+main.shifted .main-content .main-region {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Dashboard welcome section adjustments */
