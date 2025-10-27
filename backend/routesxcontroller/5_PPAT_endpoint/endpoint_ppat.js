@@ -302,6 +302,203 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
     }
 });
 
+// PPATK: Load booking data for Perorangan only
+app.get('/api/ppatk/load-booking-perorangan', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        const { page = 1, limit = 10, search = '', status = '' } = req.query;
+        
+        // Validate and sanitize pagination parameters
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10;
+        const offset = (pageNum - 1) * limitNum;
+        
+        // Ensure positive values
+        const safePage = Math.max(1, pageNum);
+        const safeLimit = Math.max(1, Math.min(100, limitNum)); // Max 100 items per page
+        const safeOffset = Math.max(0, (safePage - 1) * safeLimit);
+        
+        // Debug logging
+        console.log('🔍 [PPATK-PERORANGAN] Pagination parameters:', {
+            original: { page, limit },
+            parsed: { pageNum, limitNum },
+            safe: { safePage, safeLimit, safeOffset }
+        });
+        
+        let whereClause = 'WHERE userid = $1 AND jenis_wajib_pajak = $2';
+        const queryParams = [userid, 'Perorangan'];
+        let paramCount = 2;
+        
+        if (search) {
+            paramCount++;
+            whereClause += ` AND (nobooking ILIKE $${paramCount} OR namawajibpajak ILIKE $${paramCount} OR namapemilikobjekpajak ILIKE $${paramCount})`;
+            queryParams.push(`%${search}%`);
+        }
+        
+        if (status) {
+            paramCount++;
+            whereClause += ` AND trackstatus = $${paramCount}`;
+            queryParams.push(status);
+        }
+        
+        const countQuery = `SELECT COUNT(*) FROM pat_1_bookingsspd ${whereClause}`;
+        const countResult = await pool.query(countQuery, queryParams);
+        const totalCount = parseInt(countResult.rows[0].count);
+        
+        const dataQuery = `
+            SELECT 
+                nobooking,
+                noppbb,
+                namawajibpajak,
+                namapemilikobjekpajak,
+                npwpwp,
+                tahunajb,
+                trackstatus,
+                created_at,
+                updated_at,
+                akta_tanah_path,
+                sertifikat_tanah_path,
+                pelengkap_path,
+                pdf_dokumen_path,
+                file_withstempel_path,
+                jenis_wajib_pajak
+            FROM pat_1_bookingsspd 
+            ${whereClause}
+            ORDER BY created_at DESC
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+        `;
+        
+        queryParams.push(safeLimit, safeOffset);
+        const dataResult = await pool.query(dataQuery, queryParams);
+        
+        res.json({
+            success: true, 
+            data: dataResult.rows,
+            pagination: {
+                page: safePage,
+                limit: safeLimit,
+                total: totalCount,
+                pages: Math.ceil(totalCount / safeLimit)
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK-PERORANGAN] Load booking perorangan failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to load booking perorangan data: ' + error.message
+        });
+    }
+});
+
+// PPATK: Create booking for Perorangan
+app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
+    try {
+        console.log('📋 [PPATK-PERORANGAN] Create booking request received');
+        
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const userid = req.session.user.userid;
+        const body = req.body || {};
+        
+        console.log('📋 [PPATK-PERORANGAN] Request body:', body);
+        
+        // Validate required fields
+        const requiredFields = ['noppbb', 'namawajibpajak', 'alamatwajibpajak', 'tahunajb'];
+        for (const field of requiredFields) {
+            if (!body[field]) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Field ${field} is required` 
+                });
+            }
+        }
+        
+        // Set jenis_wajib_pajak to Perorangan
+        body.jenis_wajib_pajak = 'Perorangan';
+        
+        // Generate nobooking (will be handled by trigger)
+        const insertQuery = `
+            INSERT INTO pat_1_bookingsspd (
+                userid,
+                jenis_wajib_pajak,
+                noppbb,
+                namawajibpajak,
+                alamatwajibpajak,
+                namapemilikobjekpajak,
+                alamatpemilikobjekpajak,
+                tanggal,
+                tahunajb,
+                kabupatenkotawp,
+                kecamatanwp,
+                kelurahandesawp,
+                rtrwwp,
+                npwpwp,
+                kodeposwp,
+                kabupatenkotaop,
+                kecamatanop,
+                kelurahandesaop,
+                rtrwop,
+                npwpop,
+                kodeposop,
+                trackstatus,
+                created_at,
+                updated_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, NOW(), NOW()
+            ) RETURNING *
+        `;
+        
+        const insertParams = [
+            userid,
+            body.jenis_wajib_pajak,
+            body.noppbb,
+            body.namawajibpajak,
+            body.alamatwajibpajak,
+            body.namapemilikobjekpajak || body.namawajibpajak,
+            body.alamatpemilikobjekpajak || body.alamatwajibpajak,
+            body.tanggal || new Date().toLocaleDateString('id-ID'),
+            body.tahunajb,
+            body.kabupatenkotawp || 'Kabupaten Bogor',
+            body.kecamatanwp || '',
+            body.kelurahandesawp || '',
+            body.rtrwwp || '',
+            body.npwpwp || '',
+            body.kodeposwp || '',
+            body.kabupatenkotaop || body.kabupatenkotawp || 'Kabupaten Bogor',
+            body.kecamatanop || body.kecamatanwp || '',
+            body.kelurahandesaop || body.kelurahandesawp || '',
+            body.rtrwop || body.rtrwwp || '',
+            body.npwpop || body.npwpwp || '',
+            body.kodeposop || body.kodeposwp || '',
+            'Draft'
+        ];
+        
+        const result = await pool.query(insertQuery, insertParams);
+        
+        console.log('✅ [PPATK-PERORANGAN] Booking created successfully:', result.rows[0]);
+        
+        res.json({
+            success: true,
+            message: 'Booking SSPD Perorangan berhasil dibuat',
+            data: result.rows[0]
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK-PERORANGAN] Create booking failed:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create booking perorangan: ' + error.message
+        });
+    }
+});
+
 // PPATK: Load all booking data for table (untuk frontend table)
 app.get('/api/ppatk/load-all-booking', async (req, res) => {
     try {
@@ -394,12 +591,12 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
     }
 });
 
-// PPATK: Get booking detail by nobooking
+// PPATK: Get booking detail by nobooking (supports both Badan Usaha and Perorangan)
 app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
     try {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({ success: false, message: 'Unauthorized' });
-  }
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
 
         const { nobooking } = req.params;
         const userid = req.session.user.userid;
@@ -412,6 +609,7 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
                 p.alamatwajibpajak AS alamat_wajib_pajak,
                 p.namapemilikobjekpajak AS atas_nama,
                 p.npwpwp,
+                p.npwpop,
                 p.tahunajb,
                 p.kelurahandesawp AS kelurahan,
                 p.kecamatanwp AS kecamatan,
@@ -421,6 +619,7 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
                 p.kecamatanop AS kecamatanopj,
                 p.kabupatenkotaop,
                 p.trackstatus,
+                p.jenis_wajib_pajak,
                 p.created_at,
                 p.updated_at,
                 o.letaktanahdanbangunan AS "Alamatop",
@@ -440,18 +639,158 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         
         if (result.rows.length === 0) {
             return res.status(404).json({
-      success: false, 
+                success: false, 
                 message: 'Booking not found'
+            });
+        }
+        
+        const bookingData = result.rows[0];
+        
+        // Add jenis_wajib_pajak info to response
+        res.json({
+            success: true, 
+            data: bookingData,
+            jenis_wajib_pajak: bookingData.jenis_wajib_pajak
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK] Get booking detail failed:', error);
+        res.status(500).json({
+            success: false, 
+            message: 'Failed to get booking detail: ' + error.message
+        });
+    }
+});
+
+// PPATK: Get booking detail by nobooking for Badan Usaha only
+app.get('/api/ppatk/booking-badan/:nobooking', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.params;
+        const userid = req.session.user.userid;
+        
+        const query = `
+            SELECT 
+                p.nobooking,
+                p.noppbb AS nop,
+                p.namawajibpajak AS nama_wajib_pajak,
+                p.alamatwajibpajak AS alamat_wajib_pajak,
+                p.namapemilikobjekpajak AS atas_nama,
+                p.npwpwp,
+                p.npwpop,
+                p.tahunajb,
+                p.kelurahandesawp AS kelurahan,
+                p.kecamatanwp AS kecamatan,
+                p.kabupatenkotawp AS kabupaten_kota,
+                p.kodeposwp,
+                p.kelurahandesaop AS kelurahanop,
+                p.kecamatanop AS kecamatanopj,
+                p.kabupatenkotaop,
+                p.trackstatus,
+                p.jenis_wajib_pajak,
+                p.created_at,
+                p.updated_at,
+                o.letaktanahdanbangunan AS "Alamatop",
+                o.keterangan,
+                pp.luas_tanah,
+                pp.luas_bangunan,
+                u.nama AS nama_pemohon,
+                u.telepon::text AS no_telepon
+            FROM pat_1_bookingsspd p
+            LEFT JOIN a_2_verified_users u ON u.userid = p.userid
+            LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+            LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+            WHERE p.nobooking = $1 AND p.userid = $2 AND p.jenis_wajib_pajak = 'Badan Usaha'
+        `;
+        
+        const result = await pool.query(query, [nobooking, userid]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false, 
+                message: 'Booking Badan Usaha not found'
             });
         }
         
         res.json({
             success: true, 
-            data: result.rows[0]
+            data: result.rows[0],
+            jenis_wajib_pajak: 'Badan Usaha'
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Get booking detail failed:', error);
+        console.error('❌ [PPATK-BADAN] Get booking detail failed:', error);
+        res.status(500).json({
+            success: false, 
+            message: 'Failed to get booking detail: ' + error.message
+        });
+    }
+});
+
+// PPATK: Get booking detail by nobooking for Perorangan only
+app.get('/api/ppatk/booking-perorangan/:nobooking', async (req, res) => {
+    try {
+        if (!req.session || !req.session.user) {
+            return res.status(401).json({ success: false, message: 'Unauthorized' });
+        }
+
+        const { nobooking } = req.params;
+        const userid = req.session.user.userid;
+        
+        const query = `
+            SELECT 
+                p.nobooking,
+                p.noppbb AS nop,
+                p.namawajibpajak AS nama_wajib_pajak,
+                p.alamatwajibpajak AS alamat_wajib_pajak,
+                p.namapemilikobjekpajak AS atas_nama,
+                p.npwpwp,
+                p.npwpop,
+                p.tahunajb,
+                p.kelurahandesawp AS kelurahan,
+                p.kecamatanwp AS kecamatan,
+                p.kabupatenkotawp AS kabupaten_kota,
+                p.kodeposwp,
+                p.kelurahandesaop AS kelurahanop,
+                p.kecamatanop AS kecamatanopj,
+                p.kabupatenkotaop,
+                p.trackstatus,
+                p.jenis_wajib_pajak,
+                p.created_at,
+                p.updated_at,
+                o.letaktanahdanbangunan AS "Alamatop",
+                o.keterangan,
+                pp.luas_tanah,
+                pp.luas_bangunan,
+                u.nama AS nama_pemohon,
+                u.telepon::text AS no_telepon
+            FROM pat_1_bookingsspd p
+            LEFT JOIN a_2_verified_users u ON u.userid = p.userid
+            LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+            LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+            WHERE p.nobooking = $1 AND p.userid = $2 AND p.jenis_wajib_pajak = 'Perorangan'
+        `;
+        
+        const result = await pool.query(query, [nobooking, userid]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false, 
+                message: 'Booking Perorangan not found'
+            });
+        }
+        
+        res.json({
+            success: true, 
+            data: result.rows[0],
+            jenis_wajib_pajak: 'Perorangan'
+        });
+
+    } catch (error) {
+        console.error('❌ [PPATK-PERORANGAN] Get booking detail failed:', error);
         res.status(500).json({
             success: false, 
             message: 'Failed to get booking detail: ' + error.message

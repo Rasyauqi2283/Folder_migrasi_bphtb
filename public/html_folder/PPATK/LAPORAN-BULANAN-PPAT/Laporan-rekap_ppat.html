@@ -3,8 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PPATK | Rekap Berkas Diserahkan</title>
-  <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+  <title>PPAT Dashboard|BAPPENDA</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!---->
+    <!--Design Variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/dropdown-table.css">
+    <!---->
+
+    <link rel="stylesheet" href="../../../design-n-script/design_css/form_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <!-- Universal Alert System -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/universal-alert.css">
+    <!-- Modern Pagination Design -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/pagination-design.css">
+    <!---->
+    <link id="favicon" rel="icon" href="path/to/favicon.ico">
+
   <style>
     .btn-pdf {
       transition: all 0.3s ease;
@@ -50,7 +70,118 @@
   </style>
 </head>
 <body>
-  <main class="main-content">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Laporan Rekap PPAT</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <a href="../../../profile.html"><button class="profile-btn" id="profileButton" class="profile-button">Profil</button></a>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../../ppatk-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-address-book sidebar-icon"></i>
+                <span class="sidebar-text">Booking SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../BOOKING-SSPD/bookingsspd-badan.html">Booking SSPD Badan</a>
+            <a href="../BOOKING-SSPD/bookingsspd-perorangan.html">Booking SSPD Perorangan</a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-folder-open sidebar-icon"></i>
+                <span class="sidebar-text">Laporan PPAT</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="Laporan-rekap_ppat.html">Laporan Rekap PPAT</a>
+            <a href="">Monitoring Keterlambatan</a>
+            <a href="">Rincian Laporan Bulanan PPAT</a>
+        </div>
+    </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="#faqpge" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page" style="cursor: pointer;">
+          <div href="#logout" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+
+  <!-- MAIN -->
+  <main id="laporan_rekap_ppat_design" class="main-content">
     <div class="table-container">
       <div class="table-header">
         <h3>Rekap Berkas Diserahkan</h3>
@@ -87,6 +218,33 @@
       </div>
     </div>
   </main>
+
+  <!-- Footer berada di dalam page-wrapper -->
+  <footer class="footer">
+      <div class="footer-content">
+          <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+      </div>
+  </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/fungsi-click_dropdown.js"></script>
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!--backend-->
+<script src="../../../design-n-script/script-backend/header-backend.js"></script>
+
   <script>
   (function(){
     const PAGE_SIZE = 10;
@@ -349,5 +507,63 @@
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
   </script>
+
+<!-- Universal Alert System -->
+<script src="../../../design-n-script/script_backend/universal-alert.js"></script>
+
+<!-- 🔔 Enhanced Notification System with Sound -->
+<script src="../../../design-n-script/script-backend/notification-system.js"></script>
+
+<script>
+  // Initialize Universal Alert System when DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.universalAlert) {
+      console.log('Universal Alert System initialized');
+    } else {
+      console.warn('Universal Alert System failed to load');
+    }
+    
+    // Initialize Notification System
+    if (window.notificationSystem) {
+      console.log('🔔 Notification System initialized with sound alerts');
+      
+      // Add notification controls to the page
+      addNotificationControls();
+    } else {
+      console.warn('🔔 Notification System failed to load');
+    }
+  });
+  
+  function addNotificationControls() {
+    // Add notification toggle button to the page
+    const controlsContainer = document.querySelector('.table-controls');
+    if (controlsContainer) {
+      const soundToggleBtn = document.createElement('button');
+      soundToggleBtn.id = 'notification-sound-toggle';
+      soundToggleBtn.innerHTML = '🔊';
+      soundToggleBtn.title = 'Toggle notification sound';
+      soundToggleBtn.style.cssText = `
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+      `;
+      
+      soundToggleBtn.addEventListener('click', () => {
+        if (window.notificationSystem) {
+          const soundEnabled = window.notificationSystem.toggleSound();
+          soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+          soundToggleBtn.title = soundEnabled ? 'Disable notification sound' : 'Enable notification sound';
+        }
+      });
+      
+      controlsContainer.appendChild(soundToggleBtn);
+    }
+  }
+</script>
 </body>
 </html>
