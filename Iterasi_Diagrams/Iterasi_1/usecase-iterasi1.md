@@ -79,7 +79,7 @@ graph TB
 
 ### 🎯 **PPAT Process:**
 - **Create Booking** - Membuat booking baru
-- **Generate No. Booking** - Generate nomor booking (ppatk_khusus+2025+urut)
+- **Generate No. Booking** - Generate nomor booking (ppat_khusus+2025+urut)
 - **Add Manual Signature** - Tanda tangan manual PPAT
 - **Upload Documents** - Upload akta, sertifikat, pelengkap
 - **Add Validasi Tambahan** - Data tambahan untuk validasi

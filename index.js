@@ -10,7 +10,7 @@
    3) TODO-CORE: CORS belum mengizinkan credentials (cookie session tak terkirim).
    4) TODO-SEC: /api/profile mengembalikan password (hash) — kebocoran data.
    5) TODO-SEC: Penyajian file pakai req.url mentah; risiko path traversal.
-   6) TODO-DB: Inkonstensi nama tabel: ppatk_* vs pat_* untuk booking/NJOP/BPHTB.
+   6) TODO-DB: Inkonstensi nama tabel: ppat_* vs pat_* untuk booking/NJOP/BPHTB.
    7) TODO-RTE: Fungsi sendNotificationToLtb dipanggil tetapi tidak didefinisikan.
    8) TODO-RTE: Duplikasi route /api/getCreatorByBooking (tabel sumber berbeda).
    9) TODO-RTE: Rate limiter reset-password didefinisikan terpisah dari router.

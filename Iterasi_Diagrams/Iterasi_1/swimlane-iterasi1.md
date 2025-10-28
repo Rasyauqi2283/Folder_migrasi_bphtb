@@ -111,7 +111,7 @@ graph LR
 
 ### 🎯 **PPAT Lane:**
 1. **Create Booking** - Membuat booking baru
-2. **Generate No. Booking** - Generate nomor booking (ppatk_khusus+2025+urut)
+2. **Generate No. Booking** - Generate nomor booking (ppat_khusus+2025+urut)
 3. **Add Signature Manual** - Tanda tangan manual PPAT
 4. **Upload Documents** - Upload akta, sertifikat, pelengkap
 5. **Add Validasi Tambahan** - Data tambahan untuk validasi

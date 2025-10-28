@@ -216,7 +216,7 @@ Desain awal sistem dibuat menggunakan Figma dengan fokus pada:
 - Skema database relasional untuk menyimpan data booking dan status
 
 **Database Design:**
-- Generate booking number: `ppatk_khusus + 2025 + urut`
+- Generate booking number: `ppat_khusus + 2025 + urut`
 - Generate registrasi: `2025 + O + urut`
 - Struktur relasional yang mendukung kompleksitas alur kerja BAPPENDA
 
@@ -407,7 +407,7 @@ Perencanaan iterasi ketiga dirancang untuk mengatasi masalah beban kerja yang ti
 
 **Database Structure (2 Tabel Baru):**
 - `daily_counter` - Counter harian untuk tracking kuota (date, counter)
-- `ppatk_send_queue` - Queue pengiriman PPATK untuk antrian booking
+- `ppat_send_queue` - Queue pengiriman PPAT untuk antrian booking
 
 **Sistem Kuotasi Dinamis:**
 - Implementasi batas maksimal 80 booking per hari dengan distribusi merata

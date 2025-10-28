@@ -41,7 +41,7 @@
 ## 🎯 **ITERASI 3: SISTEM KUOTASI**
 
 ### **Fokus:** Sistem kuotasi harian dan kesehatan pegawai
-### **Database:** 2 tabel baru (`daily_counter`, `ppatk_send_queue`)
+### **Database:** 2 tabel baru (`daily_counter`, `ppat_send_queue`)
 ### **Aktor:** PPAT/PPATS, LTB, Peneliti, Admin, System
 ### **Status:** ✅ **SELESAI**
 
@@ -97,7 +97,7 @@
 
 ### **Iterasi 3 (2 tables):**
 - `daily_counter` - Daily Counter
-- `ppatk_send_queue` - PPATK Send Queue
+- `ppat_send_queue` - PPAT Send Queue
 
 ---
 

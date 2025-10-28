@@ -67,7 +67,7 @@
         <mxCell id="db1" value="daily_counter&lt;div&gt;(date, counter)&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;fillColor=#E8F5E8;strokeColor=#2E7D32;" parent="1" vertex="1">
           <mxGeometry x="810" y="200" width="120" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="db2" value="ppatk_send_queue&lt;div&gt;(nobooking, userid, scheduled_for, status)&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;fillColor=#EFEBE9;strokeColor=#5D4037;" parent="1" vertex="1">
+        <mxCell id="db2" value="ppat_send_queue&lt;div&gt;(nobooking, userid, scheduled_for, status)&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;fillColor=#EFEBE9;strokeColor=#5D4037;" parent="1" vertex="1">
           <mxGeometry x="810" y="530" width="120" height="80" as="geometry" />
         </mxCell>
         <mxCell id="rel1" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#2E7D32;" parent="1" source="ppat-actor" target="uc1" edge="1">

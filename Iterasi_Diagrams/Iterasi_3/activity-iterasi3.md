@@ -4,7 +4,7 @@
 
 **Fokus:** Alur kerja sistem kuotasi harian 80 berkas  
 **Tujuan:** Mencegah overload dan menjaga kesehatan pegawai  
-**Database:** `daily_counter`, `ppatk_send_queue`  
+**Database:** `daily_counter`, `ppat_send_queue`  
 **Jam Kerja:** 8.45-16.10 (Senin-Jumat)  
 
 ---
@@ -31,13 +31,13 @@
 - **Database:** Update `daily_counter` table
 
 ### **5. Masuk Antrian (Counter ≥ 80)**
-- **Action:** Masuk Antrian (ppatk_send_queue)
+- **Action:** Masuk Antrian (ppat_send_queue)
 - **Action:** Schedule untuk Hari Berikutnya
-- **Database:** Insert ke `ppatk_send_queue` table
+- **Database:** Insert ke `ppat_send_queue` table
 
 ### **6. Cek Antrian**
 - **Action:** Cek Antrian Hari Ini
-- **Database:** Read `ppatk_send_queue` table
+- **Database:** Read `ppat_send_queue` table
 - **Decision:** Ada Berkas di Antrian?
 
 ### **7. Proses Antrian**
@@ -78,7 +78,7 @@
 - **Read:** Saat cek counter
 - **Update:** Saat counter +1
 
-### **ppatk_send_queue Table:**
+### **ppat_send_queue Table:**
 - **Insert:** Saat masuk antrian
 - **Read:** Saat cek antrian
 - **Update:** Saat proses antrian

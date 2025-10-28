@@ -4,7 +4,7 @@
 
 **Fokus:** Pembagian tugas antar divisi dengan sistem kuotasi  
 **Tujuan:** Menunjukkan alur kerja per divisi secara paralel  
-**Database:** 2 tabel (`daily_counter`, `ppatk_send_queue`)  
+**Database:** 2 tabel (`daily_counter`, `ppat_send_queue`)  
 **Swimlanes:** 5 divisi utama  
 
 ---
@@ -98,7 +98,7 @@
 - **Description:** Memasukkan berkas ke antrian
 - **Input:** Berkas dari LTB
 - **Output:** Berkas masuk antrian
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Condition:** Counter ≥ 80
 - **Trigger:** Decision "Tidak" dari LTB
 
@@ -106,7 +106,7 @@
 - **Description:** Menjadwalkan untuk hari berikutnya
 - **Input:** Berkas di antrian
 - **Output:** Berkas terjadwal
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Trigger:** Berkas masuk antrian
 
 #### **Monitor Quota**
@@ -171,7 +171,7 @@
 - **Peneliti:** Counter +1 (Update)
 - **System:** Auto Reset Counter (Update)
 
-### **ppatk_send_queue Table:**
+### **ppat_send_queue Table:**
 - **Admin:** Masuk Antrian (Insert)
 - **Admin:** Schedule Next Day (Update)
 - **Admin:** Monitor Quota (Read)

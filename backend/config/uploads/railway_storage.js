@@ -39,7 +39,7 @@ function generateFolderStructure(userid, nobooking, docType) {
 
 // Helper function untuk generate file name - CUSTOM FORMAT
 function generateFileName(userid, docType, sequenceNumber, timestamp, nobooking) {
-  // Format: userid_dokumenp_ppatk_khusus_nobooking_timestamp
+    // Format: userid_dokumenp_ppat_khusus_nobooking_timestamp
   const customFileName = `${userid}_${docType}_${sequenceNumber}_${nobooking}_${timestamp}`;
   
   console.log(`🔍 [FILENAME-GENERATOR] Custom filename generated:`, {

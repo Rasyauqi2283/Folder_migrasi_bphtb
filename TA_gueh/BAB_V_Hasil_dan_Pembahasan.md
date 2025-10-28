@@ -101,7 +101,7 @@ ping_notifications        → Notifikasi ping
 #### **Database Schema Kuotasi (2 Tabel Baru):**
 ```
 daily_counter             → Counter harian per peneliti
-ppatk_send_queue         → Antrian booking PPAT
+ppat_send_queue         → Antrian booking PPAT
 peneliti_daily_counter    → Counter produktivitas peneliti
 ```
 

@@ -68,7 +68,7 @@ curl http://localhost:3000/health
 curl -X POST http://localhost:3000/api/admin/notification-warehouse/send-ping \
   -H "Content-Type: application/json" \
   -d '{
-    "nobooking": "PPATK0012025001",
+    "nobooking": "PPAT0012025001",
     "no_registrasi": "2025O001", 
     "target_divisions": ["ltb", "bank"]
   }'

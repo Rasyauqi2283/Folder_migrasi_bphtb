@@ -58,8 +58,8 @@
 | **Table** | **Status** | **Keterangan** |
 |-----------|------------|----------------|
 | `daily_counter` | ✅ **AKTIF** | Counter harian |
-| `ppatk_send_queue` | ✅ **AKTIF** | Antrian pengiriman |
-| `ppatk_daily_quota` | ✅ **AKTIF** | Kuota harian |
+| `ppat_send_queue` | ✅ **AKTIF** | Antrian pengiriman |
+| `ppat_daily_quota` | ✅ **AKTIF** | Kuota harian |
 
 #### **Notification & Communication:**
 | **Table** | **Status** | **Keterangan** |
@@ -100,7 +100,7 @@
 | **Table** | **Status** | **Keterangan** |
 |-----------|------------|----------------|
 | `pat_3_documents` | ❓ **DUPLICATE?** | Sama dengan pat_1_bookingsspd |
-| `ppatk_documents` | ❓ **DUPLICATE?** | Sama dengan pat_1_bookingsspd |
+| `ppat_documents` | ❓ **DUPLICATE?** | Sama dengan pat_1_bookingsspd |
 
 #### **Log Tables (Berbeda Fungsi):**
 | **Table** | **Status** | **Keterangan** |
@@ -125,7 +125,7 @@
 | `pat_1_bookingsspd_delete_20251003` | 🗑️ **BACKUP** | Backup delete |
 | `pat_1_bookingsspd_keep_20251003` | 🗑️ **BACKUP** | Backup keep |
 | `backup_jenis_wajib_pajak` | 🗑️ **BACKUP** | Backup lama |
-| `backup_jenis_wajib_pajak_ppatk` | 🗑️ **BACKUP** | Backup lama |
+| `backup_jenis_wajib_pajak_ppat` | 🗑️ **BACKUP** | Backup lama |
 
 ---
 
@@ -141,7 +141,7 @@ DROP TABLE pat_1_bookingsspd_backup_20251003;
 DROP TABLE pat_1_bookingsspd_delete_20251003;
 DROP TABLE pat_1_bookingsspd_keep_20251003;
 DROP TABLE backup_jenis_wajib_pajak;
-DROP TABLE backup_jenis_wajib_pajak_ppatk;
+DROP TABLE backup_jenis_wajib_pajak_ppat;
 ```
 
 ### **2. TABEL YANG BISA DIHAPUS (3 tabel)**
@@ -149,7 +149,7 @@ DROP TABLE backup_jenis_wajib_pajak_ppatk;
 #### **Unused Tables (Tidak terpakai di 3 iterasi):**
 ```sql
 -- HAPUS TABEL YANG TIDAK TERPAKAI:
-DROP TABLE ppatk_documents;        -- ✅ BERHASIL DIHAPUS
+DROP TABLE ppat_documents;        -- ✅ BERHASIL DIHAPUS
 DROP TABLE ttd_paraf_kasie;        -- ✅ BERHASIL DIHAPUS
 DROP TABLE pat_3_documents CASCADE; -- ⚠️ PERLU CASCADE (ada dependency)
 
@@ -159,7 +159,7 @@ DROP TABLE pat_3_documents CASCADE; -- ⚠️ PERLU CASCADE (ada dependency)
 
 -- ⚠️ DEPENDENCY ISSUE:
 -- ERROR: cannot drop table pat_3_documents because other objects depend on it
--- DETAIL: default value for column id of table ppatk_documents depends on sequence ppatk_documents_id_seq
+-- DETAIL: default value for column id of table ppat_documents depends on sequence ppat_documents_id_seq
 -- SOLUSI: Gunakan CASCADE untuk menghapus dependency
 ```
 
@@ -224,8 +224,8 @@ DROP TABLE pat_3_documents CASCADE; -- ⚠️ PERLU CASCADE (ada dependency)
 
 ### **Support System (13 tabel):**
 22. `daily_counter`
-23. `ppatk_send_queue`
-24. `ppatk_daily_quota`
+23. `ppat_send_queue`
+24. `ppat_daily_quota`
 25. `notifications`
 26. `sys_notifications`
 27. `bank_1_cek_hasil_transaksi`

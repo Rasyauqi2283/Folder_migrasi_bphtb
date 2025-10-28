@@ -4,7 +4,7 @@
 
 **Fokus:** Aktor dan use cases untuk sistem kuotasi harian  
 **Tujuan:** Mendefinisikan interaksi antar aktor dengan sistem  
-**Database:** 2 tabel (`daily_counter`, `ppatk_send_queue`)  
+**Database:** 2 tabel (`daily_counter`, `ppat_send_queue`)  
 **Aktor:** 5 aktor utama  
 
 ---
@@ -71,7 +71,7 @@
 - **Actor:** LTB
 - **Precondition:** Ada berkas di antrian
 - **Postcondition:** Antrian terkelola
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Flow:** LTB → Queue Management → Database
 
 ### **Peneliti Use Cases:**
@@ -111,7 +111,7 @@
 - **Actor:** Admin
 - **Precondition:** Counter ≥ 80
 - **Postcondition:** Berkas masuk antrian
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Flow:** Admin → Masuk Antrian → Database
 
 #### **10. Schedule Next Day**
@@ -119,7 +119,7 @@
 - **Actor:** Admin
 - **Precondition:** Ada berkas di antrian
 - **Postcondition:** Berkas terjadwal
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Flow:** Admin → Schedule Next Day → Database
 
 #### **11. Monitor Quota**
@@ -135,7 +135,7 @@
 - **Actor:** Admin
 - **Precondition:** Ada berkas di antrian
 - **Postcondition:** Status antrian ditampilkan
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Flow:** Admin → View Queue Status → Database
 
 #### **13. Generate Reports**
@@ -160,7 +160,7 @@
 - **Actor:** System
 - **Precondition:** Ada berkas di antrian
 - **Postcondition:** Berkas terjadwal otomatis
-- **Database:** `ppatk_send_queue`
+- **Database:** `ppat_send_queue`
 - **Flow:** System → Schedule Next Day → Database
 
 ---
@@ -172,7 +172,7 @@
 - **Fields:** date, counter
 - **Use Cases:** Cek Daily Counter, Monitor Quota, Auto Reset Counter
 
-### **2. ppatk_send_queue**
+### **2. ppat_send_queue**
 - **Purpose:** Antrian berkas
 - **Fields:** nobooking, userid, scheduled_for, status
 - **Use Cases:** Masuk Antrian, Schedule Next Day, Queue Management, View Queue Status
@@ -190,12 +190,12 @@
 
 ### **Use Case-Database Relationships:**
 - **Cek Daily Counter** → `daily_counter`
-- **Masuk Antrian** → `ppatk_send_queue`
+- **Masuk Antrian** → `ppat_send_queue`
 - **Auto Reset Counter** → `daily_counter`
-- **Schedule Next Day** → `ppatk_send_queue`
+- **Schedule Next Day** → `ppat_send_queue`
 - **Monitor Quota** → `daily_counter`
-- **Queue Management** → `ppatk_send_queue`
-- **View Queue Status** → `ppatk_send_queue`
+- **Queue Management** → `ppat_send_queue`
+- **View Queue Status** → `ppat_send_queue`
 
 ---
 

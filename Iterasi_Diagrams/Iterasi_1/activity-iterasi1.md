@@ -5,7 +5,7 @@
 flowchart TD
     Start([Mulai]) --> PPAT1[PPAT/PPATS Login]
     PPAT1 --> PPAT2[Create Booking]
-    PPAT2 --> PPAT3[Generate No. Booking<br/>ppatk_khusus+2025+urut]
+    PPAT2 --> PPAT3[Generate No. Booking<br/>ppat_khusus+2025+urut]
     PPAT3 --> PPAT4[Add Manual Signature]
     PPAT4 --> PPAT5[Upload Documents<br/>Akta, Sertifikat, Pelengkap]
     PPAT5 --> PPAT6[Add Validasi Tambahan]
@@ -77,7 +77,7 @@ flowchart TD
 ### 🎯 **Tahap 1: PPAT/PPATS Process**
 1. **PPAT/PPATS Login** - Login ke sistem
 2. **Create Booking** - Membuat booking baru
-3. **Generate No. Booking** - Generate nomor booking (ppatk_khusus+2025+urut)
+3. **Generate No. Booking** - Generate nomor booking (ppat_khusus+2025+urut)
 4. **Add Manual Signature** - Tambahkan tanda tangan manual
 5. **Upload Documents** - Upload akta, sertifikat, dokumen pelengkap
 6. **Add Validasi Tambahan** - Tambahkan validasi tambahan

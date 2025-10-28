@@ -4,7 +4,7 @@
 
 **Fokus:** Sistem kuotasi harian 80 berkas dan manajemen beban kerja pegawai  
 **Tujuan:** Mencegah overload dan meningkatkan kualitas hidup pegawai  
-**Database:** 2 tabel baru (`daily_counter`, `ppatk_send_queue`)  
+**Database:** 2 tabel baru (`daily_counter`, `ppat_send_queue`)  
 **Status:** ✅ **SELESAI** - Semua diagram dan dokumentasi telah dibuat  
 
 ---
@@ -38,7 +38,7 @@
 - **Fields:** date, counter
 - **Operations:** Reset, Read, Update
 
-### **2. ppatk_send_queue**
+### **2. ppat_send_queue**
 - **Purpose:** Antrian berkas
 - **Fields:** nobooking, userid, scheduled_for, status
 - **Operations:** Insert, Read, Update

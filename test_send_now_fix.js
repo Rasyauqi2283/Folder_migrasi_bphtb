@@ -188,12 +188,12 @@ async function testSendNowFix() {
         console.log('\n🧪 [TEST] Send-Now endpoint simulation...');
         if (testBooking.rows.length > 0) {
             const booking = testBooking.rows[0];
-            console.log('Simulated request body for /api/ppatk/send-now:');
+            console.log('Simulated request body for /api/ppat/send-now:');
             console.log({
                 nobooking: booking.nobooking,
                 userid: booking.userid,
                 method: 'POST',
-                endpoint: '/api/ppatk/send-now'
+                endpoint: '/api/ppat/send-now'
             });
             console.log('✅ This should now create LTB and Bank records when called');
         }
