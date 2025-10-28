@@ -618,7 +618,7 @@ async function viewPDF(nobooking) {
     try {
         viewBtn.textContent = 'Loading...';
         viewBtn.disabled = true;
-        const response = await fetch(`/api/ppatk/generate-pdf-mohon-validasi/${nobooking}`);
+        const response = await fetch(`/api/ppat/generate-pdf-mohon-validasi/${nobooking}`);
         if (!response.ok) {
             throw new Error(response.statusText || 'Gagal mengambil PDF');
         }

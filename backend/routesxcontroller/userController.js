@@ -21,10 +21,10 @@ export const generateUserIdHandler = async (req, res) => {
             await client.query('BEGIN');
             
             const newUserID = await generateUserID(client, divisiName);
-            let ppatk_khusus = null;
+            let ppat_khusus = null;
             
             if (divisiName === "PPAT" || divisiName === "PPATS") {
-                ppatk_khusus = await generatePPATNumber(client);
+                ppat_khusus = await generatePPATNumber(client);
             }
 
             await client.query('COMMIT');
@@ -32,7 +32,7 @@ export const generateUserIdHandler = async (req, res) => {
             return res.status(200).json({
                 success: true,
                 newUserID,
-                ppatk_khusus,
+                ppat_khusus,
                 divisi: divisiName
             });
 
@@ -93,10 +93,10 @@ export const assignUserIdHandler = async (req, res) => {
             }
 
             const newUserID = await generateUserID(client, divisiName);
-            let ppatk_khusus = null;
+            let ppat_khusus = null;
             
             if (divisiName === "PPAT" || divisiName === "PPATS") {
-                ppatk_khusus = await generatePPATNumber(client);
+                ppat_khusus = await generatePPATNumber(client);
             }
 
             // Update user
@@ -106,14 +106,14 @@ export const assignUserIdHandler = async (req, res) => {
                      divisi = $2, 
                      verifiedstatus = 'complete', 
                      fotoprofil = $3, 
-                     ppatk_khusus = $4
+                     ppat_khusus = $4
                  WHERE email = $5
                  RETURNING *`,
                 [
                     newUserID,
                     divisiName,
                     '/penting_F_simpan/profile-photo/default-foto-profile.png',
-                    ppatk_khusus,
+                    ppat_khusus,
                     email
                 ]
             );
@@ -122,7 +122,7 @@ export const assignUserIdHandler = async (req, res) => {
             
             // Send email notification
             try {
-                const emailResult = await sendEmailNotification(email, newUserID, ppatk_khusus);
+                const emailResult = await sendEmailNotification(email, newUserID, ppat_khusus);
                 if (emailResult.success) {
                     console.log(`✅ Email notification sent successfully to ${email}`);
                 } else {
@@ -137,7 +137,7 @@ export const assignUserIdHandler = async (req, res) => {
                 message: "UserID berhasil diassign",
                 user: updateResult.rows[0],
                 metadata: {
-                    emailSent: !!ppatk_khusus,
+                    emailSent: !!ppat_khusus,
                     timestamp: new Date().toISOString()
                 }
             });
@@ -195,7 +195,7 @@ export const getPendingUsersHandler = async (req, res) => {
         telepon,
         userid,
         divisi,
-        ppatk_khusus
+                ppat_khusus
       FROM a_2_verified_users
       WHERE verifiedstatus IN ('verified_pending','pending')
     `);

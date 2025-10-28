@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.append('page', currentPage);
             params.append('limit', itemsPerPage);
 
-            const response = await fetch(`/api/ppatk_validasi?${params.toString()}`, { credentials: 'include' });
+            const response = await fetch(`/api/ppat/validasi?${params.toString()}`, { credentials: 'include' });
             
             if (!response.ok) {
                 const errorData = await response.json();
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Generate URL PDF dengan parameter download
-            const pdfUrl = `/api/ppatk_generate-pdf-noval/${encodeURIComponent(selectedNomorValidasi)}?download=true&userid=${encodeURIComponent(userid)}`;
+            const pdfUrl = `/api/ppat/generate-pdf-noval/${encodeURIComponent(selectedNomorValidasi)}?download=true&userid=${encodeURIComponent(userid)}`;
             
             // Buka di tab baru
             window.open(pdfUrl, '_blank');
@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             modal.modal('show');
             
-            const response = await fetch(`/api/ppatk_validasi/${id}`, { credentials: 'include' });
+            const response = await fetch(`/api/ppat/validasi/${id}`, { credentials: 'include' });
             const result = await response.json();
             
             if (!response.ok) throw new Error(result.message || 'Gagal memuat detail');

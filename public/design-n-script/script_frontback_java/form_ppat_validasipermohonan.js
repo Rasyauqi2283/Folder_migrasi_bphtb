@@ -13,11 +13,11 @@ function toggleSection(sectionId) {
 
 document.addEventListener('DOMContentLoaded', function() {
     // Inisialisasi elemen form
-    const ppatkForm = document.getElementById('ppatkForm');
-    const btnSubmit = ppatkForm.querySelector('.btn-submit');
-    const btnSimpanContainer = ppatkForm.querySelector('.form-actions .btn-simpan').parentNode;
-    const btnSimpan = ppatkForm.querySelector('.btn-simpan');
-    const btnReset = ppatkForm.querySelector('.btn-reset');
+const ppatForm = document.getElementById('ppatForm');
+const btnSubmit = ppatForm.querySelector('.btn-submit');
+const btnSimpanContainer = ppatForm.querySelector('.form-actions .btn-simpan').parentNode;
+const btnSimpan = ppatForm.querySelector('.btn-simpan');
+const btnReset = ppatForm.querySelector('.btn-reset');
     const hasilValidasi = document.getElementById('hasilValidasi');
     const kodeValidasiEl = document.getElementById('kodeValidasi');
     
@@ -82,23 +82,23 @@ document.addEventListener('DOMContentLoaded', function() {
             currentRequestId = `req-${Date.now()}`;
             
             const formData = {
-                nama_pemohon: ppatkForm.querySelector('#nama_pemohon').value,
-                no_telepon: ppatkForm.querySelector('#no_telepon').value,
-                alamat_pemohon: ppatkForm.querySelector('#alamat_pemohon').value,
-                nama_wajib_pajak: ppatkForm.querySelector('#nama_wajib_pajak').value,
-                alamat_wajib_pajak: ppatkForm.querySelector('#alamat_wajib_pajak').value,
-                kabupaten_kota: ppatkForm.querySelector('#kabupaten_kota').value,
-                kelurahan: ppatkForm.querySelector('#kelurahan').value,
-                kecamatan: ppatkForm.querySelector('#kecamatan').value,
-                nop: ppatkForm.querySelector('#nop').value,
-                atas_nama: ppatkForm.querySelector('#atas_nama').value,
-                luas_tanah: ppatkForm.querySelector('#luas_tanah').value,
-                luas_bangunan: ppatkForm.querySelector('#luas_bangunan').value,
-                lainnya: ppatkForm.querySelector('#lainnya').value,
-                Alamatop: ppatkForm.querySelector('#Alamatop').value,
-                kampungop: ppatkForm.querySelector('#kampungop').value,
-                kelurahanop: ppatkForm.querySelector('#kelurahanop').value,
-                kecamatanop: ppatkForm.querySelector('#kecamatanop').value,
+                nama_pemohon: ppatForm.querySelector('#nama_pemohon').value,
+                no_telepon: ppatForm.querySelector('#no_telepon').value,
+                alamat_pemohon: ppatForm.querySelector('#alamat_pemohon').value,
+                nama_wajib_pajak: ppatForm.querySelector('#nama_wajib_pajak').value,
+                alamat_wajib_pajak: ppatForm.querySelector('#alamat_wajib_pajak').value,
+                kabupaten_kota: ppatForm.querySelector('#kabupaten_kota').value,
+                kelurahan: ppatForm.querySelector('#kelurahan').value,
+                kecamatan: ppatForm.querySelector('#kecamatan').value,
+                nop: ppatForm.querySelector('#nop').value,
+                atas_nama: ppatForm.querySelector('#atas_nama').value,
+                luas_tanah: ppatForm.querySelector('#luas_tanah').value,
+                luas_bangunan: ppatForm.querySelector('#luas_bangunan').value,
+                lainnya: ppatForm.querySelector('#lainnya').value,
+                Alamatop: ppatForm.querySelector('#Alamatop').value,
+                kampungop: ppatForm.querySelector('#kampungop').value,
+                kelurahanop: ppatForm.querySelector('#kelurahanop').value,
+                kecamatanop: ppatForm.querySelector('#kecamatanop').value,
                 nomor_validasi: generatedValidationCode // Tambahkan kode validasi
             };
 
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Data yang akan dikirim:', formData);
             
             // Kirim dengan idempotency key
-            const response = await fetch('/api/ppatk_create-permohonan-validasi', {
+            const response = await fetch('/api/ppat/create-permohonan-validasi', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fungsi validasi form
     function validateForm() {
-        const requiredFields = ppatkForm.querySelectorAll('[required]');
+        const requiredFields = ppatForm.querySelectorAll('[required]');
         let isValid = true;
         
         requiredFields.forEach(field => {
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Validasi tambahan untuk nomor telepon
-        const phoneNumber = ppatkForm.querySelector('#no_telepon').value;
+        const phoneNumber = ppatForm.querySelector('#no_telepon').value;
         if (!/^[0-9]{10,13}$/.test(phoneNumber)) {
             showErrorNotification('Nomor telepon harus 10-13 digit angka');
             return false;
@@ -215,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fungsi reset state form
     function resetFormState() {
-        ppatkForm.reset();
+        ppatForm.reset();
         hasilValidasi.style.display = 'none';
         generatedValidationCode = '';
         currentRequestId = null;
@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btnSimpanContainer.style.display = 'none';
         
         // Hapus class error
-        ppatkForm.querySelectorAll('.error').forEach(el => {
+        ppatForm.querySelectorAll('.error').forEach(el => {
             el.classList.remove('error');
         });
     }

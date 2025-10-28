@@ -268,7 +268,7 @@ router.get('/ppat-ltb/:no_registrasi', async (req, res) => {
         pat.namawajibpajak,
         pat.no_registrasi,
         pat.special_field,
-        pat.ppatk_khusus,
+        pat.ppat_khusus,
         pat.noppbb,
         pat.jenis_wajib_pajak,
         pat.updated_at

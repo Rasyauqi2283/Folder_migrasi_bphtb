@@ -11,7 +11,7 @@ async function getBookingDetail(bookingId) {
             b.*, 
             u.special_field AS ppat_nama, 
             u.divisi AS ppat_divisi, 
-            u.ppatk_khusus, 
+                u.ppat_khusus,
             v.nama_pengirim
         FROM pat_1_bookingsspd b
         JOIN a_2_verified_users u ON b.userid = u.userid
@@ -29,12 +29,12 @@ async function getUserDetail(userId) {
     let result;
     if (/^\d+$/.test(val)) {
         result = await pool.query(
-            `SELECT id, userid, nama, divisi, ppatk_khusus FROM a_2_verified_users WHERE id = $1`,
+            `SELECT id, userid, nama, divisi, ppat_khusus FROM a_2_verified_users WHERE id = $1`,
             [parseInt(val, 10)]
         );
     } else {
         result = await pool.query(
-            `SELECT id, userid, nama, divisi, ppatk_khusus FROM a_2_verified_users WHERE userid = $1`,
+            `SELECT id, userid, nama, divisi, ppat_khusus FROM a_2_verified_users WHERE userid = $1`,
             [val]
         );
     }
@@ -61,19 +61,19 @@ export const triggerNotificationByStatus = async (bookingId, newStatus, performe
                     {
                         recipient_divisi: 'Administrator',
                         title: `Booking Baru: ${booking.nobooking}`,
-                        message: `PPAT: ${booking.ppat_nama}, Jenis: ${booking.jenis_wajib_pajak}, WP: ${booking.namawajibpajak}, No. PPATK: ${booking.ppatk_khusus}`,
+                        message: `PPAT: ${booking.ppat_nama}, Jenis: ${booking.jenis_wajib_pajak}, WP: ${booking.namawajibpajak}, No. PPAT: ${booking.ppat_khusus}`,
                         booking_id: bookingId
                     },
                     {
                         recipient_divisi: 'LTB',
                         title: `Booking Baru: ${booking.nobooking}`,
-                        message: `PPAT: ${booking.ppat_nama} (${booking.ppatk_khusus}) perlu verifikasi awal - WP: ${booking.namawajibpajak}`,
+                        message: `PPAT: ${booking.ppat_nama} (${booking.ppat_khusus}) perlu verifikasi awal - WP: ${booking.namawajibpajak}`,
                         booking_id: bookingId
                     },
                     {
                         recipient_divisi: 'BANK',
                         title: `Booking Baru: ${booking.nobooking}`,
-                        message: `PPAT: ${booking.ppat_nama} (${booking.ppatk_khusus}) memerlukan pengecekan transaksi di BANK - WP: ${booking.namawajibpajak}`,
+                        message: `PPAT: ${booking.ppat_nama} (${booking.ppat_khusus}) memerlukan pengecekan transaksi di BANK - WP: ${booking.namawajibpajak}`,
                         booking_id: bookingId
                     }
                 ];
@@ -159,7 +159,7 @@ export const triggerNotificationByStatus = async (bookingId, newStatus, performe
                     {
                         recipient_divisi: 'Administrator',
                         title: `Booking Selesai: ${booking.nobooking}`,
-                        message: `Booking dari ${booking.ppat_nama} (${booking.ppatk_khusus}) telah selesai diproses oleh LSB`,
+                        message: `Booking dari ${booking.ppat_nama} (${booking.ppat_khusus}) telah selesai diproses oleh LSB`,
                         booking_id: bookingId
                     }
                 ];
@@ -221,7 +221,7 @@ export const createBookingNotification = async (bookingId, triggerAction, perfor
                     {
                         recipient_divisi: 'Administrator',
                         title: `Booking Baru: ${booking.nobooking}`,
-                        message: `PPAT: ${booking.ppat_nama} (${booking.ppatk_khusus}) membuat booking baru - WP: ${booking.namawajibpajak}, Jenis: ${booking.jenis_wajib_pajak}`,
+                        message: `PPAT: ${booking.ppat_nama} (${booking.ppat_khusus}) membuat booking baru - WP: ${booking.namawajibpajak}, Jenis: ${booking.jenis_wajib_pajak}`,
                         booking_id: bookingId
                     },
                     {

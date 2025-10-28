@@ -105,7 +105,7 @@ import notificationRouter from './backend/routesxcontroller/3_notification/notif
 import { triggerNotificationByStatus } from './backend/routesxcontroller/3_notification/notification_service.js';
 import adminRouter from './backend/routesxcontroller/4_admin/adminRoutes.js';
 import notificationWarehouseRouter from './backend/routesxcontroller/4_admin/notification_warehouse_routes.js';
-import registerPPATKEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
+import registerPPATEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/endpoint_ppat.js';
 import registerCreateBookingEndpoints from './backend/routesxcontroller/5_PPAT_endpoint/create_booking_endpoint.js';
 // Import BSRE routes
 import bsreAuthRouter from './backend/routesxcontroller/8_bsre/bsre_auth_routes.js';
@@ -237,18 +237,8 @@ console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
 
-// Compat alias: allow clients to call /api/ppat/* and rewrite to /api/ppatk/*
-app.use((req, res, next) => {
-  if (req.url === '/api/ppat') {
-    req.url = '/api/ppatk';
-  } else if (req.url.startsWith('/api/ppat/')) {
-    req.url = req.url.replace(/^\/api\/ppat\//, '/api/ppatk/');
-  }
-  next();
-});
-
-// Register PPATK endpoints AFTER body parsers
-registerPPATKEndpoints({
+// Register PPAT endpoints AFTER body parsers
+registerPPATEndpoints({
   app,
   pool,
   logger,
@@ -334,14 +324,14 @@ app.get('/api/analytics/tax/per-user', async (req, res) => {
       SELECT 
         u.special_field AS nama_ppat,
         u.userid,
-        u.ppatk_khusus,
+        u.ppat_khusus AS ppat_khusus,
         COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0) AS nilai_pajak,
         COUNT(DISTINCT b.nobooking) AS booking
       FROM a_2_verified_users u
       LEFT JOIN pat_1_bookingsspd b ON b.userid = u.userid
       LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = b.nobooking
       WHERE lower(u.divisi) IN ('ppat','ppats') AND b.trackstatus = 'Diserahkan'
-      GROUP BY u.special_field, u.userid, u.ppatk_khusus
+      GROUP BY u.special_field, u.userid, u.ppat_khusus
       ORDER BY nilai_pajak DESC NULLS LAST, booking DESC
       LIMIT $1 OFFSET $2
     `;
@@ -555,7 +545,7 @@ async function upsertBankVerification(nobooking, statusVerifikasi, catatan, veri
   }
 }
 
-// PPATK endpoints already registered above (before body parsers)
+// PPAT endpoints already registered above (before body parsers)
 
 function requireBankRole(req) {
   if (!req.session.user) return 'Unauthorized';
@@ -999,7 +989,7 @@ app.post('/api/ltb_ltb-reject', async (req, res) => {
 // Fungsi untuk mengirimkan email pemberitahuan penolakan LTB
 async function sendRejectionEmail(_userId, nobooking, userName, rejectionReason) {
     try {
-        // Menarik userid pengguna dari divisi PPATK berdasarkan nobooking
+        // Menarik userid pengguna dari divisi PPAT berdasarkan nobooking
         const userQuery = 'SELECT userid FROM pat_1_bookingsspd WHERE nobooking = $1';
         const userResult = await pool.query(userQuery, [nobooking]);
 
@@ -1008,9 +998,9 @@ async function sendRejectionEmail(_userId, nobooking, userName, rejectionReason)
             return;
         }
 
-        const userId = userResult.rows[0].userid; // Dapatkan userId dari divisi PPATK berdasarkan nobooking
+        const userId = userResult.rows[0].userid; // Dapatkan userId dari divisi PPAT berdasarkan nobooking
 
-        // Menarik email pengguna PPATK berdasarkan userId
+        // Menarik email pengguna PPAT berdasarkan userId
         const emailQuery = 'SELECT email FROM a_2_verified_users WHERE userid = $1';
         const emailResult = await pool.query(emailQuery, [userId]);
 
@@ -1083,15 +1073,15 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
             throw new Error ('Nama pengirim tidak ditemukan, atau tidak sesuai dengan data divisi')
         }
 
-        // 1. Update trackstatus di tabel ppatk
-        const updatePpatkQuery = `
+        // 1. Update trackstatus di tabel ppat
+        const updatePpatQuery = `
             UPDATE pat_1_bookingsspd 
             SET trackstatus = $1 
             WHERE nobooking = $2 
             RETURNING *`;
-        const updatePpatkResult = await client.query(updatePpatkQuery, [trackstatus, nobooking]);
+        const updatePpatResult = await client.query(updatePpatQuery, [trackstatus, nobooking]);
         
-        if (updatePpatkResult.rowCount === 0) {
+        if (updatePpatResult.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ 
                 success: false, 
@@ -1169,7 +1159,7 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
 
         // Trigger notifikasi: ke Peneliti dan Administrator
         try {
-            const bookingId = updatePpatkResult.rows[0]?.bookingid;
+            const bookingId = updatePpatResult.rows[0]?.bookingid;
             if (bookingId) {
                 // Gate: Jangan kirim notifikasi Peneliti/Admin di tahap LTB.
                 // Notifikasi "processed" akan dikirim saat BANK approve (double-clear).
@@ -1276,7 +1266,7 @@ async function sendPenelitiNotificationEmail(creatorEmail, creatorName, nobookin
 
         // Use centralized SendGrid email service
         const mailOptions = {
-            from: `"PPATK Notifikasi" <${process.env.EMAIL_USER}>`,
+            from: `"PPAT Notifikasi" <${process.env.EMAIL_USER}>`,
             to: creatorEmail,
             subject: `[PPAT] Status Berkas ${nobooking}`,
             html: `
@@ -1846,14 +1836,14 @@ app.post('/api/peneliti_send-to-paraf', async (req, res) => {
             }
         }
 
-        const updateQueryPPATK = `
+        const updateQueryPPAT = `
         UPDATE pat_1_bookingsspd
         SET trackstatus = $1
         WHERE nobooking = $2
         RETURNING *;
         `;
         const updateValuesPAT = [trackstatus, nobooking];
-        const updateResultPAT = await pool.query(updateQueryPPATK, updateValuesPAT);
+        const updateResultPAT = await pool.query(updateQueryPPAT, updateValuesPAT);
                 // Jika tidak ada data yang diupdate, maka return error
                 if (updateResultPAT.rowCount === 0) {
                     return res.status(400).json({ success: false, message: 'Data tidak ditemukan untuk diupdate.' });
@@ -4443,8 +4433,8 @@ cron.schedule('*/10 * * * *', async () => {
 // Menjalankan server (listener utama didefinisikan di bagian akhir file)
 
 
-// Buat tabel untuk menyimpan dokumen PPATK
-const createPpatkDocumentsTable = async () => {
+// Buat tabel untuk menyimpan dokumen PPAT
+const createPpatDocumentsTable = async () => {
     try {
         const query = `
             CREATE TABLE IF NOT EXISTS pat_3_documents (
@@ -4480,7 +4470,7 @@ const createPpatkDocumentsTable = async () => {
 
 // Panggil fungsi pembuatan tabel (hanya jika fitur tidak dinonaktifkan)
 if (!PAT3_DISABLED) {
-  createPpatkDocumentsTable();
+  createPpatDocumentsTable();
 } else {
   console.log('Fitur pat_3_documents dinonaktifkan (DISABLE_PAT3=1), melewati inisialisasi tabel');
 }
@@ -4540,15 +4530,15 @@ app.get('/test-email', async (req, res) => {
   }
 });
 
-// GET /api/ppatk/rekap/diserahkan - Get PPATK rekap data with trackstatus='Diserahkan'
-app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
+// GET /api/ppat/rekap/diserahkan - Get PPAT rekap data with trackstatus='Diserahkan'
+app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 100;
         const search = req.query.q || '';
         const offset = (page - 1) * limit;
 
-        console.log(`🔍 [PPATK] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}"`);
+        console.log(`🔍 [PPAT] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}"`);
 
         // Base query untuk mendapatkan data yang sudah diserahkan
         let query = `
@@ -4601,11 +4591,11 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
         query += ` OFFSET $${paramCount}`;
         queryParams.push(offset);
 
-        console.log('🔍 [PPATK] Executing rekap query:', query);
-        console.log('🔍 [PPATK] Query params:', queryParams);
+        console.log('🔍 [PPAT] Executing rekap query:', query);
+        console.log('🔍 [PPAT] Query params:', queryParams);
 
         const result = await pool.query(query, queryParams);
-        console.log('🔍 [PPATK] Rekap query result rows:', result.rows.length);
+        console.log('🔍 [PPAT] Rekap query result rows:', result.rows.length);
         const bookings = result.rows;
 
         // Get total count for pagination
@@ -4655,7 +4645,7 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
                 (booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '-')
         }));
 
-        console.log(`✅ [PPATK] Found ${formattedBookings.length} rekap diserahkan bookings (total: ${total})`);
+        console.log(`✅ [PPAT] Found ${formattedBookings.length} rekap diserahkan bookings (total: ${total})`);
 
         res.json({
             success: true,
@@ -4670,8 +4660,8 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Error fetching rekap diserahkan data:', error);
-        console.error('❌ [PPATK] Error stack:', error.stack);
+        console.error('❌ [PPAT] Error fetching rekap diserahkan data:', error);
+        console.error('❌ [PPAT] Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Gagal mengambil data rekap diserahkan',
@@ -4681,8 +4671,8 @@ app.get('/api/ppatk/rekap/diserahkan', async (req, res) => {
     }
 });
 
-// GET /api/ppatk/generate-pdf-validasi/:nobooking - Generate PDF Validasi
-app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
+// GET /api/ppat/generate-pdf-validasi/:nobooking - Generate PDF Validasi
+app.get('/api/ppat/generate-pdf-validasi/:nobooking', async (req, res) => {
     const { nobooking } = req.params;
     
     try {
@@ -4862,8 +4852,8 @@ app.get('/api/ppatk/generate-pdf-validasi/:nobooking', async (req, res) => {
     }
 });
 
-// GET /api/ppatk/generate-pdf-verif-paraf/:nobooking - Generate PDF Verif Paraf
-app.get('/api/ppatk/generate-pdf-verif-paraf/:nobooking', async (req, res) => {
+// GET /api/ppat/generate-pdf-verif-paraf/:nobooking - Generate PDF Verif Paraf
+app.get('/api/ppat/generate-pdf-verif-paraf/:nobooking', async (req, res) => {
     const { nobooking } = req.params;
     
     try {

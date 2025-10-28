@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('📋 [PERORANGAN] Submitting data:', data);
                 
                 // Submit to perorangan API
-                const response = await fetch('/api/ppatk/create-booking-perorangan', {
+                const response = await fetch('/api/ppat/create-booking-perorangan', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('📋 [PERORANGAN] Loading table data...');
             
-            const response = await fetch('/api/ppatk/load-booking-perorangan', {
+            const response = await fetch('/api/ppat/load-booking-perorangan', {
                 credentials: 'include'
             });
             
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('📋 [PERORANGAN] Sending booking:', nobooking);
             
-            const response = await fetch('/api/ppatk/send-now', {
+            const response = await fetch('/api/ppat/send-now', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

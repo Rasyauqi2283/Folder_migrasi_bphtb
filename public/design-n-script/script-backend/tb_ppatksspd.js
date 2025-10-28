@@ -387,7 +387,7 @@ async function viewDocument(nobooking) {
         if (response.ok && data && data.userid) {
             const creatorUserid = data.userid;  // Ambil userid pembuat berdasarkan nobooking
             // Buat URL untuk mengakses PDF menggunakan userid pembuat
-            const pdfUrl = `/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
+            const pdfUrl = `/api/ppat/generate-pdf-badan/${encodeURIComponent(nobooking)}?userid=${encodeURIComponent(creatorUserid)}&nama=${encodeURIComponent(data.nama)}`;
 
             // Jika response sukses, buka PDF
             window.open(pdfUrl, '_blank');
@@ -432,7 +432,7 @@ async function viewPDF(nobooking) {
 
         // 2. Siapkan URL PDF dengan parameter title
         const pdfTitle = `Permohonan Validasi ${nobooking}`;
-        const pdfUrl = `/api/ppatk_generate-pdf-mohon-validasi/${
+        const pdfUrl = `/api/ppat/generate-pdf-mohon-validasi/${
             encodeURIComponent(nobooking)
         }?userid=${
             encodeURIComponent(data.userid)

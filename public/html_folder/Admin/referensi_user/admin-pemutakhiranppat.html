@@ -175,8 +175,8 @@
           </div>
       </div>
       <div class="dropdown-content">
-          <a href="../../PPATK/BOOKING-SSPD/bookingsspd-badan.html">Booking SSPD Badan</a>
-          <a href="../../PPATK/BOOKING-SSPD/bookingsspd-perorangan.html">Booking SSPD Perorangan</a>
+                <a href="../../PPAT/BOOKING-SSPD/bookingsspd-badan.html">Booking SSPD Badan</a>
+                <a href="../../PPAT/BOOKING-SSPD/bookingsspd-perorangan.html">Booking SSPD Perorangan</a>
       </div>
   </div>
   <div class="box">
@@ -646,7 +646,7 @@ async function loadPPATRenewalData() {
         row.innerHTML = `
           <td>${booking.user_nama || '-'}</td>
           <td>${booking.userid || '-'}</td>
-          <td>${booking.ppatk_khusus || '-'}</td>
+                <td>${booking.ppat_khusus || '-'}</td>
           <td>${booking.nilai_formatted || 'Rp 0'}</td>
           <td>${booking.nobooking || '-'}</td>
           <td>
@@ -841,13 +841,13 @@ async function exportPPATData() {
     }
     
     // Create CSV content
-    const headers = ['Nama PPAT', 'UserID', 'PPATK Khusus', 'Nilai Pajak', 'Booking', 'Tanggal Booking', 'Status'];
+    const headers = ['Nama PPAT', 'UserID', 'PPAT Khusus', 'Nilai Pajak', 'Booking', 'Tanggal Booking', 'Status'];
     const csvContent = [
       headers.join(','),
       ...data.data.map(booking => [
         `"${booking.nama_ppat}"`,
         `"${booking.userid}"`,
-        `"${booking.ppatk_khusus}"`,
+                `"${booking.ppat_khusus}"`,
         booking.nilai_bphtb || 0,
         `"${booking.nobooking}"`,
         `"${booking.tanggal_formatted}"`,
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
           tr.innerHTML = `
             <td>${row.nama_ppat || ''}</td>
             <td>${row.userid || ''}</td>
-            <td>${row.ppatk_khusus || ''}</td>
+                <td>${row.ppat_khusus || ''}</td>
             <td>Rp ${Number(row.nilai_pajak || 0).toLocaleString('id-ID')}</td>
             <td>${row.booking || 0}</td>
             <td><button class="action-btn" data-userid="${row.userid||''}">Cek Akun</button></td>

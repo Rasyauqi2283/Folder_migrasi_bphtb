@@ -9,8 +9,8 @@ const __dirname = dirname(__filename);
 
 // Railway Storage Configuration
 const RAILWAY_STORAGE_CONFIG = {
-  basePath: path.join(__dirname, '..', '..', 'storage', 'ppatk'),
-  publicPath: '/storage/ppatk',
+  basePath: path.join(__dirname, '..', '..', 'storage', 'ppat'),
+  publicPath: '/storage/ppat',
   maxFileSize: 50 * 1024 * 1024, // 50MB
   allowedMimeTypes: [
     'application/pdf',
@@ -34,7 +34,7 @@ console.log('🌐 [RAILWAY-STORAGE] Storage Config:', {
 // Helper function untuk generate folder structure
 function generateFolderStructure(userid, nobooking, docType) {
   const currentYear = new Date().getFullYear();
-  return `ppatk/${currentYear}/${userid}/${nobooking}/${docType}`;
+  return `ppat/${currentYear}/${userid}/${nobooking}/${docType}`;
 }
 
 // Helper function untuk generate file name - CUSTOM FORMAT

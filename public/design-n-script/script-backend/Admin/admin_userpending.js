@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           <td>${user.telepon}</td>
           <td>${user.userid || '-'}</td>
           <td>${user.divisi || '-'}</td>
-          <td>${user.ppatk_khusus || '-'}</td>
+                <td>${user.ppat_khusus || '-'}</td>
           <td>
             ${isComplete ? 'Selesai' : `
               <button class="showFormButton" data-email="${user.email}" data-name="${user.nama || ''}">
@@ -345,7 +345,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Tampilkan field PPAT khusus jika diperlukan
         if (selectedCode === 'PAT' || selectedCode === 'PATS') {
           ppatSpecialContainer.style.display = 'block';
-          urutKhusus.value = result.ppatk_khusus || '20001';
+            urutKhusus.value = result.ppat_khusus || '20001';
         }
 
       } catch (error) {
@@ -397,7 +397,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateUserTable(currentEmail, {
           userid: data.user.userid,
           divisi: data.user.divisi,
-          ppatk_khusus: data.user.ppatk_khusus,
+            ppat_khusus: data.user.ppat_khusus,
           status: 'complete'
         });
         // Reload halaman untuk update data
@@ -430,7 +430,7 @@ function updateUserTable(email, updatedData) {
   if (row) {
     row.cells[4].textContent = updatedData.userid || '-';
     row.cells[5].textContent = updatedData.divisi || '-';
-    row.cells[6].textContent = updatedData.ppatk_khusus || '-';
+        row.cells[6].textContent = updatedData.ppat_khusus || '-';
     row.cells[7].innerHTML = 'Selesai';
   }
 }

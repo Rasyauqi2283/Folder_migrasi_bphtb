@@ -126,7 +126,7 @@
   <div class="menu-container">
     <div class="box">
         <div class="menu-item" id="dashboard_page">
-            <a href="../../ppatk-dashboard.html" class="icon-text-wrapper">
+            <a href="../../ppat-dashboard.html" class="icon-text-wrapper">
                 <i class="fa fa-home sidebar-icon"></i>
                 <span class="sidebar-text">Dashboard</span>
             </a>
@@ -357,10 +357,10 @@
       let pdfName = '';
       
       if (type === 'validasi') {
-        pdfUrl = `/api/ppatk/generate-pdf-validasi/${nobooking}`;
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nobooking}`;
         pdfName = 'PDF Validasi';
       } else if (type === 'verif-paraf') {
-        pdfUrl = `/api/ppatk/generate-pdf-verif-paraf/${nobooking}`;
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nobooking}`;
         pdfName = 'PDF Verif Paraf';
       } else {
         alert('Jenis PDF tidak valid');
@@ -429,10 +429,10 @@
       let pdfName = '';
       
       if (type === 'validasi') {
-        pdfUrl = `/api/ppatk/generate-pdf-validasi/${nobooking}?download=true`;
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nobooking}?download=true`;
         pdfName = 'PDF_Validasi';
       } else if (type === 'verif-paraf') {
-        pdfUrl = `/api/ppatk/generate-pdf-verif-paraf/${nobooking}?download=true`;
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nobooking}?download=true`;
         pdfName = 'PDF_Verif_Paraf';
       } else {
         alert('Jenis PDF tidak valid');
@@ -477,7 +477,7 @@
     async function loadData(){
       try{
         const q = (searchInput.value||'').trim();
-        const url = q ? `/api/ppatk/rekap/diserahkan?page=1&limit=100&q=${encodeURIComponent(q)}` : '/api/ppatk/rekap/diserahkan?page=1&limit=100';
+        const url = q ? `/api/ppat/rekap/diserahkan?page=1&limit=100&q=${encodeURIComponent(q)}` : '/api/ppat/rekap/diserahkan?page=1&limit=100';
         console.log('🔍 [FRONTEND] Loading data from:', url);
         
         const res = await fetch(url, { credentials:'include' });

@@ -99,7 +99,7 @@ POST /api/admin/notification-warehouse/send-ping
 Content-Type: application/json
 
 {
-  "nobooking": "PPATK0012025001",
+  "nobooking": "PPAT0012025001",
   "no_registrasi": "2025O001",
   "target_divisions": ["ltb", "bank"]
 }
@@ -112,7 +112,7 @@ Content-Type: application/json
   "message": "Ping berhasil dikirim",
   "data": {
     "ping_id": 1,
-    "nobooking": "PPATK0012025001",
+    "nobooking": "PPAT0012025001",
     "no_registrasi": "2025O001",
     "target_divisions": ["ltb", "bank"],
     "sent_at": "2025-01-XX 10:30:00"
@@ -142,7 +142,7 @@ GET /api/admin/notification-warehouse/lsb-ppat?count_only=true
 
 ### **3. Get Full Notification Data**
 ```http
-GET /api/admin/notification-warehouse/ppat-ltb?page=1&limit=50&search=PPATK001
+GET /api/admin/notification-warehouse/ppat-ltb?page=1&limit=50&search=PPAT001
 ```
 
 ### **4. Get Ping History**

@@ -514,7 +514,7 @@ export const sendOTPWithRetry = async (email, otp, retries = 3) => {
 };
 
 // Mengirim notifikasi email ke pengguna yang sudah dibuatkan akun
-export const sendEmailNotification = async (email, userID, ppatkNumber) => {
+export const sendEmailNotification = async (email, userID, ppatNumber) => {
     try {
         console.log(`📧 Sending user notification email to ${email} for userID: ${userID}`);
         
@@ -533,7 +533,7 @@ export const sendEmailNotification = async (email, userID, ppatkNumber) => {
         const mailOptions = {
             to: email,
             subject: 'UserID Anda Telah Aktif - Sistem BAPPENDA',
-            text: `Halo ${user.nama},\n\nAkun Anda telah aktif dengan detail:\nUser ID: ${userID}\n${ppatkNumber ? `Nomor PPAT: ${ppatkNumber}\n` : ''}Divisi: ${user.divisi}\n\nAnda sekarang dapat login ke sistem menggunakan email ini.\n\nHormat kami,\nTim Sistem`,
+            text: `Halo ${user.nama},\n\nAkun Anda telah aktif dengan detail:\nUser ID: ${userID}\n${ppatNumber ? `Nomor PPAT: ${ppatNumber}\n` : ''}Divisi: ${user.divisi}\n\nAnda sekarang dapat login ke sistem menggunakan email ini.\n\nHormat kami,\nTim Sistem`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
@@ -548,7 +548,7 @@ export const sendEmailNotification = async (email, userID, ppatkNumber) => {
                         <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             <h3 style="color: #2c3e50; margin-top: 0;">📋 Detail Akun</h3>
                             <p style="margin: 10px 0;"><strong style="color: #495057;">User ID:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${userID}</span></p>
-                            ${ppatkNumber ? `<p style="margin: 10px 0;"><strong style="color: #495057;">Nomor PPAT:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${ppatkNumber}</span></p>` : ''}
+                            ${ppatNumber ? `<p style="margin: 10px 0;"><strong style="color: #495057;">Nomor PPAT:</strong> <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${ppatNumber}</span></p>` : ''}
                             <p style="margin: 10px 0;"><strong style="color: #495057;">Divisi:</strong> <span style="color: #28a745; font-weight: bold;">${user.divisi}</span></p>
                         </div>
                         

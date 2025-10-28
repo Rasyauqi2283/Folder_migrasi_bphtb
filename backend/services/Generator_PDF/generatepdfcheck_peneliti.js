@@ -37,9 +37,9 @@ export default function registerGeneratePdfCheckPeneliti(app, pool) {
                     pb.*, bp.*, o.*,
                     vb.nama,
                     pp.*,
-                    ps.path_ttd_ppatk, ps.path_ttd_wp,
+                    ps.path_ttd_ppat, ps.path_ttd_wp,
                     substring(ps.path_ttd_wp from '\\._?([^\\.]*)$') as wp_ext,
-                    substring(ps.path_ttd_ppatk from '\\._?([^\\.]*)$') as ppatk_ext,
+                    substring(ps.path_ttd_ppat from '\\._?([^\\.]*)$') as ppat_ext,
                     pv.pemilihan, pv.tanggal_terima, pv.nomorstpd, pv.tanggalstpd, pv.angkapersen, pv.keterangandihitungsendiri,
                     pv.isiketeranganlainnya, pv.ttd_peneliti_mime,
                     pv.tanda_tangan_path AS peneliti_tanda_tangan_path,
@@ -411,7 +411,7 @@ export default function registerGeneratePdfCheckPeneliti(app, pool) {
                     return path.resolve(process.cwd(), 'public', normalized);
                 };
 
-                const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+                const ppatAbs = toAbsolutePublicPath(data.path_ttd_ppat);
                 if (ppatAbs && fs.existsSync(ppatAbs)) {
                     doc.image(ppatAbs, col2X + (columnWidth - signatureWidth)/2, signatureYPosition + 10, { width: signatureWidth });
                 } else {

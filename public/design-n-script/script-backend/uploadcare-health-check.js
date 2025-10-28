@@ -3,7 +3,7 @@
 async function testUploadcareHealth() {
     try {
         const config = {
-            healthEndpoint: '/api/ppatk/uploadcare-health'
+            healthEndpoint: '/api/ppat/uploadcare-health'
         };
         
         const response = await fetch(config.healthEndpoint, {

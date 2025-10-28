@@ -1,4 +1,4 @@
-// 🔔 Notification Endpoints for PPATK System
+// 🔔 Notification Endpoints for PPAT System
 import { pool } from '../../../db.js';
 
 export default function registerNotificationEndpoints({ app }) {

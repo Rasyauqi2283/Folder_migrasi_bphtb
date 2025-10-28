@@ -30,19 +30,19 @@ export const generateUserID = async (client, divisiName) => {
 };
 
 export const generatePPATNumber = async (client) => {
-    const lastPpatk = await client.query(
-    `SELECT ppatk_khusus FROM a_2_verified_users 
-       WHERE ppatk_khusus IS NOT NULL 
-         AND ppatk_khusus != ''
-         AND ppatk_khusus ~ '^[0-9]+$'  -- Only numeric values
+    const lastPpat = await client.query(
+    `SELECT ppat_khusus FROM a_2_verified_users 
+       WHERE ppat_khusus IS NOT NULL 
+         AND ppat_khusus != ''
+         AND ppat_khusus ~ '^[0-9]+$'  -- Only numeric values
          AND divisi IN ('PPAT', 'PPATS')
-       ORDER BY ppatk_khusus::INTEGER DESC 
+       ORDER BY ppat_khusus::INTEGER DESC 
        LIMIT 1 FOR UPDATE`
   );
   
   let nextNum = PPAT_RANGE.min;
-  if (lastPpatk.rows[0]?.ppatk_khusus) {
-    nextNum = parseInt(lastPpatk.rows[0].ppatk_khusus) + 1;
+  if (lastPpat.rows[0]?.ppat_khusus) {
+    nextNum = parseInt(lastPpat.rows[0].ppat_khusus) + 1;
     if (nextNum > PPAT_RANGE.max) {
       throw new Error("Nomor PPAT khusus telah mencapai batas maksimum");
     }

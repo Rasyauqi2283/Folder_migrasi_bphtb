@@ -7,7 +7,7 @@ const GDRIVE_STORAGE_CONFIG = {
   enabled: false, // Disabled until implementation
   credentialsPath: process.env.GOOGLE_DRIVE_CREDENTIALS_PATH || './config/gdrive-credentials.json',
   folderId: process.env.GOOGLE_DRIVE_FOLDER_ID || null,
-  basePath: 'bappenda/ppatk'
+        basePath: 'bappenda/ppat' // Changed from 'ppatk'
 };
 
 console.log('🌐 [GDRIVE-STORAGE] Google Drive storage configuration loaded');

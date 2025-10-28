@@ -15,9 +15,9 @@ function getFileUrl(pathOrUrl) {
     
     // Jika Railway storage path, gunakan proxy endpoint
     if (pathOrUrl.includes('/') && !pathOrUrl.startsWith('http')) {
-        // Strip /storage/ppatk/ prefix untuk mendapatkan relative path
-        const relativePath = pathOrUrl.replace(/^\/storage\/ppatk\//, '');
-        return `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
+// Strip /storage/ppat/ prefix untuk mendapatkan relative path
+        const relativePath = pathOrUrl.replace(/^\/storage\/ppat\//, '');
+        return `/api/ppat/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
     }
     
     // Jika local path, tambahkan prefix /
@@ -43,7 +43,7 @@ function getFileName(pathOrUrl) {
 async function loadTableData(page = 1) {
     try {
         // Menggunakan parameter page jika ada
-        const url = `/api/ppatk/load-all-booking?page=${page}`;
+    const url = `/api/ppat/load-all-booking?page=${page}`;
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -489,7 +489,7 @@ function deleteSelectedRow() {
 
         if (isConfirmed) {
             const nobooking = selectedRow.cells[0].textContent;
-            fetch(`/api/ppatk/update-trackstatus/${nobooking}`, {
+fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
                 method: 'PUT',
                 credentials: 'include'
             })
@@ -548,7 +548,7 @@ async function viewDocument(nobooking) {
     }
 
     // Buat URL untuk mengakses PDF - menggunakan endpoint yang benar
-    const pdfUrl = `/api/ppatk_generate-pdf-badan/${encodeURIComponent(nobooking)}`;
+        const pdfUrl = `/api/ppat/generate-pdf-badan/${encodeURIComponent(nobooking)}`;
     
     // Membuka PDF di jendela baru
     window.open(pdfUrl, '_blank');
@@ -564,7 +564,7 @@ async function viewPDF(nobooking) {
     try {
         viewBtn.textContent = 'Loading...';
         viewBtn.disabled = true;
-        const response = await fetch(`/api/ppatk/generate-pdf-mohon-validasi/${nobooking}`, { credentials: 'include' });
+const response = await fetch(`/api/ppat/generate-pdf-mohon-validasi/${nobooking}`, { credentials: 'include' });
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Response error:', response.status, errorText);
@@ -890,7 +890,7 @@ async function uploadSignatures(nobooking, signature1Blob) {
         
         console.log('Mengirim request ke server...');
         
-        const response = await fetch('/api/ppatk/upload-signatures', {
+const response = await fetch('/api/ppat/upload-signatures', {
             method: 'POST',
             body: formData,
             credentials: 'include'
@@ -1213,9 +1213,9 @@ function showAlert(type, message, title = null) {
         const config = {
             maxFileSize: 5 * 1024 * 1024, // 5MB
             allowedFileTypes: ['application/pdf', 'image/jpeg', 'image/png'],
-            apiEndpoint: '/api/ppatk/upload-documents',  // ✅ Railway storage multiple files
-            proxyEndpoint: '/api/ppatk/file-proxy',  // ✅ Railway storage proxy
-            updateUrlEndpoint: '/api/ppatk/update-file-urls'  // ✅ Update file URLs
+    apiEndpoint: '/api/ppat/upload-documents',  // ✅ Railway storage multiple files
+    proxyEndpoint: '/api/ppat/file-proxy',  // ✅ Railway storage proxy
+    updateUrlEndpoint: '/api/ppat/update-file-urls'  // ✅ Update file URLs
         };
 
         function initializeFileUploads() {
@@ -1677,7 +1677,7 @@ function showAlert(type, message, title = null) {
             try {
                 console.log(`🧩 [VALIDATE-RAILWAY-FRONTEND] Starting Railway validation for file: ${relativePath}`);
                 
-                const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
+const proxyUrl = `/api/ppat/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
                 
                 // Use HEAD request for validation (faster than GET)
                 const response = await fetch(proxyUrl, {
@@ -1954,8 +1954,8 @@ function switchPreviewMode(mode, pdfUrl) {
         pdfFrame.src = `${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`;
     } else if (mode === 'proxy') {
         // Railway storage proxy preview
-        const relativePath = pdfUrl.replace('/storage/ppatk/', '');
-        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
+const relativePath = pdfUrl.replace('/storage/ppat/', '');
+const proxyUrl = `/api/ppat/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
         console.log(`🔄 [PREVIEW] Switching to Proxy mode: ${proxyUrl}`);
         pdfFrame.src = proxyUrl;
     }
@@ -2251,7 +2251,7 @@ async function sendToLtb(nobooking) {
             const timeoutId = setTimeout(() => controller.abort(), 35000); // 35 detik timeout
 
             // ✅ UPDATED: Use send-now endpoint instead of old ltb-process
-            const response = await fetch(`/api/ppatk/send-now?nobooking=${encodeURIComponent(nobooking)}`, {
+const response = await fetch(`/api/ppat/send-now?nobooking=${encodeURIComponent(nobooking)}`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -2522,7 +2522,7 @@ function openScheduleModal(nobooking){
 
         async function fetchQuota(yyyy_mm_dd){
             try{
-                const r = await fetch(`/api/ppatk/quota?date=${yyyy_mm_dd}`,{credentials:'include'});
+const r = await fetch(`/api/ppat/quota?date=${yyyy_mm_dd}`,{credentials:'include'});
                 const j = await r.json();
                 if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengambil kuota'); }
                 const { used, limit } = j.data;
@@ -2553,13 +2553,13 @@ function openScheduleModal(nobooking){
             try{
                 setStatus('Memproses...');
                 if (pendingAction.type === 'now') {
-                    const url = `/api/ppatk/send-now?nobooking=${encodeURIComponent(nobooking)}`;
+const url = `/api/ppat/send-now?nobooking=${encodeURIComponent(nobooking)}`;
                     const r = await fetch(url,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking})});
                     const j = await r.json();
                     if(!r.ok || !j.success){ throw new Error(j.message||'Gagal mengirim'); }
                 } else {
                     const yyyy_mm_dd = pendingAction.date;
-                    const url = `/api/ppatk/schedule-send?nobooking=${encodeURIComponent(nobooking)}&scheduled_for=${encodeURIComponent(yyyy_mm_dd)}`;
+const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&scheduled_for=${encodeURIComponent(yyyy_mm_dd)}`;
                     const r = await fetch(url,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({nobooking, scheduled_for: yyyy_mm_dd})});
                     const j = await r.json();
                     if(!r.ok || !j.success){ throw new Error(j.message||'Gagal menjadwalkan'); }
@@ -2639,7 +2639,7 @@ async function gotoform(nobooking) {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Formulir Validasi PPATK - ${nobooking}</title>
+                <title>Formulir Validasi PPAT - ${nobooking}</title>
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
                 <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
                 <style>
@@ -2994,9 +2994,9 @@ async function gotoform(nobooking) {
                     window.NOBOOKING = '` + nobooking + `';
                 </script>
                 <div class="form-wrapper">
-                    <h1 class="form-title">Formulir Validasi PPATK - ` + nobooking + `</h1>
+                    <h1 class="form-title">Formulir Validasi PPAT - ` + nobooking + `</h1>
                     
-                    <form id="ppatkForm" class="validation-form">
+                    <form id="ppatForm" class="validation-form">
                         <input type="hidden" id="nobooking" name="nobooking" value="` + nobooking + `">
                         <!-- Form sections with pre-filled data -->
                         <div class="form-header-decoration">
@@ -3306,7 +3306,7 @@ async function gotoform(nobooking) {
 
                                 // Send to server
                                 const baseOrigin = (window.opener && !window.opener.closed) ? window.opener.location.origin : window.location.origin;
-                                const apiUrl = baseOrigin + '/api/save-ppatk-additional-data?nobooking=' + encodeURIComponent(resolvedNoBooking);
+                                const apiUrl = baseOrigin + '/api/save-ppat-additional-data?nobooking=' + encodeURIComponent(resolvedNoBooking);
                                 console.log('[SAVE] nobooking, apiUrl, formData:', { resolvedNoBooking, apiUrl, formData });
                                 
                                 // Send JSON data
@@ -3387,9 +3387,9 @@ async function gotoform(nobooking) {
 function generateFormHTML(data) {
     return `
         <div class="form-wrapper">
-            <h1 class="form-title">Formulir Validasi PPATK</h1>
+            <h1 class="form-title">Formulir Validasi PPAT</h1>
             
-            <form id="ppatkForm" class="validation-form">
+            <form id="ppatForm" class="validation-form">
                 <!-- Header Decoration -->
                 <div class="form-header-decoration">
                     <div class="tax-icon">
@@ -3599,7 +3599,7 @@ function generateFormHTML(data) {
 
 async function fetchDataFromDatabase(nobooking, userInput = {}) {
     try {
-        const response = await fetch(`/api/ppatk/booking/${nobooking}`, {
+const response = await fetch(`/api/ppat/booking/${nobooking}`, {
             credentials: 'include' // Untuk mengirim session cookie jika diperlukan
         });
         
@@ -3770,7 +3770,7 @@ async function uploadDocuments(doc1, doc2, bookingId = null) {
         
         console.log('Mengirim request dokumen ke Railway storage...');
         
-        const response = await fetch('/api/ppatk/upload-documents', {
+const response = await fetch('/api/ppat/upload-documents', {
             method: 'POST',
             credentials: 'include',
             body: formData,
@@ -3840,7 +3840,7 @@ async function loadUploadedDocuments(bookingId) {
     try {
         console.log(`🔍 [LOAD-DOCUMENTS] Loading documents for booking: ${bookingId}`);
         
-        const response = await fetch(`/api/ppatk/get-documents?nobooking=${bookingId}`, {
+const response = await fetch(`/api/ppat/get-documents?nobooking=${bookingId}`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -3965,7 +3965,7 @@ async function previewDocument(fileUrl, documentName) {
     console.log('🔍 [PREVIEW] Processed URL:', processedUrl);
     
     // Check if it's a Railway storage URL (relative path)
-    if (processedUrl.includes('/api/ppatk/file-proxy')) {
+if (processedUrl.includes('/api/ppat/file-proxy')) {
         // Use Railway storage proxy endpoint
         console.log('🔍 [PREVIEW] Using Railway proxy URL:', processedUrl);
         
@@ -4148,8 +4148,8 @@ async function testProxyEndpoint(fileUrl, maxAttempts = 3) {
         const fileId = fileIdMatch ? fileIdMatch[1] : null;
         
         // Use Railway storage proxy endpoint
-        const relativePath = fileUrl.replace('/storage/ppatk/', '');
-        const proxyUrl = `/api/ppatk/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
+const relativePath = fileUrl.replace('/storage/ppat/', '');
+const proxyUrl = `/api/ppat/file-proxy?relativePath=${encodeURIComponent(relativePath)}`;
             
         console.log('🧪 [TEST-PROXY] Testing:', proxyUrl);
         
@@ -4213,7 +4213,7 @@ async function findAlternativeFileId(bookingId, documentType) {
         console.log(`🔍 [FIND-ALTERNATIVE] Looking for alternative file ID for ${documentType} in booking ${bookingId}`);
         
         // First, try to get latest file info from database
-        const response = await fetch(`/api/ppatk/get-documents?nobooking=${bookingId}`, {
+const response = await fetch(`/api/ppat/get-documents?nobooking=${bookingId}`, {
             credentials: 'include'
         });
         
@@ -4272,7 +4272,7 @@ async function updateDatabaseWithNewFileId(bookingId, documentType, newFileId, n
     try {
         console.log(`🔄 [UPDATE-DB] Updating database with new file ID for ${documentType}: ${newFileId}`);
         
-        const response = await fetch('/api/ppatk/update-file-id', {
+const response = await fetch('/api/ppat/update-file-id', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -4471,7 +4471,7 @@ async function replaceUploadedDocument(bookingId, documentType) {
                 bookingId: bookingId
             });
             
-            const response = await fetch('/api/ppatk/upload-documents', {
+const response = await fetch('/api/ppat/upload-documents', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'

@@ -36,7 +36,7 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
                 t.nobooking,
                 t.updated_at,
                 vu.special_field,
-                vu.ppatk_khusus,
+                vu.ppat_khusus,
                 b.noppbb,
                 b.jenis_wajib_pajak,
                 vu.userid,
@@ -117,7 +117,7 @@ router.get('/ppat-ltb', verifyAdmin, async (req, res) => {
             userid: notif.userid,
             ppat_nama: notif.ppat_nama,
             ppat_divisi: notif.ppat_divisi,
-            ppatk_khusus: notif.ppatk_khusus,
+                ppat_khusus: notif.ppat_khusus,
             jenis_wajib_pajak: notif.jenis_wajib_pajak,
             noppbb: notif.noppbb,
             ltb_status: notif.ltb_status,
@@ -170,7 +170,7 @@ router.get('/ppat-ltb/:bookingId', verifyAdmin, async (req, res) => {
                 t.nobooking,
                 t.updated_at,
                 vu.special_field,
-                vu.ppatk_khusus,
+                vu.ppat_khusus,
                 b.noppbb,
                 b.jenis_wajib_pajak,
                 vu.userid,
@@ -206,7 +206,7 @@ router.get('/ppat-ltb/:bookingId', verifyAdmin, async (req, res) => {
                 userid: notification.userid,
                 ppat_nama: notification.ppat_nama,
                 ppat_divisi: notification.ppat_divisi,
-                ppatk_khusus: notification.ppatk_khusus,
+                ppat_khusus: notification.ppat_khusus,
                 special_field: notification.special_field,
                 jenis_wajib_pajak: notification.jenis_wajib_pajak,
                 noppbb: notification.noppbb,
@@ -301,7 +301,7 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
                 userid,
                 divisi,
                 status_ppat,
-                ppatk_khusus,
+                ppat_khusus,
                 email,
                 created_at,
                 updated_at
@@ -327,7 +327,7 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
                 userid ILIKE $${paramCount} OR 
                 special_field ILIKE $${paramCount} OR 
                 email ILIKE $${paramCount} OR
-                ppatk_khusus::text ILIKE $${paramCount}
+                ppat_khusus::text ILIKE $${paramCount}
             )`;
             queryParams.push(`%${search}%`);
         }
@@ -369,7 +369,7 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
                 userid ILIKE $${searchParamIndex} OR 
                 special_field ILIKE $${searchParamIndex} OR 
                 email ILIKE $${searchParamIndex} OR
-                ppatk_khusus::text ILIKE $${searchParamIndex}
+                ppat_khusus::text ILIKE $${searchParamIndex}
             )`;
             countParams.push(`%${search}%`);
         }
@@ -385,7 +385,7 @@ router.get('/ppat-users', verifyAdmin, async (req, res) => {
             userid: user.userid,
             divisi: user.divisi,
             status_ppat: user.status_ppat,
-            ppatk_khusus: user.ppatk_khusus,
+            ppat_khusus: user.ppat_khusus,
             email: user.email,
             created_at: user.created_at,
             updated_at: user.updated_at,
@@ -437,7 +437,7 @@ router.get('/ppat-users/:userId', verifyAdmin, async (req, res) => {
                 userid,
                 divisi,
                 status_ppat,
-                ppatk_khusus,
+                ppat_khusus,
                 email,
                 created_at,
                 updated_at
@@ -467,7 +467,7 @@ router.get('/ppat-users/:userId', verifyAdmin, async (req, res) => {
                 userid: user.userid,
                 divisi: user.divisi,
                 status_ppat: user.status_ppat,
-                ppatk_khusus: user.ppatk_khusus,
+                ppat_khusus: user.ppat_khusus,
                 email: user.email,
                 created_at: user.created_at,
                 updated_at: user.updated_at,
@@ -572,7 +572,7 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
                 pv1.nobooking,
                 pv1.no_registrasi,
                 vu.special_field,
-                vu.ppatk_khusus,
+                vu.ppat_khusus,
                 b.noppbb,
                 b.jenis_wajib_pajak,
                 vu.userid,
@@ -671,7 +671,7 @@ router.get('/peneliti-lsb', verifyAdmin, async (req, res) => {
             userid: notif.userid,
             ppat_nama: notif.ppat_nama,
             ppat_divisi: notif.ppat_divisi,
-            ppatk_khusus: notif.ppatk_khusus,
+                ppat_khusus: notif.ppat_khusus,
             jenis_wajib_pajak: notif.jenis_wajib_pajak,
             noppbb: notif.noppbb,
             // Status dari p_1_verifikasi
@@ -741,7 +741,7 @@ router.get('/lsb-ppat', verifyAdmin, async (req, res) => {
                 lsb.nobooking,
                 lsb.updated_at,
                 vu.special_field,
-                vu.ppatk_khusus,
+                vu.ppat_khusus,
                 b.noppbb,
                 b.jenis_wajib_pajak,
                 vu.userid,
@@ -822,7 +822,7 @@ router.get('/lsb-ppat', verifyAdmin, async (req, res) => {
             userid: notif.userid,
             ppat_nama: notif.ppat_nama,
             ppat_divisi: notif.ppat_divisi,
-            ppatk_khusus: notif.ppatk_khusus,
+                ppat_khusus: notif.ppat_khusus,
             jenis_wajib_pajak: notif.jenis_wajib_pajak,
             noppbb: notif.noppbb,
             lsb_status: notif.lsb_status,
@@ -897,7 +897,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             SELECT 
                 b.nobooking,
                 b.userid,
-                vu.ppatk_khusus,
+                vu.ppat_khusus,
                 bp.bphtb_yangtelah_dibayar AS nilai_bphtb,
                 b.created_at as tanggal_booking,
                 b.trackstatus,
@@ -921,7 +921,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             query += ` AND (
                 b.nobooking ILIKE $${paramCount} OR 
                 b.userid ILIKE $${paramCount} OR 
-                vu.ppatk_khusus ILIKE $${paramCount} OR
+                vu.ppat_khusus ILIKE $${paramCount} OR
                 vu.nama ILIKE $${paramCount} OR
                 vu.special_field ILIKE $${paramCount}
             )`;
@@ -961,7 +961,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             countQuery += ` AND (
                 b.nobooking ILIKE $3 OR 
                 b.userid ILIKE $3 OR 
-                vu.ppatk_khusus ILIKE $3 OR
+                vu.ppat_khusus ILIKE $3 OR
                 vu.nama ILIKE $3 OR
                 vu.special_field ILIKE $3
             )`;
@@ -987,7 +987,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             sumQuery += ` AND (
                 b.nobooking ILIKE $3 OR 
                 b.userid ILIKE $3 OR 
-                vu.ppatk_khusus ILIKE $3 OR
+                vu.ppat_khusus ILIKE $3 OR
                 vu.nama ILIKE $3 OR
                 vu.special_field ILIKE $3
             )`;
@@ -1001,7 +1001,7 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
         const formattedBookings = bookings.map(booking => ({
             nobooking: booking.nobooking,
             userid: booking.userid,
-            ppatk_khusus: booking.ppatk_khusus || '-',
+                ppat_khusus: booking.ppat_khusus || '-',
             nilai_bphtb: booking.nilai_bphtb || '-',
             tanggal_booking: booking.tanggal_booking,
             status: booking.status,

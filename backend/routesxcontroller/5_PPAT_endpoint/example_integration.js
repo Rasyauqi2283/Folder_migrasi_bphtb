@@ -69,7 +69,7 @@ app.post('/api/admin/execute-auto-delete', async (req, res) => {
 // CONTOH UPDATE FRONTEND
 // =====================================================
 
-// Di file tb_ppatksspd.js, ganti:
+// Di file tb_ppatsspd.js, ganti:
 // const response = await fetch('/api/ltb_ltb-reject', {
 // Menjadi:
 // const response = await fetch('/api/ltb/reject-with-auto-delete', {

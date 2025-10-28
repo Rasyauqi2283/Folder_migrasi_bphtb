@@ -42,7 +42,7 @@ export const uploadTTDstorage = multer.diskStorage({
     destination: (_req, file, cb) => {
         const folders = {
             signature1: 'public/penting_Fpenyimpanan/folderttd/folderttdwp',
-            signature2: 'public/penting_Fpenyimpanan/folderttd/folderttd_ppatk'
+            signature2: 'public/penting_Fpenyimpanan/folderttd/folderttd_ppat'
         };
         cb(null, folders[file.fieldname]);
     },
@@ -127,7 +127,7 @@ export const uploadTTDKasie = multer({ storage: uploadTTDKasieStorage }).fields(
     { name: 'signature', maxCount: 1 }
 ]);
 
-// Konfigurasi penyimpanan Dokumen PPATK
+// Konfigurasi penyimpanan Dokumen PPAT
 export const uploadDocumentStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         try {

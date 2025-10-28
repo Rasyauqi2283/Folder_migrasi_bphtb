@@ -47,7 +47,7 @@ PPAT/PPATS → Membuat Booking Baru
 3. `pat_4_objek_pajak` - Data objek pajak
 4. `pat_5_penghitungan_njop` - Perhitungan NJOP
 
-**Generate Booking Number:** `ppatk_khusus + 2025 + urut`
+**Generate Booking Number:** `ppat_khusus + 2025 + urut`
 
 ### **Tahap 2: Penambahan Fitur Lanjutan**
 ```

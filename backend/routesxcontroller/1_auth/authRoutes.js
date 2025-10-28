@@ -31,7 +31,7 @@ router.post('/login', async (req, res) => {
             fotoprofil, statuspengguna, verifiedstatus,
             username, nip, special_field, special_parafv, pejabat_umum,
             tanda_tangan_mime, tanda_tangan_path, telepon, gender,
-            ppatk_khusus
+                ppat_khusus
         FROM a_2_verified_users 
         WHERE (email = $1 OR userid = $1 OR username = $1)
         AND verifiedstatus = 'complete'
@@ -90,7 +90,7 @@ router.post('/login', async (req, res) => {
       special_field: user.special_field,
       special_parafv: user.special_parafv,
       pejabat_umum: user.pejabat_umum,
-      ppatk_khusus: user.ppatk_khusus,
+                ppat_khusus: user.ppat_khusus,
       is_profile_complete: isProfileComplete,
       statuspengguna: user.statuspengguna,
       tanda_tangan_mime: user.tanda_tangan_mime,
@@ -725,7 +725,7 @@ router.post('/verify-otp', async (req, res) => {
         INSERT INTO a_2_verified_users (
             nama, nik, telepon, email, password, foto, 
             otp, verifiedstatus, fotoprofil, userid, divisi, 
-            statuspengguna, ppatk_khusus, gender
+            statuspengguna, ppat_khusus, gender
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) 
         RETURNING *;
     `;

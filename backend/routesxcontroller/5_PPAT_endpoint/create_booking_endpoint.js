@@ -1,12 +1,12 @@
-// PPATK: Create booking and BPHTB calculation endpoint
+// PPAT: Create booking and BPHTB calculation endpoint
 // This endpoint uses JSON body, so it must be registered AFTER express.json() middleware
 
 export default function registerCreateBookingEndpoints({ app, pool, logger }) {
     
-    // PPATK: Create booking and BPHTB calculation
-    app.post('/api/ppatk_create-booking-and-bphtb', async (req, res) => {
+    // PPAT: Create booking and BPHTB calculation
+    app.post('/api/ppat_create-booking-and-bphtb', async (req, res) => {
         try {
-            console.log('📝 [PPATK] Creating booking and BPHTB calculation...');
+            console.log('📝 [PPAT] Creating booking and BPHTB calculation...');
             
             // Check authentication
             if (!req.session || !req.session.user) {
@@ -67,7 +67,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 total_njoppbb
             } = req.body;
             
-            console.log('📝 [PPATK] Booking data received:', {
+            console.log('📝 [PPAT] Booking data received:', {
                 userid,
                 noppbb,
                 namawajibpajak,
@@ -78,9 +78,9 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 jenis_wajib_pajak
             });
             
-            // Get user's ppatk_khusus and generate nobooking
+            // Get user's ppat_khusus and generate nobooking
             const getUserQuery = `
-                SELECT ppatk_khusus 
+                SELECT ppat_khusus 
                 FROM a_2_verified_users 
                 WHERE userid = $1
             `;
@@ -91,17 +91,17 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 throw new Error('User not found');
             }
             
-            const ppatk_khusus = userResult.rows[0].ppatk_khusus;
+            const ppat_khusus = userResult.rows[0].ppat_khusus;
             
-            if (!ppatk_khusus) {
-                throw new Error('User does not have ppatk_khusus assigned');
+            if (!ppat_khusus) {
+                throw new Error('User does not have ppat_khusus assigned');
             }
             
             // Let database trigger generate nobooking automatically
-            // Trigger trg_nobooking will handle nobooking generation based on ppatk_khusus and year
-            console.log('📝 [PPATK] Letting database trigger generate nobooking for ppatk_khusus:', ppatk_khusus);
+            // Trigger trg_nobooking will handle nobooking generation based on ppat_khusus and year
+            console.log('📝 [PPAT] Letting database trigger generate nobooking for ppat_khusus:', ppat_khusus);
             
-            console.log('📝 [PPATK] Starting transaction for booking creation...');
+            console.log('📝 [PPAT] Starting transaction for booking creation...');
             
             // Start transaction
             const client = await pool.connect();
@@ -169,7 +169,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 }
                 
                 const createdNobooking = bookingResult.rows[0].nobooking;
-                console.log('✅ [PPATK] Booking created:', createdNobooking);
+                console.log('✅ [PPAT] Booking created:', createdNobooking);
                 
                 // Use the nobooking returned from database
                 const finalNobooking = createdNobooking;
@@ -192,7 +192,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                     ];
                     
                     const bphtbResult = await client.query(insertBphtbQuery, bphtbParams);
-                    console.log('✅ [PPATK] BPHTB perhitungan created:', bphtbResult.rows[0].calculationid);
+                    console.log('✅ [PPAT] BPHTB perhitungan created:', bphtbResult.rows[0].calculationid);
                 }
                 
                 // 3. Insert objek pajak (pat_4_objek_pajak)
@@ -232,7 +232,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                         normalizedStatusKepemilikan = statusMap[status_kepemilikan] || 'Milik Pribadi';
                     }
                     
-                    console.log('📝 [PPATK] Status kepemilikan mapping:', {
+                    console.log('📝 [PPAT] Status kepemilikan mapping:', {
                         original: status_kepemilikan,
                         normalized: normalizedStatusKepemilikan
                     });
@@ -254,7 +254,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                     ];
                     
                     const objekResult = await client.query(insertObjekQuery, objekParams);
-                    console.log('✅ [PPATK] Objek pajak created:', objekResult.rows[0].id);
+                    console.log('✅ [PPAT] Objek pajak created:', objekResult.rows[0].id);
                 }
                 
                 // 4. Insert NJOP perhitungan (pat_5_penghitungan_njop)
@@ -283,7 +283,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                     ];
                     
                     const njopResult = await client.query(insertNjopQuery, njopParams);
-                    console.log('✅ [PPATK] NJOP perhitungan created:', njopResult.rows[0].id);
+                    console.log('✅ [PPAT] NJOP perhitungan created:', njopResult.rows[0].id);
                 }
                 
                 // 5. Insert tanda tangan dengan path dari user profile (pat_6_sign)
@@ -310,7 +310,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 const userSignatureMime = userData.tanda_tangan_mime;
                 const userDivisi = userData.divisi;
                 
-                console.log('📝 [PPATK] User signature data:', {
+                console.log('📝 [PPAT] User signature data:', {
                     userid,
                     nama: userNama,
                     divisi: userDivisi,
@@ -325,7 +325,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                         nobooking,
                         userid,
                         nama,
-                        path_ttd_ppatk
+                        path_ttd_ppat
                     ) VALUES ($1, $2, $3, $4)
                     RETURNING id
                 `;
@@ -338,19 +338,19 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
                 ];
                 
                 const signResult = await client.query(insertSignQuery, signParams);
-                console.log('✅ [PPATK] Sign record created with user signature:', {
+                console.log('✅ [PPAT] Sign record created with user signature:', {
                     id: signResult.rows[0].id,
                     nobooking: finalNobooking,
                     userid,
                     nama: userNama,
-                    path_ttd_ppatk: userSignaturePath,
+                    path_ttd_ppat: userSignaturePath,
                     divisi: userDivisi
                 });
                 
                 // Commit transaction
                 await client.query('COMMIT');
                 
-                console.log('✅ [PPATK] All booking data created successfully:', {
+                console.log('✅ [PPAT] All booking data created successfully:', {
                     nobooking: finalNobooking,
                     userid,
                     trackstatus
@@ -383,7 +383,7 @@ export default function registerCreateBookingEndpoints({ app, pool, logger }) {
             }
             
         } catch (error) {
-            console.error('❌ [PPATK] Create booking failed:', error);
+            console.error('❌ [PPAT] Create booking failed:', error);
             res.status(500).json({
                 success: false,
                 message: 'Gagal membuat booking dan perhitungan BPHTB',

@@ -6,7 +6,7 @@ import sharp from 'sharp';
 /////Buat PDF Booking Badan Usaha/////
 // Register route to generate PDF for PPAT booking (Badan Usaha)
 export default function registerGeneratePdfBooking(app, pool) {
-    app.get('/api/ppatk_generate-pdf-badan/:nobooking', async (req, res) => {
+    app.get('/api/ppat_generate-pdf-badan/:nobooking', async (req, res) => {
         const { nobooking } = req.params;
 
         try {
@@ -56,9 +56,9 @@ export default function registerGeneratePdfBooking(app, pool) {
                 o.nomor_sertifikat, o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran, o.kelurahandesalp, o.kecamatanlp, o.jenis_perolehan,
                 vb.nama, vb.special_field, vb.tanda_tangan_path,
                 pp.luas_tanah, pp.njop_tanah, pp.luas_bangunan, pp.njop_bangunan, pp.luasxnjop_tanah, pp.luasxnjop_bangunan, pp.total_njoppbb,
-                ps.path_ttd_ppatk, ps.path_ttd_wp,
+                ps.path_ttd_ppat, ps.path_ttd_wp,
                 substring(ps.path_ttd_wp from '\\.([^\\.]*)$') as wp_ext,
-                substring(ps.path_ttd_ppatk from '\\.([^\\.]*)$') as ppatk_ext
+                substring(ps.path_ttd_ppat from '\\.([^\\.]*)$') as ppat_ext
             FROM 
                 pat_1_bookingsspd pb
             LEFT JOIN 
@@ -422,12 +422,12 @@ export default function registerGeneratePdfBooking(app, pool) {
                 };
             
                 // Prioritas: gunakan tanda_tangan_path dari user profile, fallback ke pat_6_sign
-                const signaturePath = data.tanda_tangan_path || data.path_ttd_ppatk;
+                const signaturePath = data.tanda_tangan_path || data.path_ttd_ppat;
                 
                 console.log('🔍 [PDF] Signature debug - RAW DATA:', {
                     userid: userid,
                     tanda_tangan_path: data.tanda_tangan_path,
-                    path_ttd_ppatk: data.path_ttd_ppatk,
+                    path_ttd_ppat: data.path_ttd_ppat,
                     finalPath: signaturePath
                 });
                 
@@ -441,10 +441,10 @@ export default function registerGeneratePdfBooking(app, pool) {
                         ppatAbs = path.resolve(process.cwd(), 'public', relativePath);
                         
                         // Fix for incorrect folder name in database
-                        // Database has: /penting_F_simpan/folderttd/folderttd_ppatk/ttd-PAT02.png
+                        // Database has: /penting_F_simpan/folderttd/folderttd_ppat/ttd-PAT02.png
                         // Actual path: /penting_F_simpan/folderttd/ppat_sign/ttd-PAT02.png
-                        if (!fs.existsSync(ppatAbs) && signaturePath.includes('folderttd_ppatk')) {
-                            const correctedPath = signaturePath.replace('folderttd_ppatk', 'ppat_sign');
+                        if (!fs.existsSync(ppatAbs) && signaturePath.includes('folderttd_ppat')) {
+                            const correctedPath = signaturePath.replace('folderttd_ppat', 'ppat_sign');
                             const correctedRelativePath = correctedPath.substring(1);
                             ppatAbs = path.resolve(process.cwd(), 'public', correctedRelativePath);
                             console.log('🔧 [PDF] Corrected PPAT signature path:', correctedPath);
@@ -526,7 +526,7 @@ export default function registerGeneratePdfBooking(app, pool) {
     });
 
     // Permohonan Validasi (mohon validasi) PDF
-    app.get('/api/ppatk/generate-pdf-mohon-validasi/:nobooking', async (req, res) => {
+app.get('/api/ppat/generate-pdf-mohon-validasi/:nobooking', async (req, res) => {
         const { nobooking } = req.params; // Ambil nobooking dari URL parameter
         const { pengirim } = req.query;
         console.log('📄 [PDF] Generating mohon validasi PDF for nobooking:', nobooking);
@@ -537,7 +537,7 @@ export default function registerGeneratePdfBooking(app, pool) {
                     pb.*, 
                     vu.nama AS nama_pembuat,
                     vu.userid AS id_pembuat,
-                    ps.path_ttd_ppatk
+                    ps.path_ttd_ppat
                 FROM pat_1_bookingsspd pb
                 LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
                 LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
@@ -578,7 +578,7 @@ export default function registerGeneratePdfBooking(app, pool) {
                 pp.luas_tanah, pp.luas_bangunan,
                 vt.alamat_pemohon, vt.kampungop, vt.kelurahanop, vt.kecamatanopj,
                 pv.nama_pengirim,
-                ps.path_ttd_ppatk
+                ps.path_ttd_ppat
             FROM 
                 pat_1_bookingsspd pb
             LEFT JOIN 
@@ -774,35 +774,35 @@ try {
     };
     
     console.log('🔍 [PDF] Pemohon Signature debug - RAW DATA:', {
-        path_ttd_ppatk: data.path_ttd_ppatk
+            path_ttd_ppat: data.path_ttd_ppat
     });
     
     // Handle different path formats for Pemohon signature
     let ppatAbs = null;
-    if (data.path_ttd_ppatk) {
+    if (data.path_ttd_ppat) {
         // If path starts with /, it's absolute path from root
-        if (data.path_ttd_ppatk.startsWith('/')) {
+        if (data.path_ttd_ppat.startsWith('/')) {
             // Convert to absolute path by removing leading slash and joining with public
-            const relativePath = data.path_ttd_ppatk.substring(1);
+            const relativePath = data.path_ttd_ppat.substring(1);
             ppatAbs = path.resolve(process.cwd(), 'public', relativePath);
             
             // Fix for incorrect folder name in database
-            // Database has: /penting_F_simpan/folderttd/folderttd_ppatk/ttd-PAT02.png
+            // Database has: /penting_F_simpan/folderttd/folderttd_ppat/ttd-PAT02.png
             // Actual path: /penting_F_simpan/folderttd/ppat_sign/ttd-PAT02.png
-            if (!fs.existsSync(ppatAbs) && data.path_ttd_ppatk.includes('folderttd_ppatk')) {
-                const correctedPath = data.path_ttd_ppatk.replace('folderttd_ppatk', 'ppat_sign');
+            if (!fs.existsSync(ppatAbs) && data.path_ttd_ppat.includes('folderttd_ppat')) {
+                const correctedPath = data.path_ttd_ppat.replace('folderttd_ppat', 'ppat_sign');
                 const correctedRelativePath = correctedPath.substring(1);
                 ppatAbs = path.resolve(process.cwd(), 'public', correctedRelativePath);
                 console.log('🔧 [PDF] Corrected Pemohon signature path:', correctedPath);
             }
         } else {
             // Use existing function for relative paths
-            ppatAbs = toAbsolutePublicPath(data.path_ttd_ppatk);
+            ppatAbs = toAbsolutePublicPath(data.path_ttd_ppat);
         }
     }
     
     console.log('🔍 [PDF] Pemohon Signature debug - PROCESSED:', {
-        originalPath: data.path_ttd_ppatk,
+        originalPath: data.path_ttd_ppat,
         absolutePath: ppatAbs,
         fileExists: ppatAbs ? fs.existsSync(ppatAbs) : false,
         directoryExists: ppatAbs ? fs.existsSync(path.dirname(ppatAbs)) : false

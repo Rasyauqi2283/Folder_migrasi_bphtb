@@ -481,7 +481,7 @@ router.get('/status-ppat/notifications', verifyAdmin, async (req, res) => {
         // Diperkaya dengan data user dan booking
         const ltb = await pool.query(
             `SELECT l.nobooking, b.noppbb, b.namawajibpajak, b.namapemilikobjekpajak, b.jenis_wajib_pajak,
-                    l.userid, u.special_field, u.ppatk_khusus,
+                    l.userid, u.special_field, u.ppat_khusus,
                     l.status, l.trackstatus, l.updated_at,
                     'LTB' AS source
              FROM ltb_1_terima_berkas_sspd l
@@ -494,7 +494,7 @@ router.get('/status-ppat/notifications', verifyAdmin, async (req, res) => {
         );
         const lsb = await pool.query(
             `SELECT s.nobooking, b.noppbb, b.namawajibpajak, b.namapemilikobjekpajak, b.jenis_wajib_pajak,
-                    s.userid, u.special_field, u.ppatk_khusus,
+                    s.userid, u.special_field, u.ppat_khusus,
                     s.status, s.trackstatus, s.updated_at,
                     'LSB' AS source
              FROM lsb_1_serah_berkas s
@@ -537,7 +537,7 @@ router.get('/status-ppat/users', verifyAdmin, async (req, res) => {
         params.push(lim, off);
         const sql = `
             SELECT id, userid, nama, divisi, COALESCE(status_ppat, verifiedstatus, 'aktif') AS status,
-                   ppatk_khusus, special_field
+                   ppat_khusus, special_field
             FROM a_2_verified_users
             WHERE ${where.join(' AND ')}
             ORDER BY nama ASC
@@ -559,7 +559,7 @@ router.get('/ppat/user/:userid/diserahkan', verifyAdmin, async (req, res) => {
   
       // Ambil data user
       const userRes = await pool.query(
-        `SELECT id, userid, nama, divisi, ppatk_khusus, special_field, pejabat_umum, fotoprofil
+            `SELECT id, userid, nama, divisi, ppat_khusus, special_field, pejabat_umum, fotoprofil
          FROM a_2_verified_users
          WHERE userid = $1 LIMIT 1`, [userid]
       );
@@ -571,7 +571,7 @@ router.get('/ppat/user/:userid/diserahkan', verifyAdmin, async (req, res) => {
       const bookings = await pool.query(
         `SELECT b.bookingid, b.nobooking, b.noppbb, b.tanggal, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak,
                 b.npwpwp, b.trackstatus, b.file_withstempel_path, b.jenis_wajib_pajak, p2.bphtb_yangtelah_dibayar,
-                u.nama as nama_ppat, u.ppatk_khusus, u.special_field, u.pejabat_umum, u.fotoprofil, u.userid
+                u.nama as nama_ppat, u.ppat_khusus, u.special_field, u.pejabat_umum, u.fotoprofil, u.userid
          FROM pat_1_bookingsspd b
          LEFT JOIN a_2_verified_users u ON u.userid = b.userid
          LEFT JOIN pat_2_bphtb_perhitungan p2 ON b.nobooking = p2.nobooking

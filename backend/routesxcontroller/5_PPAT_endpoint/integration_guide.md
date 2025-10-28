@@ -44,7 +44,7 @@ process.on('SIGTERM', () => {
 
 ### 4. Update Frontend Code
 
-#### LTB Rejection (tb_ppatksspd.js)
+#### LTB Rejection (tb_ppatsspd.js)
 ```javascript
 // Ganti endpoint dari:
 // '${API_BASE_URL}/api/ltb_ltb-reject'

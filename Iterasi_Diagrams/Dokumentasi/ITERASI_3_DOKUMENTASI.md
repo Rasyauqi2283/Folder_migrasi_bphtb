@@ -34,7 +34,7 @@
 | **No** | **Table Name** | **Purpose** |
 |--------|----------------|-------------|
 | 1 | `daily_counter` | Counter harian untuk tracking kuota |
-| 2 | `ppatk_send_queue` | Antrian pengiriman PPATK |
+| 2 | `ppat_send_queue` | Antrian pengiriman PPAT |
 
 ### **Struktur `daily_counter`:**
 ```sql
@@ -53,9 +53,9 @@ date       | counter
 2025-04-29 | 80 (limit tercapai)
 ```
 
-### **Struktur `ppatk_send_queue`:**
+### **Struktur `ppat_send_queue`:**
 ```sql
-CREATE TABLE ppatk_send_queue (
+CREATE TABLE ppat_send_queue (
     id SERIAL PRIMARY KEY,
     nobooking VARCHAR(50),
     userid VARCHAR(20),
@@ -112,7 +112,7 @@ Kuota 80 berkas ÷ 7.5 jam = ~10.7 berkas per jam
 ```
 Berkas Masuk → Cek Daily Counter → 
 ├── Counter < 80 → Proses Langsung
-└── Counter ≥ 80 → Masuk Antrian (ppatk_send_queue)
+└── Counter ≥ 80 → Masuk Antrian (ppat_send_queue)
 ```
 
 ---
@@ -185,7 +185,7 @@ Berkas Masuk → Cek Daily Counter →
 
 ### **Phase 1: Setup Database**
 - ✅ Implementasi `daily_counter`
-- ✅ Implementasi `ppatk_send_queue`
+- ✅ Implementasi `ppat_send_queue`
 - ✅ Migration data existing
 
 ### **Phase 2: UI/UX Development**

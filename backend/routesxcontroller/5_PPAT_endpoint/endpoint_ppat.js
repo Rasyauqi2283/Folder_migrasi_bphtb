@@ -101,7 +101,7 @@ async function triggerNotificationSystem({ nobooking, userid, trackstatus, namaw
     }
 }
 
-export default function registerPPATKEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
+export default function registerPPATEndpoints({ app, pool, logger, morganMiddleware, uploadTTD, uploadDocumentMiddleware, PAT3_DISABLED, triggerNotificationByStatus, upsertBankVerification }) {
     // Validate required parameters
     if (!app) {
         throw new Error('app parameter is required');
@@ -111,7 +111,7 @@ export default function registerPPATKEndpoints({ app, pool, logger, morganMiddle
     }
     
     // Middleware validation and logging
-    console.log('🔧 [PPATK] Middleware status:');
+    console.log('🔧 [PPAT] Middleware status:');
     console.log('  - uploadTTD:', uploadTTD && typeof uploadTTD.fields === 'function' ? '✅ Available' : '❌ Not available');
     console.log('  - uploadDocumentMiddleware:', uploadDocumentMiddleware && typeof uploadDocumentMiddleware.fields === 'function' ? '✅ Available' : '❌ Not available');
 // ===== UPLOADCARE ENDPOINTS REMOVED =====
@@ -125,13 +125,13 @@ app.use('/api/railway-signature', railwaySignatureRoutes);
     (async () => {
         try {
             await pool.query(`
-                CREATE TABLE IF NOT EXISTS ppatk_daily_quota (
+                CREATE TABLE IF NOT EXISTS ppat_daily_quota (
                     quota_date date PRIMARY KEY,
                     used_count int NOT NULL DEFAULT 0,
                     limit_count int NOT NULL DEFAULT 80,
                     updated_at timestamp NOT NULL DEFAULT now()
                 );
-                CREATE TABLE IF NOT EXISTS ppatk_send_queue (
+                CREATE TABLE IF NOT EXISTS ppat_send_queue (
                     id bigserial PRIMARY KEY,
                     nobooking varchar(100) NOT NULL,
                     userid varchar(50) NOT NULL,
@@ -142,9 +142,9 @@ app.use('/api/railway-signature', railwaySignatureRoutes);
                     UNIQUE (nobooking)
                 );
             `);
-            console.log('✅ [PPATK] Quota tables ensured');
+            console.log('✅ [PPAT] Quota tables ensured');
         } catch (e) {
-            console.error('❌ [PPATK] Quota tables init failed:', e.message);
+            console.error('❌ [PPAT] Quota tables init failed:', e.message);
         }
     })();
 
@@ -209,7 +209,7 @@ app.get('/api/check-my-signature', async (req, res) => {
 // This endpoint uses JSON body and must be registered AFTER express.json() middleware
 
 // Endpoint to update file ID in database
-app.post('/api/ppatk/update-file-id', async (req, res) => {
+app.post('/api/ppat/update-file-id', async (req, res) => {
     try {
         console.log('🔄 [UPDATE-FILE-ID] Update request received');
         
@@ -302,8 +302,8 @@ app.post('/api/ppatk/update-file-id', async (req, res) => {
     }
 });
 
-// PPATK: Load booking data for Perorangan only
-app.get('/api/ppatk/load-booking-perorangan', async (req, res) => {
+// PPAT: Load booking data for Perorangan only
+app.get('/api/ppat/load-booking-perorangan', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -323,7 +323,7 @@ app.get('/api/ppatk/load-booking-perorangan', async (req, res) => {
         const safeOffset = Math.max(0, (safePage - 1) * safeLimit);
         
         // Debug logging
-        console.log('🔍 [PPATK-PERORANGAN] Pagination parameters:', {
+        console.log('🔍 [PPAT-PERORANGAN] Pagination parameters:', {
             original: { page, limit },
             parsed: { pageNum, limitNum },
             safe: { safePage, safeLimit, safeOffset }
@@ -387,7 +387,7 @@ app.get('/api/ppatk/load-booking-perorangan', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK-PERORANGAN] Load booking perorangan failed:', error);
+        console.error('❌ [PPAT-PERORANGAN] Load booking perorangan failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to load booking perorangan data: ' + error.message
@@ -395,10 +395,10 @@ app.get('/api/ppatk/load-booking-perorangan', async (req, res) => {
     }
 });
 
-// PPATK: Create booking for Perorangan
-app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
+// PPAT: Create booking for Perorangan
+app.post('/api/ppat/create-booking-perorangan', async (req, res) => {
     try {
-        console.log('📋 [PPATK-PERORANGAN] Create booking request received');
+        console.log('📋 [PPAT-PERORANGAN] Create booking request received');
         
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -407,7 +407,7 @@ app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
         const userid = req.session.user.userid;
         const body = req.body || {};
         
-        console.log('📋 [PPATK-PERORANGAN] Request body:', body);
+        console.log('📋 [PPAT-PERORANGAN] Request body:', body);
         
         // Validate required fields
         const requiredFields = ['noppbb', 'namawajibpajak', 'alamatwajibpajak', 'tahunajb'];
@@ -482,7 +482,7 @@ app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
         
         const result = await pool.query(insertQuery, insertParams);
         
-        console.log('✅ [PPATK-PERORANGAN] Booking created successfully:', result.rows[0]);
+        console.log('✅ [PPAT-PERORANGAN] Booking created successfully:', result.rows[0]);
         
         res.json({
             success: true,
@@ -491,7 +491,7 @@ app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK-PERORANGAN] Create booking failed:', error);
+        console.error('❌ [PPAT-PERORANGAN] Create booking failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to create booking perorangan: ' + error.message
@@ -499,8 +499,8 @@ app.post('/api/ppatk/create-booking-perorangan', async (req, res) => {
     }
 });
 
-// PPATK: Load all booking data for table (untuk frontend table)
-app.get('/api/ppatk/load-all-booking', async (req, res) => {
+// PPAT: Load all booking data for table (untuk frontend table)
+app.get('/api/ppat/load-all-booking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -520,7 +520,7 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         const safeOffset = Math.max(0, (safePage - 1) * safeLimit);
         
         // Debug logging
-        console.log('🔍 [PPATK] Pagination parameters:', {
+        console.log('🔍 [PPAT] Pagination parameters:', {
             original: { page, limit },
             parsed: { pageNum, limitNum },
             safe: { safePage, safeLimit, safeOffset }
@@ -583,7 +583,7 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Load all booking failed:', error);
+        console.error('❌ [PPAT] Load all booking failed:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to load booking data: ' + error.message
@@ -591,8 +591,8 @@ app.get('/api/ppatk/load-all-booking', async (req, res) => {
     }
 });
 
-// PPATK: Get booking detail by nobooking (supports both Badan Usaha and Perorangan)
-app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
+// PPAT: Get booking detail by nobooking (supports both Badan Usaha and Perorangan)
+app.get('/api/ppat/booking/:nobooking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -654,7 +654,7 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Get booking detail failed:', error);
+        console.error('❌ [PPAT] Get booking detail failed:', error);
         res.status(500).json({
             success: false, 
             message: 'Failed to get booking detail: ' + error.message
@@ -662,8 +662,8 @@ app.get('/api/ppatk/booking/:nobooking', async (req, res) => {
     }
 });
 
-// PPATK: Get booking detail by nobooking for Badan Usaha only
-app.get('/api/ppatk/booking-badan/:nobooking', async (req, res) => {
+// PPAT: Get booking detail by nobooking for Badan Usaha only
+app.get('/api/ppat/booking-badan/:nobooking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -722,7 +722,7 @@ app.get('/api/ppatk/booking-badan/:nobooking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK-BADAN] Get booking detail failed:', error);
+        console.error('❌ [PPAT-BADAN] Get booking detail failed:', error);
         res.status(500).json({
             success: false, 
             message: 'Failed to get booking detail: ' + error.message
@@ -730,8 +730,8 @@ app.get('/api/ppatk/booking-badan/:nobooking', async (req, res) => {
     }
 });
 
-// PPATK: Get booking detail by nobooking for Perorangan only
-app.get('/api/ppatk/booking-perorangan/:nobooking', async (req, res) => {
+// PPAT: Get booking detail by nobooking for Perorangan only
+app.get('/api/ppat/booking-perorangan/:nobooking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -790,7 +790,7 @@ app.get('/api/ppatk/booking-perorangan/:nobooking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK-PERORANGAN] Get booking detail failed:', error);
+        console.error('❌ [PPAT-PERORANGAN] Get booking detail failed:', error);
         res.status(500).json({
             success: false, 
             message: 'Failed to get booking detail: ' + error.message
@@ -798,8 +798,8 @@ app.get('/api/ppatk/booking-perorangan/:nobooking', async (req, res) => {
     }
 });
 
-// Save additional PPATK form data (alamat_pemohon, kampungop, kelurahanop, kecamatanopj, keterangan)
-app.post('/api/save-ppatk-additional-data', async (req, res) => {
+// Save additional PPAT form data (alamat_pemohon, kampungop, kelurahanop, kecamatanopj, keterangan)
+app.post('/api/save-ppat-additional-data', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -809,8 +809,8 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
         const body = req.body || {};
         
         // Debug: Log raw request body (should now be populated)
-        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Raw req.body:', body);
-        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] req.body keys:', Object.keys(body));
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] Raw req.body:', body);
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] req.body keys:', Object.keys(body));
         
         let {
             nobooking,
@@ -820,7 +820,7 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             kecamatanopj
         } = body;
 
-        (logger && logger.info ? logger.info : console.log)('📥 [PPATK] Save-additional incoming:', {
+        (logger && logger.info ? logger.info : console.log)('📥 [PPAT] Save-additional incoming:', {
             nobooking_from_body: nobooking,
             alamat_pemohon,
             kampungop,
@@ -841,10 +841,10 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
             nobooking = req.query?.nobooking;
         }
 
-        (logger && logger.info ? logger.info : console.log)('🔧 [PPATK] Resolved nobooking:', nobooking);
+        (logger && logger.info ? logger.info : console.log)('🔧 [PPAT] Resolved nobooking:', nobooking);
         
         // Debug: Check if values are empty strings or null/undefined
-        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Value validation:', {
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] Value validation:', {
             alamat_pemohon_empty: alamat_pemohon === '' || alamat_pemohon === null || alamat_pemohon === undefined,
             kampungop_empty: kampungop === '' || kampungop === null || kampungop === undefined,
             kelurahanop_empty: kelurahanop === '' || kelurahanop === null || kelurahanop === undefined,
@@ -869,14 +869,14 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
 
         // Simpan ke pat_8_validasi_tambahan dengan fallback jika kolom tertentu tidak ada (mis. keterangan)
         try {
-            (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Checking existing record for nobooking:', nobooking);
+            (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] Checking existing record for nobooking:', nobooking);
             const existing = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
-            (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Existing record found:', existing.rows.length > 0);
+            (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] Existing record found:', existing.rows.length > 0);
             
             if (existing.rows.length > 0) {
-                (logger && logger.info ? logger.info : console.log)('📝 [PPATK] UPDATE pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                (logger && logger.info ? logger.info : console.log)('📝 [PPAT] UPDATE pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                 const updateParams = [nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon];
-                (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] UPDATE parameters:', updateParams);
+                (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] UPDATE parameters:', updateParams);
                 
                 const upd = await pool.query(
                     `UPDATE pat_8_validasi_tambahan
@@ -890,12 +890,12 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                      RETURNING kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at`,
                     updateParams
                 );
-                (logger && logger.info ? logger.info : console.log)('✅ [PPATK] UPDATE rowCount:', upd.rowCount, 'values:', upd.rows[0]);
-                (logger && logger.info ? logger.info : console.log)('✅ [PPATK] UPDATE parameters used:', { nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                (logger && logger.info ? logger.info : console.log)('✅ [PPAT] UPDATE rowCount:', upd.rowCount, 'values:', upd.rows[0]);
+                (logger && logger.info ? logger.info : console.log)('✅ [PPAT] UPDATE parameters used:', { nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
             } else {
-                (logger && logger.info ? logger.info : console.log)('🆕 [PPATK] INSERT pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                (logger && logger.info ? logger.info : console.log)('🆕 [PPAT] INSERT pat_8_validasi_tambahan with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                 const insertParams = [nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon];
-                (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] INSERT parameters:', insertParams);
+                (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] INSERT parameters:', insertParams);
                 
                 const ins = await pool.query(
                     `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
@@ -903,14 +903,14 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                      RETURNING kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at`,
                     insertParams
                 );
-                (logger && logger.info ? logger.info : console.log)('✅ [PPATK] INSERT rowCount:', ins.rowCount, 'values:', ins.rows[0]);
-                (logger && logger.info ? logger.info : console.log)('✅ [PPATK] INSERT parameters used:', { nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                (logger && logger.info ? logger.info : console.log)('✅ [PPAT] INSERT rowCount:', ins.rowCount, 'values:', ins.rows[0]);
+                (logger && logger.info ? logger.info : console.log)('✅ [PPAT] INSERT parameters used:', { nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
             }
         } catch (dbErr) {
             if (dbErr && (dbErr.code === '42703' || /column\s+keterangan\s+does\s+not\s+exist/i.test(String(dbErr.message)))) {
                 const existing2 = await pool.query(`SELECT id FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`, [nobooking]);
                 if (existing2.rows.length > 0) {
-                    (logger && logger.info ? logger.info : console.log)('📝 [PPATK] UPDATE with values (fallback no keterangan):', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                    (logger && logger.info ? logger.info : console.log)('📝 [PPAT] UPDATE with values (fallback no keterangan):', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                     const upd2 = await pool.query(
                         `UPDATE pat_8_validasi_tambahan
                          SET 
@@ -923,16 +923,16 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
                          RETURNING kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at`,
                         [nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon]
                     );
-                    (logger && logger.info ? logger.info : console.log)('✅ [PPATK] UPDATE(fallback) rowCount:', upd2.rowCount, 'values:', upd2.rows[0]);
+                    (logger && logger.info ? logger.info : console.log)('✅ [PPAT] UPDATE(fallback) rowCount:', upd2.rowCount, 'values:', upd2.rows[0]);
                 } else {
-                    (logger && logger.info ? logger.info : console.log)('🆕 [PPATK] INSERT (fallback no keterangan) with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
+                    (logger && logger.info ? logger.info : console.log)('🆕 [PPAT] INSERT (fallback no keterangan) with values:', { kampungop, kelurahanop, kecamatanopj, alamat_pemohon });
                     const ins2 = await pool.query(
                         `INSERT INTO pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, created_at, updated_at)
                          VALUES ($1, $2, $3, $4, $5, now(), now())
                          RETURNING kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at`,
                         [nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon]
                     );
-                    (logger && logger.info ? logger.info : console.log)('✅ [PPATK] INSERT(fallback) rowCount:', ins2.rowCount, 'values:', ins2.rows[0]);
+                    (logger && logger.info ? logger.info : console.log)('✅ [PPAT] INSERT(fallback) rowCount:', ins2.rowCount, 'values:', ins2.rows[0]);
                 }
             } else {
                 throw dbErr;
@@ -940,24 +940,24 @@ app.post('/api/save-ppatk-additional-data', async (req, res) => {
         }
 
         // Ambil kembali nilai terbaru untuk verifikasi dan response
-        (logger && logger.info ? logger.info : console.log)('🔍 [PPATK] Verifying saved data for nobooking:', nobooking);
+        (logger && logger.info ? logger.info : console.log)('🔍 [PPAT] Verifying saved data for nobooking:', nobooking);
         const verify = await pool.query(
             `SELECT nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at
              FROM pat_8_validasi_tambahan WHERE nobooking = $1 LIMIT 1`,
             [nobooking]
         );
         
-        (logger && logger.info ? logger.info : console.log)('✅ [PPATK] Verification result:', verify.rows[0] || 'No data found');
+        (logger && logger.info ? logger.info : console.log)('✅ [PPAT] Verification result:', verify.rows[0] || 'No data found');
 
         return res.json({ success: true, message: 'Data berhasil disimpan', data: verify.rows[0] || null });
     } catch (error) {
-        console.error('❌ [PPATK] Save additional data failed:', error);
+        console.error('❌ [PPAT] Save additional data failed:', error);
         return res.status(500).json({ success: false, message: 'Failed to save data', error: error.message, code: error.code });
     }
 });
 
-// PPATK: Update booking status
-app.put('/api/ppatk/booking/:nobooking/trackstatus', async (req, res) => {
+// PPAT: Update booking status
+app.put('/api/ppat/booking/:nobooking/trackstatus', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -997,7 +997,7 @@ app.put('/api/ppatk/booking/:nobooking/trackstatus', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Update status failed:', error);
+        console.error('❌ [PPAT] Update status failed:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Failed to update status: ' + error.message
@@ -1005,8 +1005,8 @@ app.put('/api/ppatk/booking/:nobooking/trackstatus', async (req, res) => {
     }
 });
 
-// PPATK: Delete booking
-app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
+// PPAT: Delete booking
+app.delete('/api/ppat/booking/:nobooking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1037,7 +1037,7 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Delete booking failed:', error);
+        console.error('❌ [PPAT] Delete booking failed:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Failed to delete booking: ' + error.message
@@ -1046,7 +1046,7 @@ app.delete('/api/ppatk/booking/:nobooking', async (req, res) => {
 });
 
 // Upload signatures endpoint
-app.post('/api/ppatk/upload-signatures', async (req, res) => {
+app.post('/api/ppat/upload-signatures', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1067,7 +1067,7 @@ app.post('/api/ppatk/upload-signatures', async (req, res) => {
             });
 
         } catch (error) {
-        console.error('❌ [PPATK] Upload signature failed:', error);
+        console.error('❌ [PPAT] Upload signature failed:', error);
         res.status(500).json({
             success: false,
             message: 'Upload signature failed: ' + error.message
@@ -1076,7 +1076,7 @@ app.post('/api/ppatk/upload-signatures', async (req, res) => {
 });
 
 // Upload documents endpoint
-app.post('/api/ppatk/upload-documents', async (req, res) => {
+app.post('/api/ppat/upload-documents', async (req, res) => {
     try {
         console.log('📤 [UPLOAD-DOCUMENTS] Upload request received');
         
@@ -1379,7 +1379,7 @@ app.post('/api/ppatk/upload-documents', async (req, res) => {
 });
 
 // Update file URL endpoint - Railway storage URLs are stable, no update needed
-app.post('/api/ppatk/update-file-urls', async (req, res) => {
+app.post('/api/ppat/update-file-urls', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1412,7 +1412,7 @@ app.post('/api/ppatk/update-file-urls', async (req, res) => {
 });
 
 // Get documents endpoint
-app.get('/api/ppatk/get-documents', async (req, res) => {
+app.get('/api/ppat/get-documents', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1507,7 +1507,7 @@ app.get('/api/ppatk/get-documents', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Get documents failed:', error);
+        console.error('❌ [PPAT] Get documents failed:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Get documents failed: ' + error.message
@@ -1522,7 +1522,7 @@ const REQUIRE_AUTH = false; // Disable session auth for debugging
 
 
 // 🔹 HEAD request (cek file tersedia atau tidak) - Railway Storage
-app.head('/api/ppatk/file-proxy', async (req, res) => {
+app.head('/api/ppat/file-proxy', async (req, res) => {
     try {
         if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
             return res.sendStatus(401);
@@ -1569,7 +1569,7 @@ app.head('/api/ppatk/file-proxy', async (req, res) => {
 });
 
 // 🔹 GET request (stream file ke client) - Railway Storage
-app.get('/api/ppatk/file-proxy', async (req, res) => {
+app.get('/api/ppat/file-proxy', async (req, res) => {
     try {
         if (REQUIRE_AUTH && (!req.session || !req.session.user)) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1600,7 +1600,7 @@ app.get('/api/ppatk/file-proxy', async (req, res) => {
         }
         
         // Create file stream from Railway storage
-        const fullPath = path.join(process.cwd(), 'backend', 'storage', 'ppatk', relativePath);
+        const fullPath = path.join(process.cwd(), 'backend', 'storage', 'ppat', relativePath);
         
         if (!fs.existsSync(fullPath)) {
             console.error(`❌ [RAILWAY-PROXY GET] Physical file not found: ${fullPath}`);
@@ -1663,7 +1663,7 @@ app.get('/api/test-railway-proxy', (req, res) => {
 
 // ===== QUOTA ENDPOINTS =====
 // Get daily quota summary
-app.get('/api/ppatk/quota', async (req, res) => {
+app.get('/api/ppat/quota', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -1682,7 +1682,7 @@ app.get('/api/ppatk/quota', async (req, res) => {
         const yyyy_mm_dd = normalizeDate(dateParam);
 
         const q = await pool.query(
-            `SELECT quota_date, used_count, limit_count FROM ppatk_daily_quota WHERE quota_date = $1`,
+            `SELECT quota_date, used_count, limit_count FROM ppat_daily_quota WHERE quota_date = $1`,
             [yyyy_mm_dd]
         );
         const row = q.rows[0] || { quota_date: yyyy_mm_dd, used_count: 0, limit_count: 80 };
@@ -1695,7 +1695,7 @@ app.get('/api/ppatk/quota', async (req, res) => {
 
 
 // Schedule send with quota enforcement
-app.post('/api/ppatk/schedule-send', async (req, res) => {
+app.post('/api/ppat/schedule-send', async (req, res) => {
     const client = await pool.connect();
     try {
         if (!req.session || !req.session.user) {
@@ -1738,12 +1738,12 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
         await client.query('BEGIN');
 
         // Upsert quota row
-        await client.query(`INSERT INTO ppatk_daily_quota (quota_date, used_count, limit_count)
+        await client.query(`INSERT INTO ppat_daily_quota (quota_date, used_count, limit_count)
                             VALUES ($1, 0, 80)
                             ON CONFLICT (quota_date) DO NOTHING`, [scheduled_for]);
 
         // Check quota
-        const q = await client.query(`SELECT used_count, limit_count FROM ppatk_daily_quota WHERE quota_date=$1 FOR UPDATE`, [scheduled_for]);
+        const q = await client.query(`SELECT used_count, limit_count FROM ppat_daily_quota WHERE quota_date=$1 FOR UPDATE`, [scheduled_for]);
         const { used_count, limit_count } = q.rows[0];
         if (used_count >= limit_count) {
             await client.query('ROLLBACK');
@@ -1751,14 +1751,14 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
         }
 
         // Insert queue (unique nobooking) and update status to Pending
-        await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for) VALUES ($1,$2,$3)
+        await client.query(`INSERT INTO ppat_send_queue (nobooking, userid, scheduled_for) VALUES ($1,$2,$3)
                             ON CONFLICT (nobooking) DO UPDATE SET scheduled_for=$3, status='queued'`, [nobooking, userid, scheduled_for]);
         
         // Update booking status to Pending
         await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Pending', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
 
         // Increment quota
-        const upd = await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1 RETURNING used_count, limit_count`, [scheduled_for]);
+        const upd = await client.query(`UPDATE ppat_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1 RETURNING used_count, limit_count`, [scheduled_for]);
 
         await client.query('COMMIT');
         const u = upd.rows[0];
@@ -1773,7 +1773,7 @@ app.post('/api/ppatk/schedule-send', async (req, res) => {
 });
 
 // Send now = schedule for today then mark as sent immediately (still counting quota)
-app.post('/api/ppatk/send-now', async (req, res) => {
+app.post('/api/ppat/send-now', async (req, res) => {
     const client = await pool.connect();
     try {
         if (!req.session || !req.session.user) {
@@ -1795,10 +1795,10 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 
         await client.query('BEGIN');
 
-        await client.query(`INSERT INTO ppatk_daily_quota (quota_date, used_count, limit_count)
+        await client.query(`INSERT INTO ppat_daily_quota (quota_date, used_count, limit_count)
                             VALUES ($1, 0, 80)
                             ON CONFLICT (quota_date) DO NOTHING`, [today]);
-        const q = await client.query(`SELECT used_count, limit_count FROM ppatk_daily_quota WHERE quota_date=$1 FOR UPDATE`, [today]);
+        const q = await client.query(`SELECT used_count, limit_count FROM ppat_daily_quota WHERE quota_date=$1 FOR UPDATE`, [today]);
         const { used_count, limit_count } = q.rows[0];
         if (used_count >= limit_count) {
             await client.query('ROLLBACK');
@@ -1817,11 +1817,11 @@ app.post('/api/ppatk/send-now', async (req, res) => {
             return res.status(409).json({ success: false, message: `Booking sudah dalam status ${currentStatus}, tidak dapat dikirim` });
         }
 
-        await client.query(`INSERT INTO ppatk_send_queue (nobooking, userid, scheduled_for, status, sent_at)
+        await client.query(`INSERT INTO ppat_send_queue (nobooking, userid, scheduled_for, status, sent_at)
                             VALUES ($1,$2,$3,'sent', now())
                             ON CONFLICT (nobooking) DO UPDATE SET status='sent', sent_at=now(), scheduled_for=$3`, [nobooking, userid, today]);
 
-        await client.query(`UPDATE ppatk_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1`, [today]);
+        await client.query(`UPDATE ppat_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date=$1`, [today]);
 
         // Untuk alur internal: setelah send-now, status masuk ke LTB sebagai 'Diolah'
         await client.query(`UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking=$1 AND userid=$2`, [nobooking, userid]);
@@ -1921,13 +1921,13 @@ app.post('/api/ppatk/send-now', async (req, res) => {
                     nobooking,
                     new Date().toLocaleDateString('id-ID'), // tanggal_terima
                     'Diterima', // status
-                    bookingData.user_nama || 'PPATK User', // pengirim_ltb
+                    bookingData.user_nama || 'PPAT User', // pengirim_ltb
                     'Diolah', // trackstatus
                     bookingData.userid, // userid
                     bookingData.namawajibpajak, // namawajibpajak
                     bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
-                    bookingData.user_divisi || 'PPATK', // divisi
-                    bookingData.user_nama || 'PPATK User', // nama
+                    bookingData.user_divisi || 'PPAT', // divisi
+                    bookingData.user_nama || 'PPAT User', // nama
                     bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
                     nextNoRegistrasi // no_registrasi (auto-generated)
                 ];
@@ -2076,14 +2076,14 @@ app.post('/api/ppatk/send-now', async (req, res) => {
 });
 
 // My schedules
-app.get('/api/ppatk/my-schedules', async (req, res) => {
+app.get('/api/ppat/my-schedules', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
         const userid = req.session.user.userid;
         const r = await pool.query(`SELECT id, nobooking, scheduled_for, status, requested_at, sent_at
-                                    FROM ppatk_send_queue WHERE userid=$1 ORDER BY scheduled_for, requested_at`, [userid]);
+                                    FROM ppat_send_queue WHERE userid=$1 ORDER BY scheduled_for, requested_at`, [userid]);
         res.json({ success: true, data: r.rows });
     } catch (e) {
         console.error('❌ [QUOTA] My schedules failed:', e);
@@ -2092,7 +2092,7 @@ app.get('/api/ppatk/my-schedules', async (req, res) => {
 });
 
 // Process pending queue (for cron/worker during business hours 09:00-16:00)
-app.post('/api/ppatk/process-pending-queue', async (req, res) => {
+app.post('/api/ppat/process-pending-queue', async (req, res) => {
     const client = await pool.connect();
     try {
         const today = new Date().toISOString().slice(0,10);
@@ -2113,7 +2113,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
         // Get pending bookings for today
         const pending = await client.query(`
             SELECT sq.id, sq.nobooking, sq.userid, sq.scheduled_for
-            FROM ppatk_send_queue sq
+            FROM ppat_send_queue sq
             WHERE sq.scheduled_for = $1 AND sq.status = 'queued'
             ORDER BY sq.requested_at ASC
             LIMIT 10
@@ -2124,7 +2124,7 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
             try {
                 // Update queue status to sent
                 await client.query(`
-                    UPDATE ppatk_send_queue 
+                    UPDATE ppat_send_queue 
                     SET status='sent', sent_at=now() 
                     WHERE id=$1
                 `, [item.id]);
@@ -2216,13 +2216,13 @@ app.post('/api/ppatk/process-pending-queue', async (req, res) => {
                             item.nobooking,
                             new Date().toLocaleDateString('id-ID'), // tanggal_terima
                             'Diterima', // status
-                            bookingData.user_nama || 'PPATK User', // pengirim_ltb
+                            bookingData.user_nama || 'PPAT User', // pengirim_ltb
                             'Diolah', // trackstatus
                             bookingData.userid, // userid
                             bookingData.namawajibpajak, // namawajibpajak
                             bookingData.namapemilikobjekpajak, // namapemilikobjekpajak
-                            bookingData.user_divisi || 'PPATK', // divisi
-                            bookingData.user_nama || 'PPATK User', // nama
+                            bookingData.user_divisi || 'PPAT', // divisi
+                            bookingData.user_nama || 'PPAT User', // nama
                             bookingData.jenis_wajib_pajak || 'Badan Usaha', // jenis_wajib_pajak
                             nextNoRegistrasi // no_registrasi (auto-generated)
                         ];
@@ -2406,15 +2406,15 @@ app.post('/api/cleanup-old-files', async (req, res) => {
     }
 });
 
-// Railway Storage health check endpoint (PPATK path)
-app.get('/api/ppatk/railway-health', async (req, res) => {
+// Railway Storage health check endpoint (PPAT path)
+app.get('/api/ppat/railway-health', async (req, res) => {
     try {
         console.log('🔍 [RAILWAY-HEALTH] Starting health check...');
         
         // Test 1: Check if storage directory exists
         const fs = await import('fs');
         const path = await import('path');
-        const storagePath = path.join(process.cwd(), 'backend', 'storage', 'ppatk');
+        const storagePath = path.join(process.cwd(), 'backend', 'storage', 'ppat');
         
         const storageExists = fs.existsSync(storagePath);
         const storageWritable = storageExists && fs.accessSync ? true : false;
@@ -2452,7 +2452,7 @@ app.get('/api/ppatk/railway-health', async (req, res) => {
 
 
 // Update track status endpoint
-app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
+app.put('/api/ppat/update-trackstatus/:nobooking', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -2487,7 +2487,7 @@ app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ [PPATK] Update track status failed:', error);
+        console.error('❌ [PPAT] Update track status failed:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Update track status failed: ' + error.message
@@ -2495,11 +2495,11 @@ app.put('/api/ppatk/update-trackstatus/:nobooking', async (req, res) => {
     }
 });
 
-// ✅ REMOVED: Old /api/ppatk/ltb-process endpoint - No longer needed with quota system
+// ✅ REMOVED: Old /api/ppat/ltb-process endpoint - No longer needed with quota system
 
 
 // File synchronization verification endpoint
-app.get('/api/ppatk/verify-file-sync', async (req, res) => {
+app.get('/api/ppat/verify-file-sync', async (req, res) => {
     try {
         if (!req.session || !req.session.user) {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -2611,5 +2611,5 @@ app.get('/api/ppatk/verify-file-sync', async (req, res) => {
     }
 });
 
-console.log('✅ [PPATK] All endpoints registered successfully');
+console.log('✅ [PPAT] All endpoints registered successfully');
 }

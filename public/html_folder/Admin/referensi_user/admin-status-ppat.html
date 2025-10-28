@@ -974,7 +974,7 @@ function renderNotifications(){
         <td>${it.nobooking}</td>
         <td>${it.userid}</td>
         <td>${it.special_field}</td>
-        <td>${it.ppatk_khusus}</td>
+                <td>${it.ppat_khusus}</td>
         <td>${it.noppbb}</td>
         <td>${it.jenis_wajib_pajak}</td>
         <td>${it.updated}</td>
@@ -1438,7 +1438,7 @@ function showNotificationDetail(data) {
           </div>
           <div class="detail-item">
             <label>PPAT Khusus:</label>
-            <span>${data.ppatk_khusus || '-'}</span>
+                <span>${data.ppat_khusus || '-'}</span>
           </div>
           <div class="detail-item">
             <label>Special Field:</label>
@@ -1747,7 +1747,7 @@ renderNotifications();
                   nobooking: 'BOOK-001',
                   userid: 'PPAT001',
                   special_field: 'Khusus',
-                  ppatk_khusus: 'Ya',
+                  ppat_khusus: 'Ya',
                   noppbb: '123456789',
                   jenis_wajib_pajak: 'Perorangan',
                   updated_at: new Date().toISOString(),
@@ -1819,7 +1819,7 @@ renderNotifications();
               r.nobooking||'-',
               r.userid||'-',
               r.special_field||'-',
-              r.ppatk_khusus||'-',
+                r.ppat_khusus||'-',
               r.noppbb||'-',
               r.jenis_wajib_pajak||'-',
               r.updated||r.updated_at||'-',
@@ -1841,7 +1841,7 @@ renderNotifications();
               r.nobooking||'-',
               r.userid||'-',
               r.special_field||'-',
-              r.ppatk_khusus||'-',
+                r.ppat_khusus||'-',
               r.noppbb||'-',
               r.jenis_wajib_pajak||'-',
               penelitiStatus,
@@ -1854,7 +1854,7 @@ renderNotifications();
             r.nobooking||'-',
             r.userid||'-',
             r.special_field||'-',
-            r.ppatk_khusus||'-',
+                r.ppat_khusus||'-',
             r.noppbb||'-',
             r.jenis_wajib_pajak||'-',
               r.updated||r.updated_at||'-',
@@ -1949,7 +1949,7 @@ renderNotifications();
               <div class="user-details">
                 <div class="user-detail">${r.userid || '-'}</div>
                 <div class="user-detail">${r.divisi || '-'}</div>
-                <div class="user-detail">${r.ppatk_khusus || '-'}</div>
+                <div class="user-detail">${r.ppat_khusus || '-'}</div>
               </div>
             </div>
             <div class="user-status">
@@ -2592,7 +2592,7 @@ renderNotifications();
               </div>
               <div class="form-group">
             <label>PPAT Khusus:</label>
-                <input type="text" id="editPpatkKhusus" value="${userData.ppatk_khusus || ''}" class="form-control">
+                <input type="text" id="editPpatKhusus" value="${userData.ppat_khusus || ''}" class="form-control">
               </div>
               <div class="form-group">
                 <label>Special Field:</label>
@@ -2662,7 +2662,7 @@ renderNotifications();
           nama: document.getElementById('editNama').value,
           divisi: document.getElementById('editDivisi').value,
           status_ppat: document.getElementById('editStatusPpat').value,
-          ppatk_khusus: document.getElementById('editPpatkKhusus').value,
+                ppat_khusus: document.getElementById('editPpatKhusus').value,
           special_field: document.getElementById('editSpecialField').value,
           email: document.getElementById('editEmail').value
         };

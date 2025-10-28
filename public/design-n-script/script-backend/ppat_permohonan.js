@@ -36,7 +36,7 @@ document.querySelector('.btn-simpan').addEventListener('click', async function(e
             return;
         }
         const API_URL = 'https://bphtb-bappenda.up.railway.app';
-        const response = await fetch(`${API_URL}/api/ppatk_create-permohonan-validasi`, {
+        const response = await fetch(`${API_URL}/api/ppat/create-permohonan-validasi`, {
             method: 'POST',
             credentials: 'include',
             headers: {

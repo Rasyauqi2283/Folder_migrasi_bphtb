@@ -30,8 +30,8 @@
             <span id="namaTitle">-</span> <!-- a_2_verified_users.special_field -->
           </div>
           <div class="info-row">
-            <label>Ppatk_khusus</label>
-            <span id="ppatkKhusus">-</span> <!-- a_2_verified_users.ppatk_khusus -->
+            <label>PPAT Khusus</label>
+                <span id="ppatKhusus">-</span> <!-- a_2_verified_users.ppat_khusus -->
           </div>
           <div class="info-row">
             <label>UserId</label>
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   function renderUserInfo(user) {
     document.getElementById('namaPanjang').textContent = user.nama || '-';
     document.getElementById('namaTitle').textContent = user.special_field || '-';
-    document.getElementById('ppatkKhusus').textContent = user.ppatk_khusus || '-';
+        document.getElementById('ppatKhusus').textContent = user.ppat_khusus || '-';
     document.getElementById('userIdField').textContent = user.userid || '-';
     document.getElementById('pejabatUmum').textContent = user.pejabat_umum || '-';
 
