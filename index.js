@@ -237,6 +237,16 @@ console.log('SESSION_SECRET exists:', !!process.env.SESSION_SECRET);
 app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Increased limit for file uploads
 
+// Compat alias: allow clients to call /api/ppat/* and rewrite to /api/ppatk/*
+app.use((req, res, next) => {
+  if (req.url === '/api/ppat') {
+    req.url = '/api/ppatk';
+  } else if (req.url.startsWith('/api/ppat/')) {
+    req.url = req.url.replace(/^\/api\/ppat\//, '/api/ppatk/');
+  }
+  next();
+});
+
 // Register PPATK endpoints AFTER body parsers
 registerPPATKEndpoints({
   app,
@@ -275,6 +285,10 @@ app.use('/api/v1/auth', profileRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/admin/notification-warehouse', notificationWarehouseRouter);
+
+// Peneliti counter API routes
+import penelitiCounterRoutes from './backend/routesxcontroller/3_peneliti/peneliti_counter_routes.js';
+app.use('/api/peneliti', penelitiCounterRoutes);
 
 // Register BSRE routes
 app.use('/api/bsre', bsreAuthRouter);

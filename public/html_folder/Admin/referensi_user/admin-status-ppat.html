@@ -814,7 +814,7 @@
                 <th>NoBooking</th>
                 <th>UserID</th>
                 <th>Special Field</th>
-                <th>PPATK Khusus</th>
+                <th>PPAT Khusus</th>
                 <th>NOPPBB</th>
                 <th>Jenis WP</th>
                 <th>Updated</th>
@@ -923,17 +923,17 @@ function updateTableHeaders(category) {
   if (category === 'ppat_ltb') {
     headers = [
       'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
-      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
+                'PPAT Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
     ];
   } else if (category === 'ltb_lsb') {
     headers = [
       'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
-      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Status Peneliti', 'Updated', 'Aksi'
+                'PPAT Khusus', 'NOPPBB', 'Jenis WP', 'Status Peneliti', 'Updated', 'Aksi'
     ];
   } else if (category === 'lsb_ppat') {
     headers = [
       'No. Registrasi', 'NoBooking', 'UserID', 'Special Field', 
-      'PPATK Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
+                'PPAT Khusus', 'NOPPBB', 'Jenis WP', 'Updated', 'Aksi'
     ];
   }
   
@@ -1437,7 +1437,7 @@ function showNotificationDetail(data) {
             <span>${data.ppat_divisi || '-'}</span>
           </div>
           <div class="detail-item">
-            <label>PPATK Khusus:</label>
+            <label>PPAT Khusus:</label>
             <span>${data.ppatk_khusus || '-'}</span>
           </div>
           <div class="detail-item">
@@ -2591,7 +2591,7 @@ renderNotifications();
                 </select>
               </div>
               <div class="form-group">
-                <label>PPATK Khusus:</label>
+            <label>PPAT Khusus:</label>
                 <input type="text" id="editPpatkKhusus" value="${userData.ppatk_khusus || ''}" class="form-control">
               </div>
               <div class="form-group">

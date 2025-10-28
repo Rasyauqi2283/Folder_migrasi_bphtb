@@ -1,0 +1,385 @@
+/**
+ * PENELITI DAILY COUNTER CSS STYLES
+ * CSS untuk styling counter harian peneliti
+ */
+
+/* =============================================
+   PENELITI COUNTER CONTAINER
+   ============================================= */
+
+.peneliti-counter {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 16px;
+    color: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin: 10px 0;
+    position: relative;
+    overflow: hidden;
+    min-width: 280px;
+    max-width: 320px;
+}
+
+.peneliti-counter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+/* =============================================
+   COUNTER HEADER
+   ============================================= */
+
+.counter-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.counter-header i {
+    font-size: 16px;
+}
+
+.counter-title {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* =============================================
+   COUNTER DISPLAY
+   ============================================= */
+
+.counter-display {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    margin-bottom: 16px;
+    gap: 4px;
+}
+
+.current-counter {
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.separator {
+    font-size: 24px;
+    font-weight: 300;
+    opacity: 0.7;
+}
+
+.limit-counter {
+    font-size: 20px;
+    font-weight: 500;
+    opacity: 0.8;
+}
+
+/* =============================================
+   PROGRESS BAR
+   ============================================= */
+
+.progress-container {
+    margin-bottom: 12px;
+    position: relative;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Progress bar colors based on percentage */
+.progress-fill.very-low {
+    background: linear-gradient(90deg, #6c757d 0%, #adb5bd 100%);
+}
+
+.progress-fill.low {
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+}
+
+.progress-fill.medium {
+    background: linear-gradient(90deg, #ffc107 0%, #fd7e14 100%);
+}
+
+.progress-fill.high {
+    background: linear-gradient(90deg, #fd7e14 0%, #dc3545 100%);
+}
+
+.progress-fill.limit-reached {
+    background: linear-gradient(90deg, #dc3545 0%, #e83e8c 100%);
+}
+
+.progress-text {
+    position: absolute;
+    top: -20px;
+    right: 0;
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+/* =============================================
+   COUNTER STATUS
+   ============================================= */
+
+.counter-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.status-text {
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+}
+
+.status-text.very-low {
+    background: rgba(108, 117, 125, 0.3);
+}
+
+.status-text.low {
+    background: rgba(40, 167, 69, 0.3);
+}
+
+.status-text.medium {
+    background: rgba(255, 193, 7, 0.3);
+}
+
+.status-text.high {
+    background: rgba(253, 126, 20, 0.3);
+}
+
+.status-text.limit-reached {
+    background: rgba(220, 53, 69, 0.3);
+}
+
+.remaining-slots {
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+/* =============================================
+   COUNTER ACTIONS
+   ============================================= */
+
+.counter-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.btn-refresh-counter,
+.btn-view-history {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    font-size: 12px;
+}
+
+.btn-refresh-counter:hover,
+.btn-view-history:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+}
+
+.btn-refresh-counter:active,
+.btn-view-history:active {
+    transform: translateY(0);
+}
+
+/* =============================================
+   RESPONSIVE DESIGN
+   ============================================= */
+
+@media (max-width: 768px) {
+    .peneliti-counter {
+        min-width: 250px;
+        max-width: 280px;
+        padding: 12px;
+    }
+    
+    .current-counter {
+        font-size: 28px;
+    }
+    
+    .limit-counter {
+        font-size: 18px;
+    }
+    
+    .counter-header {
+        font-size: 13px;
+    }
+    
+    .counter-status {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .peneliti-counter {
+        min-width: 220px;
+        max-width: 250px;
+        padding: 10px;
+    }
+    
+    .current-counter {
+        font-size: 24px;
+    }
+    
+    .limit-counter {
+        font-size: 16px;
+    }
+}
+
+/* =============================================
+   ANIMATIONS
+   ============================================= */
+
+@keyframes counterPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.counter-display.updated {
+    animation: counterPulse 0.5s ease;
+}
+
+/* =============================================
+   DARK MODE SUPPORT
+   ============================================= */
+
+@media (prefers-color-scheme: dark) {
+    .peneliti-counter {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    }
+    
+    .progress-bar {
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .status-text {
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .btn-refresh-counter,
+    .btn-view-history {
+        background: rgba(255,255,255,0.1);
+    }
+}
+
+/* =============================================
+   INTEGRATION WITH EXISTING STYLES
+   ============================================= */
+
+/* Override existing styles if needed */
+.peneliti-counter-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Ensure counter doesn't interfere with existing layout */
+.peneliti-counter {
+    z-index: 1000;
+    position: relative;
+}
+
+/* =============================================
+   ACCESSIBILITY
+   ============================================= */
+
+.peneliti-counter:focus-within {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+.btn-refresh-counter:focus,
+.btn-view-history:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Screen reader support */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* =============================================
+   PRINT STYLES
+   ============================================= */
+
+@media print {
+    .peneliti-counter {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    .peneliti-counter::before {
+        display: none !important;
+    }
+    
+    .btn-refresh-counter,
+    .btn-view-history {
+        display: none !important;
+    }
+}

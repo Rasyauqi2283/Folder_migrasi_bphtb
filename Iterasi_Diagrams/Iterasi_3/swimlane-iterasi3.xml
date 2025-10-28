@@ -1,0 +1,172 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" version="28.2.8">
+  <diagram id="E-BPHTB-Swimlane-Iterasi3" name="E-BPHTB Swimlane Iterasi 3">
+    <mxGraphModel dx="1112" dy="592" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane-ppat" value="PPAT/PPATS" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E8F5E8;strokeColor=#2E7D32;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="50" y="50" width="200" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat-send" value="Kirim Berkas" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#2E7D32;fillColor=#E8F5E8;" parent="swimlane-ppat" vertex="1">
+          <mxGeometry x="50" y="30" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-ltb" value="LTB" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="250" y="50" width="200" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb-receive" value="Terima Berkas" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#1976D2;fillColor=#E3F2FD;" parent="swimlane-ltb" vertex="1">
+          <mxGeometry x="50" y="70" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb-check-counter" value="Cek Daily Counter" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#1976D2;fillColor=#E3F2FD;" parent="swimlane-ltb" vertex="1">
+          <mxGeometry x="50" y="120" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb-decision" value="Counter &lt; 80?" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#D32F2F;fillColor=#FFEBEE;" parent="swimlane-ltb" vertex="1">
+          <mxGeometry x="50" y="170" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="V5-kZFiuCR9H1zOmOQg7-2" value="Tidak" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="swimlane-ltb">
+          <mxGeometry x="147" y="203" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-peneliti" value="Peneliti" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#F57C00;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="450" y="50" width="200" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="V5-kZFiuCR9H1zOmOQg7-5" value="Belum" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" vertex="1" parent="swimlane-peneliti">
+          <mxGeometry x="150" y="214" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-admin" value="Admin" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFEBE9;strokeColor=#5D4037;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="650" y="50" width="200" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti-process" value="Proses Berkas Langsung" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#F57C00;fillColor=#FFF3E0;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="-150" y="58" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti-increment" value="Counter +1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#F57C00;fillColor=#FFF3E0;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="-150" y="113" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti-break" value="Break Reminder" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#F57C00;fillColor=#FFF3E0;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="-150" y="165" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" parent="swimlane-admin" source="peneliti-process" target="peneliti-increment" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-250" y="350" as="sourcePoint" />
+            <mxPoint x="-200" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="admin-monitor" value="Monitor Quota" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#5D4037;fillColor=#EFEBE9;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="50" y="165" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" parent="swimlane-admin" source="peneliti-increment" target="peneliti-break" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="-250" y="350" as="sourcePoint" />
+            <mxPoint x="-200" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="admin-schedule" value="Schedule Next Day" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#5D4037;fillColor=#EFEBE9;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="50" y="115" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-queue" value="Masuk Antrian" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#5D4037;fillColor=#EFEBE9;" parent="swimlane-admin" vertex="1">
+          <mxGeometry x="50" y="60" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane-system" value="System" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontStyle=1;fontSize=14;" parent="1" vertex="1">
+          <mxGeometry x="850" y="50" width="200" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="start" value="Mulai Hari Kerja" style="ellipse;whiteSpace=wrap;html=1;rounded=1;strokeColor=#000000;fillColor=#ffffff;" parent="swimlane-system" vertex="1">
+          <mxGeometry x="50" y="30" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="system-reset" value="Auto Reset Counter" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#7B1FA2;fillColor=#F3E5F5;" parent="swimlane-system" vertex="1">
+          <mxGeometry x="50" y="91" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="system-check-time" value="Jam Kerja Selesai?" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#D32F2F;fillColor=#FFEBEE;" parent="swimlane-system" vertex="1">
+          <mxGeometry x="50" y="200" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="db-daily-counter" value="daily_counter&lt;div&gt;(date, counter)&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;fillColor=#E8F5E8;strokeColor=#2E7D32;" parent="1" vertex="1">
+          <mxGeometry x="590" y="440" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="db-queue" value="ppatk_send_queue&lt;div&gt;(nobooking, userid, scheduled_for, status)&lt;/div&gt;" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.database;whiteSpace=wrap;fillColor=#EFEBE9;strokeColor=#5D4037;" parent="1" vertex="1">
+          <mxGeometry x="590" y="340" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#2E7D32;" parent="1" source="start" target="ppat-send" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge2" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#1976D2;" parent="1" source="ppat-send" target="ltb-receive" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge3" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#1976D2;" parent="1" source="ltb-receive" target="ltb-check-counter" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#D32F2F;" parent="1" source="ltb-check-counter" target="ltb-decision" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge5" value="Ya" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" parent="1" source="ltb-decision" target="peneliti-process" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#5D4037;" parent="1" source="admin-queue" target="admin-schedule" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge12" value="Ya" style="endArrow=classic;html=1;rounded=0;strokeColor=#000000;" parent="1" source="system-check-time" target="system-reset" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="db-edge1" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#2E7D32;dashed=1;" parent="1" source="ltb-check-counter" target="db-daily-counter" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="db-edge2" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#5D4037;dashed=1;" parent="1" source="admin-queue" target="db-queue" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="db-edge3" value="" style="endArrow=classic;html=1;rounded=0;strokeColor=#2E7D32;dashed=1;" parent="1" source="system-reset" target="db-daily-counter" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V5-kZFiuCR9H1zOmOQg7-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=light-dark(#5d4037, #ededed);" edge="1" parent="1" source="ltb-decision" target="admin-queue">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="260" />
+              <mxPoint x="670" y="130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V5-kZFiuCR9H1zOmOQg7-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=light-dark(#1976d2, #ededed);" edge="1" parent="1" source="system-check-time" target="ltb-receive">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="275" />
+              <mxPoint x="480" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V5-kZFiuCR9H1zOmOQg7-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.064;entryY=0.389;entryDx=0;entryDy=0;strokeColor=light-dark(#7b1fa2, #ededed);entryPerimeter=0;" edge="1" parent="1" source="peneliti-break" target="system-check-time">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="550" y="270" />
+              <mxPoint x="900" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
