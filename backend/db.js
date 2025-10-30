@@ -3,7 +3,8 @@
  * Centralized database connection for the BAPPENDA application
  */
 
-import { Pool } from 'pg';
+import pkg from 'pg';
+const { Pool } = pkg;
 import dotenv from 'dotenv';
 
 // Load environment variables
