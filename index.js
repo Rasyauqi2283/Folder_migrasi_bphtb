@@ -255,6 +255,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/notices', noticeRoutes);
+
+// Public validation routes (no authentication required)
+import registerPublicValidationRoutes from './backend/routesxcontroller/9_public/publicValidationRoutes.js';
+const publicValidationRouter = registerPublicValidationRoutes({ pool, logger });
+app.use('/api/public', publicValidationRouter);
+
 app.use(express.static('public'));
 
 
