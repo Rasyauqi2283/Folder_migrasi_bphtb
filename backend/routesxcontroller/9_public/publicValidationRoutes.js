@@ -91,16 +91,10 @@ export default function registerPublicValidationRoutes({ pool, logger }) {
       }
 
       // Format response dengan informasi keaslian (public version - limited info)
+      // Hanya 4 informasi: Dokumen, PPAT, Pejabat, Keaslian
       const response = {
         success: true,
         message: 'Dokumen asli dan terverifikasi oleh sistem E-BPHTB Kabupaten Bogor',
-        validation_info: {
-          no_validasi: validationData.no_validasi,
-          status: validationData.status,
-          trackstatus: validationData.trackstatus,
-          status_tertampil: validationData.status_tertampil,
-          tanggal_validasi: validationData.updated_at || validationData.created_at
-        },
         document_info: {
           nobooking: validationData.nobooking,
           no_registrasi: validationData.no_registrasi,
@@ -116,7 +110,7 @@ export default function registerPublicValidationRoutes({ pool, logger }) {
           special_field: validationData.ppat_special_field,
           divisi: validationData.ppat_divisi
         },
-        peneliti_info: {
+        pejabat_info: {
           nama: validationData.peneliti_nama,
           special_parafv: validationData.peneliti_special_parafv,
           nip: validationData.peneliti_nip

@@ -425,40 +425,8 @@
       <p>Pastikan dokumen BPHTB Anda asli dan terverifikasi</p>
     </div>
 
-    <!-- Validasi Manual dengan Input -->
-    <div class="validation-card">
-      <div class="card-header">
-        <h2>📝 Input Nomor Validasi</h2>
-      </div>
-      <div class="card-body">
-        <div class="input-group">
-          <label for="noValidasi">Masukkan Nomor Validasi</label>
-          <input 
-            type="text" 
-            id="noValidasi" 
-            placeholder="Contoh: ABCD1234-XYZ"
-            maxlength="50"
-          >
-        </div>
-        <button class="btn-validate" onclick="validateQRCode()">
-          Validasi Dokumen
-        </button>
-        
-        <div class="loading" id="loading">
-          <div class="spinner"></div>
-          <p>Memvalidasi dokumen...</p>
-        </div>
-        
-        <div class="result-container" id="resultContainer">
-          <div class="result-header">
-            <span class="result-icon" id="resultIcon">✅</span>
-            <h3 class="result-title" id="resultTitle">Validasi Berhasil</h3>
-          </div>
-          <div class="result-message" id="resultMessage"></div>
-          <div class="info-grid" id="infoGrid"></div>
-        </div>
-      </div>
-    </div>
+    <!-- Hidden input untuk menyimpan nomor validasi dari scan/upload -->
+    <input type="hidden" id="noValidasi" />
 
     <!-- Scan QR Code dengan Kamera -->
     <div class="validation-card">
@@ -472,6 +440,28 @@
           <button class="btn-scan btn-stop" onclick="stopQrScan()">Hentikan</button>
         </div>
         <p class="hint-text">Arahkan kamera ke QR Code pada dokumen Anda</p>
+      </div>
+    </div>
+
+    <!-- Hasil Validasi -->
+    <div class="validation-card" id="resultCard" style="display: none;">
+      <div class="card-header">
+        <h2>📋 Hasil Validasi</h2>
+      </div>
+      <div class="card-body">
+        <div class="loading" id="loading">
+          <div class="spinner"></div>
+          <p>Memvalidasi dokumen...</p>
+        </div>
+        
+        <div class="result-container" id="resultContainer">
+          <div class="result-header">
+            <span class="result-icon" id="resultIcon">✅</span>
+            <h3 class="result-title" id="resultTitle">Validasi Berhasil</h3>
+          </div>
+          <div class="result-message" id="resultMessage"></div>
+          <div class="info-grid" id="infoGrid"></div>
+        </div>
       </div>
     </div>
 
@@ -509,17 +499,22 @@
     // API Base URL
     const API_URL = 'https://bphtb-bappenda.up.railway.app';
 
-    // Validate QR Code
-    async function validateQRCode() {
-      const noValidasi = document.getElementById('noValidasi').value.trim();
+    // Validate QR Code (called from scan/upload)
+    async function validateQRCode(noValidasiParam = null) {
+      const noValidasi = noValidasiParam || document.getElementById('noValidasi').value.trim();
       
       if (!noValidasi) {
-        showResult('error', 'Error', 'Mohon masukkan nomor validasi');
+        showResult('error', 'Error', 'Nomor validasi tidak ditemukan. Pastikan QR Code terlihat jelas.');
         return;
       }
 
+      // Show result card and loading
+      document.getElementById('resultCard').style.display = 'block';
       showLoading(true);
       hideResult();
+      
+      // Scroll to result
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       try {
         const response = await fetch(`${API_URL}/api/public/validate-qr/${encodeURIComponent(noValidasi)}`, {
@@ -559,12 +554,7 @@
 
       infoGrid.innerHTML = '';
 
-      // Build info sections
-      if (data.validation_info) {
-        const validationSection = createInfoSection('Informasi Validasi', data.validation_info);
-        infoGrid.appendChild(validationSection);
-      }
-
+      // Build info sections (hanya 4: Dokumen, PPAT, Pejabat, Keaslian)
       if (data.document_info) {
         const documentSection = createInfoSection('Informasi Dokumen', data.document_info);
         infoGrid.appendChild(documentSection);
@@ -575,9 +565,9 @@
         infoGrid.appendChild(ppatSection);
       }
 
-      if (data.peneliti_info) {
-        const penelitiSection = createInfoSection('Informasi Peneliti Validasi', data.peneliti_info);
-        infoGrid.appendChild(penelitiSection);
+      if (data.pejabat_info) {
+        const pejabatSection = createInfoSection('Informasi Pejabat', data.pejabat_info);
+        infoGrid.appendChild(pejabatSection);
       }
 
       if (data.authenticity) {
@@ -622,20 +612,23 @@
     // Format label
     function formatLabel(key) {
       const labelMap = {
-        'no_validasi': 'Nomor Validasi',
-        'status': 'Status',
-        'trackstatus': 'Status Tracking',
         'nobooking': 'No Booking',
         'no_registrasi': 'No Registrasi',
         'noppbb': 'No PBB',
         'tanggal': 'Tanggal',
+        'tahunajb': 'Tahun AJB',
         'namawajibpajak': 'Nama Wajib Pajak',
         'namapemilikobjekpajak': 'Nama Pemilik Objek Pajak',
+        'booking_trackstatus': 'Status Booking',
         'nama': 'Nama',
+        'special_field': 'Special Field',
         'divisi': 'Divisi',
+        'special_parafv': 'Special Paraf V',
         'nip': 'NIP',
         'verified': 'Terverifikasi',
+        'verified_by': 'Diverifikasi Oleh',
         'verified_at': 'Waktu Verifikasi',
+        'verification_method': 'Metode Verifikasi',
         'institution': 'Instansi'
       };
       return labelMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -661,6 +654,9 @@
     }
 
     function showResult(type, title, message) {
+      // Show result card
+      document.getElementById('resultCard').style.display = 'block';
+      
       const resultContainer = document.getElementById('resultContainer');
       const resultIcon = document.getElementById('resultIcon');
       const resultTitle = document.getElementById('resultTitle');
@@ -680,12 +676,12 @@
       resultTitle.textContent = title;
       resultMessage.textContent = message;
       resultContainer.style.display = 'block';
+      
+      // Scroll to result
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // Enter key support
-    document.getElementById('noValidasi').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') validateQRCode();
-    });
+    // No manual input for public - removed
 
     // ===== QR Scanner with jsQR =====
     let qrScanning = false;
@@ -732,7 +728,7 @@
               const nv = extractNoValidasi(res.data);
               if (nv) {
                 document.getElementById('noValidasi').value = nv;
-                validateQRCode();
+                validateQRCode(nv);
                 return;
               }
               showResult('error', 'QR Tidak Dikenali', 'QR Code tidak berisi nomor validasi yang valid.');
@@ -879,7 +875,7 @@
         const nv = extractNoValidasi(result.data);
         if (nv) {
           document.getElementById('noValidasi').value = nv;
-          validateQRCode();
+          validateQRCode(nv);
           return;
         }
       }
