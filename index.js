@@ -836,6 +836,10 @@ app.get('/api/user/dashboard', (req, res) => {
 app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
   // Cek apakah pengguna sudah login dan apakah divisinya LTB
   if (!req.session.user || req.session.user.divisi !== 'LTB') {
+    console.log('❌ [LTB] Access denied:', {
+      hasSession: !!req.session.user,
+      divisi: req.session.user?.divisi
+    });
     return res.status(403).json({
       success: false,
       message: 'Akses ditolak. Hanya pengguna dengan divisi LTB yang dapat mengakses data ini.'
@@ -843,23 +847,51 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
   }
 
   try {
+    console.log('🔍 [LTB] Fetching LTB berkas data...');
+    
+    // Query yang lebih robust dengan TRIM untuk handle whitespace
     const ltbDataQuery = `
       SELECT DISTINCT ON (t.no_registrasi)
-        t.*, b.*, o.*, bp.*, pp.*, pv.*, vu.*
+        t.id,
+        t.nobooking,
+        t.no_registrasi,
+        t.tanggal_terima,
+        t.status,
+        t.trackstatus,
+        t.pengirim_ltb,
+        t.catatan,
+        b.noppbb,
+        b.namawajibpajak,
+        b.namapemilikobjekpajak,
+        b.tanggal,
+        b.tahunajb,
+        b.trackstatus as booking_trackstatus,
+        o.letaktanahdanbangunan,
+        vu.nama as nama_ppat,
+        vu.userid as userid_ppat
       FROM 
         ltb_1_terima_berkas_sspd t
       LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
       LEFT JOIN pat_4_objek_pajak o ON t.nobooking = o.nobooking
-      LEFT JOIN pat_2_bphtb_perhitungan bp ON t.nobooking = bp.nobooking
-      LEFT JOIN pat_5_penghitungan_njop pp ON t.nobooking = pp.nobooking
-      LEFT JOIN pat_8_validasi_tambahan pv ON t.nobooking = pv.nobooking
       LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
       WHERE 
-        t.trackstatus = 'Diolah' AND t.status = 'Diterima' 
-        ORDER BY t.no_registrasi ASC;
+        TRIM(UPPER(t.trackstatus)) = 'DIOLAH' 
+        AND TRIM(UPPER(t.status)) = 'DITERIMA'
+      ORDER BY t.no_registrasi ASC;
     `;
 
+    console.log('🔍 [LTB] Executing query...');
     const result = await pool.query(ltbDataQuery);
+    
+    console.log('📊 [LTB] Query result:', {
+      rowCount: result.rows.length,
+      sample: result.rows.length > 0 ? {
+        nobooking: result.rows[0].nobooking,
+        no_registrasi: result.rows[0].no_registrasi,
+        trackstatus: result.rows[0].trackstatus,
+        status: result.rows[0].status
+      } : null
+    });
 
     if (result.rows.length > 0) {
       res.status(200).json({
@@ -867,17 +899,32 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
         data: result.rows
       });
     } else {
-      res.status(404).json({
-        success: false,
-        message: 'No data found for LTB.'
+      // Debug: cek apakah ada data di tabel tapi tidak match kondisi
+      const debugQuery = `
+        SELECT 
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE TRIM(UPPER(trackstatus)) = 'DIOLAH') as diolah_count,
+          COUNT(*) FILTER (WHERE TRIM(UPPER(status)) = 'DITERIMA') as diterima_count,
+          COUNT(*) FILTER (WHERE TRIM(UPPER(trackstatus)) = 'DIOLAH' AND TRIM(UPPER(status)) = 'DITERIMA') as match_count
+        FROM ltb_1_terima_berkas_sspd;
+      `;
+      const debugResult = await pool.query(debugQuery);
+      console.log('🔍 [LTB] Debug query result:', debugResult.rows[0]);
+      
+      res.status(200).json({
+        success: true,
+        data: [],
+        message: 'No data found for LTB.',
+        debug: debugResult.rows[0]
       });
     }
 
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error('❌ [LTB] Error fetching data:', error);
     res.status(500).json({
       success: false,
-      message: 'An error occurred while fetching data.'
+      message: 'An error occurred while fetching data.',
+      error: error.message
     });
   }
 });
