@@ -2476,7 +2476,6 @@ function openScheduleModal(nobooking){
                 </div>
                 <div class="qm-options">
                     <button id="qmSendNow" class="qm-option primary">Kirim Sekarang</button>
-                    <button id="qmSendTomorrow" class="qm-option">Besok (<span id="qmTomorrow"></span>)</button>
                     <div class="qm-datepick">
                         <input type="date" id="qmDate" />
                         <button id="qmSchedule" class="qm-option">Tentukan Tanggal</button>
@@ -2517,13 +2516,13 @@ function openScheduleModal(nobooking){
         `;
         document.head.appendChild(style);
 
-        // Set tomorrow label
+        // Set date configuration
         const t = new Date();
         const pad = (n)=>String(n).padStart(2,'0');
-        const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate()+1);
-        overlay.querySelector('#qmTomorrow').textContent = `${pad(tomorrow.getDate())}-${pad(tomorrow.getMonth()+1)}-${tomorrow.getFullYear()}`;
         const dateInput = overlay.querySelector('#qmDate');
         dateInput.value = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+        // Set min date to today
+        dateInput.min = dateInput.value;
 
         const statusEl = overlay.querySelector('#qmStatus');
         const setStatus = (msg,type='info')=>{ statusEl.textContent = msg; statusEl.style.color = type==='error'?'#c00':'#555'; };
@@ -2579,16 +2578,14 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
 
         overlay.querySelector('#qmSendNow').onclick = async () => {
             try{
+                const now = new Date();
+                const day = now.getDay(); // 0: Sunday, 6: Saturday
+                if (day === 0 || day === 6) {
+                    setStatus('Maaf, pengiriman tidak tersedia pada hari libur (Sabtu/Minggu).', 'error');
+                    return;
+                }
                 const d = await fetchQuota(todayIso);
                 showConfirm(`Kirim sekarang? Kuota hari ini ${d.used}/${d.limit}.`, {type:'now'});
-            }catch(e){ setStatus(e.message,'error'); }
-        };
-
-        overlay.querySelector('#qmSendTomorrow').onclick = async () => {
-            try{
-                const yyyy_mm_dd = iso(tomorrow);
-                const d = await fetchQuota(yyyy_mm_dd);
-                showConfirm(`Jadwalkan besok (${overlay.querySelector('#qmTomorrow').textContent})? Kuota ${d.used}/${d.limit}.`, {type:'tomorrow', date: yyyy_mm_dd});
             }catch(e){ setStatus(e.message,'error'); }
         };
 
@@ -2596,6 +2593,15 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
             try{
                 const yyyy_mm_dd = dateInput.value;
                 if(!yyyy_mm_dd){ setStatus('Pilih tanggal terlebih dahulu','error'); return; }
+                
+                // Validasi weekend untuk tanggal yang dipilih
+                const selectedDate = new Date(yyyy_mm_dd);
+                const day = selectedDate.getDay();
+                if (day === 0 || day === 6) {
+                    setStatus('Maaf, Bappenda libur pada hari Sabtu dan Minggu. Silakan pilih hari kerja.', 'error');
+                    return;
+                }
+
                 const d = await fetchQuota(yyyy_mm_dd);
                 showConfirm(`Jadwalkan tanggal ${yyyy_mm_dd}? Kuota ${d.used}/${d.limit}.`, {type:'date', date: yyyy_mm_dd});
             }catch(e){ setStatus(e.message,'error'); }
@@ -2603,8 +2609,20 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
 
         // Update counter saat tanggal berubah
         dateInput.addEventListener('change', async ()=>{
+            const val = dateInput.value;
+            if(!val) return;
+            
+            const selectedDate = new Date(val);
+            const day = selectedDate.getDay();
+            if (day === 0 || day === 6) {
+                setStatus('Bappenda libur pada hari Sabtu & Minggu.', 'error');
+                overlay.querySelector('#qmDateLabel').textContent = 'Hari Libur';
+                overlay.querySelector('#qmCounter').textContent = '-/-';
+                return;
+            }
+
             overlay.querySelector('#qmDateLabel').textContent = 'Tanggal terpilih';
-            await fetchQuota(dateInput.value);
+            await fetchQuota(val);
         });
     } catch(err){
         console.error('Open schedule modal failed:', err);
