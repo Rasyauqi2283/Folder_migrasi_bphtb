@@ -485,10 +485,10 @@ function generatePageNumbers(currentPage, totalPages) {
 ////////////////////                ////////////////////////////////
 function deleteSelectedRow() {
     if (selectedRow) {
-        const isConfirmed = confirm('Apakah Anda yakin ingin menghapus data ini?');
+        const nobooking = selectedRow.cells[0].textContent.trim();
+        const isConfirmed = confirm(`Apakah Anda yakin ingin menghapus data booking "${nobooking}" ini?`);
 
         if (isConfirmed) {
-            const nobooking = selectedRow.cells[0].textContent.trim();
             // Backend butuh trackstatus dalam body
             fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
                 method: 'PUT',
@@ -501,9 +501,8 @@ function deleteSelectedRow() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    selectedRow.remove(); // Menghapus baris yang dipilih dari tampilan (DOM)
-                    selectedRow = null; // Reset selectedRow setelah dihapus
-                    console.log('Baris data statusnya diubah menjadi Dihapus dan dihapus dari tampilan');
+                    alert(`data booking "${nobooking}" telah dihapus secara permanen`);
+                    location.reload(); // Refresh halaman sesuai request
                 } else {
                     alert('Gagal mengubah status data menjadi Dihapus: ' + (data.message || 'Error tidak diketahui'));
                 }

@@ -1052,21 +1052,30 @@ app.post('/api/ppat/upload-signatures', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Unauthorized' });
         }
 
-        const { nobooking } = req.body;
-        const userid = req.session.user.userid;
+        const multer = await import('multer');
+        const upload = multer.default().any();
 
-        if (!nobooking) {
-            return res.status(400).json({ success: false, message: 'No booking required' });
-        }
+        upload(req, res, async (err) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: 'Multer error: ' + err.message });
+            }
 
-        // Handle signature upload logic here
+            const { nobooking } = req.body;
+            const userid = req.session.user.userid;
+
+            if (!nobooking) {
+                return res.status(400).json({ success: false, message: 'No booking required' });
+            }
+
+            // Handle signature upload logic here
             res.json({
                 success: true,
-            message: 'Signature uploaded successfully',
-            nobooking: nobooking
+                message: 'Signature uploaded successfully',
+                nobooking: nobooking
             });
+        });
 
-        } catch (error) {
+    } catch (error) {
         console.error('❌ [PPAT] Upload signature failed:', error);
         res.status(500).json({
             success: false,
