@@ -835,11 +835,25 @@ app.get('/api/user/dashboard', (req, res) => {
 // (belum selesai)
 app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
   // Cek apakah pengguna sudah login dan apakah divisinya LTB
-  if (!req.session.user || req.session.user.divisi !== 'LTB') {
-    console.log('❌ [LTB] Access denied:', {
-      hasSession: !!req.session.user,
-      divisi: req.session.user?.divisi
+  const userDivisi = req.session.user?.divisi;
+  console.log('🔍 [LTB] Access check:', {
+    hasSession: !!req.session.user,
+    divisi: userDivisi,
+    userid: req.session.user?.userid
+  });
+
+  if (!req.session.user) {
+    console.log('❌ [LTB] No session found');
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized. Please login first.'
     });
+  }
+
+  // Allow both 'LTB' and 'Loket Terima Berkas' divisi names
+  const allowedDivisi = ['LTB', 'Loket Terima Berkas', 'loket terima berkas'];
+  if (!allowedDivisi.includes(userDivisi)) {
+    console.log('❌ [LTB] Access denied - Invalid divisi:', userDivisi);
     return res.status(403).json({
       success: false,
       message: 'Akses ditolak. Hanya pengguna dengan divisi LTB yang dapat mengakses data ini.'
@@ -849,9 +863,26 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
   try {
     console.log('🔍 [LTB] Fetching LTB berkas data...');
     
-    // Query yang lebih robust dengan TRIM untuk handle whitespace
+    // First, check raw data without filters
+    const rawDataQuery = `SELECT COUNT(*) as total FROM ltb_1_terima_berkas_sspd;`;
+    const rawResult = await pool.query(rawDataQuery);
+    console.log('📊 [LTB] Total records in table:', rawResult.rows[0].total);
+
+    // Check data with status filters
+    const statusCheckQuery = `
+      SELECT 
+        trackstatus,
+        status,
+        COUNT(*) as count
+      FROM ltb_1_terima_berkas_sspd
+      GROUP BY trackstatus, status;
+    `;
+    const statusResult = await pool.query(statusCheckQuery);
+    console.log('📊 [LTB] Status breakdown:', statusResult.rows);
+
+    // Main query - simplified without DISTINCT ON
     const ltbDataQuery = `
-      SELECT DISTINCT ON (t.no_registrasi)
+      SELECT 
         t.id,
         t.nobooking,
         t.no_registrasi,
@@ -860,67 +891,54 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
         t.trackstatus,
         t.pengirim_ltb,
         t.catatan,
-        b.noppbb,
-        b.namawajibpajak,
-        b.namapemilikobjekpajak,
-        b.tanggal,
-        b.tahunajb,
-        b.trackstatus as booking_trackstatus,
-        o.letaktanahdanbangunan,
-        vu.nama as nama_ppat,
-        vu.userid as userid_ppat
+        COALESCE(b.noppbb, '') as noppbb,
+        COALESCE(b.namawajibpajak, t.namawajibpajak, '') as namawajibpajak,
+        COALESCE(b.namapemilikobjekpajak, t.namapemilikobjekpajak, '') as namapemilikobjekpajak,
+        COALESCE(b.tanggal, '') as tanggal,
+        COALESCE(b.tahunajb, '') as tahunajb,
+        COALESCE(o.letaktanahdanbangunan, '') as letaktanahdanbangunan,
+        COALESCE(vu.nama, t.nama, '') as nama_ppat,
+        COALESCE(vu.userid, t.userid, '') as userid_ppat
       FROM 
         ltb_1_terima_berkas_sspd t
       LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
       LEFT JOIN pat_4_objek_pajak o ON t.nobooking = o.nobooking
       LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
       WHERE 
-        TRIM(UPPER(t.trackstatus)) = 'DIOLAH' 
-        AND TRIM(UPPER(t.status)) = 'DITERIMA'
+        UPPER(TRIM(COALESCE(t.trackstatus, ''))) = 'DIOLAH' 
+        AND UPPER(TRIM(COALESCE(t.status, ''))) = 'DITERIMA'
       ORDER BY t.no_registrasi ASC;
     `;
 
-    console.log('🔍 [LTB] Executing query...');
+    console.log('🔍 [LTB] Executing main query...');
     const result = await pool.query(ltbDataQuery);
     
-    console.log('📊 [LTB] Query result:', {
+    console.log('📊 [LTB] Main query result:', {
       rowCount: result.rows.length,
       sample: result.rows.length > 0 ? {
+        id: result.rows[0].id,
         nobooking: result.rows[0].nobooking,
         no_registrasi: result.rows[0].no_registrasi,
         trackstatus: result.rows[0].trackstatus,
-        status: result.rows[0].status
+        status: result.rows[0].status,
+        namawajibpajak: result.rows[0].namawajibpajak
       } : null
     });
 
-    if (result.rows.length > 0) {
-      res.status(200).json({
-        success: true,
-        data: result.rows
-      });
-    } else {
-      // Debug: cek apakah ada data di tabel tapi tidak match kondisi
-      const debugQuery = `
-        SELECT 
-          COUNT(*) as total,
-          COUNT(*) FILTER (WHERE TRIM(UPPER(trackstatus)) = 'DIOLAH') as diolah_count,
-          COUNT(*) FILTER (WHERE TRIM(UPPER(status)) = 'DITERIMA') as diterima_count,
-          COUNT(*) FILTER (WHERE TRIM(UPPER(trackstatus)) = 'DIOLAH' AND TRIM(UPPER(status)) = 'DITERIMA') as match_count
-        FROM ltb_1_terima_berkas_sspd;
-      `;
-      const debugResult = await pool.query(debugQuery);
-      console.log('🔍 [LTB] Debug query result:', debugResult.rows[0]);
-      
-      res.status(200).json({
-        success: true,
-        data: [],
-        message: 'No data found for LTB.',
-        debug: debugResult.rows[0]
-      });
-    }
+    // Always return success with data array (even if empty)
+    res.status(200).json({
+      success: true,
+      data: result.rows,
+      debug: {
+        totalInTable: rawResult.rows[0].total,
+        statusBreakdown: statusResult.rows,
+        matchedRows: result.rows.length
+      }
+    });
 
   } catch (error) {
     console.error('❌ [LTB] Error fetching data:', error);
+    console.error('❌ [LTB] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'An error occurred while fetching data.',
