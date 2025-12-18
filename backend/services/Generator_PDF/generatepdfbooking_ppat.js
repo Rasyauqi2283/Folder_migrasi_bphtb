@@ -385,10 +385,23 @@ export default function registerGeneratePdfBooking(app, pool) {
                 });
                 
                 if (wpAbs && fs.existsSync(wpAbs)) {
-                    // Use medium size (400x400) for WP signature
-                    const mediumSignatureWidth = 100; // Adjusted for PDF layout
-                    doc.image(wpAbs, col1X + (columnWidth - mediumSignatureWidth)/2, signatureYPosition + 15, { width: mediumSignatureWidth });
-                    console.log('✅ [PDF] WP Signature rendered successfully with medium size');
+                    // Gunakan ukuran sedang dan trim area kosong agar sejajar dengan PPAT
+                    const mediumSignatureWidth = 80; 
+                    
+                    const processedWPImage = await sharp(wpAbs)
+                        .trim() // Membuang ruang kosong di sekitar ttd
+                        .resize(400, 400, {
+                            fit: 'contain',
+                            background: { r: 255, g: 255, b: 255, alpha: 0 }
+                        })
+                        .png()
+                        .toBuffer();
+
+                    // Geser ke Y + 35 agar berada di bawah nama WP dan sejajar dengan area ttd PPAT
+                    doc.image(processedWPImage, col1X + (columnWidth - mediumSignatureWidth)/2, signatureYPosition + 35, { 
+                        width: mediumSignatureWidth 
+                    });
+                    console.log('✅ [PDF] WP Signature rendered successfully (trimmed and aligned)');
                 } else {
                     console.warn('⚠️ [PDF] WP Signature file not found, drawing line instead');
                     doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
