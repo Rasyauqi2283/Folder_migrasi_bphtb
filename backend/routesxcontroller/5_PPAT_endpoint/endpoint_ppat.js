@@ -526,7 +526,7 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
             safe: { safePage, safeLimit, safeOffset }
         });
         
-        let whereClause = 'WHERE userid = $1';
+        let whereClause = "WHERE userid = $1 AND trackstatus != 'Dihapus'";
         const queryParams = [userid];
         let paramCount = 1;
         
@@ -1053,7 +1053,8 @@ app.post('/api/ppat/upload-signatures', async (req, res) => {
         }
 
         const multer = await import('multer');
-        const upload = multer.default().any();
+        // Gunakan memoryStorage agar kita bisa handle manual penyimpanannya
+        const upload = multer.default({ storage: multer.default.memoryStorage() }).any();
 
         upload(req, res, async (err) => {
             if (err) {
@@ -1067,11 +1068,45 @@ app.post('/api/ppat/upload-signatures', async (req, res) => {
                 return res.status(400).json({ success: false, message: 'No booking required' });
             }
 
-            // Handle signature upload logic here
+            // Cari file signature1
+            const signatureFile = req.files.find(f => f.fieldname === 'signature1');
+            if (!signatureFile) {
+                return res.status(400).json({ success: false, message: 'No signature file uploaded' });
+            }
+
+            // Tentukan folder penyimpanan
+            const uploadDir = path.join(process.cwd(), 'public', 'penting_F_simpan', 'folderttd', 'folderttdwp');
+            
+            // Pastikan folder ada
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+
+            // Generate nama file unik
+            const fileExt = path.extname(signatureFile.originalname) || '.png';
+            const fileName = `${nobooking}_${Date.now()}_sigwp${fileExt}`;
+            const filePath = path.join(uploadDir, fileName);
+            const dbPath = `/penting_F_simpan/folderttd/folderttdwp/${fileName}`;
+
+            // Simpan file ke disk
+            fs.writeFileSync(filePath, signatureFile.buffer);
+
+            // Update database pat_6_sign
+            const updateQuery = `
+                UPDATE pat_6_sign 
+                SET path_ttd_wp = $1 
+                WHERE nobooking = $2
+            `;
+            
+            await pool.query(updateQuery, [dbPath, nobooking]);
+
+            console.log(`✅ [UPLOAD-SIGNATURE] Saved WP signature for ${nobooking} at ${dbPath}`);
+
             res.json({
                 success: true,
-                message: 'Signature uploaded successfully',
-                nobooking: nobooking
+                message: 'Signature uploaded and saved successfully',
+                nobooking: nobooking,
+                path: dbPath
             });
         });
 
