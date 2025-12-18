@@ -761,37 +761,14 @@
     })();
   </script>
 
-  <!-- WebSocket Client -->
-  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-  <script src="../../../js/websocket-client.js"></script>
-  
   <script>
-    // Ping notification system for LTB
+    // Ping notification system for LTB (using poller only)
     let lastPingCheck = new Date().toISOString();
     let pingPollingInterval = null;
     
     document.addEventListener('DOMContentLoaded', () => {
       // Start ping polling
       startPingPolling();
-      
-      // Try WebSocket integration as fallback
-      setTimeout(() => {
-        if (window.bappendaWS) {
-          // Set user ID (you can get this from session or user data)
-          window.bappendaWS.setUserId('ltb_user_001');
-          
-          // Listen for ping notifications
-          window.bappendaWS.on('ping_received', (data) => {
-            console.log('🔔 LTB received ping via WebSocket:', data);
-            showLTBPingNotification(data);
-            if (typeof load === 'function') {
-              load();
-            }
-          });
-          
-          console.log('✅ LTB WebSocket integration ready');
-        }
-      }, 2000);
     });
     
     // Start ping polling
@@ -824,8 +801,8 @@
             });
             
             // Refresh table data
-            if (typeof load === 'function') {
-              load();
+            if (window.loadLTBData) {
+              window.loadLTBData();
             }
           } else {
             console.log('📭 LTB no new notifications');
