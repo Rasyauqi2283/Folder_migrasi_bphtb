@@ -218,30 +218,42 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
 
     // Kirim data booking dan perhitungan BPHTB ke backend menggunakan fetch dan async/await
     try {
-        const API_URL = 'https://bphtb-bappenda.up.railway.app';
-        const response = await fetch(`${API_URL}/api/ppat/create-booking-and-bphtb`, {
+        // Gunakan endpoint relatif agar bekerja di lingkungan mana pun (prod/dev)
+        const endpoint = '/api/ppat/create-booking-badan';
+        const response = await fetch(endpoint, {
             method: 'POST',
             credentials: 'include',
             body: JSON.stringify(data),
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
             },
         });
 
-        const responseData = await response.json();
-        console.log("Response dari backend:", responseData);    
+        // Tangani respon yang mungkin bukan JSON (misal 404 mengembalikan HTML)
+        const contentType = response.headers.get('content-type') || '';
+        const payload = contentType.includes('application/json')
+            ? await response.json()
+            : await response.text();
 
-        if (responseData.success) {
-            // Mengisi noBooking dengan nobooking yang diterima dari backend
-            document.getElementById('noBooking').value = responseData.nobooking;
-            alert('Booking dan perhitungan BPHTB untuk badan usaha berhasil, klik data di tabel untuk menambahkan akta,sertifikat dan pelengkap lainnya!');
+        console.log("Response dari backend:", payload);
+
+        if (!response.ok) {
+            const msg = typeof payload === 'string' ? payload : (payload.message || JSON.stringify(payload));
+            throw new Error(`HTTP ${response.status} ${response.statusText}: ${msg}`);
+        }
+
+        if (payload && payload.success) {
+            document.getElementById('noBooking').value = payload.nobooking;
+            alert('Booking dan perhitungan BPHTB untuk badan usaha berhasil, klik data di tabel untuk menambahkan akta, sertifikat, dan pelengkap lainnya!');
             location.reload();
         } else {
-            alert('Gagal menyimpan data');
+            const msg = payload && payload.message ? payload.message : 'Gagal menyimpan data';
+            alert(msg);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Terjadi kesalahan saat menyimpan booking');
+        alert(`Terjadi kesalahan saat menyimpan booking: ${error.message}`);
     }
 });
 ///////////         ///////////////
