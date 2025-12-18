@@ -21,25 +21,37 @@ html, body {
 /* Container helpers - PROPER MAIN LAYOUT */
 .main-content {
   /* Positioning */
-  margin-left: 70px; /* 60px sidebar + 10px margin - No !important needed */
-  margin-right: 15px; /* Fixed 15px from viewport edge - NEVER CHANGES */
-  margin-top: 80px; /* 80px header margin */
-  
-  /* Dimensions - Fixed right gap, dynamic width based on sidebar state */
-  width: calc(100vw - 70px - 15px); /* 70px left margin + 15px FIXED right margin */
-  max-width: calc(100vw - 70px - 15px); /* Prevent any override */
-  height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
-  
-  /* Responsive to sidebar - Smooth transition controlled by .shifted class */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition for all properties */
-  will-change: transform, margin-left; /* Optimize for GPU acceleration */
+  margin-left: 70px; /* 60px sidebar + 10px gutter */
+  margin-right: 15px; /* Fixed 15px from viewport edge */
+  margin-top: 80px; /* header height */
+
+  /* Dimensions - respect viewport width */
+  width: calc(100vw - 70px - 15px);
+  max-width: calc(100vw - 70px - 15px);
+  height: calc(100vh - 80px - 40px); /* minus header and footer */
+
+  /* Smooth interaction */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: margin-left, width;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
-  
+
   /* Hide scrollbar for aesthetics */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Expanded sidebar state: lock content inside viewport (no translate) */
+.main-content.shifted {
+  margin-left: 260px; /* 250px sidebar + 10px gutter */
+  margin-right: 15px;
+  width: calc(100vw - 260px - 15px);
+  max-width: calc(100vw - 260px - 15px);
+  height: calc(100vh - 80px - 40px);
+  transform: none; /* override generic .shifted translate */
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .main-content::-webkit-scrollbar {
