@@ -218,8 +218,8 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
 
     // Kirim data booking dan perhitungan BPHTB ke backend menggunakan fetch dan async/await
     try {
-        // Gunakan endpoint relatif agar bekerja di lingkungan mana pun (prod/dev)
-        const endpoint = '/api/ppat/create-booking-badan';
+        // Gunakan endpoint yang sesuai dengan definisi di backend
+        const endpoint = '/api/ppat_create-booking-and-bphtb';
         const response = await fetch(endpoint, {
             method: 'POST',
             credentials: 'include',

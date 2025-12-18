@@ -547,8 +547,8 @@ async function viewDocument(nobooking) {
         return;
     }
 
-    // Buat URL untuk mengakses PDF - menggunakan endpoint yang benar
-        const pdfUrl = `/api/ppat/generate-pdf-badan/${encodeURIComponent(nobooking)}`;
+    // Buat URL untuk mengakses PDF - menggunakan endpoint yang benar (ppat_)
+    const pdfUrl = `/api/ppat_generate-pdf-badan/${encodeURIComponent(nobooking)}`;
     
     // Membuka PDF di jendela baru
     window.open(pdfUrl, '_blank');
