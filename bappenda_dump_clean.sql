@@ -78,14 +78,14 @@ CREATE FUNCTION public.generate_nobooking() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    v_ppatk_khusus text;
+    v_ppat_khusus text;
     v_current_year text;
     v_sequence_number integer;
     v_nobooking text;
 BEGIN
-    -- Dapatkan ppatk_khusus dari verified users
-    SELECT ppatk_khusus 
-    INTO v_ppatk_khusus
+    -- Dapatkan ppat_khusus dari verified users
+    SELECT ppat_khusus 
+    INTO v_ppat_khusus
     FROM a_2_verified_users 
     WHERE userid = NEW.userid;
 
@@ -94,23 +94,23 @@ BEGIN
         RAISE EXCEPTION 'User ID % not found in a_2_verified_users', NEW.userid;
     END IF;
 
-    -- Pastikan ppatk_khusus tidak null
-    IF v_ppatk_khusus IS NULL THEN
-        RAISE EXCEPTION 'ppatk_khusus is NULL for user ID %', NEW.userid;
+    -- Pastikan ppat_khusus tidak null
+    IF v_ppat_khusus IS NULL THEN
+        RAISE EXCEPTION 'ppat_khusus is NULL for user ID %', NEW.userid;
     END IF;
 
     -- Dapatkan tahun sekarang
     v_current_year := EXTRACT(YEAR FROM CURRENT_DATE)::text;
 
-    -- Hitung urutan booking untuk ppatk_khusus dan tahun ini
+    -- Hitung urutan booking untuk ppat_khusus dan tahun ini
     SELECT COALESCE(COUNT(*), 0) + 1 
     INTO v_sequence_number
     FROM pat_1_bookingsspd 
     WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
-    AND nobooking LIKE v_ppatk_khusus || '-' || v_current_year || '-%';
+    AND nobooking LIKE v_ppat_khusus || '-' || v_current_year || '-%';
 
     -- Format urutan dengan 6 digit
-    v_nobooking := v_ppatk_khusus || '-' || v_current_year || '-' || 
+    v_nobooking := v_ppat_khusus || '-' || v_current_year || '-' || 
                   LPAD(v_sequence_number::text, 6, '0');
 
     -- Set nobooking
@@ -262,7 +262,7 @@ CREATE TABLE public.a_2_verified_users (
     statuspengguna character varying(50) DEFAULT 'offline'::character varying,
     username character varying(255),
     nip character varying(20),
-    ppatk_khusus character varying(100),
+    ppat_khusus character varying(100),
     special_field character varying(255),
     last_active timestamp without time zone,
     tanda_tangan_path text,
@@ -1719,7 +1719,7 @@ COPY public.a_1_unverified_users (id, nama, nik, telepon, email, password, foto,
 -- Data for Name: a_2_verified_users; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.a_2_verified_users (id, nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, userid, divisi, statuspengguna, username, nip, ppatk_khusus, special_field, last_active, tanda_tangan_path, special_parafv, tanda_tangan_mime, pejabat_umum, status_ppat) FROM stdin;
+COPY public.a_2_verified_users (id, nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, userid, divisi, statuspengguna, username, nip, ppat_khusus, special_field, last_active, tanda_tangan_path, special_parafv, tanda_tangan_mime, pejabat_umum, status_ppat) FROM stdin;
 50	test3	12345	12345	email3@test.com	$2b$10$h1yS8IzO5DV.aoyBRNb6A.7Br.rn3PwGCKFEODkrO7FXvAQwc0iBq	public\\uploads\\1747929676965.jpeg	728241	complete	penting_F_simpan/profile-photo/default-foto-profile.png	WP01	Wajib Pajak	online	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N
 46	ini	1234	09109	inie@gmail.com	$2b$10$aitynHJQbHbCnCDk2LQO.uB5tz61Ngdrr3bx56hBZtWTKpP/HY5TW	public\\uploads\\1747718478981.jpeg	607799	complete	penting_F_simpan/profile-photo/default-foto-profile.png	PV01	Peneliti Validasi	online	Farras_nich	3218301223	\N		2025-09-22 02:15:29.972168	/penting_F_simpan/folderttd/parafv_sign/ttd-PV01.png	Ini ST. ESTE. MT	image/png	\N	\N
 17	arras	1234567819212124	08111111111	rainrain2283@gmail.com	$2b$10$xxDIl7v/Np2kI1jlB6ugXOJyvYksUH2TfWeSJTOSOZZzfUI38UAAi	public\\uploads\\1744706491879.jpg	146006	complete	penting_F_simpan/profile-photo/default-foto-profile.png	A02	Administrator	offline	\N	\N	\N	\N	\N	\N	\N	\N	\N	\N

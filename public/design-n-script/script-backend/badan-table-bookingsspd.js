@@ -488,10 +488,15 @@ function deleteSelectedRow() {
         const isConfirmed = confirm('Apakah Anda yakin ingin menghapus data ini?');
 
         if (isConfirmed) {
-            const nobooking = selectedRow.cells[0].textContent;
-fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
+            const nobooking = selectedRow.cells[0].textContent.trim();
+            // Backend butuh trackstatus dalam body
+            fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
                 method: 'PUT',
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ trackstatus: 'Dihapus' })
             })
             .then(response => response.json())
             .then(data => {
@@ -500,7 +505,7 @@ fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
                     selectedRow = null; // Reset selectedRow setelah dihapus
                     console.log('Baris data statusnya diubah menjadi Dihapus dan dihapus dari tampilan');
                 } else {
-                    alert('Gagal mengubah status data menjadi Dihapus');
+                    alert('Gagal mengubah status data menjadi Dihapus: ' + (data.message || 'Error tidak diketahui'));
                 }
             })
             .catch(error => {
@@ -879,8 +884,12 @@ function setupFilePreview(inputId, previewContainerId, previewImageId) {
 // Fungsi upload yang diperbarui
 async function uploadSignatures(nobooking, signature1Blob) {
     try {
-        console.log('Menyiapkan data untuk upload...');
+        console.log('Menyiapkan data untuk upload...', { nobooking });
         
+        if (!nobooking) {
+            throw new Error('No Booking tidak ditemukan! Silakan pilih data kembali.');
+        }
+
         const formData = new FormData();
         formData.append('nobooking', nobooking);
         
@@ -888,9 +897,9 @@ async function uploadSignatures(nobooking, signature1Blob) {
             formData.append('signature1', signature1Blob, 'signature1.png');
         }
         
-        console.log('Mengirim request ke server...');
+        console.log('Mengirim request ke server...', { endpoint: '/api/ppat/upload-signatures' });
         
-const response = await fetch('/api/ppat/upload-signatures', {
+        const response = await fetch('/api/ppat/upload-signatures', {
             method: 'POST',
             body: formData,
             credentials: 'include'
