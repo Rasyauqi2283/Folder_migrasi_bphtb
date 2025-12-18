@@ -15,8 +15,10 @@ images.forEach((image) => {
 
 // Menutup modal ketika klik pada tombol close
 var span = document.getElementsByClassName("close")[0];
-span.onclick = function() {
-  modal.style.display = "none";
+if (span) {
+  span.onclick = function() {
+    modal.style.display = "none";
+  }
 }
 ///
 ///
@@ -36,6 +38,8 @@ var pdfLinks = document.querySelectorAll('.btn-view');  // Semua tombol PDF
 
   // Menutup modal ketika klik pada tombol close
   var span = document.getElementsByClassName("close")[0];
-  span.onclick = function() {
-    pdfModal.style.display = "none";
+  if (span) {
+    span.onclick = function() {
+      pdfModal.style.display = "none";
+    }
   }

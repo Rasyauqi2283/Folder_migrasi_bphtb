@@ -636,4 +636,9 @@ function generateDocumentLinks(item) {
     return docs.join('');
 }
 
+// Expose function globally for real-time monitoring
+window.loadLTBData = loadTableDataLTB;
+window.loadTableDataLTB = loadTableDataLTB;
+
+// Auto-load on page load
 window.onload = loadTableDataLTB;
