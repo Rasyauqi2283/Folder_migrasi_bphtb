@@ -545,20 +545,8 @@ function createCard(container, item) {
                         <p><strong>Status:</strong> ${item.status || 'N/A'}</p>
                     </div>
 
-                    <!-- Signature Section -->
-                    <div class="signature-section">
-                        <div class="form-group approval-section">
-                            <label>
-                                <input type="checkbox" name="ParafApproval-${item.nobooking}" value="approved"> Setujui untuk Paraf
-                            </label>
-                        </div>
-                    </div>
-
                     <!-- Action Buttons Section -->
                     <div class="action-buttons">
-                        <button type="button" class="btn-save-paraf" data-nobooking="${item.nobooking}">
-                            <i class="fas fa-save"></i> Simpan Paraf
-                        </button>
                         <button type="button" class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
                             <span>🏛️</span> Kirim ke Pejabat
                         </button>
@@ -914,34 +902,6 @@ async function sendToPejabatValidation(item) {
 
 // Setup form interactions for paraf
 function setupParafFormInteractions(card, item) {
-    const saveButton = card.querySelector('.btn-save-paraf');
-    if (saveButton) {
-        saveButton.addEventListener('click', async () => {
-            try {
-                const checkbox = card.querySelector(`input[name="ParafApproval-${item.nobooking}"]`);
-                const isApproved = checkbox ? checkbox.checked : false;
-                
-                if (!isApproved) {
-                    showAlert('warning', 'Harap centang "Setujui untuk Paraf" terlebih dahulu');
-                    return;
-                }
-                
-                const result = await saveParafData(item);
-                if (result && result.success) {
-                    showAlert('success', 'Paraf berhasil disimpan');
-                    setTimeout(() => {
-                        loadTableDataPenelitiP();
-                    }, 1000);
-                } else {
-                    throw new Error(result?.message || 'Gagal menyimpan paraf');
-                }
-            } catch (error) {
-                console.error('Save Paraf Error:', error);
-                showAlert('error', `Gagal menyimpan paraf: ${error.message}`);
-            }
-        });
-    }
-    
     // Add event listener for "Kirim ke Pejabat" button in dropdown
     const pejabatButton = card.querySelector('.btn-pejabat-validation');
     if (pejabatButton) {
