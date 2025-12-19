@@ -149,7 +149,7 @@ async function loadTableLSB() {
 				console.log('⚠️ [LSB-Frontend] No items to render, showing empty message');
 				const emptyRow = tbody.insertRow();
 				const emptyCell = emptyRow.insertCell(0);
-				emptyCell.colSpan = 10;
+				emptyCell.colSpan = 8; // Sesuaikan dengan jumlah kolom header (8 kolom)
 				emptyCell.textContent = 'Tidak ada data';
 				emptyCell.style.textAlign = 'center';
 				emptyCell.style.color = '#6b7280';
@@ -162,16 +162,16 @@ async function loadTableLSB() {
 					console.log(`🔄 [LSB-Frontend] Processing item ${index + 1}/${items.length}:`, item.nobooking);
 					const row = tbody.insertRow();
 					row.setAttribute('data-nobooking', item.nobooking || '');
+					// Sesuaikan dengan kolom header di HTML: No. Booking, NOP PBB, Tahun AJB, Nama Wajib Pajak, 
+					// Nama Pemilik Objek Pajak, Status, Track Status, Aksi (8 kolom total)
 					const displayValues = [
-						item.nobooking || '-',
-						item.noppbb || '-',
-						item.tahunajb || '-',
-						item.userid || '-',
-						item.namawajibpajak || '-',
-						item.namapemilikobjekpajak || '-',
-						item.status || '-',
-						item.trackstatus || '-',
-						item.keterangan || '-'
+						item.nobooking || '-',              // 0: No. Booking
+						item.noppbb || '-',                 // 1: NOP PBB
+						item.tahunajb || '-',               // 2: Tahun AJB
+						item.namawajibpajak || '-',         // 3: Nama Wajib Pajak
+						item.namapemilikobjekpajak || '-',  // 4: Nama Pemilik Objek Pajak
+						item.status || '-',                 // 5: Status
+						item.trackstatus || '-'             // 6: Track Status
 					];
 					displayValues.forEach((val, idx) => {
 						const cell = row.insertCell(idx);
@@ -179,8 +179,8 @@ async function loadTableLSB() {
 					});
 					console.log(`✅ [LSB-Frontend] Row ${index + 1} created for nobooking: ${item.nobooking}`);
 
-					// Action cell (Kirim)
-					const actionCell = row.insertCell(9);
+					// Action cell (Kirim) - kolom ke-7 (indeks 7)
+					const actionCell = row.insertCell(7);
 					const sendBtn = document.createElement('button');
 					sendBtn.textContent = 'Kirim';
 					sendBtn.className = 'btn-kirim-document';
@@ -233,7 +233,7 @@ async function loadTableLSB() {
 
 					const dropdownRow = document.createElement('tr');
 					const dropdownContent = document.createElement('td');
-					dropdownContent.colSpan = 10;
+					dropdownContent.colSpan = 8; // Sesuaikan dengan jumlah kolom header (8 kolom)
 					dropdownContent.style.display = 'none';
 					try {
 						dropdownContent.innerHTML = generateDropdownContent(item);
@@ -268,7 +268,7 @@ async function loadTableLSB() {
 					console.error(`❌ [LSB-Frontend] Item data:`, item);
 					const errorRow = tbody.insertRow();
 					const errorCell = errorRow.insertCell(0);
-					errorCell.colSpan = 10;
+					errorCell.colSpan = 8; // Sesuaikan dengan jumlah kolom header (8 kolom)
 					errorCell.textContent = `Gagal memuat data item: ${itemError.message}`;
 					errorCell.style.color = 'red';
 				}
@@ -399,7 +399,7 @@ async function loadTableLSB() {
 			tbody.innerHTML = '';
 			const errorRow = tbody.insertRow();
 			const errorCell = errorRow.insertCell(0);
-			errorCell.colSpan = 10;
+			errorCell.colSpan = 8; // Sesuaikan dengan jumlah kolom header (8 kolom)
 			errorCell.textContent = `Gagal memuat data: ${mainError.message}`;
 		} else {
 			alert(`Gagal memuat data: ${mainError.message}`);
