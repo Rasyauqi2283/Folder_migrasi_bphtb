@@ -19,6 +19,40 @@
 
     /* Tambahkan di head atau file CSS terpisah */
 <style>
+  /* Button Sertifikat Digital Styling */
+  .btn.pilih_sertifikat {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn.pilih_sertifikat:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  .btn.pilih_sertifikat:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+  }
+  
+  .btn.pilih_sertifikat:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
   .pv-badge { display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid transparent; }
   .pv-badge.ok { background:#ECFDF5; color:#065F46; border-color:#A7F3D0; }
   .pv-badge.warn { background:#FEF2F2; color:#991B1B; border-color:#FECACA; }
@@ -815,7 +849,7 @@
   <!-- MAIN -->
   <main class="main-content">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-      <button class="btn pilih_sertifikat" onclick="drop_downsertifikat()">Sertifikat Digital</button><!--button ini akan menurunkan dropdown-->
+      <button class="btn pilih_sertifikat" onclick="drop_downsertifikat(); return false;" type="button">Sertifikat Digital</button><!--button ini akan menurunkan dropdown-->
       
       <!-- Real-time controls -->
       <div class="real-time-controls">
@@ -1264,25 +1298,75 @@
   }
   // Function to toggle sertifikat overlay
   async function drop_downsertifikat() {
-    const overlay = el('sertif-overlay');
-    if (overlay) {
-      const isVisible = overlay.style.display !== 'none';
-      overlay.style.display = isVisible ? 'none' : 'block';
-      if (!isVisible) {
-        await loadCertList();
-        await refreshVerified();
-        // Auto-expand dropdown if no cert is active
-        const badge = el('sertif-badge');
-        const dd = el('sertif-dropdown');
-        if (badge && dd && badge.style.display === 'none') {
+    try {
+      console.log('[SERTIF] drop_downsertifikat called');
+      const overlay = document.getElementById('sertif-overlay');
+      if (!overlay) {
+        console.error('[SERTIF] Overlay element not found!');
+        alert('Elemen sertifikat tidak ditemukan. Silakan refresh halaman.');
+        return;
+      }
+      
+      // Check current visibility - handle both inline style and computed style
+      const currentDisplay = overlay.style.display;
+      const computedDisplay = window.getComputedStyle(overlay).display;
+      const isVisible = (currentDisplay !== 'none' && currentDisplay !== '') || 
+                       (computedDisplay !== 'none' && computedDisplay !== '');
+      
+      console.log('[SERTIF] Current visibility:', isVisible, 'inline display:', currentDisplay, 'computed display:', computedDisplay);
+      
+      if (isVisible) {
+        // Hide overlay
+        overlay.style.display = 'none';
+        const dd = document.getElementById('sertif-dropdown');
+        if (dd) dd.style.display = 'none';
+        console.log('[SERTIF] Overlay hidden');
+      } else {
+        // Show overlay
+        overlay.style.display = 'block';
+        console.log('[SERTIF] Overlay shown');
+        
+        // Load certificate list
+        try {
+          await loadCertList();
+          await refreshVerified();
+        } catch (err) {
+          console.warn('[SERTIF] Error loading cert list:', err);
+        }
+        
+        // Auto-expand dropdown for passphrase input
+        const dd = document.getElementById('sertif-dropdown');
+        const badge = document.getElementById('sertif-badge');
+        if (dd) {
+          // Always show dropdown when overlay is opened so user can input passphrase
           dd.style.display = 'block';
+          console.log('[SERTIF] Dropdown shown for passphrase input');
+        }
+        if (badge && badge.style.display === 'none') {
+          // If no cert is active, ensure dropdown is visible
+          if (dd) dd.style.display = 'block';
         }
       }
+    } catch (error) {
+      console.error('[SERTIF] Error in drop_downsertifikat:', error);
+      alert('Terjadi kesalahan saat membuka sertifikat digital: ' + error.message);
     }
   }
   
-  // Expose function globally
+  // Expose function globally - ensure it's available when button is clicked
   window.drop_downsertifikat = drop_downsertifikat;
+  
+  // Also ensure it's available after DOM loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.drop_downsertifikat = drop_downsertifikat;
+      console.log('[SERTIF] Function exposed after DOMContentLoaded');
+    });
+  } else {
+    // DOM already loaded
+    window.drop_downsertifikat = drop_downsertifikat;
+    console.log('[SERTIF] Function exposed immediately');
+  }
 
   // Sertifikat dropdown behavior
   async function loadCertList(){
@@ -1322,31 +1406,36 @@
       await gateActions();
     }catch(_){ }
   }
-  const pilihBtn = el('pilih_sertifikat');
-  const dd = el('sertif-dropdown');
-  const overlay = el('sertif-overlay');
-  const overlayClose = el('sertif-overlay-close');
-  // Event listener for trigger button is handled by drop_downsertifikat() function
-  // Keep existing listener as fallback
-  const triggerOverlayBtn = document.querySelector('.btn.pilih_sertifikat');
-  if (triggerOverlayBtn && overlay) {
-    triggerOverlayBtn.addEventListener('click', async (e)=>{
-      e.preventDefault();
-      drop_downsertifikat();
-    });
-  }
-  if (overlayClose && overlay) {
-    overlayClose.addEventListener('click', ()=>{ 
-      overlay.style.display = 'none';
-      dd.style.display = 'none';
-    });
-  }
+  // Setup event listeners for sertifikat card
+  const pilihBtn = document.getElementById('pilih_sertifikat');
+  const dd = document.getElementById('sertif-dropdown');
+  const overlay = document.getElementById('sertif-overlay');
+  const overlayClose = document.getElementById('sertif-overlay-close');
+  
+  // Button "Pilih Sertifikat" inside card - toggle dropdown
   if(pilihBtn && dd){
-    pilihBtn.addEventListener('click', async ()=>{
-      dd.style.display = dd.style.display==='none' ? 'block' : 'none';
-      if(dd.style.display==='block'){ await loadCertList(); await refreshVerified(); }
+    pilihBtn.addEventListener('click', async (e)=>{
+      e.stopPropagation(); // Prevent event bubbling
+      const isVisible = dd.style.display !== 'none' && dd.style.display !== '';
+      dd.style.display = isVisible ? 'none' : 'block';
+      if(!isVisible && dd.style.display === 'block'){ 
+        await loadCertList(); 
+        await refreshVerified(); 
+      }
     });
   }
+  
+  // Close button in card header
+  if (overlayClose && overlay) {
+    overlayClose.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      overlay.style.display = 'none';
+      if (dd) dd.style.display = 'none';
+    });
+  }
+  
+  // Note: The main trigger button (.btn.pilih_sertifikat) uses onclick="drop_downsertifikat()" 
+  // which is already exposed globally, so no additional listener needed
   const verifyBtn = el('sertif-verify');
   if(verifyBtn){
     verifyBtn.addEventListener('click', async ()=>{

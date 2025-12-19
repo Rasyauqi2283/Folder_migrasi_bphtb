@@ -1,26 +1,368 @@
-<!--tempat pembuatan sertifikat digital-->
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sertifikat Digital</title>
+    <title>Sertifikat Digital | BAPPENDA</title>
+    <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
     <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <style>
+        /* Sertifikat Digital Page Specific Styles */
+        .cert-content {
+            margin: 20px;
+            max-width: 1200px;
+        }
+        .cert-card {
+            border: 1px solid #e5e5e5;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .cert-card h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: #1f2937;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .info-section {
+            padding: 16px;
+            border-left: 4px solid #10b981;
+            background: #ecfdf5;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .info-section .info-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #065f46;
+        }
+        .info-section .info-content {
+            color: #065f46;
+            line-height: 1.55;
+        }
+        .info-grid {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+        .info-box {
+            flex: 1 1 320px;
+            background: #ffffff;
+            border: 1px solid #d1fae5;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .info-box-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #065f46;
+        }
+        .info-box ul, .info-box ol {
+            margin: 0 0 0 18px;
+            padding: 0;
+            color: #065f46;
+        }
+        .info-box li {
+            margin-bottom: 4px;
+        }
+        .form-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .form-group input {
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .form-group input[type="number"] {
+            width: 120px;
+        }
+        .form-group input[type="password"] {
+            min-width: 240px;
+        }
+        .form-group button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        .form-group button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        .form-group button:disabled {
+            background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .pub-preview {
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f9fafb;
+            border: 1px dashed #ddd;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+        }
+        .cert-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .cert-table thead {
+            background: #f7f7f7;
+        }
+        .cert-table th {
+            text-align: left;
+            padding: 12px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .cert-table td {
+            padding: 10px 12px;
+            border-top: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+        .cert-table tbody tr:hover {
+            background: #f9fafb;
+        }
+        .cert-table tbody tr:last-child td {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .btn-revoke {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        .btn-revoke:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        .hint-text {
+            color: #6b7280;
+            font-size: 13px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .table-header button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .table-header button:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .cert-content {
+                margin: 16px;
+            }
+            .info-grid {
+                flex-direction: column;
+            }
+            .form-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .form-group input {
+                width: 100% !important;
+            }
+        }
+    </style>
 </head>
-<body style="font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial;">
-    <div style="max-width:1100px; margin:24px auto;">
-        <h2>Sertifikat Digital</h2>
+<body class="paraf-validasi-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Sertifikat Digital</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button" onclick="window.location.href='../../../profile.html'">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../penelitiValidasi-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Validasi Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Verifikasi_SSPD/Validasi_berkas_online.html">Validasi Berkas SSPD Online</a>
+            <a href="../Verifikasi_SSPD/Validasi_berkas_offline.html">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fas fa-signature sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="Sertifikat_digital.html">Sertifikat Digital</a>
+          <a href="tanda_paraf.html">Tanda Paraf</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-television sidebar-icon"></i>
+                <span class="sidebar-text">Monitoring SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Monitoring/monitoring_verifikasi.html">Monitoring Verifikasi SSPD</a>
+            <a href="../Monitoring/monitoring_skpd_kurang.html">Monitoring SKPD Kurang Bayar</a>
+        </div>
+      </div>
+   </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="cert-content">
+        <h2 style="margin-bottom: 20px; color: #1f2937; font-size: 24px; font-weight: 700;">Sertifikat Digital</h2>
+        
         <!-- Kartu Informasi yang lebih informatif untuk pengguna non-teknis -->
-        <section style="padding:14px 16px; border-left:4px solid #10b981; background:#ecfdf5; border-radius:8px; margin-bottom:14px;">
-            <div style="font-weight:700; margin-bottom:8px; font-size:16px;">Informasi</div>
-            <div style="color:#065f46; line-height:1.55;">
-                <div style="margin-bottom:8px;">
+        <section class="info-section">
+            <div class="info-title">Informasi</div>
+            <div class="info-content">
+                <div style="margin-bottom: 8px;">
                     Sertifikat digital adalah identitas elektronik Anda untuk menandatangani dokumen. Anda hanya dapat memiliki <strong>1 sertifikat aktif</strong> sekaligus. Jika membuat sertifikat baru, sertifikat lama akan dinonaktifkan (revoke).
                 </div>
-                <div style="display:flex; gap:18px; flex-wrap:wrap;">
-                    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #d1fae5; border-radius:8px; padding:12px;">
-                        <div style="font-weight:600; margin-bottom:6px;">Istilah yang dipakai</div>
-                        <ul style="margin:0 0 0 18px; padding:0; color:#065f46;">
+                <div class="info-grid">
+                    <div class="info-box">
+                        <div class="info-box-title">Istilah yang dipakai</div>
+                        <ul>
                             <li><strong>Kunci (Keypair)</strong>: sepasang kunci <em>privat</em> dan <em>publik</em>. Kunci privat <strong>tetap di browser Anda</strong>; kunci publik dikirim ke server untuk diterbitkan sertifikat.</li>
                             <li><strong>CN</strong>: nama yang akan tampil di sertifikat. Isi dengan nama jabatan/nama Anda (mis. "Kepala Bidang A").</li>
                             <li><strong>Email</strong> dan <strong>Organisasi</strong>: opsional untuk informasi tambahan pada sertifikat.</li>
@@ -28,18 +370,18 @@
                             <li><strong>Passphrase</strong>: sandi untuk mengunci penggunaan sertifikat saat tanda tangan. <strong>Tidak bisa di-reset</strong>. Jika lupa, buat sertifikat baru.</li>
                         </ul>
                     </div>
-                    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #d1fae5; border-radius:8px; padding:12px;">
-                        <div style="font-weight:600; margin-bottom:6px;">Ketentuan passphrase</div>
-                        <ul style="margin:0 0 0 18px; padding:0; color:#065f46;">
+                    <div class="info-box">
+                        <div class="info-box-title">Ketentuan passphrase</div>
+                        <ul>
                             <li>Panjang minimal <strong>4 karakter</strong>.</li>
                             <li>Sebaiknya berisi huruf kecil (non-kapital) dan angka.</li>
                             <li><strong>Jangan gunakan passphrase yang sama dengan password login aplikasi</strong>.</li>
                         </ul>
                     </div>
-                    <div style="flex:1 1 320px; background:#ffffff; border:1px solid #d1fae5; border-radius:8px; padding:12px;">
-                        <div style="font-weight:600; margin-bottom:6px;">Langkah singkat</div>
-                        <ol style="margin:0 0 0 18px; padding:0; color:#065f46;">
-                            <li>Klik <strong>Buat Keypair</strong> (otomatis, tidak perlu instal apa pun).</li>
+                    <div class="info-box">
+                        <div class="info-box-title">Langkah singkat</div>
+                        <ol>
+                            <li>Klik <strong>Buat Kunci Otomatis</strong> (otomatis, tidak perlu instal apa pun).</li>
                             <li>Isi <strong>CN</strong>, (opsional) Email & Organisasi, pilih masa berlaku.</li>
                             <li>Masukkan <strong>Passphrase</strong> yang mudah diingat namun aman.</li>
                             <li>Klik <strong>Daftarkan Sertifikat</strong>.</li>
@@ -49,37 +391,37 @@
             </div>
         </section>
 
-        <section style="margin-top:16px; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
+        <section class="cert-card">
             <h3>Buat Sertifikat Baru</h3>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <button id="btn-gen" style="padding:8px 12px;" title="Membuat kunci privat & publik di browser">Buat Kunci Otomatis</button>
-                <span id="kp-hint" style="color:#666;">Kunci privat disimpan di browser; hanya publik yang dikirim ke server.</span>
+            <div class="form-group">
+                <button id="btn-gen" title="Membuat kunci privat & publik di browser">Buat Kunci Otomatis</button>
+                <span id="kp-hint" class="hint-text">Kunci privat disimpan di browser; hanya publik yang dikirim ke server.</span>
             </div>
-            <div id="pub-preview" style="margin-top:10px; white-space:pre-wrap; font-family:monospace; font-size:12px; background:#f9fafb; border:1px dashed #ddd; padding:10px; border-radius:6px; display:none;"></div>
-            <div style="display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap;">
-                <input id="sub-cn" placeholder="Nama tampil di sertifikat (mis. Kepala Bidang)" style="padding:6px;" title="CN = Common Name (nama tampilan)">
-                <input id="sub-email" placeholder="Email (opsional)" style="padding:6px;" title="Boleh dikosongkan">
-                <input id="sub-org" placeholder="Organisasi (opsional)" style="padding:6px;" title="Boleh dikosongkan">
-                <input id="sub-days" type="number" min="1" value="365" style="padding:6px; width:120px;" title="Masa berlaku sertifikat (hari)">
-                <input id="sub-pass" type="password" placeholder="Passphrase untuk mengunci pemakaian (≥4 karakter)" style="padding:6px; min-width:240px;" title="Sandi ini diminta saat tanda tangan">
+            <div id="pub-preview" class="pub-preview"></div>
+            <div class="form-group">
+                <input id="sub-cn" placeholder="Nama tampil di sertifikat (mis. Kepala Bidang)" title="CN = Common Name (nama tampilan)">
+                <input id="sub-email" placeholder="Email (opsional)" title="Boleh dikosongkan">
+                <input id="sub-org" placeholder="Organisasi (opsional)" title="Boleh dikosongkan">
+                <input id="sub-days" type="number" min="1" value="365" title="Masa berlaku sertifikat (hari)">
+                <input id="sub-pass" type="password" placeholder="Passphrase untuk mengunci pemakaian (≥4 karakter)" title="Sandi ini diminta saat tanda tangan">
                 <button id="btn-issue" disabled title="Klik setelah kunci dibuat dan data terisi">Daftarkan Sertifikat</button>
             </div>
         </section>
 
-        <section style="margin-top:16px; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+        <section class="cert-card">
+            <div class="table-header">
                 <h3>Daftar Sertifikat</h3>
                 <button id="btn-refresh">Refresh</button>
             </div>
             <div style="overflow:auto;">
-                <table id="cert-table" style="width:100%; border-collapse:collapse;">
-                    <thead style="background:#f7f7f7;">
+                <table id="cert-table" class="cert-table">
+                    <thead>
                         <tr>
-                            <th style="text-align:left; padding:8px;">Serial Number</th>
-                            <th style="text-align:left; padding:8px;">Subject</th>
-                            <th style="text-align:left; padding:8px;">Valid Time</th>
-                            <th style="text-align:left; padding:8px;">Status</th>
-                            <th style="text-align:left; padding:8px;">Aksi</th>
+                            <th>Serial Number</th>
+                            <th>Subject</th>
+                            <th>Valid Time</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -87,7 +429,31 @@
             </div>
         </section>
     </div>
+</main>
 
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
     <script type="module">
         import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
         initNotifications();
@@ -129,6 +495,16 @@
         if(!res.ok || !js.success){ alert(js.message||'Gagal menerbitkan'); return; }
         await refresh();
         alert('Sertifikat terbit: ' + js.cert.serial_number);
+        // Reset form
+        el('sub-cn').value = '';
+        el('sub-email').value = '';
+        el('sub-org').value = '';
+        el('sub-days').value = '365';
+        el('sub-pass').value = '';
+        el('pub-preview').style.display = 'none';
+        el('pub-preview').textContent = '';
+        generated = null;
+        el('btn-issue').disabled = true;
     }
     async function refresh(){
         const res = await fetch('/api/pv/cert/list', { credentials:'include' });
@@ -144,11 +520,11 @@
         (js.data||[]).forEach(row=>{
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="padding:8px; border-top:1px solid #eee; font-family:monospace;">${row.serial_number}</td>
-                <td style="padding:8px; border-top:1px solid #eee;">${(row.subject_cn||'')}${row.subject_email? (' | '+row.subject_email):''}${row.subject_org? (' | '+row.subject_org):''}</td>
-                <td style="padding:8px; border-top:1px solid #eee;">${fmtDate(row.valid_from)} – ${fmtDate(row.valid_to)}</td>
-                <td style="padding:8px; border-top:1px solid #eee;">${row.status}</td>
-                <td style="padding:8px; border-top:1px solid #eee;">
+                <td style="font-family:monospace;">${row.serial_number}</td>
+                <td>${(row.subject_cn||'')}${row.subject_email? (' | '+row.subject_email):''}${row.subject_org? (' | '+row.subject_org):''}</td>
+                <td>${fmtDate(row.valid_from)} – ${fmtDate(row.valid_to)}</td>
+                <td>${row.status}</td>
+                <td>
                   ${row.status==='active' ? `<button data-serial="${row.serial_number}" class="btn-revoke">Revoke</button>`: ''}
                 </td>
             `;
