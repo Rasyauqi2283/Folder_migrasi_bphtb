@@ -4515,6 +4515,38 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
     }
     try {
         console.log('🔍 [LSB-API] Fetching LSB data for user:', req.session.user.userid);
+        
+        // First, check total records in lsb_1_serah_berkas table
+        const countQuery = `SELECT COUNT(*) as total FROM lsb_1_serah_berkas`;
+        const countResult = await pool.query(countQuery);
+        console.log(`📊 [LSB-API] Total records in lsb_1_serah_berkas: ${countResult.rows[0].total}`);
+        
+        // Check records with specific status/trackstatus
+        const statusCheckQuery = `
+            SELECT status, trackstatus, COUNT(*) as count 
+            FROM lsb_1_serah_berkas 
+            GROUP BY status, trackstatus
+            ORDER BY status, trackstatus;
+        `;
+        const statusResult = await pool.query(statusCheckQuery);
+        console.log('📊 [LSB-API] Status breakdown:', statusResult.rows);
+        
+        // Check specific record
+        const checkRecordQuery = `SELECT * FROM lsb_1_serah_berkas WHERE nobooking = '20008-2025-000025' LIMIT 1`;
+        const checkResult = await pool.query(checkRecordQuery);
+        if (checkResult.rows.length > 0) {
+            const rec = checkResult.rows[0];
+            console.log('📋 [LSB-API] Sample record (20008-2025-000025):', {
+                nobooking: rec.nobooking,
+                status: rec.status,
+                trackstatus: rec.trackstatus,
+                statusType: typeof rec.status,
+                trackstatusType: typeof rec.trackstatus,
+                statusLength: rec.status?.length,
+                trackstatusLength: rec.trackstatus?.length
+            });
+        }
+        
         // Hanya ambil data yang belum diserahkan (Siap Diserahkan)
         // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb, tahunajb, dan pdf_dokumen_path
         // file_booking_path akan menggunakan pdf_dokumen_path atau endpoint generate PDF
@@ -4531,15 +4563,29 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         ORDER BY lsb.nobooking DESC;
         `;
         
+        console.log('🔍 [LSB-API] Executing query with conditions: status="Terselesaikan", trackstatus="Siap Diserahkan"');
         const result = await pool.query(query);
-        console.log(`✅ [LSB-API] Found ${result.rows.length} records`);
+        console.log(`✅ [LSB-API] Query executed. Found ${result.rows.length} records`);
         
         if (result.rows.length > 0) {
+            console.log('📦 [LSB-API] First record sample:', {
+                nobooking: result.rows[0].nobooking,
+                status: result.rows[0].status,
+                trackstatus: result.rows[0].trackstatus,
+                noppbb: result.rows[0].noppbb,
+                tahunajb: result.rows[0].tahunajb
+            });
             return res.status(200).json({
                 success: true,
                 data: result.rows
             });
         } else {
+            console.log('⚠️ [LSB-API] No records found matching criteria');
+            // Try query without filter to see what we have
+            const allRecordsQuery = `SELECT nobooking, status, trackstatus FROM lsb_1_serah_berkas ORDER BY updated_at DESC LIMIT 5`;
+            const allRecords = await pool.query(allRecordsQuery);
+            console.log('📋 [LSB-API] Recent records (last 5):', allRecords.rows);
+            
             return res.status(200).json({
                 success: true,
                 data: []
@@ -4547,6 +4593,7 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         }
     } catch (error) {
         console.error('❌ [LSB-API] Error fetching data:', error);
+        console.error('❌ [LSB-API] Error stack:', error.stack);
         return res.status(500).json({
             success: false,
             message: 'An error occurred while fetching data.',

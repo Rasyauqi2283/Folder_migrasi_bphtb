@@ -49,20 +49,27 @@ async function loadTableLSB() {
 	// Parse JSON data
         try {
 		if (!data) {
+                console.log('📥 [LSB-Frontend] Parsing JSON response, status:', response.status, response.statusText);
                 data = await response.json();
             }
             
             console.log('📦 [LSB-Frontend] Received data:', {
                 success: data?.success,
                 dataLength: Array.isArray(data?.data) ? data.data.length : 'not an array',
-                status: response.status
+                status: response.status,
+                statusText: response.statusText,
+                hasData: !!data?.data,
+                dataType: Array.isArray(data?.data) ? 'array' : typeof data?.data,
+                fullResponse: JSON.stringify(data).substring(0, 200)
             });
             
             if (!data || typeof data !== 'object') {
+                console.error('❌ [LSB-Frontend] Invalid data format:', data);
                 throw new Error('Invalid data format received from server');
             }
             
 			if (!data.success) {
+                console.error('❌ [LSB-Frontend] Server returned unsuccessful response:', data);
                 throw new Error(data.message || 'Server returned unsuccessful response');
             }
             
@@ -72,8 +79,20 @@ async function loadTableLSB() {
             }
             
             console.log(`✅ [LSB-Frontend] Successfully parsed ${data.data.length} records`);
+            if (data.data.length > 0) {
+                console.log('📋 [LSB-Frontend] First record sample:', {
+                    nobooking: data.data[0].nobooking,
+                    status: data.data[0].status,
+                    trackstatus: data.data[0].trackstatus,
+                    noppbb: data.data[0].noppbb,
+                    tahunajb: data.data[0].tahunajb
+                });
+            } else {
+                console.log('⚠️ [LSB-Frontend] No records in data array - table will show empty');
+            }
         } catch (parseError) {
             console.error('❌ [LSB-Frontend] Parse Error:', parseError);
+            console.error('❌ [LSB-Frontend] Parse Error stack:', parseError.stack);
             throw new Error(`Gagal memproses data: ${parseError.message}`);
         }
 
