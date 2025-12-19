@@ -562,41 +562,73 @@
       // Function to check for new data
       async function checkForNewData() {
         try {
-          // Get current data count from the table
-          const tbody = document.querySelector('#LSBTable tbody');
-          const currentCount = tbody ? tbody.children.length : 0;
+          // Only refresh if real-time is enabled and user is not interacting
+          if (!isRealTimeEnabled || userIsInteracting) {
+            return;
+          }
           
-          // If count increased, show notification and reload with debouncing
-          if (currentCount > lastDataCount && lastDataCount > 0) {
-            console.log(`🆕 New LSB data detected! Count: ${lastDataCount} → ${currentCount}`);
+          // Get current data count from the table (count only data rows, not dropdown rows)
+          const tbody = document.querySelector('#LSBTable tbody');
+          if (!tbody) {
+            console.log('⏸️ [LSB-RealTime] No tbody found, skipping check');
+            return;
+          }
+          
+          // Count only rows that are not dropdown rows (rows that don't have colSpan > 1)
+          const dataRows = Array.from(tbody.children).filter(row => {
+            const firstCell = row.querySelector('td');
+            return firstCell && (!firstCell.colSpan || firstCell.colSpan <= 1);
+          });
+          const currentCount = dataRows.length;
+          
+          // If this is the first check, just update the count and return
+          if (lastDataCount === 0) {
             lastDataCount = currentCount;
+            console.log(`🔍 [LSB-RealTime] Initial count set to ${currentCount}`);
+            return;
+          }
+          
+          // If count changed (increased or decreased significantly), show notification
+          const countDiff = currentCount - lastDataCount;
+          if (Math.abs(countDiff) > 0) {
+            console.log(`🆕 [LSB-RealTime] Data count changed: ${lastDataCount} → ${currentCount} (diff: ${countDiff > 0 ? '+' : ''}${countDiff})`);
             
             // Clear existing debounce timer
             if (refreshDebounceTimer) {
               clearTimeout(refreshDebounceTimer);
             }
             
-            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            // Debounce the refresh - only refresh if no user activity for 3 seconds
             refreshDebounceTimer = setTimeout(async () => {
-              if (!userIsInteracting) {
-                // Show subtle notification instead of intrusive one
+              // Double-check user is not interacting before refreshing
+              if (!userIsInteracting && isRealTimeEnabled) {
+                console.log('🔄 [LSB-RealTime] Refreshing table data...');
+                // Show subtle notification
                 showSubtleLSBNotification();
                 
                 // Reload the table data
                 if (window.loadLSBData) {
-                  window.loadLSBData();
+                  await window.loadLSBData();
+                  // Update count after refresh
+                  const newTbody = document.querySelector('#LSBTable tbody');
+                  if (newTbody) {
+                    const newDataRows = Array.from(newTbody.children).filter(row => {
+                      const firstCell = row.querySelector('td');
+                      return firstCell && (!firstCell.colSpan || firstCell.colSpan <= 1);
+                    });
+                    lastDataCount = newDataRows.length;
+                  }
                 }
               } else {
-                console.log('⏸️ Skipping LSB refresh - user is still interacting');
+                console.log('⏸️ [LSB-RealTime] Skipping refresh - user is interacting or real-time disabled');
               }
-            }, 2000); // Wait 2 seconds before refreshing
+            }, 3000); // Wait 3 seconds before refreshing
             
-          } else if (currentCount !== lastDataCount) {
-            // Update count even if it decreased
+            // Update count immediately for next check
             lastDataCount = currentCount;
           }
         } catch (error) {
-          console.error('❌ Error checking for new LSB data:', error);
+          console.error('❌ [LSB-RealTime] Error checking for new data:', error);
         }
       }
       
@@ -717,11 +749,23 @@
       
       // Initialize real-time monitoring
       function initializeRealTime() {
-        // Get initial count
-        const tbody = document.querySelector('#LSBTable tbody');
-        lastDataCount = tbody ? tbody.children.length : 0;
-        
-        startRealTimeMonitoring();
+        // Wait a bit longer for table to fully load before getting initial count
+        setTimeout(() => {
+          const tbody = document.querySelector('#LSBTable tbody');
+          if (tbody) {
+            // Count only data rows, not dropdown rows
+            const dataRows = Array.from(tbody.children).filter(row => {
+              const firstCell = row.querySelector('td');
+              return firstCell && (!firstCell.colSpan || firstCell.colSpan <= 1);
+            });
+            lastDataCount = dataRows.length;
+            console.log(`🔍 [LSB-RealTime] Initialized with count: ${lastDataCount}`);
+          } else {
+            lastDataCount = 0;
+            console.log('⚠️ [LSB-RealTime] No tbody found during initialization');
+          }
+          startRealTimeMonitoring();
+        }, 2000); // Wait 2 seconds for table to load
       }
       
       // Expose functions to global scope

@@ -350,12 +350,12 @@ async function loadTableLSB() {
 		function renderPagination() {
 			pager.innerHTML = '';
 			
-			// Always show pagination if we have data and (totalPages > 1 OR current page > 1 OR we got full page)
-			const hasData = tbody.children.length > 0;
-			const gotFullPage = tbody.children.length === PAGE_SIZE;
-			const shouldShowPagination = hasData && (totalPages > 1 || currentPage > 1 || gotFullPage);
+			// Always show pagination if we have data (totalRecords > 0)
+			// This ensures users can see pagination controls even if only 1 page
+			const shouldShowPagination = totalRecords > 0;
 			
 			if (!shouldShowPagination) {
+				console.log('⚠️ [LSB-Frontend] No pagination rendered: totalRecords =', totalRecords);
 				return;
 			}
 			
@@ -380,21 +380,33 @@ async function loadTableLSB() {
 		}
 
 		function goToPageLSB(page) {
-			console.log(`📄 [LSB-Frontend] goToPageLSB called with page=${page}, currentPage=${currentPage}, totalPages=${totalPages}`);
-			if (page < 1 || page === currentPage) {
-				console.log(`⏭️ [LSB-Frontend] Skipping page navigation (page=${page}, currentPage=${currentPage})`);
+			console.log(`📄 [LSB-Frontend] goToPageLSB called with page=${page}, currentPage=${currentPage}, totalPages=${totalPages}, totalRecords=${totalRecords}`);
+			
+			// Validate page number
+			if (page < 1) {
+				console.log(`⏭️ [LSB-Frontend] Skipping: page < 1 (page=${page})`);
 				return;
 			}
 			if (page > totalPages) {
-				console.warn('⚠️ [LSB-Frontend] Page exceeds totalPages, but allowing navigation');
+				console.log(`⏭️ [LSB-Frontend] Skipping: page > totalPages (page=${page}, totalPages=${totalPages})`);
+				return;
 			}
-			currentPage = Math.min(Math.max(1, page), totalPages);
+			if (page === currentPage) {
+				console.log(`⏭️ [LSB-Frontend] Skipping: page === currentPage (page=${page})`);
+				return;
+			}
+			
+			// Update current page
+			currentPage = page;
 			const start = (currentPage - 1) * PAGE_SIZE;
 			const end = start + PAGE_SIZE;
 			const itemsToRender = allItems.slice(start, end);
-			console.log(`📄 [LSB-Frontend] Rendering page ${currentPage}: items ${start} to ${end} (${itemsToRender.length} items)`);
+			console.log(`📄 [LSB-Frontend] Rendering page ${currentPage}: items ${start} to ${Math.min(end, allItems.length)} (showing ${itemsToRender.length} of ${allItems.length} items)`);
+			
+			// Always render, even if itemsToRender is empty (to show "no data" message)
 			renderRows(itemsToRender);
 			renderPagination();
+			
 			// Scroll to top of table
 			const tableScroll = document.querySelector('.table-scroll');
 			if (tableScroll) {
@@ -410,9 +422,16 @@ async function loadTableLSB() {
 			goToPageLSB(page);
 		}
 
-		// initial render
+		// initial render - always render page 1, even if no data
 		console.log('🚀 [LSB-Frontend] Starting initial render with goToPageLSB(1)');
-		goToPageLSB(1);
+		console.log(`📊 [LSB-Frontend] Initial render data: totalRecords=${totalRecords}, totalPages=${totalPages}, allItems.length=${allItems.length}`);
+		currentPage = 1; // Reset to page 1
+		const start = (currentPage - 1) * PAGE_SIZE;
+		const end = start + PAGE_SIZE;
+		const initialItems = allItems.slice(start, end);
+		console.log(`📄 [LSB-Frontend] Rendering initial page ${currentPage}: items ${start} to ${Math.min(end, allItems.length)} (${initialItems.length} items)`);
+		renderRows(initialItems);
+		renderPagination();
 		console.log('✅ [LSB-Frontend] Initial render completed');
 
 	} catch (mainError) {
