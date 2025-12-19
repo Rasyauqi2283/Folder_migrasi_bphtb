@@ -4516,13 +4516,15 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
     try {
         console.log('🔍 [LSB-API] Fetching LSB data for user:', req.session.user.userid);
         // Hanya ambil data yang belum diserahkan (Siap Diserahkan)
-        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb, tahunajb, dan file_booking_path
+        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb, tahunajb, dan pdf_dokumen_path
+        // file_booking_path akan menggunakan pdf_dokumen_path atau endpoint generate PDF
         const query = `
         SELECT 
             lsb.*,
             pb.noppbb,
             pb.tahunajb,
-            pb.file_booking_path
+            pb.pdf_dokumen_path,
+            pb.pdf_dokumen_path AS file_booking_path
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
         WHERE lsb.status = 'Terselesaikan' AND lsb.trackstatus = 'Siap Diserahkan'

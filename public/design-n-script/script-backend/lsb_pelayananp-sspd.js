@@ -376,7 +376,13 @@ function generateDropdownContent(item) {
             <div class="download-section">
                 <h6 class="section-title">Unduh Dokumen Booking:</h6>
                 <div class="document-links-list">
-                    ${generateFileLink(item.file_booking_path, 'Dokumen Booking')}
+                    ${item.file_booking_path ? generateFileLink(item.file_booking_path, 'Dokumen Booking') : 
+                      `<div class="document-link-item">
+                          <span class="document-label">Dokumen Booking:</span>
+                          <a href="/api/ppat/generate-pdf-validasi/${item.nobooking}?download=true" target="_blank">
+                              <button class="btn-view">Generate & Download PDF</button>
+                          </a>
+                      </div>`}
                 </div>
             </div>
 
