@@ -93,6 +93,18 @@
   .main-content table.excel-table.gothic-table tbody tr:hover,
   table.gothic-table tbody tr:hover { background: #111827; transition: background .2s ease; }
 
+  /* Selected row highlight */
+  .main-content table.excel-table.gothic-table tbody tr.selected-row,
+  table.gothic-table tbody tr.selected-row {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%) !important;
+    border: 2px solid #3b82f6 !important;
+    box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.2);
+  }
+  .main-content table.excel-table.gothic-table tbody tr.selected-row td,
+  table.gothic-table tbody tr.selected-row td {
+    border-color: #3b82f6 !important;
+  }
+
   /* Rounded corners on header/footer cells for better rendering across browsers */
   .main-content table.excel-table.gothic-table thead tr:first-child th:first-child,
   table.gothic-table thead tr:first-child th:first-child { border-top-left-radius: 14px; }
@@ -931,10 +943,44 @@
             
             <div class="pv-input-group">
               <label>No. Validasi</label>
-              <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih"/>
+              <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih" readonly/>
             </div>
             
-            <details class="pv-appearance-details">
+            <div class="pv-input-group">
+              <label>No. Booking</label>
+              <input id="pv-no-booking" type="text" placeholder="Otomatis terisi saat memilih baris" readonly/>
+            </div>
+            
+            <!-- ACTION BUTTONS - Verify, Approve, Reject -->
+            <div class="pv-action-buttons-panel" style="margin-top: 20px; padding: 15px; background: rgba(30, 41, 59, 0.8); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+              <h4 style="margin: 0 0 15px 0; color: #fff; font-size: 14px;">Aksi Validasi:</h4>
+              
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <!-- VERIFY Button -->
+                <button id="pv-verify-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); opacity: 0.5;">
+                  🔍 Verify
+                </button>
+                
+                <!-- APPROVE Button -->
+                <button id="pv-approve-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3); opacity: 0.5;">
+                  ✅ Setujui & Kirim ke LSB
+                </button>
+                
+                <!-- REJECT Button -->
+                <button id="pv-reject-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3); opacity: 0.5;">
+                  ❌ Tolak
+                </button>
+              </div>
+              
+              <div id="pv-action-status" style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
+                Pilih dokumen dari tabel untuk mengaktifkan tombol.
+              </div>
+            </div>
+            
+            <details class="pv-appearance-details" style="margin-top: 15px;">
               <summary>Appearance (koordinat TTE)</summary>
               <div class="pv-appearance-inputs">
                 <input id="ap-page" type="number" min="1" value="1" placeholder="page"/>
@@ -948,7 +994,7 @@
               </div>
             </details>
             
-            <div id="pv-usermsg"></div>
+            <div id="pv-usermsg" style="margin-top: 10px;"></div>
             
             <details id="pv-debug">
               <summary>Detail teknis</summary>
@@ -1542,28 +1588,54 @@
       }catch(e){ alert(e.message); }
     });
   }
-  // Table row click -> fill no_validasi
+  // Table row click -> fill no_validasi AND no_booking in panel
   const tb = document.querySelector('#penelitikasieTable tbody.data-masuk');
   if(tb){
     tb.addEventListener('click', (ev)=>{
       let tr = ev.target;
       while(tr && tr.tagName !== 'TR') tr = tr.parentElement;
-      if(!tr) return;
-      const cell = tr.cells && tr.cells[0];
-      if(cell){
-        const nv = (cell.textContent||'').trim();
-        const input = el('pv-no-validasi');
-        if(input) input.value = nv;
-        if(out) out.textContent = 'Dipilih: ' + nv;
+      if(!tr || tr.classList.contains('dropdown-row')) return;
+      
+      // Get no_validasi from cell[0] and no_booking from cell[2]
+      const cellNoVal = tr.cells && tr.cells[0];
+      const cellNoBooking = tr.cells && tr.cells[2];
+      
+      if(cellNoVal){
+        const nv = (cellNoVal.textContent||'').trim();
+        const nb = cellNoBooking ? (cellNoBooking.textContent||'').trim() : '';
+        
+        // Fill panel inputs
+        const inputNoVal = el('pv-no-validasi');
+        const inputNoBooking = el('pv-no-booking');
+        if(inputNoVal) inputNoVal.value = nv;
+        if(inputNoBooking) inputNoBooking.value = nb;
+        if(out) out.textContent = 'Dipilih: ' + nv + ' / ' + nb;
+        
+        // Highlight selected row
+        tb.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
+        tr.classList.add('selected-row');
+        
+        // Update action status
+        const actionStatus = el('pv-action-status');
+        if(actionStatus) actionStatus.innerHTML = `📋 Dokumen terpilih: <strong>${nv}</strong>`;
+        
         // Reset action buttons until verify is run for new selection
         lastVerifiedNoVal = null;
-        // Update dropdown buttons state
+        selectedNoValidasi = nv;
+        selectedNoBooking = nb;
+        
+        // Update panel buttons state
         gateActions();
+        
         // Auto-claim saat memilih baris untuk mengunci dokumen ini
         (async ()=>{ try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(_){ /* abaikan jika sudah di-claim */ } })();
       }
     });
   }
+  
+  // Track selected document
+  let selectedNoValidasi = null;
+  let selectedNoBooking = null;
   // Delegasikan render tabel ke paraf_validasi.js
   async function loadPvDocs(){
     try{
@@ -1948,7 +2020,7 @@
   // - Status button only displayed status without performing any action
   const btnAp = el('pv-appearance');
   if(btnAp){ btnAp.onclick = async ()=>{ try{ const appearance = { page:Number(el('ap-page').value||1), x:Number(el('ap-x').value||0), y:Number(el('ap-y').value||0), width:Number(el('ap-w').value||0), height:Number(el('ap-h').value||0), reason:el('ap-reason').value||'', location:el('ap-location').value||'' }; const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/appearance`, { body:{ appearance } }); log('Koordinat TTE tersimpan', js);}catch(e){ log('Gagal simpan appearance: '+e.message);} }; }
-  // Button handlers removed from card - now handled in dropdown
+  // Button handlers - now in PANEL (not dropdown)
   // Functions handleVerify, handleApprove, handleReject are defined above
   async function gateActions(){
     try{
@@ -1960,57 +2032,89 @@
       const certJs = await certRes.json().catch(()=>({}));
       const hasSig = !!(authJs && authJs.success && authJs.has_signature);
       const certOk = !!(certJs && certJs.success && certJs.verified);
+      
+      // Get currently selected no_validasi from panel input
+      const currentNoVal = el('pv-no-validasi')?.value?.trim() || null;
+      
       // Set badge
       if(authBadge){
         authBadge.classList.remove('ok','warn');
         if(hasSig && certOk){ authBadge.textContent = 'Auth siap'; authBadge.classList.add('ok'); }
         else { authBadge.textContent = 'Auth belum siap'; authBadge.classList.add('warn'); }
       }
-      // Gate buttons in dropdown
-      // Verify gated by auth; Approve/Reject gated oleh auth + keberhasilan verify (lastVerifiedNoVal)
-      const canVerify = hasSig && certOk;
-      const canActFor = (btnNoValidasi) => (hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal);
       
-      // Update all dropdown buttons
+      // Gate PANEL buttons
+      // Verify gated by: auth + document selected
+      // Approve/Reject gated by: auth + verify completed for this document
+      const canVerify = hasSig && certOk && currentNoVal;
+      const canAct = hasSig && certOk && lastVerifiedNoVal && currentNoVal === lastVerifiedNoVal;
+      
+      // Update PANEL buttons
+      const btnVerify = el('pv-verify-btn');
+      const btnApprove = el('pv-approve-btn');
+      const btnReject = el('pv-reject-btn');
+      const actionStatus = el('pv-action-status');
+      
+      if(btnVerify) {
+        btnVerify.disabled = !canVerify;
+        btnVerify.style.opacity = canVerify ? '1' : '0.5';
+        btnVerify.style.cursor = canVerify ? 'pointer' : 'not-allowed';
+      }
+      
+      if(btnApprove) {
+        btnApprove.disabled = !canAct;
+        btnApprove.style.opacity = canAct ? '1' : '0.5';
+        btnApprove.style.cursor = canAct ? 'pointer' : 'not-allowed';
+      }
+      
+      if(btnReject) {
+        btnReject.disabled = !canAct;
+        btnReject.style.opacity = canAct ? '1' : '0.5';
+        btnReject.style.cursor = canAct ? 'pointer' : 'not-allowed';
+      }
+      
+      // Update action status message
+      if(actionStatus) {
+        if(!currentNoVal) {
+          actionStatus.innerHTML = '⬅️ Pilih dokumen dari tabel untuk mengaktifkan tombol.';
+        } else if(!hasSig || !certOk) {
+          actionStatus.innerHTML = '⚠️ Pastikan tanda tangan dan sertifikat sudah di-setup.';
+        } else if(canAct) {
+          actionStatus.innerHTML = `✅ Verifikasi berhasil! Silakan Setujui atau Tolak dokumen <strong>${currentNoVal}</strong>.`;
+        } else {
+          actionStatus.innerHTML = `📋 Dokumen terpilih: <strong>${currentNoVal}</strong>. Klik <strong>Verify</strong> untuk memulai validasi.`;
+        }
+      }
+      
+      // Also update dropdown buttons (for backward compatibility)
       document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
         btn.disabled = !canVerify;
-        if (!canVerify) {
-          btn.style.opacity = '0.6';
-          btn.style.cursor = 'not-allowed';
-        } else {
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        }
+        btn.style.opacity = canVerify ? '1' : '0.6';
+        btn.style.cursor = canVerify ? 'pointer' : 'not-allowed';
       });
       
       document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
         const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = canActFor(btnNoValidasi);
+        const btnCanAct = hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal;
         btn.disabled = !btnCanAct;
-        if (!btnCanAct) {
-          btn.style.opacity = '0.6';
-          btn.style.cursor = 'not-allowed';
-        } else {
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        }
+        btn.style.opacity = btnCanAct ? '1' : '0.6';
+        btn.style.cursor = btnCanAct ? 'pointer' : 'not-allowed';
       });
       
       document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
         const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = canActFor(btnNoValidasi);
+        const btnCanAct = hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal;
         btn.disabled = !btnCanAct;
-        if (!btnCanAct) {
-          btn.style.opacity = '0.6';
-          btn.style.cursor = 'not-allowed';
-        } else {
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-        }
+        btn.style.opacity = btnCanAct ? '1' : '0.6';
+        btn.style.cursor = btnCanAct ? 'pointer' : 'not-allowed';
       });
     }catch(_){
       if(authBadge){ authBadge.textContent = 'Auth belum siap'; authBadge.classList.remove('ok'); authBadge.classList.add('warn'); }
-      // Disable all dropdown buttons
+      // Disable all buttons
+      ['pv-verify-btn', 'pv-approve-btn', 'pv-reject-btn'].forEach(id => {
+        const btn = el(id);
+        if(btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+      });
       document.querySelectorAll('.pv-btn-verify-dropdown, .pv-btn-approve-dropdown, .pv-btn-reject-dropdown').forEach(btn => {
         btn.disabled = true;
         btn.style.opacity = '0.6';
@@ -2018,6 +2122,43 @@
       });
     }
   }
+  
+  // PANEL button event listeners
+  const btnVerifyPanel = el('pv-verify-btn');
+  const btnApprovePanel = el('pv-approve-btn');
+  const btnRejectPanel = el('pv-reject-btn');
+  
+  if(btnVerifyPanel) {
+    btnVerifyPanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnVerifyPanel.disabled) { alert('Button Verify tidak aktif. Pastikan sertifikat sudah dipilih.'); return; }
+      try {
+        await handleVerify(nv);
+      } catch(err) {
+        alert('Gagal verifikasi: ' + err.message);
+      }
+    });
+  }
+  
+  if(btnApprovePanel) {
+    btnApprovePanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnApprovePanel.disabled) { alert('Lakukan Verify terlebih dahulu!'); return; }
+      await handleApprove(nv);
+    });
+  }
+  
+  if(btnRejectPanel) {
+    btnRejectPanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnRejectPanel.disabled) { alert('Lakukan Verify terlebih dahulu!'); return; }
+      await handleReject(nv);
+    });
+  }
+  
   // Initial gate
   gateActions();
   
