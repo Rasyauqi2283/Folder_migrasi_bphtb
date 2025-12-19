@@ -1038,6 +1038,17 @@ body, html {
   font-style: italic;
 }
 
+/* Paraf status styling */
+.info-value.paraf-sudah {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.info-value.paraf-belum {
+  color: #ef4444;
+  font-weight: 600;
+}
+
 /* Status Badge */
 .status-badge {
   display: inline-flex;

@@ -2351,16 +2351,19 @@ app.get('/api/peneliti/get-berkas-till-verif', async (req, res) => {
                 pc.status,
                 pc.persetujuan,
                 pc.tanda_paraf_path, pc.pemverifikasi,
+                pc.created_at AS tanggal_masuk,
                 v.tanda_tangan_path,
                 v.tanda_tangan_mime,
                 -- tambahan untuk UI pesan stempel & penandatangan
                 pvs.stempel_booking_path,
-                au.nama AS signer_userid
+                au.nama AS signer_userid,
+                creator.special_field AS creator_special_field
             FROM p_3_clear_to_paraf pc
             LEFT JOIN pat_1_bookingsspd b ON pc.nobooking = b.nobooking
             LEFT JOIN a_2_verified_users v ON v.userid = $1
             LEFT JOIN p_2_verif_sign pvs ON pvs.nobooking = pc.nobooking
             LEFT JOIN a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
+            LEFT JOIN a_2_verified_users creator ON b.userid = creator.userid
             WHERE pc.trackstatus IN ('Diverifikasi','Diverifikasi ') AND pc.status IN ('Dikerjakan')
             ORDER BY pc.no_registrasi ASC
             LIMIT 1000;
@@ -2394,6 +2397,8 @@ app.get('/api/peneliti/get-berkas-till-verif', async (req, res) => {
                 akta_tanah_path: row.akta_tanah_path,
                 sertifikat_tanah_path: row.sertifikat_tanah_path,
                 pelengkap_path: row.pelengkap_path,
+                creator_special_field: row.creator_special_field || null,
+                tanggal_masuk: row.tanggal_masuk || null,
                 _metadata: {
                     isValid: !!(row.no_registrasi && row.nobooking),
                     source: 'database',

@@ -134,13 +134,13 @@ function filterData(query) {
         const nobooking = String(item.nobooking || '').toLowerCase();
         const noRegistrasi = String(item.no_registrasi || '').toLowerCase();
         const namawajibpajak = String(item.namawajibpajak || '').toLowerCase();
-        const userid = String(item.userid || '').toLowerCase();
+        const creatorSpecialField = String(item.creator_special_field || item.special_field || '').toLowerCase();
         
         return noppbb.includes(searchTerm) ||
                nobooking.includes(searchTerm) ||
                noRegistrasi.includes(searchTerm) ||
                namawajibpajak.includes(searchTerm) ||
-               userid.includes(searchTerm);
+               creatorSpecialField.includes(searchTerm);
     });
 }
 
@@ -430,10 +430,6 @@ function createCard(container, item) {
                         <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">User ID</span>
-                        <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
-                    </div>
-                    <div class="info-item">
                         <span class="info-label">Nama Wajib Pajak</span>
                         <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
                     </div>
@@ -446,8 +442,12 @@ function createCard(container, item) {
                         <span class="info-value ${formatValue(item.tahunajb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.tahunajb)}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Status</span>
-                        <span class="info-value ${formatValue(item.status) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.status)}</span>
+                        <span class="info-label">Pembuat Booking</span>
+                        <span class="info-value ${formatValue(item.creator_special_field || item.special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field || item.special_field)}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Paraf</span>
+                        <span class="info-value ${item.tanda_paraf_path ? 'paraf-sudah' : 'paraf-belum'}">${item.tanda_paraf_path ? 'Sudah' : 'Belum'}</span>
                     </div>
                 </div>
             </div>
@@ -459,7 +459,8 @@ function createCard(container, item) {
             <div class="date-section">
                 <div class="tanggal-info">
                     <span class="calendar-icon">📅</span>
-                    <span class="date-text">${formatValue(item.tanggal_terima || item.created_at)}</span>
+                    <span class="calendar-icon">📅</span>
+                    <span class="date-text">${item.tanggal_masuk ? new Date(item.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : (item.tanggal_terima ? new Date(item.tanggal_terima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : (item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi'))}</span>
                 </div>
             </div>
             
@@ -720,7 +721,7 @@ function showEmptyStateCards(container, message) {
     container.style.minHeight = '300px';
 }
 
-// View Document function (reuse from verifikasi)
+// View Document function (same as verifikasi)
 function viewDocument(nobooking) {
     try {
         if (!nobooking) {
@@ -730,11 +731,34 @@ function viewDocument(nobooking) {
 
         console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
         
-        // Open PDF in new tab - menggunakan API yang benar
-        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
-        window.open(pdfUrl, '_blank');
-        
-        showAlert('success', 'Dokumen berhasil dibuka');
+        const encodedBooking = encodeURIComponent(String(nobooking).trim());
+        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodedBooking}`;
+
+        // Try opening directly; fallback to blob if the popup is blocked
+        const newWindow = window.open(pdfUrl, '_blank', 'noopener');
+
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            // Popup blocked, fetch and open via blob
+            fetch(pdfUrl, { credentials: 'include' })
+                .then(async (res) => {
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        throw new Error(errText || `Gagal membuka dokumen (${res.status})`);
+                    }
+                    return res.blob();
+                })
+                .then((blob) => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    window.open(blobUrl, '_blank', 'noopener');
+                    showAlert('success', 'Dokumen berhasil dibuka');
+                })
+                .catch((err) => {
+                    console.error('View Document Fetch Error:', err);
+                    showAlert('error', `Gagal membuka dokumen: ${err.message}`);
+                });
+        } else {
+            showAlert('success', 'Dokumen berhasil dibuka');
+        }
     } catch (error) {
         console.error('View Document Error:', error);
         showAlert('error', `Gagal membuka dokumen: ${error.message}`);
