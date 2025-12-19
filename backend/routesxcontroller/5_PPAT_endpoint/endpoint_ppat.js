@@ -1059,14 +1059,14 @@ app.post('/api/ppat/upload-signatures', async (req, res) => {
         upload(req, res, async (err) => {
             if (err) {
                 return res.status(500).json({ success: false, message: 'Multer error: ' + err.message });
-            }
+        }
 
-            const { nobooking } = req.body;
-            const userid = req.session.user.userid;
+        const { nobooking } = req.body;
+        const userid = req.session.user.userid;
 
-            if (!nobooking) {
-                return res.status(400).json({ success: false, message: 'No booking required' });
-            }
+        if (!nobooking) {
+            return res.status(400).json({ success: false, message: 'No booking required' });
+        }
 
             // Cari file signature1
             const signatureFile = req.files.find(f => f.fieldname === 'signature1');
@@ -1108,9 +1108,9 @@ app.post('/api/ppat/upload-signatures', async (req, res) => {
                 nobooking: nobooking,
                 path: dbPath
             });
-        });
+            });
 
-    } catch (error) {
+        } catch (error) {
         console.error('❌ [PPAT] Upload signature failed:', error);
         res.status(500).json({
             success: false,

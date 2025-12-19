@@ -831,8 +831,30 @@
           const rows = js.rows||[];
           
           // Get pagination info from response
-          totalRecords = js.total || rows.length;
-          totalPages = js.totalPages || Math.ceil(totalRecords / PAGE_SIZE) || 1;
+          // If backend returns total, use it; otherwise estimate based on current page and row count
+          if (js.total !== undefined && js.total !== null && js.total > 0) {
+            totalRecords = parseInt(js.total) || 0;
+            totalPages = parseInt(js.totalPages) || Math.ceil(totalRecords / PAGE_SIZE) || 1;
+            console.log('✅ [BANK] Using backend pagination info:', { total: totalRecords, totalPages });
+          } else {
+            // Fallback: estimate based on current page and row count
+            if (rows.length === PAGE_SIZE) {
+              // Got full page: assume there's at least one more page
+              totalPages = Math.max(currentPage + 1, totalPages);
+              totalRecords = totalPages * PAGE_SIZE; // Estimate
+              console.log('⚠️ [BANK] Backend did not return total, estimating:', { totalPages, totalRecords });
+            } else if (currentPage > 1) {
+              // On page > 1 with less than full page: this is the last page
+              totalPages = currentPage;
+              totalRecords = (currentPage - 1) * PAGE_SIZE + rows.length;
+              console.log('⚠️ [BANK] Backend did not return total, using current page as last:', { totalPages, totalRecords });
+            } else {
+              // Page 1 with less than full page: only one page
+              totalPages = 1;
+              totalRecords = rows.length;
+              console.log('⚠️ [BANK] Backend did not return total, single page detected:', { totalPages, totalRecords });
+            }
+          }
           
           console.log('✅ [BANK] Received data:', {
             success: js.success,
@@ -840,6 +862,8 @@
             totalRecords: totalRecords,
             totalPages: totalPages,
             currentPage: currentPage,
+            backendTotal: js.total,
+            backendTotalPages: js.totalPages,
             sampleData: rows.slice(0, 2)
           });
           
@@ -891,14 +915,40 @@
       
       function renderPagination() {
         const container = document.getElementById('bankPagination');
-        if (!container) return;
+        if (!container) {
+          console.warn('⚠️ [BANK] Pagination container not found!');
+          return;
+        }
         
         container.innerHTML = '';
         
-        if (totalPages <= 1) {
-          // Don't show pagination if only one page or no data
+        // Always show pagination if we have data and (totalPages > 1 OR current page > 1 OR we got full page)
+        const hasData = tbody.children.length > 0;
+        const gotFullPage = tbody.children.length === PAGE_SIZE;
+        const shouldShowPagination = hasData && (totalPages > 1 || currentPage > 1 || gotFullPage);
+        
+        if (!shouldShowPagination) {
+          console.log('📄 [BANK] Pagination not shown:', {
+            hasData,
+            totalPages,
+            currentPage,
+            rowCount: tbody.children.length,
+            pageSize: PAGE_SIZE,
+            gotFullPage
+          });
           return;
         }
+        
+        console.log('📄 [BANK] Rendering pagination:', {
+          totalPages,
+          currentPage,
+          totalRecords,
+          rowCount: tbody.children.length
+        });
+        
+        // Ensure totalPages is at least currentPage + 1 if we got full page
+        const displayTotalPages = Math.max(totalPages, gotFullPage ? currentPage + 1 : currentPage);
+        const displayTotalRecords = totalRecords > 0 ? totalRecords : (displayTotalPages * PAGE_SIZE);
         
         const pagination = document.createElement('div');
         pagination.className = 'pagination-controls';
@@ -907,26 +957,27 @@
             <i class="fa fa-chevron-left"></i> Prev
           </button>
           <div class="page-numbers">
-            ${generatePageNumbers()}
+            ${generatePageNumbers(displayTotalPages)}
           </div>
-          <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">
+          <button class="page-btn" ${currentPage >= displayTotalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">
             Next <i class="fa fa-chevron-right"></i>
           </button>
           <div class="page-info">
-            Halaman ${currentPage} dari ${totalPages} (Total: ${totalRecords} data)
+            Halaman ${currentPage} dari ${displayTotalPages}${totalRecords > 0 ? ` (Total: ${displayTotalRecords} data)` : ''}
           </div>
         `;
         
         container.appendChild(pagination);
       }
       
-      function generatePageNumbers() {
+      function generatePageNumbers(maxPages = totalPages) {
         let pages = [];
         const maxVisible = 5; // Maximum visible page numbers
+        const effectiveTotalPages = Math.max(maxPages, totalPages, currentPage);
         
-        if (totalPages <= maxVisible) {
+        if (effectiveTotalPages <= maxVisible) {
           // Show all pages if total pages is small
-          for (let i = 1; i <= totalPages; i++) {
+          for (let i = 1; i <= effectiveTotalPages; i++) {
             pages.push(i);
           }
         } else {
@@ -937,12 +988,12 @@
               pages.push(i);
             }
             pages.push('ellipsis');
-            pages.push(totalPages);
-          } else if (currentPage >= totalPages - 2) {
+            pages.push(effectiveTotalPages);
+          } else if (currentPage >= effectiveTotalPages - 2) {
             // Show last pages
             pages.push(1);
             pages.push('ellipsis');
-            for (let i = totalPages - 3; i <= totalPages; i++) {
+            for (let i = effectiveTotalPages - 3; i <= effectiveTotalPages; i++) {
               pages.push(i);
             }
           } else {
@@ -953,7 +1004,7 @@
               pages.push(i);
             }
             pages.push('ellipsis');
-            pages.push(totalPages);
+            pages.push(effectiveTotalPages);
           }
         }
         
@@ -967,7 +1018,11 @@
       }
       
       function goToPage(page) {
-        if (page < 1 || page > totalPages || page === currentPage) return;
+        if (page < 1 || page === currentPage) return;
+        // Allow going to next page even if totalPages is not known yet
+        if (totalPages > 0 && page > totalPages) {
+          console.warn('⚠️ [BANK] Page exceeds totalPages, but allowing navigation');
+        }
         load(page);
         // Scroll to top of table
         const table = document.querySelector('.table-scroll');

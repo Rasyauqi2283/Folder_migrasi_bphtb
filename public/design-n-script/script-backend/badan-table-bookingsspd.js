@@ -490,7 +490,7 @@ function deleteSelectedRow() {
 
         if (isConfirmed) {
             // Backend butuh trackstatus dalam body
-            fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
+fetch(`/api/ppat/update-trackstatus/${nobooking}`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers: {
@@ -888,7 +888,7 @@ async function uploadSignatures(nobooking, signature1Blob) {
         if (!nobooking) {
             throw new Error('No Booking tidak ditemukan! Silakan pilih data kembali.');
         }
-
+        
         const formData = new FormData();
         formData.append('nobooking', nobooking);
         
@@ -898,7 +898,7 @@ async function uploadSignatures(nobooking, signature1Blob) {
         
         console.log('Mengirim request ke server...', { endpoint: '/api/ppat/upload-signatures' });
         
-        const response = await fetch('/api/ppat/upload-signatures', {
+const response = await fetch('/api/ppat/upload-signatures', {
             method: 'POST',
             body: formData,
             credentials: 'include'

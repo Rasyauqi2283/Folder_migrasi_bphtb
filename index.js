@@ -415,12 +415,36 @@ app.get('/api/bank/transaksi', async (req, res) => {
       )`);
     }
 
+    // Get total count first (using same WHERE conditions and params, but without limit/offset)
+    const countParams = [...params]; // Copy params for count query
+    
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM bank_1_cek_hasil_transaksi bk
+      LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
+      LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
+      LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
+      LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
+      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    `;
+    
+    console.log('🔍 [BANK-API] Count SQL Query:', countSql);
+    console.log('🔍 [BANK-API] Count params:', countParams);
+    const countResult = await pool.query(countSql, countParams);
+    const total = parseInt(countResult.rows[0]?.total || 0);
+    const totalPages = Math.ceil(total / lim) || 1;
+
+    console.log('📊 [BANK-API] Total records:', total, 'Total pages:', totalPages);
+
+    // Now get paginated data
     params.push(lim, off);
 
     console.log('🔍 [BANK-API] Query parameters:', {
       tab, status, q, page, limit,
       whereClauses: where,
-      paramsCount: params.length
+      paramsCount: params.length,
+      total: total,
+      totalPages: totalPages
     });
 
     const sql = `
@@ -451,13 +475,18 @@ app.get('/api/bank/transaksi', async (req, res) => {
     
     console.log('✅ [BANK-API] Query result:', {
       rowCount: rows.rows.length,
+      total: total,
+      totalPages: totalPages,
+      currentPage: parseInt(page),
       sampleData: rows.rows.slice(0, 2)
     });
 
     return res.json({ 
       success: true, 
       page: parseInt(page), 
-      limit: lim, 
+      limit: lim,
+      total: total,
+      totalPages: totalPages,
       rows: rows.rows 
     });
   } catch (e) {

@@ -24,19 +24,19 @@ html, body {
   margin-left: 70px; /* 60px sidebar + 10px gutter */
   margin-right: 15px; /* Fixed 15px from viewport edge */
   margin-top: 80px; /* header height */
-
+  
   /* Dimensions - respect viewport width */
   width: calc(100vw - 70px - 15px);
   max-width: calc(100vw - 70px - 15px);
   height: calc(100vh - 80px - 40px); /* minus header and footer */
-
+  
   /* Smooth interaction */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: margin-left, width;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
-
+  
   /* Hide scrollbar for aesthetics */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
