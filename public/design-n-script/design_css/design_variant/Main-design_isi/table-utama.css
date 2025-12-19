@@ -1558,7 +1558,6 @@ body:has(#ltbBerkasTable) .main-content .data-masuk {
 /* ===== BANK PAGE STYLING ===== */
 /* Bank page specific styling */
 .bank-page {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #f3f4f6;
   overflow-x: hidden; /* Prevent horizontal scroll on body */
 }

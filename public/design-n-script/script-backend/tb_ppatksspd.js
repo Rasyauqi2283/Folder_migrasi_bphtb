@@ -109,6 +109,8 @@ async function loadTableDataLTB() {
             const PAGE_SIZE = 8;
             const rows = Array.isArray(data.data) ? data.data : [];
             let currentPage = 1;
+            let totalPages = 1;
+            let totalRecords = rows.length;
 
             console.log('📊 [FRONTEND] Data processing:', {
                 pageSize: PAGE_SIZE,
@@ -144,10 +146,16 @@ async function loadTableDataLTB() {
             }
 
             function renderPage(page) {
+                // Update totalPages and totalRecords
+                totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+                totalRecords = rows.length;
+                
                 console.log(`📄 [PAGINATION] Rendering page ${page}:`, {
                     start: (page - 1) * PAGE_SIZE,
                     end: (page - 1) * PAGE_SIZE + PAGE_SIZE,
-                    totalRows: rows.length
+                    totalRows: rows.length,
+                    totalPages: totalPages,
+                    totalRecords: totalRecords
                 });
                 
                 currentPage = page;
@@ -329,43 +337,128 @@ async function loadTableDataLTB() {
             }
 
             function renderPagination() {
-                const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
-                console.log('📄 [PAGINATION] Rendering pagination:', {
-                    totalRows: rows.length,
-                    pageSize: PAGE_SIZE,
-                    totalPages: totalPages,
-                    currentPage: currentPage
-                });
+                totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+                totalRecords = rows.length;
                 
                 const container = document.getElementById('ltbPagination');
                 if (!container) {
-                    console.error('❌ [PAGINATION] Pagination container not found!');
+                    console.warn('⚠️ [LTB] Pagination container not found!');
                     return;
                 }
-                console.log('✅ [PAGINATION] Container found, clearing and building...');
+                
                 container.innerHTML = '';
-                const makeBtn = (label, page, disabled, active) => {
-                    const btn = document.createElement('button');
-                    btn.className = 'page-btn' + (active ? ' active' : '');
-                    btn.textContent = label;
-                    btn.disabled = !!disabled;
-                    btn.onclick = () => renderPage(page);
-                    return btn;
-                };
-                container.appendChild(makeBtn('Prev', Math.max(1, currentPage - 1), currentPage === 1, false));
-                for (let p = 1; p <= totalPages; p++) {
-                    // Only show window around current page for large counts
-                    if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2) {
-                        container.appendChild(makeBtn(String(p), p, false, p === currentPage));
-                    } else if (Math.abs(p - currentPage) === 3) {
-                        const span = document.createElement('span');
-                        span.textContent = '...';
-                        span.style.margin = '0 4px';
-                        container.appendChild(span);
+                
+                // Always show pagination if we have data and (totalPages > 1 OR current page > 1 OR we got full page)
+                const hasData = tbody.children.length > 0;
+                const gotFullPage = tbody.children.length === PAGE_SIZE;
+                const shouldShowPagination = hasData && (totalPages > 1 || currentPage > 1 || gotFullPage);
+                
+                if (!shouldShowPagination) {
+                    console.log('📄 [LTB] Pagination not shown:', {
+                        hasData,
+                        totalPages,
+                        currentPage,
+                        rowCount: tbody.children.length,
+                        pageSize: PAGE_SIZE,
+                        gotFullPage
+                    });
+                    return;
+                }
+                
+                console.log('📄 [LTB] Rendering pagination:', {
+                    totalPages,
+                    currentPage,
+                    totalRecords,
+                    rowCount: tbody.children.length
+                });
+                
+                // Ensure totalPages is at least currentPage + 1 if we got full page
+                const displayTotalPages = Math.max(totalPages, gotFullPage ? currentPage + 1 : currentPage);
+                const displayTotalRecords = totalRecords > 0 ? totalRecords : (displayTotalPages * PAGE_SIZE);
+                
+                const pagination = document.createElement('div');
+                pagination.className = 'pagination-controls';
+                pagination.innerHTML = `
+                    <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPageLTB(${currentPage - 1})">
+                        <i class="fa fa-chevron-left"></i> Prev
+                    </button>
+                    <div class="page-numbers">
+                        ${generatePageNumbersLTB(displayTotalPages)}
+                    </div>
+                    <button class="page-btn" ${currentPage >= displayTotalPages ? 'disabled' : ''} onclick="goToPageLTB(${currentPage + 1})">
+                        Next <i class="fa fa-chevron-right"></i>
+                    </button>
+                    <div class="page-info">
+                        Halaman ${currentPage} dari ${displayTotalPages}${totalRecords > 0 ? ` (Total: ${totalRecords} data)` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(pagination);
+            }
+            
+            function generatePageNumbersLTB(maxPages = totalPages) {
+                let pages = [];
+                const maxVisible = 5; // Maximum visible page numbers
+                const effectiveTotalPages = Math.max(maxPages, totalPages, currentPage);
+                
+                if (effectiveTotalPages <= maxVisible) {
+                    // Show all pages if total pages is small
+                    for (let i = 1; i <= effectiveTotalPages; i++) {
+                        pages.push(i);
+                    }
+                } else {
+                    // Show pages with ellipsis
+                    if (currentPage <= 3) {
+                        // Show first pages
+                        for (let i = 1; i <= 4; i++) {
+                            pages.push(i);
+                        }
+                        pages.push('ellipsis');
+                        pages.push(effectiveTotalPages);
+                    } else if (currentPage >= effectiveTotalPages - 2) {
+                        // Show last pages
+                        pages.push(1);
+                        pages.push('ellipsis');
+                        for (let i = effectiveTotalPages - 3; i <= effectiveTotalPages; i++) {
+                            pages.push(i);
+                        }
+                    } else {
+                        // Show middle pages
+                        pages.push(1);
+                        pages.push('ellipsis');
+                        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                            pages.push(i);
+                        }
+                        pages.push('ellipsis');
+                        pages.push(effectiveTotalPages);
                     }
                 }
-                container.appendChild(makeBtn('Next', Math.min(totalPages, currentPage + 1), currentPage === totalPages, false));
+                
+                return pages.map(page => {
+                    if (page === 'ellipsis') {
+                        return '<span class="page-ellipsis">...</span>';
+                    }
+                    const isActive = page === currentPage;
+                    return `<button class="page-number ${isActive ? 'active' : ''}" onclick="goToPageLTB(${page})">${page}</button>`;
+                }).join('');
             }
+            
+            function goToPageLTB(page) {
+                if (page < 1 || page === currentPage) return;
+                // Allow going to next page even if totalPages is not known yet
+                if (totalPages > 0 && page > totalPages) {
+                    console.warn('⚠️ [LTB] Page exceeds totalPages, but allowing navigation');
+                }
+                renderPage(page);
+                // Scroll to top of table
+                const table = document.querySelector('.table-scroll') || document.querySelector('table');
+                if (table) {
+                    table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+            
+            // Make goToPageLTB globally available
+            window.goToPageLTB = goToPageLTB;
 
             // Search/filter
             const searchInput = document.getElementById('ltbSearch');
