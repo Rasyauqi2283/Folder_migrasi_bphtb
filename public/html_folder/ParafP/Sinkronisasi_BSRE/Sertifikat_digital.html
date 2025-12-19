@@ -81,10 +81,16 @@
         }
         .form-group {
             display: flex;
-            gap: 8px;
+            gap: 12px;
             flex-wrap: wrap;
             align-items: center;
             margin: 10px 0;
+        }
+        .form-group.form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 12px;
+            align-items: start;
         }
         .form-group input {
             padding: 10px 12px;
@@ -92,6 +98,8 @@
             border-radius: 6px;
             font-size: 14px;
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
         }
         .form-group input:focus {
             outline: none;
@@ -99,10 +107,21 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         .form-group input[type="number"] {
-            width: 120px;
+            max-width: 180px;
         }
         .form-group input[type="password"] {
-            min-width: 240px;
+            min-width: 280px;
+        }
+        .form-group .input-full {
+            grid-column: 1 / -1;
+        }
+        @media (min-width: 768px) {
+            .form-group.form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .form-group.form-grid input[type="number"] {
+                max-width: 200px;
+            }
         }
         .form-group button {
             padding: 10px 20px;
@@ -115,6 +134,10 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            white-space: nowrap;
+        }
+        .form-group.form-grid button {
+            width: 100%;
         }
         .form-group button:hover:not(:disabled) {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
@@ -219,8 +242,19 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+            .form-group.form-grid {
+                grid-template-columns: 1fr;
+            }
             .form-group input {
                 width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
+            }
+            .form-group input[type="number"] {
+                max-width: 100% !important;
+            }
+            .form-group input[type="password"] {
+                min-width: 100% !important;
             }
         }
     </style>
@@ -398,13 +432,13 @@
                 <span id="kp-hint" class="hint-text">Kunci privat disimpan di browser; hanya publik yang dikirim ke server.</span>
             </div>
             <div id="pub-preview" class="pub-preview"></div>
-            <div class="form-group">
+            <div class="form-group form-grid">
                 <input id="sub-cn" placeholder="Nama tampil di sertifikat (mis. Kepala Bidang)" title="CN = Common Name (nama tampilan)">
                 <input id="sub-email" placeholder="Email (opsional)" title="Boleh dikosongkan">
                 <input id="sub-org" placeholder="Organisasi (opsional)" title="Boleh dikosongkan">
                 <input id="sub-days" type="number" min="1" value="365" title="Masa berlaku sertifikat (hari)">
-                <input id="sub-pass" type="password" placeholder="Passphrase untuk mengunci pemakaian (≥4 karakter)" title="Sandi ini diminta saat tanda tangan">
-                <button id="btn-issue" disabled title="Klik setelah kunci dibuat dan data terisi">Daftarkan Sertifikat</button>
+                <input id="sub-pass" type="password" class="input-full" placeholder="Passphrase untuk mengunci pemakaian (≥4 karakter)" title="Sandi ini diminta saat tanda tangan">
+                <button id="btn-issue" class="input-full" disabled title="Klik setelah kunci dibuat dan data terisi">Daftarkan Sertifikat</button>
             </div>
         </section>
 
