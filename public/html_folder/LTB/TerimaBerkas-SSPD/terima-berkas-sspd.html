@@ -204,18 +204,19 @@
             background: #e0a800;
         }
         
-        /* Pagination Styles */
+        /* Pagination Styles - Dark Theme to match table */
         .pagination-container {
             margin-top: 20px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
+            background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
             border-radius: 12px;
-            border: 1px solid rgba(81, 81, 95, 0.3);
+            border: 1px solid #1f2937;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,.35);
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .pagination-controls {
@@ -248,10 +249,11 @@
         }
         
         .page-btn:disabled {
-            background: rgba(81, 81, 95, 0.3);
-            color: #9ca3af;
+            background: rgba(31, 41, 55, 0.5);
+            color: #6b7280;
             cursor: not-allowed;
             opacity: 0.5;
+            border: 1px solid #374151;
         }
         
         .page-numbers {
@@ -261,9 +263,9 @@
         }
         
         .page-number {
-            background: rgba(255, 255, 255, 0.8);
-            color: #374151;
-            border: 1px solid rgba(81, 81, 95, 0.3);
+            background: rgba(17, 24, 39, 0.8);
+            color: #f3f4f6;
+            border: 1px solid #374151;
             padding: 8px 12px;
             border-radius: 8px;
             font-weight: 600;
@@ -275,9 +277,9 @@
         }
         
         .page-number:hover:not(.active) {
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.2);
             border-color: #3b82f6;
-            color: #3b82f6;
+            color: #60a5fa;
         }
         
         .page-number.active {
@@ -288,20 +290,20 @@
         }
         
         .page-ellipsis {
-            color: #6b7280;
+            color: #9ca3af;
             padding: 8px 4px;
             font-weight: 600;
         }
         
         .page-info {
-            color: #374151;
+            color: #f3f4f6;
             font-size: 13px;
             font-weight: 500;
             margin-left: 12px;
             padding: 8px 12px;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(59, 130, 246, 0.15);
             border-radius: 8px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
         
         @media (max-width: 768px) {
