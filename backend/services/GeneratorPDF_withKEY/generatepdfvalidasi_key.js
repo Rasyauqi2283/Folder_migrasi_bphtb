@@ -45,7 +45,8 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     const data = rows[0];
     
     // 2) Tentukan PV userid yang dipakai
-    // Prioritas: parameter pvUserid (harusnya userid yang sedang login) -> pv_1_paraf_validate.pemverifikasi -> pv_2_signing_requests.signer_userid
+    // Prioritas: parameter pvUserid (harusnya userid yang sedang login)
+    // -> pv_2_signing_requests.signer_userid -> pv_1_paraf_validate.pemverifikasi
     let effectivePvUserid = pvUserid || null;
 
     // Jika noValidasi kosong, coba ambil dari pv_1_paraf_validate dengan nobooking
@@ -63,21 +64,6 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
 
     if (!effectivePvUserid) {
         try {
-            const pvUserFromValidate = await pool.query(
-                `SELECT pemverifikasi FROM pv_1_paraf_validate WHERE no_validasi = $1 OR nobooking = $2 LIMIT 1`,
-                [noValidasi, nobooking]
-            );
-            if (pvUserFromValidate.rows.length > 0) {
-                effectivePvUserid = pvUserFromValidate.rows[0].pemverifikasi || null;
-                console.log('[PDF-PV] effectivePvUserid from pv_1_paraf_validate:', effectivePvUserid);
-            }
-        } catch (e) {
-            console.warn('[PDF-PV] Failed to fetch pemverifikasi from pv_1_paraf_validate:', e.message);
-        }
-    }
-
-    if (!effectivePvUserid) {
-        try {
             const signerQ = await pool.query(
                 `SELECT signer_userid FROM pv_2_signing_requests 
                  WHERE no_validasi = $1 OR nobooking = $2 
@@ -90,6 +76,21 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
             }
         } catch (e) {
             console.warn('[PDF-PV] Failed to fetch signer_userid from pv_2_signing_requests:', e.message);
+        }
+    }
+
+    if (!effectivePvUserid) {
+        try {
+            const pvUserFromValidate = await pool.query(
+                `SELECT pemverifikasi FROM pv_1_paraf_validate WHERE no_validasi = $1 OR nobooking = $2 LIMIT 1`,
+                [noValidasi, nobooking]
+            );
+            if (pvUserFromValidate.rows.length > 0) {
+                effectivePvUserid = pvUserFromValidate.rows[0].pemverifikasi || null;
+                console.log('[PDF-PV] effectivePvUserid from pv_1_paraf_validate:', effectivePvUserid);
+            }
+        } catch (e) {
+            console.warn('[PDF-PV] Failed to fetch pemverifikasi from pv_1_paraf_validate:', e.message);
         }
     }
 
@@ -149,10 +150,6 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     const finalPvSpecialParafv = pvUserData.special_parafv || pvTitle || '';
     const finalPvSubjectCn = pvUserData.subject_cn || pvCn || 'Kepala Bidang Pelayanan dan Penetapan';
     const certCreatedAt = pvUserData.cert_created_at || null;
-
-    if (!certCreatedAt) {
-        throw new Error('Tanggal sertifikat PV tidak ditemukan');
-    }
 
     // 2) Siapkan stream file
     const outDir = path.dirname(outputPath);
@@ -459,20 +456,45 @@ const jenisPerolehanMap = {
     let qrAbsPath = null;
     if (nv) {
       try {
-        // Format tanggal sertifikat: DD/MM/YYYY
-        const certDate = certCreatedAt instanceof Date ? certCreatedAt : new Date(certCreatedAt);
-        const dd = String(certDate.getDate()).padStart(2, '0');
-        const mm = String(certDate.getMonth() + 1).padStart(2, '0');
-        const yyyy = certDate.getFullYear();
-        const formattedCertDate = `${dd}/${mm}/${yyyy}`;
-        
-        // Build QR payload: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
-        if (!finalPvNip || !finalPvSpecialParafv) {
-            throw new Error('Data PV untuk QR tidak lengkap (NIP atau special_parafv kosong)');
+        // Jika ada qr_payload di pv_2_signing_requests, gunakan
+        let qrPayload = null;
+        try {
+            const qrRow = await pool.query(
+                `SELECT qr_payload, no_validasi FROM pv_2_signing_requests 
+                 WHERE nobooking = $1 
+                 ORDER BY id DESC LIMIT 1`,
+                [nobooking]
+            );
+            if (qrRow.rows.length > 0 && qrRow.rows[0].qr_payload) {
+                qrPayload = qrRow.rows[0].qr_payload;
+                const nvDb = qrRow.rows[0].no_validasi || nv;
+                if (nvDb && !qrPayload.includes('|')) {
+                    qrPayload = `${qrPayload}|${nvDb}`;
+                }
+                console.log('[QR-PAYLOAD] Using signing_request qr_payload:', qrPayload);
+            }
+        } catch (e) {
+            console.warn('[QR-WARN] Failed to read qr_payload from pv_2_signing_requests:', e.message);
         }
-        const qrPayload = `${finalPvNip}/${formattedCertDate}/${finalPvSpecialParafv}//E-BPHTB BAPPENDA KAB BOGOR|${nv}`;
-        
-        console.log(`[QR-PAYLOAD] Generated QR payload: ${qrPayload}`);
+
+        // Jika tidak ada qr_payload, bangun payload baru
+        if (!qrPayload) {
+            if (!certCreatedAt) {
+                throw new Error('Tanggal sertifikat PV tidak ditemukan');
+            }
+            // Format tanggal sertifikat: DD/MM/YYYY
+            const certDate = certCreatedAt instanceof Date ? certCreatedAt : new Date(certCreatedAt);
+            const dd = String(certDate.getDate()).padStart(2, '0');
+            const mm = String(certDate.getMonth() + 1).padStart(2, '0');
+            const yyyy = certDate.getFullYear();
+            const formattedCertDate = `${dd}/${mm}/${yyyy}`;
+            
+            if (!finalPvNip || !finalPvSpecialParafv) {
+                throw new Error('Data PV untuk QR tidak lengkap (NIP atau special_parafv kosong)');
+            }
+            qrPayload = `${finalPvNip}/${formattedCertDate}/${finalPvSpecialParafv}//E-BPHTB BAPPENDA KAB BOGOR|${nv}`;
+            console.log(`[QR-PAYLOAD] Generated QR payload: ${qrPayload}`);
+        }
         
         const saved = await saveQrToPublic({ 
           filename: `validasi_${nv}`, 
