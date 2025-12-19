@@ -93,18 +93,24 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
         }
     }
 
+    // Harus menemukan PV userid yang valid
+    if (!effectivePvUserid) {
+        throw new Error('PV user tidak ditemukan untuk dokumen ini.');
+    }
+
     // 3) Ambil data PV user (yang melakukan validasi) secara terpisah
-    let pvUserData = { nip: '', special_parafv: '', subject_cn: '', cert_created_at: null };
+    let pvUserData = { nip: '', special_parafv: '', subject_cn: '', cert_created_at: null, divisi: '' };
     if (effectivePvUserid) {
         try {
             // Get PV user profile (nip & special_parafv)
             const pvUserQ = await pool.query(
-                `SELECT nip, special_parafv FROM a_2_verified_users WHERE userid = $1 LIMIT 1`,
+                `SELECT nip, special_parafv, divisi FROM a_2_verified_users WHERE userid = $1 LIMIT 1`,
                 [effectivePvUserid]
             );
             if (pvUserQ.rows.length > 0) {
                 pvUserData.nip = pvUserQ.rows[0].nip || '';
                 pvUserData.special_parafv = pvUserQ.rows[0].special_parafv || '';
+                pvUserData.divisi = pvUserQ.rows[0].divisi || '';
             }
             
             // Get PV user's active certificate (subject_cn & created_at)
@@ -127,11 +133,26 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
         console.warn('[PDF-PV] effectivePvUserid not found; NIP/special_parafv may be empty');
     }
     
+    // Validasi minimal: divisi harus Peneliti Validasi, nip & special_parafv wajib ada
+    if ((pvUserData.divisi || '').toLowerCase() !== 'peneliti validasi') {
+        throw new Error('User PV bukan Peneliti Validasi');
+    }
+    if (!pvUserData.nip) {
+        throw new Error('NIP PV tidak ditemukan');
+    }
+    if (!pvUserData.special_parafv) {
+        throw new Error('special_parafv PV tidak ditemukan');
+    }
+    
     // Use provided params as fallback, then fetched data
     const finalPvNip = pvUserData.nip || pvNip || '';
     const finalPvSpecialParafv = pvUserData.special_parafv || pvTitle || '';
     const finalPvSubjectCn = pvUserData.subject_cn || pvCn || 'Kepala Bidang Pelayanan dan Penetapan';
-    const certCreatedAt = pvUserData.cert_created_at || new Date();
+    const certCreatedAt = pvUserData.cert_created_at || null;
+
+    if (!certCreatedAt) {
+        throw new Error('Tanggal sertifikat PV tidak ditemukan');
+    }
 
     // 2) Siapkan stream file
     const outDir = path.dirname(outputPath);
@@ -408,6 +429,9 @@ const jenisPerolehanMap = {
     
     doc.text('No Validasi', 55, footerY + 60);
     const nv = String(noValidasi || data.no_validasi || '').trim();
+    if (!nv) {
+        throw new Error('No validasi tidak tersedia');
+    }
     doc.text(nv || '-', 55, footerY + 70);
     
     // PPAT/PPATS/NOTARIS: pejabat_umum dari a_2_verified_users (pembuat booking)
@@ -443,6 +467,9 @@ const jenisPerolehanMap = {
         const formattedCertDate = `${dd}/${mm}/${yyyy}`;
         
         // Build QR payload: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
+        if (!finalPvNip || !finalPvSpecialParafv) {
+            throw new Error('Data PV untuk QR tidak lengkap (NIP atau special_parafv kosong)');
+        }
         const qrPayload = `${finalPvNip}/${formattedCertDate}/${finalPvSpecialParafv}//E-BPHTB BAPPENDA KAB BOGOR|${nv}`;
         
         console.log(`[QR-PAYLOAD] Generated QR payload: ${qrPayload}`);
