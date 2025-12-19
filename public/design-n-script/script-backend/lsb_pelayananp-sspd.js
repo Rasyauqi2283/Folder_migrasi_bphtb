@@ -131,12 +131,22 @@ async function loadTableLSB() {
 		}) : [];
 		
 		console.log(`📊 [LSB-Frontend] Filtered items: ${allItems.length} (from ${data.data.length} total)`);
+		if (allItems.length > 0) {
+			console.log('📋 [LSB-Frontend] Sample filtered item:', {
+				nobooking: allItems[0].nobooking,
+				status: allItems[0].status,
+				trackstatus: allItems[0].trackstatus
+			});
+		}
 		totalRecords = allItems.length;
 		totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+		console.log(`📄 [LSB-Frontend] Pagination: totalRecords=${totalRecords}, totalPages=${totalPages}, PAGE_SIZE=${PAGE_SIZE}`);
 
 		function renderRows(items) {
+			console.log(`🎨 [LSB-Frontend] renderRows called with ${items.length} items`);
 			tbody.innerHTML = '';
 			if (!items.length) {
+				console.log('⚠️ [LSB-Frontend] No items to render, showing empty message');
 				const emptyRow = tbody.insertRow();
 				const emptyCell = emptyRow.insertCell(0);
 				emptyCell.colSpan = 10;
@@ -146,8 +156,10 @@ async function loadTableLSB() {
 				renderPagination(); // Still render pagination even if no data
 				return;
 			}
-			items.forEach(item => {
+			console.log(`✅ [LSB-Frontend] Rendering ${items.length} rows`);
+			items.forEach((item, index) => {
 				try {
+					console.log(`🔄 [LSB-Frontend] Processing item ${index + 1}/${items.length}:`, item.nobooking);
 					const row = tbody.insertRow();
 					row.setAttribute('data-nobooking', item.nobooking || '');
 					const displayValues = [
@@ -165,6 +177,7 @@ async function loadTableLSB() {
 						const cell = row.insertCell(idx);
 						cell.textContent = val;
 					});
+					console.log(`✅ [LSB-Frontend] Row ${index + 1} created for nobooking: ${item.nobooking}`);
 
 					// Action cell (Kirim)
 					const actionCell = row.insertCell(9);
@@ -251,7 +264,8 @@ async function loadTableLSB() {
 						}
 					});
 				} catch (itemError) {
-					console.error('Error processing item:', itemError);
+					console.error(`❌ [LSB-Frontend] Error processing item ${index + 1}:`, itemError);
+					console.error(`❌ [LSB-Frontend] Item data:`, item);
 					const errorRow = tbody.insertRow();
 					const errorCell = errorRow.insertCell(0);
 					errorCell.colSpan = 10;
@@ -259,6 +273,7 @@ async function loadTableLSB() {
 					errorCell.style.color = 'red';
 				}
 			});
+			console.log(`✅ [LSB-Frontend] renderRows completed. Total rows in tbody: ${tbody.children.length}`);
 		}
 
 		function generatePageNumbers(maxPages = totalPages) {
@@ -341,14 +356,20 @@ async function loadTableLSB() {
 		}
 
 		function goToPageLSB(page) {
-			if (page < 1 || page === currentPage) return;
+			console.log(`📄 [LSB-Frontend] goToPageLSB called with page=${page}, currentPage=${currentPage}, totalPages=${totalPages}`);
+			if (page < 1 || page === currentPage) {
+				console.log(`⏭️ [LSB-Frontend] Skipping page navigation (page=${page}, currentPage=${currentPage})`);
+				return;
+			}
 			if (page > totalPages) {
-				console.warn('⚠️ [LSB] Page exceeds totalPages, but allowing navigation');
+				console.warn('⚠️ [LSB-Frontend] Page exceeds totalPages, but allowing navigation');
 			}
 			currentPage = Math.min(Math.max(1, page), totalPages);
 			const start = (currentPage - 1) * PAGE_SIZE;
 			const end = start + PAGE_SIZE;
-			renderRows(allItems.slice(start, end));
+			const itemsToRender = allItems.slice(start, end);
+			console.log(`📄 [LSB-Frontend] Rendering page ${currentPage}: items ${start} to ${end} (${itemsToRender.length} items)`);
+			renderRows(itemsToRender);
 			renderPagination();
 			// Scroll to top of table
 			const tableScroll = document.querySelector('.table-scroll');
@@ -366,7 +387,9 @@ async function loadTableLSB() {
 		}
 
 		// initial render
+		console.log('🚀 [LSB-Frontend] Starting initial render with goToPageLSB(1)');
 		goToPageLSB(1);
+		console.log('✅ [LSB-Frontend] Initial render completed');
 
 	} catch (mainError) {
 		console.error('Main Function Error:', mainError);
