@@ -44,7 +44,7 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     }
     const data = rows[0];
     
-    // 2) Tentukan PV userid yang dipakai (prioritas: parameter -> pv_1_paraf_validate)
+    // 2) Tentukan PV userid yang dipakai (prioritas: parameter -> pv_1_paraf_validate -> pv_2_signing_requests)
     let effectivePvUserid = pvUserid || null;
     if (!effectivePvUserid) {
         try {
@@ -58,6 +58,22 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
             }
         } catch (e) {
             console.warn('[PDF-PV] Failed to fetch pemverifikasi from pv_1_paraf_validate:', e.message);
+        }
+    }
+    if (!effectivePvUserid) {
+        try {
+            const signerQ = await pool.query(
+                `SELECT signer_userid FROM pv_2_signing_requests 
+                 WHERE no_validasi = $1 OR nobooking = $2 
+                 ORDER BY id DESC LIMIT 1`,
+                [noValidasi, nobooking]
+            );
+            if (signerQ.rows.length > 0) {
+                effectivePvUserid = signerQ.rows[0].signer_userid || null;
+                console.log('[PDF-PV] effectivePvUserid from pv_2_signing_requests:', effectivePvUserid);
+            }
+        } catch (e) {
+            console.warn('[PDF-PV] Failed to fetch signer_userid from pv_2_signing_requests:', e.message);
         }
     }
 
@@ -399,13 +415,9 @@ const jenisPerolehanMap = {
     console.log(`[QR-DEBUG] finalPvSpecialParafv: ${finalPvSpecialParafv}`);
     console.log(`[QR-DEBUG] certCreatedAt: ${certCreatedAt}`);
     
-    let qrAbsPath = qrImageAbsPath;
-    
-    // If QR path already provided and exists, use it
-    if (qrAbsPath && fs.existsSync(qrAbsPath)) {
-      console.log(`[QR-DEBUG] Using provided QR path: ${qrAbsPath}`);
-    } else if (nv) {
-      // Generate QR with proper format: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
+    // Selalu generate QR baru dengan payload teks (bukan JSON)
+    let qrAbsPath = null;
+    if (nv) {
       try {
         // Format tanggal sertifikat: DD/MM/YYYY
         const certDate = certCreatedAt instanceof Date ? certCreatedAt : new Date(certCreatedAt);
