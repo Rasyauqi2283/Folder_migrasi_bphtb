@@ -4146,6 +4146,115 @@ if (row.nobooking) {
       await client.query('COMMIT');
       console.log('[PV] decision commit', { no_validasi, nobooking: row.nobooking, pv: pvRow, srStatus, lsbResult });
   
+      // === Kirim email ke pembuat booking (PPAT/Notaris) setelah APPROVE ===
+      if (decision === 'approve' && row.nobooking) {
+        try {
+          const emailDataQuery = await pool.query(
+            `SELECT 
+                b.userid,
+                b.nobooking,
+                pav.no_validasi,
+                pav.no_registrasi,
+                vu.email,
+                vu.nama,
+                vu.divisi
+             FROM pat_1_bookingsspd b
+             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+             LEFT JOIN pv_1_paraf_validate pav ON b.nobooking = pav.nobooking
+             WHERE b.nobooking = $1
+             LIMIT 1`,
+            [row.nobooking]
+          );
+
+          if (emailDataQuery.rows.length > 0) {
+            const emailData = emailDataQuery.rows[0];
+            const userEmail = emailData.email;
+            const noValidasiEmail = emailData.no_validasi || no_validasi || null;
+            const noRegistrasi = emailData.no_registrasi;
+            const userType = emailData.divisi;
+
+            if (userEmail && noValidasiEmail) {
+              try {
+                const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
+                // 1) Generate PDF final sementara
+                const ts = Date.now();
+                const outName = `validasi_${row.nobooking}_${ts}.pdf`;
+                const outPath = path.join(process.cwd(), 'temp_uploads', outName);
+                try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
+
+                try {
+                  await buildValidasiPdf({
+                    pool,
+                    nobooking: row.nobooking,
+                    noValidasi: noValidasiEmail,
+                    outputPath: outPath,
+                    pvName: 'Peneliti Validasi',
+                    pvNip: '',
+                    pvTitle: '',
+                    pvCn: '',
+                    qrImageAbsPath: null,
+                    passphrase: 'bappenda2025',
+                    pvUserid: currentUser
+                  });
+                } catch (pdfErr) {
+                  console.error('❌ [PV-EMAIL] Gagal membuat PDF untuk lampiran email:', pdfErr.message);
+                }
+
+                // 2) Siapkan lampiran jika kecil
+                let attachments = [];
+                try {
+                  if (fs.existsSync(outPath)) {
+                    const stats = fs.statSync(outPath);
+                    const sizeMb = stats.size / (1024 * 1024);
+                    if (sizeMb <= 10) {
+                      const b64 = fs.readFileSync(outPath).toString('base64');
+                      attachments.push({
+                        filename: `Validasi_${row.nobooking}.pdf`,
+                        contentBase64: b64,
+                        mimeType: 'application/pdf'
+                      });
+                    }
+                  }
+                } catch (attErr) {
+                  console.warn('⚠️ [PV-EMAIL] Tidak dapat menyiapkan attachment PDF:', attErr.message);
+                }
+
+                // 3) Buat signed link publik yang kedaluwarsa
+                const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
+                const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 hari
+                const tokenPayload = `${row.nobooking}.${noValidasiEmail}.${expires}`;
+                const signature = crypto.createHmac('sha256', secret).update(tokenPayload).digest('hex');
+                const token = Buffer.from(`${tokenPayload}.${signature}`).toString('base64url');
+                const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app';
+                const publicDownloadUrl = `${baseUrl}/api/public/validasi-download/${token}`;
+
+                // 4) Kirim email
+                await sendDocumentCompletionEmail(
+                  userEmail,
+                  row.nobooking,
+                  (noRegistrasi || '-'),
+                  noValidasiEmail,
+                  userType,
+                  { attachments, publicDownloadUrl }
+                );
+                // Hapus file temp jika ada
+                try { if (fs.existsSync(outPath)) fs.unlinkSync(outPath); } catch(_) {}
+                console.log(`✅ [PV-EMAIL] Document email sent to ${userEmail} for nobooking: ${row.nobooking}`);
+              } catch (emailError) {
+                console.error(`❌ [PV-EMAIL] Failed to send document email to ${userEmail}:`, emailError.message);
+              }
+            } else {
+              console.warn(`⚠️ [PV-EMAIL] Missing email or no_validasi for nobooking: ${row.nobooking}`, {
+                userEmail: !!userEmail,
+                noValidasiEmail: !!noValidasiEmail
+              });
+            }
+          }
+        } catch (emailWrapErr) {
+          console.warn('[PV-EMAIL] Email dispatch skipped due to error:', emailWrapErr.message);
+        }
+      }
+
       // Setelah commit, periksa state aktual (menggunakan pool.query agar bukan connection yang sama)
       try {
         const check = await pool.query(
@@ -4554,125 +4663,7 @@ app.post('/api/LSB_send-to-ppat', async (req, res) => {
         } catch (_) {}
         await client.query('COMMIT');
         
-        // Ambil data untuk email notifikasi
-        const emailDataQuery = await pool.query(
-            `SELECT 
-                b.userid,
-                COALESCE(pv.no_registrasi, lsb.no_registrasi) AS no_registrasi,
-                vu.email,
-                vu.nama,
-                vu.divisi,
-                pv.no_validasi
-             FROM pat_1_bookingsspd b
-             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-             LEFT JOIN pv_1_paraf_validate pv ON b.nobooking = pv.nobooking
-             LEFT JOIN lsb_1_serah_berkas lsb ON b.nobooking = lsb.nobooking
-             WHERE b.nobooking = $1
-             LIMIT 1`,
-            [nobooking]
-        );
-        
-        // Kirim email notifikasi penyelesaian dokumen jika data ditemukan
-        if (emailDataQuery.rows.length > 0) {
-            const emailData = emailDataQuery.rows[0];
-            const userEmail = emailData.email;
-            const noRegistrasi = emailData.no_registrasi;
-            const noValidasi = emailData.no_validasi;
-            const userType = emailData.divisi; // PPAT atau PPATS
-            
-            if (userEmail && noValidasi) {
-                try {
-                    const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
-                    // 1) Generate PDF final sebagai file sementara
-                    const ts = Date.now();
-                    const outName = `validasi_${nobooking}_${ts}.pdf`;
-                    const outPath = path.join(process.cwd(), 'temp_uploads', outName);
-                    try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
-
-                    try {
-                        // Cari userid Peneliti Validasi untuk QR
-                        let pvUserId = null;
-                        try {
-                            const r = await pool.query(
-                                `SELECT avpv.userid AS pv_userid
-                                 FROM pv_1_paraf_validate par
-                                 LEFT JOIN a_2_verified_users avpv ON avpv.tanda_tangan_path = par.tanda_tangan_validasi_path
-                                 WHERE par.nobooking = $1
-                                 LIMIT 1`,
-                                [nobooking]
-                            );
-                            pvUserId = r?.rows?.[0]?.pv_userid || null;
-                        } catch(_) {}
-
-                        await buildValidasiPdf({
-                            pool,
-                            nobooking,
-                            noValidasi,
-                            outputPath: outPath,
-                            pvName: 'Peneliti Validasi',
-                            pvNip: 'NIP Tidak Diketahui',
-                            pvTitle: 'Pejabat Penandatangan',
-                            pvCn: 'BAPPENDA',
-                            qrImageAbsPath: null,
-                            passphrase: 'bappenda2025',
-                            pvUserid: pvUserId
-                        });
-                    } catch (pdfErr) {
-                        console.error('❌ [LSB] Gagal membuat PDF untuk lampiran email:', pdfErr.message);
-                    }
-
-                    // 2) Attachment jika file kecil
-                    let attachments = [];
-                    try {
-                        if (fs.existsSync(outPath)) {
-                            const stats = fs.statSync(outPath);
-                            const sizeMb = stats.size / (1024 * 1024);
-                            if (sizeMb <= 10) {
-                                const b64 = fs.readFileSync(outPath).toString('base64');
-                                attachments.push({
-                                    filename: `Validasi_${nobooking}.pdf`,
-                                    contentBase64: b64,
-                                    mimeType: 'application/pdf'
-                                });
-                            }
-                        }
-                    } catch (attErr) {
-                        console.warn('⚠️ [LSB] Tidak dapat menyiapkan attachment PDF:', attErr.message);
-                    }
-
-                    // 3) Buat signed link publik yang kedaluwarsa
-                    const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
-                    const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 hari
-                    const tokenPayload = `${nobooking}.${noValidasi}.${expires}`;
-                    const signature = crypto.createHmac('sha256', secret).update(tokenPayload).digest('hex');
-                    const token = Buffer.from(`${tokenPayload}.${signature}`).toString('base64url');
-                    const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app';
-                    const publicDownloadUrl = `${baseUrl}/api/public/validasi-download/${token}`;
-
-                    // 4) Kirim email
-                    await sendDocumentCompletionEmail(
-                        userEmail,
-                        nobooking,
-                        (noRegistrasi || '-'),
-                        noValidasi,
-                        userType,
-                        { attachments, publicDownloadUrl }
-                    );
-                    // Hapus file temp jika ada
-                    try { if (fs.existsSync(outPath)) fs.unlinkSync(outPath); } catch(_) {}
-                    console.log(`✅ Document completion email sent to ${userEmail} for nobooking: ${nobooking}`);
-                } catch (emailError) {
-                    console.error(`❌ Failed to send document completion email to ${userEmail}:`, emailError.message);
-                    // Jangan gagalkan proses penyerahan jika email gagal
-                }
-            } else {
-                console.warn(`⚠️ Missing email data for nobooking: ${nobooking}`, {
-                    userEmail: !!userEmail,
-                    noRegistrasi: !!noRegistrasi,
-                    noValidasi: !!noValidasi
-                });
-            }
-        }
+        // Email ke pembuat booking dipindah ke tahap approval PV (bukan di LSB)
         
         // Mark-read otomatis untuk Peneliti Validasi (tahap sebelumnya)
         try {
