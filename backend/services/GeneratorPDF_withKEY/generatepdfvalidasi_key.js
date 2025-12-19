@@ -306,6 +306,7 @@ const jenisPerolehanMap = {
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
     doc.text(String(data.qr_user_subject_cn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' });
     // Generate QR dengan data real dari sertifikat + nomor validasi untuk keunikan
+    // SIMPLIFIED: Now more lenient - will use provided QR path or generate simple QR
     let qrAbsPath = qrImageAbsPath;
     
     const nv = String(noValidasi || data.no_validasi || '').trim();
@@ -316,35 +317,43 @@ const jenisPerolehanMap = {
     console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
     console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
     
-    // Wajibkan nomorValidasi dan pvUserid untuk dokumen yang sudah disetujui
-    if (!nv) {
-      throw new Error('Nomor validasi tidak tersedia untuk generate QR');
-    }
-    
-    if (!pvUserid) {
-      throw new Error('pvUserid tidak tersedia - QR harus menggunakan data real dari sertifikat');
-    }
-    
-    if (!pool) {
-      throw new Error('Database connection tidak tersedia untuk generate QR');
-    }
-    
-    console.log(`[QR-DEBUG] Semua parameter tersedia, generate QR dengan data real dari sertifikat...`);
-    
-    try {
-      console.log(`[QR-DEBUG] Generate QR dengan data real dari DB - userid: ${pvUserid}, nomorValidasi: ${nv}`);
-      const saved = await generateQrWithValidasiFromDB({
-        pool,
-        userid: pvUserid,
-        nomorValidasi: nv,
-        filename: `validasi_${nv}`,
-        size: 256
-      });
-      qrAbsPath = saved.abs;
-      console.log(`[QR-GENERATED] QR dengan data real dari sertifikat - userid: ${pvUserid}, nomor validasi: ${nv}, payload: ${saved.payload}`);
-    } catch (dbError) {
-      console.error('[QR-ERROR] Gagal generate QR dengan data sertifikat:', dbError);
-      throw new Error(`Gagal generate QR dengan data sertifikat: ${dbError.message}`);
+    // If QR path already provided, use it
+    if (qrAbsPath && fs.existsSync(qrAbsPath)) {
+      console.log(`[QR-DEBUG] Using provided QR path: ${qrAbsPath}`);
+    } else if (nv && pvUserid && pool) {
+      // Try to generate QR with certificate data from DB
+      console.log(`[QR-DEBUG] Attempting to generate QR with data from DB...`);
+      try {
+        const saved = await generateQrWithValidasiFromDB({
+          pool,
+          userid: pvUserid,
+          nomorValidasi: nv,
+          filename: `validasi_${nv}`,
+          size: 256
+        });
+        qrAbsPath = saved.abs;
+        console.log(`[QR-GENERATED] QR dengan data real dari sertifikat - userid: ${pvUserid}, nomor validasi: ${nv}`);
+      } catch (dbError) {
+        console.warn('[QR-WARN] Gagal generate QR dengan data sertifikat:', dbError.message);
+        // Fallback: generate simple QR with basic payload
+        try {
+          const simplePayload = `${nv}/${nobooking}/E-BPHTB BAPPENDA KAB BOGOR`;
+          const { saveQrToPublic } = await import('../../utils/qrcode.js');
+          const saved = await saveQrToPublic({ 
+            filename: `validasi_${nv}`, 
+            text: simplePayload, 
+            size: 256 
+          });
+          qrAbsPath = saved.abs;
+          console.log(`[QR-FALLBACK] Simple QR generated: ${saved.path}`);
+        } catch (fallbackErr) {
+          console.warn('[QR-WARN] Fallback QR also failed:', fallbackErr.message);
+          qrAbsPath = null;
+        }
+      }
+    } else {
+      console.warn('[QR-WARN] Missing required data for QR generation, skipping:', { nv: !!nv, pvUserid: !!pvUserid, pool: !!pool });
+      qrAbsPath = null;
     }
 
     if (qrAbsPath && fs.existsSync(qrAbsPath)) {

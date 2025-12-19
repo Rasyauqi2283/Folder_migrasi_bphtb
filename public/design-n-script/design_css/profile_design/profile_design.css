@@ -11,6 +11,16 @@ html, body {
     box-sizing: border-box;
 }
 
+/* Main Profile Container - Centered vertically and horizontally */
+#profile-main-design.main-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 80px - 40px); /* minus header and footer */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
 /* Main Profile Container */
 #profile-container {
     overflow: hidden;
@@ -18,8 +28,9 @@ html, body {
     background-size: 400% 400%;
     animation: gradientShift 15s ease infinite;
     max-width: 1200px;
+    width: 100%;
     max-height: 500px;
-    margin: 20px auto;
+    margin: 0 auto; /* Remove top margin to center properly */
     padding: 25px;
     border-radius: 20px;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
