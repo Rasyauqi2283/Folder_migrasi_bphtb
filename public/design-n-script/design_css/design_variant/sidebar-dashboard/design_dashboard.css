@@ -13,6 +13,9 @@
     display: flex;
     justify-content: start;
     padding: 20px;
+    box-sizing: border-box;
+    width: 100%;
+    overflow-x: hidden; /* Prevent horizontal overflow */
 }
 
 .welcome-banner {
@@ -31,6 +34,9 @@
     margin-top: -10px;
     gap: 20px;
     animation: ocean 10s infinite linear;
+    box-sizing: border-box; /* Include padding in width calculation */
+    overflow: hidden; /* Prevent content from overflowing */
+    position: relative; /* Contain absolutely positioned children */
 }
 
 @keyframes ocean {
@@ -51,6 +57,8 @@
     flex: 1; /* Takes more space on the left */
     color: #ffffff;
     margin-top: auto;
+    min-width: 0; /* Allow text to shrink */
+    overflow: hidden; /* Prevent text overflow */
 }
 
 .welcome-text h2 {
@@ -67,25 +75,34 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-shrink: 0; /* Don't shrink illustration */
+    min-width: 0; /* Allow container to shrink if needed */
+    max-width: 200px; /* Limit maximum width */
 }
 
 .illustration-image {
-    width: 240px;
+    width: 100%;
+    max-width: 200px; /* Limit image size */
     height: auto;
+    object-fit: contain; /* Maintain aspect ratio */
+    max-height: 150px; /* Ensure it fits within banner height */
 }
 
 /**/
 /*calender section*/
 .calendar-container {
     position: relative;
-    margin-left: auto;
+    flex-shrink: 0; /* Don't shrink calendar */
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(65, 90, 119, 0.2));
     padding: 15px;
     border-radius: 15px;
     width: 180px;
+    min-width: 180px; /* Prevent calendar from shrinking too much */
+    max-width: 180px; /* Prevent calendar from expanding */
     text-align: center;
     border: 1px solid rgba(65, 90, 119, 0.3);
     backdrop-filter: blur(10px);
+    box-sizing: border-box; /* Include padding in width */
 }
 
 .calendar-month {
@@ -269,55 +286,79 @@
     .welcome-banner {
         flex-direction: column;
         height: auto;
+        min-height: 200px;
         padding: 20px;
         gap: 15px;
+        overflow: visible; /* Allow content to expand vertically */
     }
     
     .welcome-text {
         text-align: center;
         margin-top: 0;
+        width: 100%;
     }
     
     .illustration-container {
         order: -1; /* Move illustration to top */
+        max-width: 100%;
     }
     
     .illustration-image {
-        width: 180px;
+        max-width: 180px;
+        max-height: 150px;
     }
     
     .calendar-container {
         margin-left: 0;
         margin-top: 10px;
         width: 160px;
+        min-width: 160px;
+        max-width: 160px;
+        align-self: center; /* Center calendar in column layout */
     }
 }
 
 @media (max-width: 768px) {
     .welcome-section {
         padding: 16px;
+        overflow-x: hidden; /* Prevent horizontal scroll */
     }
     
     .welcome-banner {
         width: calc(100% - 32px);
         padding: 16px;
+        overflow: hidden; /* Keep content inside */
+        box-sizing: border-box;
+    }
+    
+    .welcome-text {
+        width: 100%;
     }
     
     .welcome-text h2 {
         font-size: 1.2em;
+        word-wrap: break-word; /* Break long words */
     }
     
     .welcome-text h5 {
         font-size: 0.65em;
     }
     
+    .illustration-container {
+        max-width: 100%;
+    }
+    
     .illustration-image {
-        width: 150px;
+        max-width: 150px;
+        max-height: 120px;
     }
     
     .calendar-container {
         width: 140px;
+        min-width: 140px;
+        max-width: 140px;
         padding: 12px;
+        align-self: center; /* Center calendar */
     }
     
     .calendar-grid {
