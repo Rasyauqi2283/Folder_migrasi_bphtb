@@ -1736,6 +1736,40 @@
         } else {
           alert(`✅ ${js.message}`);
         }
+
+        // Setelah approve: unduh PDF final (bukan preview builder) jika nobooking tersedia
+        try {
+          let nobooking = js.nobooking || '';
+          if (!nobooking) {
+            // fallback cari di tabel
+            const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+            if (tbody) {
+              const rows = tbody.querySelectorAll('tr:not(.dropdown-row)');
+              for (const row of rows) {
+                const noValidasiCell = row.cells && row.cells[0];
+                if (noValidasiCell && noValidasiCell.textContent.trim() === nv) {
+                  const nobookingCell = row.cells && row.cells[2];
+                  if (nobookingCell) nobooking = nobookingCell.textContent.trim();
+                  break;
+                }
+              }
+            }
+          }
+          if (nobooking) {
+            const pdfUrl = `/api/ppat/generate-pdf-validasi/${encodeURIComponent(nobooking)}?download=true`;
+            const a = document.createElement('a');
+            a.href = pdfUrl;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            console.warn('[FE-DEBUG] Nobooking tidak ditemukan untuk unduhan PDF final');
+          }
+        } catch(downloadErr) {
+          console.warn('[FE-DEBUG] Gagal memulai unduhan PDF final:', downloadErr);
+        }
       } else {
         log('Gagal: ' + (js.message || 'Unknown error'), js);
         alert('Gagal: ' + (js.message || 'Unknown error'));
