@@ -295,7 +295,7 @@ function createSearchAndPaginationControls() {
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.id = 'verification-search-input';
-    searchInput.placeholder = 'Cari berdasarkan NOP PBB, Special Field, No. Booking, atau No. Registrasi...';
+    searchInput.placeholder = 'Cari berdasarkan NOP PBB, Pembuat Booking, No. Booking, atau No. Registrasi...';
     searchInput.className = 'verification-search-input';
     searchInput.value = searchQuery;
     searchInput.style.cssText = `
@@ -485,7 +485,7 @@ function createCard(container, item) {
                     <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Special Field</span>
+                    <span class="info-label">Pembuat Booking</span>
                     <span class="info-value ${formatValue(item.creator_special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field)}</span>
                 </div>
                 <div class="info-item">
