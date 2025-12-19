@@ -1789,9 +1789,9 @@
         else { authBadge.textContent = 'Auth belum siap'; authBadge.classList.add('warn'); }
       }
       // Gate buttons in dropdown
-      // Verify gated by auth; Approve/Reject gated by auth and per-doc verify success
+      // Verify gated by auth; Approve/Reject gated oleh auth + keberhasilan verify (lastVerifiedNoVal)
       const canVerify = hasSig && certOk;
-      const canAct = (hasSig && certOk && noVal() && noVal() === lastVerifiedNoVal);
+      const canActFor = (btnNoValidasi) => (hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal);
       
       // Update all dropdown buttons
       document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
@@ -1807,7 +1807,7 @@
       
       document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
         const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = canAct && btnNoValidasi === noVal();
+        const btnCanAct = canActFor(btnNoValidasi);
         btn.disabled = !btnCanAct;
         if (!btnCanAct) {
           btn.style.opacity = '0.6';
@@ -1820,7 +1820,7 @@
       
       document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
         const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = canAct && btnNoValidasi === noVal();
+        const btnCanAct = canActFor(btnNoValidasi);
         btn.disabled = !btnCanAct;
         if (!btnCanAct) {
           btn.style.opacity = '0.6';
