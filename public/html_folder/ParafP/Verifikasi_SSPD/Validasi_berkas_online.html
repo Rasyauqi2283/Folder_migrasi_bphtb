@@ -1856,12 +1856,12 @@
         const nv = noVal();
         if (!nv) throw new Error('Pilih no_validasi terlebih dahulu.');
         
-        // Ambil status untuk mendapatkan nobooking
-        const stRes = await fetch(`/api/validasi/${encodeURIComponent(nv)}/status`, { credentials:'include' });
-        const stJs = await stRes.json();
-        if (!stRes.ok || !stJs.success) throw new Error(stJs.message||'Gagal mengambil status');
-        const data = stJs.data || {};
-        const nobooking = data.nobooking;
+        // Ambil nobooking langsung dari baris tabel yang dipilih (tanpa memanggil status/signing)
+        let nobooking = '';
+        const row = document.querySelector(`tr[data-novalidasi="${nv}"]`);
+        if (row) {
+          nobooking = row.getAttribute('data-nobooking') || '';
+        }
         
         if (!nobooking) {
           throw new Error('No Booking tidak ditemukan untuk nomor validasi ini.');

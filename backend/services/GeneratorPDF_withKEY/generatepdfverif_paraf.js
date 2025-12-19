@@ -41,6 +41,20 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
             
             console.log(`[PDF-GENERATOR] Using userid: ${userid}, nama: ${nama}`);
 
+            // Cek apakah tabel ttd_paraf_kasie tersedia (beberapa lingkungan belum memiliki tabel ini)
+            const tableCheck = await pool.query(`SELECT to_regclass('public.ttd_paraf_kasie') AS reg`);
+            const hasKasieTable = tableCheck.rows?.[0]?.reg !== null;
+
+            // Tambahkan kolom dan join secara dinamis agar tidak gagal ketika tabel belum ada
+            const kasieColumns = hasKasieTable ? `
+                    tpk.sign_paraf, 
+                    tpk.signfile_path,
+            ` : `
+                    NULL::text AS sign_paraf,
+                    NULL::text AS signfile_path,
+            `;
+            const kasieJoin = hasKasieTable ? `LEFT JOIN ttd_paraf_kasie tpk ON pb.nobooking = tpk.nobooking` : '';
+
             // Query utama data PDF
             const q = `
                 SELECT DISTINCT
@@ -55,7 +69,7 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                     pv.tanda_tangan_path AS peneliti_tanda_tangan_path,
                     vb.tanda_tangan_path,
                     pvs.stempel_booking_path,
-                    tpk.sign_paraf, tpk.signfile_path,
+                    ${kasieColumns}
                     vb.special_parafv,
                     pc.tanda_paraf_path AS peneliti_tanda_paraf_path,
                     par.tanda_tangan_validasi_path AS tanda_tangan_validasi_path, par.no_validasi,
@@ -70,7 +84,7 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
                 LEFT JOIN p_2_verif_sign pvs ON pb.nobooking = pvs.nobooking
                 LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
-                LEFT JOIN ttd_paraf_kasie tpk ON pb.nobooking = tpk.nobooking
+                ${kasieJoin}
                 LEFT JOIN pv_1_paraf_validate par ON pb.nobooking = par.nobooking
                 LEFT JOIN a_2_verified_users avpv 
                     ON avpv.tanda_tangan_path = par.tanda_tangan_validasi_path
