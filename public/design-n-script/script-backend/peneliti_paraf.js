@@ -3,8 +3,10 @@ const API_ENDPOINT = '/api/peneliti/get-berkas-till-verif';
 const REQUEST_TIMEOUT = 10000; // 10 seconds
 let penParafRows = [];
 
-// Pagination variables
+// Pagination and search variables
 let allData = [];
+let filteredData = []; // Store filtered data for search
+let searchQuery = ''; // Store current search query
 let currentPage = 1;
 const itemsPerPage = 6;
 
@@ -67,6 +69,9 @@ async function loadTableDataPenelitiP() {
         // Store all data for pagination
         allData = Array.isArray(data) ? data : [];
         penParafRows = allData;
+        
+        // Initialize filtered data
+        filteredData = allData;
 
         // Create cards container and pagination container
         const mainContent = document.querySelector('.main-content');
@@ -98,13 +103,17 @@ async function loadTableDataPenelitiP() {
             mainContent.appendChild(paginationContainer);
         }
 
+        // Create search and pagination controls
+        createSearchAndPaginationControls();
+
         if (!Array.isArray(data) || data.length === 0) {
             showEmptyStateCards(cardsContainer, 'Tidak ada data berkas yang ditemukan');
             return;
         }
 
-        // Display first page
-        displayPage(currentPage);
+        // Filter data and display first page
+        filterData(searchQuery);
+        displayPage(1);
 
     } catch (error) {
         console.error('Main Function Error:', error);
@@ -112,43 +121,269 @@ async function loadTableDataPenelitiP() {
     }
 }
 
+// Function to filter data based on search query
+function filterData(query) {
+    if (!query || query.trim() === '') {
+        filteredData = allData;
+        return;
+    }
+    
+    const searchTerm = query.toLowerCase().trim();
+    filteredData = allData.filter(item => {
+        const noppbb = String(item.noppbb || '').toLowerCase();
+        const nobooking = String(item.nobooking || '').toLowerCase();
+        const noRegistrasi = String(item.no_registrasi || '').toLowerCase();
+        const namawajibpajak = String(item.namawajibpajak || '').toLowerCase();
+        const userid = String(item.userid || '').toLowerCase();
+        
+        return noppbb.includes(searchTerm) ||
+               nobooking.includes(searchTerm) ||
+               noRegistrasi.includes(searchTerm) ||
+               namawajibpajak.includes(searchTerm) ||
+               userid.includes(searchTerm);
+    });
+}
+
+// Function to create search and pagination controls
+function createSearchAndPaginationControls() {
+    // Check if controls already exist
+    const existingControls = document.querySelector('.search-pagination-controls');
+    if (existingControls && existingControls.querySelector('#paraf-search-input')) {
+        return; // Already exists
+    }
+    
+    // Find the main content area
+    const mainContent = document.querySelector('#paraf_kasie_design');
+    if (!mainContent) return;
+    
+    // Find the controls row (where search controls should be)
+    let controlsRow = mainContent.querySelector('div[style*="justify-content: space-between"]');
+    if (!controlsRow) {
+        // Create controls row if it doesn't exist
+        controlsRow = document.createElement('div');
+        controlsRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 20px; gap: 20px; flex-wrap: wrap;';
+        
+        // Find where to insert (before the table)
+        const table = mainContent.querySelector('#peneliti_paraf_kasie_Table');
+        if (table && table.parentElement) {
+            table.parentElement.insertBefore(controlsRow, table);
+        } else {
+            mainContent.insertBefore(controlsRow, mainContent.firstChild);
+        }
+    }
+    
+    // Create controls container
+    const controlsContainer = document.querySelector('.search-pagination-controls');
+    if (!controlsContainer) {
+        // If the container doesn't exist in the row, create it
+        const newContainer = document.createElement('div');
+        newContainer.className = 'search-pagination-controls';
+        newContainer.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex: 1;
+            min-width: 300px;
+        `;
+        controlsRow.appendChild(newContainer);
+    }
+    
+    const controlsContainerToUse = document.querySelector('.search-pagination-controls');
+    if (!controlsContainerToUse) return;
+    
+    // Create search container
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'search-container';
+    searchContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 300px;
+    `;
+    
+    // Create search input
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'paraf-search-input';
+    searchInput.placeholder = 'Cari berdasarkan NOP PBB, No. Booking, No. Registrasi, Nama Wajib Pajak, atau User ID...';
+    searchInput.className = 'paraf-search-input';
+    searchInput.value = searchQuery;
+    searchInput.style.cssText = `
+        flex: 1;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #374151;
+        border-radius: 8px;
+        color: #e5e7eb;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    `;
+    
+    // Add focus styles
+    searchInput.addEventListener('focus', function() {
+        this.style.borderColor = '#8b5cf6';
+        this.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.1)';
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        this.style.borderColor = '#374151';
+        this.style.boxShadow = 'none';
+    });
+    
+    // Search functionality with debounce
+    let searchTimeout;
+    searchInput.addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value;
+        searchQuery = query;
+        
+        searchTimeout = setTimeout(() => {
+            filterData(query);
+            currentPage = 1; // Reset to first page on new search
+            displayPage(1);
+        }, 300); // 300ms debounce
+    });
+    
+    // Create search icon
+    const searchIcon = document.createElement('i');
+    searchIcon.className = 'fa fa-search';
+    searchIcon.style.cssText = `
+        color: #9ca3af;
+        font-size: 16px;
+    `;
+    
+    // Create clear button
+    const clearButton = document.createElement('button');
+    clearButton.className = 'clear-search-btn';
+    clearButton.innerHTML = '<i class="fa fa-times"></i>';
+    clearButton.title = 'Hapus pencarian';
+    clearButton.style.cssText = `
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: ${searchQuery ? 'block' : 'none'};
+    `;
+    
+    clearButton.addEventListener('click', function() {
+        searchInput.value = '';
+        searchQuery = '';
+        filterData('');
+        currentPage = 1;
+        displayPage(1);
+        this.style.display = 'none';
+    });
+    
+    clearButton.addEventListener('mouseenter', function() {
+        this.style.color = '#ef4444';
+        this.style.background = 'rgba(239, 68, 68, 0.1)';
+    });
+    
+    clearButton.addEventListener('mouseleave', function() {
+        this.style.color = '#9ca3af';
+        this.style.background = 'transparent';
+    });
+    
+    // Update clear button visibility when typing
+    searchInput.addEventListener('input', function() {
+        clearButton.style.display = this.value ? 'block' : 'none';
+    });
+    
+    // Assemble search container
+    searchContainer.appendChild(searchIcon);
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(clearButton);
+    
+    // Create results info container
+    const resultsInfo = document.createElement('div');
+    resultsInfo.className = 'search-results-info';
+    resultsInfo.style.cssText = `
+        color: #9ca3af;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+    `;
+    
+    // Insert search container into controls container
+    controlsContainerToUse.appendChild(searchContainer);
+    controlsContainerToUse.appendChild(resultsInfo);
+    
+    // Store reference for updating
+    window.updateSearchResultsInfo = function() {
+        const resultsInfoEl = document.querySelector('.search-results-info');
+        if (!resultsInfoEl) return;
+        
+        const total = filteredData.length;
+        const all = allData.length;
+        if (searchQuery && searchQuery.trim() !== '') {
+            resultsInfoEl.textContent = `Menampilkan ${total} dari ${all} hasil`;
+            resultsInfoEl.style.color = total === 0 ? '#ef4444' : '#10b981';
+        } else {
+            resultsInfoEl.textContent = `Total: ${all} data`;
+            resultsInfoEl.style.color = '#9ca3af';
+        }
+    };
+    
+    // Initial update
+    updateSearchResultsInfo();
+}
+
+// Function to update search results info
+function updateSearchResultsInfo() {
+    if (window.updateSearchResultsInfo) {
+        window.updateSearchResultsInfo();
+    }
+}
+
 // Display page function for pagination
 function displayPage(page) {
     try {
+        const cardsContainer = document.querySelector('.paraf-cards-container');
+        const paginationContainer = document.querySelector('.pagination-container');
+        
+        if (!cardsContainer || !paginationContainer) return;
+        
+        // Clear existing cards
+        cardsContainer.innerHTML = '';
+        cardsContainer.style.display = 'grid';
+        
+        // Calculate pagination based on filtered data
+        const totalPages = Math.ceil(filteredData.length / itemsPerPage);
         const startIndex = (page - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        const pageData = allData.slice(startIndex, endIndex);
+        const currentData = filteredData.slice(startIndex, endIndex);
         
         console.log(`📄 [PAGINATION] Displaying page ${page}:`, {
             startIndex: startIndex,
             endIndex: endIndex,
-            pageDataLength: pageData.length,
+            pageDataLength: currentData.length,
+            totalFilteredData: filteredData.length,
             totalData: allData.length
         });
 
-        // Clear existing cards
-        const cardsContainer = document.querySelector('.paraf-cards-container');
-        const paginationContainer = document.querySelector('.pagination-container');
-        
-        if (cardsContainer) {
-            cardsContainer.innerHTML = '';
-            cardsContainer.style.display = 'grid';
-        }
-
         // Render cards for current page
-        pageData.forEach(item => {
+        currentData.forEach(item => {
             createCard(cardsContainer, item);
         });
 
         // Create pagination controls
-        if (allData.length > itemsPerPage) {
-            createPagination(paginationContainer, page, Math.ceil(allData.length / itemsPerPage));
-            if (paginationContainer) {
-                paginationContainer.style.display = 'flex';
-            }
-        } else if (paginationContainer) {
-            paginationContainer.style.display = 'none';
-        }
+        createPagination(paginationContainer, page, totalPages);
+        
+        // Update current page
+        currentPage = page;
+        
+        // Update search results info
+        updateSearchResultsInfo();
+        
+        // Update search results info
+        updateSearchResultsInfo();
 
     } catch (error) {
         console.error('Display Page Error:', error);
@@ -401,21 +636,35 @@ function createCard(container, item) {
 function createPagination(container, currentPage, totalPages) {
     container.innerHTML = '';
     
+    if (totalPages <= 1) {
+        container.style.display = 'none';
+        return; // No pagination needed
+    }
+    
+    container.style.display = 'flex';
+    
     // Pagination info
-    const paginationInfo = document.createElement('div');
-    paginationInfo.className = 'pagination-info';
-    paginationInfo.textContent = `Halaman ${currentPage} dari ${totalPages} (${allData.length} data)`;
-    container.appendChild(paginationInfo);
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, filteredData.length);
+    
+    const info = document.createElement('div');
+    info.className = 'pagination-info';
+    const totalItems = filteredData.length;
+    if (searchQuery && searchQuery.trim() !== '') {
+        info.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} hasil pencarian`;
+    } else {
+        info.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} data`;
+    }
+    container.appendChild(info);
     
     // Previous button
     const prevButton = document.createElement('button');
     prevButton.className = 'pagination-button';
-    prevButton.textContent = '← Previous';
+    prevButton.innerHTML = '‹ Sebelumnya';
     prevButton.disabled = currentPage === 1;
     prevButton.addEventListener('click', () => {
         if (currentPage > 1) {
-            currentPage--;
-            displayPage(currentPage);
+            displayPage(currentPage - 1);
         }
     });
     container.appendChild(prevButton);
@@ -444,12 +693,11 @@ function createPagination(container, currentPage, totalPages) {
     // Next button
     const nextButton = document.createElement('button');
     nextButton.className = 'pagination-button';
-    nextButton.textContent = 'Next →';
+    nextButton.innerHTML = 'Selanjutnya ›';
     nextButton.disabled = currentPage === totalPages;
     nextButton.addEventListener('click', () => {
         if (currentPage < totalPages) {
-            currentPage++;
-            displayPage(currentPage);
+            displayPage(currentPage + 1);
         }
     });
     container.appendChild(nextButton);
