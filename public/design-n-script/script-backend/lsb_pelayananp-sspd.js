@@ -52,6 +52,12 @@ async function loadTableLSB() {
                 data = await response.json();
             }
             
+            console.log('📦 [LSB-Frontend] Received data:', {
+                success: data?.success,
+                dataLength: Array.isArray(data?.data) ? data.data.length : 'not an array',
+                status: response.status
+            });
+            
             if (!data || typeof data !== 'object') {
                 throw new Error('Invalid data format received from server');
             }
@@ -61,10 +67,13 @@ async function loadTableLSB() {
             }
             
             if (!Array.isArray(data.data)) {
+                console.error('❌ [LSB-Frontend] Data is not an array:', data);
                 throw new Error('Expected array data not found in response');
             }
+            
+            console.log(`✅ [LSB-Frontend] Successfully parsed ${data.data.length} records`);
         } catch (parseError) {
-            console.error('Parse Error:', parseError);
+            console.error('❌ [LSB-Frontend] Parse Error:', parseError);
             throw new Error(`Gagal memproses data: ${parseError.message}`);
         }
 
@@ -92,10 +101,17 @@ async function loadTableLSB() {
 		let totalPages = 1;
 		let totalRecords = 0;
 		// Filter out items that are already sent (trackstatus = 'Diserahkan')
+		// Note: API sudah filter di backend, jadi seharusnya tidak ada item dengan trackstatus = 'Diserahkan'
 		let allItems = Array.isArray(data.data) ? data.data.filter(item => {
 			const track = String(item.trackstatus || '').toLowerCase();
-			return track !== 'diserahkan';
+			const shouldInclude = track !== 'diserahkan';
+			if (!shouldInclude) {
+				console.log(`⚠️ [LSB-Frontend] Filtering out item with trackstatus='Diserahkan':`, item.nobooking);
+			}
+			return shouldInclude;
 		}) : [];
+		
+		console.log(`📊 [LSB-Frontend] Filtered items: ${allItems.length} (from ${data.data.length} total)`);
 		totalRecords = allItems.length;
 		totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
 
@@ -540,4 +556,6 @@ async function sendToPPAT_complete(item) {
 ////
 
   ///
+// Expose function to global scope for real-time script
+window.loadLSBData = loadTableLSB;
 window.onload = loadTableLSB;

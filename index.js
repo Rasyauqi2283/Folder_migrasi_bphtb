@@ -4504,19 +4504,25 @@ app.post('/api/pv/send-to-lsb', async (req, res) => {
 app.get('/api/LSB_berkas-complete', async (req, res) => {
     // Cek apakah pengguna sudah login dan apakah divisinya LSB
     if (!req.session.user || req.session.user.divisi !== 'LSB') {
+        console.log('❌ [LSB-API] Access denied:', {
+            hasSession: !!req.session.user,
+            divisi: req.session.user?.divisi
+        });
         return res.status(403).json({
             success: false,
             message: 'Akses ditolak. Hanya pengguna dengan divisi Loket Serah Berkas yang dapat mengakses data ini.'
         });
     }
     try {
+        console.log('🔍 [LSB-API] Fetching LSB data for user:', req.session.user.userid);
         // Hanya ambil data yang belum diserahkan (Siap Diserahkan)
-        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb dan tahunajb
+        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb, tahunajb, dan file_booking_path
         const query = `
         SELECT 
             lsb.*,
             pb.noppbb,
-            pb.tahunajb
+            pb.tahunajb,
+            pb.file_booking_path
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
         WHERE lsb.status = 'Terselesaikan' AND lsb.trackstatus = 'Siap Diserahkan'
@@ -4524,6 +4530,7 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         `;
         
         const result = await pool.query(query);
+        console.log(`✅ [LSB-API] Found ${result.rows.length} records`);
         
         if (result.rows.length > 0) {
             return res.status(200).json({
@@ -4537,10 +4544,11 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('❌ [LSB-API] Error fetching data:', error);
         return res.status(500).json({
             success: false,
-            message: 'An error occurred while fetching data.'
+            message: 'An error occurred while fetching data.',
+            error: error.message
         });
     }
 });
