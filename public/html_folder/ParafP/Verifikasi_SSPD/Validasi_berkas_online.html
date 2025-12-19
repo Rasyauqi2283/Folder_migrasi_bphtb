@@ -159,6 +159,411 @@
       opacity: 1;
     }
   }
+
+  /* Card-based layout for PV sections */
+  .pv-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .pv-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .pv-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f3f4f6;
+  }
+
+  .pv-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pv-card-body {
+    margin-top: 16px;
+  }
+
+  .pv-info-box {
+    padding: 12px 16px;
+    background: #EFF6FF;
+    border: 1px solid #93C5FD;
+    border-radius: 8px;
+    color: #1E40AF;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .pv-info-box a {
+    color: #1E40AF;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .pv-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .pv-input-group label {
+    min-width: 120px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+  }
+
+  .pv-input-group input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .pv-input-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .pv-button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .pv-button-group button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pv-button-group button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .pv-btn-verify {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-btn-verify:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  .pv-btn-approve {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+  }
+
+  .pv-btn-approve:hover:not(:disabled) {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+  }
+
+  .pv-btn-reject {
+    background: linear-gradient(135deg, #DC2626 0%, #b91c1c 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  }
+
+  .pv-btn-reject:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  }
+
+  .pv-note-box {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #F0FDF4;
+    border: 1px solid #A7F3D0;
+    border-radius: 8px;
+    color: #065F46;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .pv-note-box strong {
+    color: #047857;
+  }
+
+  .pv-appearance-details {
+    margin-top: 16px;
+  }
+
+  .pv-appearance-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #374151;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    user-select: none;
+  }
+
+  .pv-appearance-details summary:hover {
+    background: #f3f4f6;
+  }
+
+  .pv-appearance-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .pv-appearance-inputs input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+  }
+
+  .pv-appearance-inputs input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .pv-appearance-inputs input[type="number"] {
+    width: 100px;
+  }
+
+  .pv-appearance-inputs input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .pv-appearance-inputs button {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .pv-appearance-inputs button:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1px);
+  }
+
+  .pv-preview-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .pv-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pv-preview-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .pv-preview-header button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .pv-preview-header .btn.viewpdf {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-preview-header .btn.viewpdf:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  #pv-preview-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+
+  #pv-preview-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+
+  #pv-preview-msg {
+    margin-left: 8px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  #pv-usermsg {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  #pv-usermsg:empty {
+    display: none;
+  }
+
+  #pv-debug {
+    margin-top: 12px;
+  }
+
+  #pv-debug summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    user-select: none;
+  }
+
+  #pv-debug summary:hover {
+    background: #f3f4f6;
+  }
+
+  #pv-output {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f7f7f7;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Dropdown button styles */
+  .pv-btn-verify-dropdown:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+  }
+
+  .pv-btn-approve-dropdown:hover:not(:disabled) {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4) !important;
+  }
+
+  .pv-btn-reject-dropdown:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4) !important;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .pv-card {
+      padding: 16px;
+    }
+
+    .pv-card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .pv-input-group {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pv-input-group label {
+      min-width: auto;
+      margin-bottom: 8px;
+    }
+
+    .pv-input-group input {
+      min-width: 100%;
+    }
+
+    .pv-button-group {
+      flex-direction: column;
+    }
+
+    .pv-button-group button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .pv-appearance-inputs {
+      flex-direction: column;
+    }
+
+    .pv-appearance-inputs input {
+      width: 100% !important;
+    }
+
+    .pv-preview-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pv-preview-header button {
+      width: 100%;
+      margin-top: 8px;
+    }
+  }
 </style>
 </head>
 <body class="paraf-validasi-page">
@@ -322,54 +727,56 @@
     </div>
 
         <!-- PV Actions Panel (Peneliti Validasi) -->
-        <section id="pv-actions" style="max-width:1000px; margin:24px 0; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
-          <h3>Proses Validasi (PV) - Dokumen Status "Menunggu" <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span></h3>
-          <div style="margin-bottom: 12px; padding: 8px; background: #EFF6FF; border: 1px solid #93C5FD; border-radius: 6px; color: #1E40AF;">
-            <strong>Info:</strong> Halaman ini menampilkan dokumen dengan status "Menunggu" untuk divalidasi. 
-            Dokumen yang sudah "Sudah Divalidasi" atau "Ditolak" dapat dilihat di halaman 
-            <a href="../Monitoring/monitoring_verifikasi.html" style="color: #1E40AF; text-decoration: underline;">Monitoring Verifikasi</a>.
+        <section id="pv-actions" class="pv-card">
+          <div class="pv-card-header">
+            <h3 class="pv-card-title">
+              Proses Validasi (PV) - Dokumen Status "Menunggu"
+              <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span>
+            </h3>
           </div>
-          <div style="display:flex; gap:12px; align-items:center; margin:8px 0;">
-            <label style="min-width:120px;">No. Validasi</label>
-            <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih" style="flex:1; padding:8px;"/>
-            <button id="pv-status">Status</button>
-            <button id="pv-claim">Claim</button>
-          </div>
-          <details style="margin:8px 0;">
-            <summary>Appearance (koordinat TTE)</summary>
-            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-              <input id="ap-page" type="number" min="1" value="1" placeholder="page" style="width:100px; padding:6px;"/>
-              <input id="ap-x" type="number" value="420" placeholder="x" style="width:120px; padding:6px;"/>
-              <input id="ap-y" type="number" value="680" placeholder="y" style="width:120px; padding:6px;"/>
-              <input id="ap-w" type="number" value="160" placeholder="width" style="width:120px; padding:6px;"/>
-              <input id="ap-h" type="number" value="55" placeholder="height" style="width:120px; padding:6px;"/>
-              <input id="ap-reason" type="text" value="Validasi dokumen" placeholder="reason" style="flex:1; padding:6px;"/>
-              <input id="ap-location" type="text" value="Bappenda" placeholder="location" style="flex:1; padding:6px;"/>
-              <button id="pv-appearance">Simpan Appearance</button>
+          
+          <div class="pv-card-body">
+            <div class="pv-info-box">
+              <strong>Info:</strong> Halaman ini menampilkan dokumen dengan status "Menunggu" untuk divalidasi. 
+              Dokumen yang sudah "Sudah Divalidasi" atau "Ditolak" dapat dilihat di halaman 
+              <a href="../Monitoring/monitoring_verifikasi.html">Monitoring Verifikasi</a>.
             </div>
-          </details>
-          <div style="display:flex; gap:8px; margin:8px 0; flex-wrap:wrap;">
-            <button id="pv-verify">Verify</button>
-            <button id="pv-approve" style="background:#059669; color:#fff;" disabled>Setujui & Kirim ke LSB</button>
-            <button id="pv-reject" style="background:#DC2626; color:#fff;" disabled>Tolak</button>
+            
+            <div class="pv-input-group">
+              <label>No. Validasi</label>
+              <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih"/>
+            </div>
+            
+            <details class="pv-appearance-details">
+              <summary>Appearance (koordinat TTE)</summary>
+              <div class="pv-appearance-inputs">
+                <input id="ap-page" type="number" min="1" value="1" placeholder="page"/>
+                <input id="ap-x" type="number" value="420" placeholder="x"/>
+                <input id="ap-y" type="number" value="680" placeholder="y"/>
+                <input id="ap-w" type="number" value="160" placeholder="width"/>
+                <input id="ap-h" type="number" value="55" placeholder="height"/>
+                <input id="ap-reason" type="text" value="Validasi dokumen" placeholder="reason"/>
+                <input id="ap-location" type="text" value="Bappenda" placeholder="location"/>
+                <button id="pv-appearance">Simpan Appearance</button>
+              </div>
+            </details>
+            
+            <div id="pv-usermsg"></div>
+            
+            <details id="pv-debug">
+              <summary>Detail teknis</summary>
+              <pre id="pv-output"></pre>
+            </details>
           </div>
-          <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
-            <strong>Catatan:</strong> Tombol "Setujui" sekarang akan otomatis mengirim dokumen ke LSB (Loket Serah Berkas) setelah disetujui.
-          </div>
-          <div id="pv-usermsg" style="margin-top:6px; color:#065F46; font-weight:600;"></div>
-          <details id="pv-debug" style="margin-top:6px;">
-            <summary>Detail teknis</summary>
-            <pre id="pv-output" style="margin-top:6px; padding:10px; background:#f7f7f7; border-radius:6px; white-space:pre-wrap;"></pre>
-          </details>
         </section>
         
         <!-- Preview Panel (Tab Baru) -->
-        <section id="pv-preview" style="max-width:100vw; margin:16px 0; border:1px solid #e5e5e5; border-radius:8px; padding:16px;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <h3 style="margin:0;">Review Dokumen</h3>
+        <section id="pv-preview" class="pv-preview-card">
+          <div class="pv-preview-header">
+            <h3>Review Dokumen</h3>
             <button id="pv-preview-btn">Buka Preview di Tab Baru</button>
-    <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
-            <span id="pv-preview-msg" style="margin-left:8px; color:#6b7280;"></span>
+            <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button>
+            <span id="pv-preview-msg"></span>
           </div>
         </section>
 
@@ -807,11 +1214,9 @@
         if(input) input.value = nv;
         if(out) out.textContent = 'Dipilih: ' + nv;
         // Reset action buttons until verify is run for new selection
-        const approveBtn = el('pv-approve');
-        const rejectBtn = el('pv-reject');
-        if(approveBtn) approveBtn.disabled = true;
-        if(rejectBtn) rejectBtn.disabled = true;
         lastVerifiedNoVal = null;
+        // Update dropdown buttons state
+        gateActions();
         // Auto-claim saat memilih baris untuk mengunci dokumen ini
         (async ()=>{ try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(_){ /* abaikan jika sudah di-claim */ } })();
       }
@@ -830,7 +1235,179 @@
         const statusCell = tr.querySelector('[data-field="status_display"]');
         if (statusCell) statusCell.innerHTML = renderStatusBadge(statusCell.textContent.trim());
       });
+      // Setup dropdown button event listeners
+      setupDropdownButtons();
+      // Update gate actions for dropdown buttons
+      await gateActions();
     }catch(e){ log('Gagal memuat daftar: '+e.message); }
+  }
+  
+  // Setup event listeners for dropdown buttons
+  function setupDropdownButtons() {
+    // Verify buttons in dropdown
+    document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const noValidasi = btn.getAttribute('data-no-validasi');
+        if (!noValidasi) return;
+        
+        // Update input field
+        const input = el('pv-no-validasi');
+        if (input) input.value = noValidasi;
+        
+        // Call verify function
+        await handleVerify(noValidasi);
+      });
+    });
+    
+    // Approve buttons in dropdown
+    document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const noValidasi = btn.getAttribute('data-no-validasi');
+        if (!noValidasi) return;
+        
+        // Update input field
+        const input = el('pv-no-validasi');
+        if (input) input.value = noValidasi;
+        
+        // Call approve function
+        await handleApprove(noValidasi);
+      });
+    });
+    
+    // Reject buttons in dropdown
+    document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const noValidasi = btn.getAttribute('data-no-validasi');
+        if (!noValidasi) return;
+        
+        // Update input field
+        const input = el('pv-no-validasi');
+        if (input) input.value = noValidasi;
+        
+        // Call reject function
+        await handleReject(noValidasi);
+      });
+    });
+  }
+  
+  // Extract verify logic to reusable function
+  async function handleVerify(nv) {
+    try {
+      if(!nv){ log('Pilih no_validasi dulu'); return; }
+      console.debug('[PV][FE] Verify clicked', { nv });
+      // Claim (idempotent)
+      try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(err){ console.warn('[PV][FE] claim warn', err?.message); }
+      // Prepare document (server enforces signature + verified cert)
+      const prep = await callPV(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`);
+      console.debug('[PV][FE] prepare ok', prep);
+      // Verify
+      const js = await callPV(`/api/validasi/${encodeURIComponent(nv)}/verify`);
+      log('Verifikasi berhasil', js);
+      // Enable approve/reject after success
+      lastVerifiedNoVal = nv;
+      // Update dropdown buttons state
+      await gateActions();
+      // Reload table to refresh UI
+      await loadPvDocs();
+    }catch(e){ log('Gagal verifikasi: '+e.message); }
+  }
+  
+  // Extract approve logic to reusable function
+  async function handleApprove(nv) {
+    try {
+      console.log('[FE-DEBUG] Attempting approval for:', nv);
+      
+      if(!nv) {
+        alert('Pilih dokumen terlebih dahulu!');
+        return;
+      }
+      
+      if(!confirm('Setujui dokumen ini?')) return; 
+      
+      const response = await fetch(`/api/validasi/${encodeURIComponent(nv)}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'approve' }),
+        credentials: 'include'
+      });
+      
+      console.log('[FE-DEBUG] Response status:', response.status);
+      const js = await response.json();
+      console.log('[FE-DEBUG] Response body:', js);
+      
+      if(js.success) {
+        log('Dokumen disetujui', js);
+        
+        // Tampilkan pesan khusus jika dokumen berhasil dikirim ke LSB
+        if(js.lsb_result && js.lsb_result.success) {
+          alert(`✅ ${js.message}\n\n📤 Dokumen telah otomatis dikirim ke LSB (Loket Serah Berkas).\n📋 No. Booking: ${js.nobooking}\n🔢 No. Validasi: ${js.no_validasi}`);
+        } else {
+          alert(`✅ ${js.message}`);
+        }
+      } else {
+        log('Gagal: ' + (js.message || 'Unknown error'), js);
+        alert('Gagal: ' + (js.message || 'Unknown error'));
+      }
+      
+      await loadPvDocs();
+    }catch(e){ 
+      console.error('[FE-ERROR] Approval failed:', e);
+      log('APPROVE Gagal: '+e.message);
+      alert('APPROVE Gagal: '+e.message);
+    }
+  }
+  
+  // Extract reject logic to reusable function
+  async function handleReject(nv) {
+    try {
+      const reason = prompt('Alasan penolakan? (wajib)');
+      if(!reason) return; 
+      
+      // Cek apakah nobooking sudah pernah digunakan
+      const checkResponse = await fetch(`/api/check-nobooking-usage/${encodeURIComponent(nv)}`);
+      const checkData = await checkResponse.json();
+      
+      if (checkData.success && checkData.isUsed) {
+        alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
+        return;
+      }
+      
+      // Get nobooking from table row
+      const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+      let nobooking = null;
+      if (tbody) {
+        const rows = tbody.querySelectorAll('tr:not(.dropdown-row)');
+        for (const row of rows) {
+          const noValidasiCell = row.cells && row.cells[0];
+          if (noValidasiCell && noValidasiCell.textContent.trim() === nv) {
+            const nobookingCell = row.cells && row.cells[2];
+            if (nobookingCell) nobooking = nobookingCell.textContent.trim();
+            break;
+          }
+        }
+      }
+      
+      // Kirim penolakan dengan auto-delete
+      const js = await callPV(`/api/pv/reject-with-auto-delete`, { 
+        body:{ 
+          nobooking: nobooking || nv,
+          rejectionReason: reason,
+          userid: 'current_user' // Server akan menggunakan session dari cookie
+        } 
+      });
+      
+      if (js.success) {
+        log(`Dokumen ditolak. Data akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(js.scheduledDeleteAt).toLocaleString('id-ID')}`, js);
+        console.debug('[PV][FE] decision reject with auto-delete ok', js);
+      } else {
+        log('REJECT Gagal: ' + (js.message || 'Terjadi kesalahan'), js);
+      }
+      
+      await loadPvDocs();
+    }catch(e){ log('REJECT Gagal: '+e.message);} 
   }
   function renderStatusBadge(s){
     const t = String(s||'Menunggu');
@@ -929,116 +1506,14 @@
     currentPagePV = 1;
     renderPVRowsForPage(currentPagePV);
   }
-  const btnStatus = el('pv-status');
-  if(btnStatus){ btnStatus.onclick = async ()=>{ try{ const res = await fetch(`/api/validasi/${encodeURIComponent(noVal())}/status`, { credentials:'include' }); const js = await res.json(); log('Status diperbarui', js);}catch(e){ log('Gagal mengambil status: '+e.message); } }; }
-  const btnClaim = el('pv-claim');
-  if(btnClaim){ btnClaim.onclick = async ()=>{ try{ const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/claim`); log('Dokumen berhasil di-claim', js);}catch(e){ log('Gagal claim: '+e.message);} }; }
+  // Status and Claim buttons removed - functionality is redundant:
+  // - Claim is automatically done when selecting a table row (line 816)
+  // - Claim is also done automatically in Verify flow (line 946)
+  // - Status button only displayed status without performing any action
   const btnAp = el('pv-appearance');
   if(btnAp){ btnAp.onclick = async ()=>{ try{ const appearance = { page:Number(el('ap-page').value||1), x:Number(el('ap-x').value||0), y:Number(el('ap-y').value||0), width:Number(el('ap-w').value||0), height:Number(el('ap-h').value||0), reason:el('ap-reason').value||'', location:el('ap-location').value||'' }; const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/appearance`, { body:{ appearance } }); log('Koordinat TTE tersimpan', js);}catch(e){ log('Gagal simpan appearance: '+e.message);} }; }
-  // Simplified flow: Claim -> Prepare -> Verify (auto), then enable Approve/Reject
-  const btnVer = el('pv-verify');
-  if(btnVer){ btnVer.onclick = async ()=>{ 
-    try{ 
-      const nv = noVal();
-      if(!nv){ log('Pilih no_validasi dulu'); return; }
-      console.debug('[PV][FE] Verify clicked', { nv });
-      // Claim (idempotent)
-      try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(err){ console.warn('[PV][FE] claim warn', err?.message); }
-      // Prepare document (server enforces signature + verified cert)
-      const prep = await callPV(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`);
-      console.debug('[PV][FE] prepare ok', prep);
-      // Verify
-      const js = await callPV(`/api/validasi/${encodeURIComponent(nv)}/verify`);
-      log('Verifikasi berhasil', js);
-      // Enable approve/reject after success
-      const approveBtn = el('pv-approve');
-      const rejectBtn = el('pv-reject');
-      if(approveBtn) approveBtn.disabled = false;
-      if(rejectBtn) rejectBtn.disabled = false;
-      lastVerifiedNoVal = nv;
-      await loadPvDocs();
-    }catch(e){ log('Gagal verifikasi: '+e.message); }
-  }; }
-  const btnApprove = el('pv-approve');
-if(btnApprove){ 
-    btnApprove.onclick = async ()=>{ 
-        try{ 
-            const nv = noVal();
-            console.log('[FE-DEBUG] Attempting approval for:', nv);
-            
-            if(!nv) {
-                alert('Pilih dokumen terlebih dahulu!');
-                return;
-            }
-            
-            if(!confirm('Setujui dokumen ini?')) return; 
-            
-            const response = await fetch(`/api/validasi/${encodeURIComponent(nv)}/decision`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ decision: 'approve' }),
-                credentials: 'include'
-            });
-            
-            console.log('[FE-DEBUG] Response status:', response.status);
-            const js = await response.json();
-            console.log('[FE-DEBUG] Response body:', js);
-            
-            if(js.success) {
-                log('Dokumen disetujui', js);
-                
-                // Tampilkan pesan khusus jika dokumen berhasil dikirim ke LSB
-                if(js.lsb_result && js.lsb_result.success) {
-                    alert(`✅ ${js.message}\n\n📤 Dokumen telah otomatis dikirim ke LSB (Loket Serah Berkas).\n📋 No. Booking: ${js.nobooking}\n🔢 No. Validasi: ${js.no_validasi}`);
-                } else {
-                    alert(`✅ ${js.message}`);
-                }
-            } else {
-                log('Gagal: ' + (js.message || 'Unknown error'), js);
-                alert('Gagal: ' + (js.message || 'Unknown error'));
-            }
-            
-            await loadPvDocs();
-        }catch(e){ 
-            console.error('[FE-ERROR] Approval failed:', e);
-            log('APPROVE Gagal: '+e.message);
-            alert('APPROVE Gagal: '+e.message);
-        } 
-    }; }
-  const btnReject = el('pv-reject');
-  if(btnReject){ btnReject.onclick = async ()=>{ 
-    try{ 
-      const reason = prompt('Alasan penolakan? (wajib)');
-      if(!reason) return; 
-      
-      // Cek apakah nobooking sudah pernah digunakan
-      const checkResponse = await fetch(`/api/check-nobooking-usage/${encodeURIComponent(noVal())}`);
-      const checkData = await checkResponse.json();
-      
-      if (checkData.success && checkData.isUsed) {
-        alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
-        return;
-      }
-      
-      // Kirim penolakan dengan auto-delete
-      const js = await callPV(`/api/pv/reject-with-auto-delete`, { 
-        body:{ 
-          nobooking: noVal(),
-          rejectionReason: reason,
-          userid: 'current_user' // Server akan menggunakan session dari cookie
-        } 
-      });
-      
-      if (js.success) {
-        log(`Dokumen ditolak. Data akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(js.scheduledDeleteAt).toLocaleString('id-ID')}`, js);
-        console.debug('[PV][FE] decision reject with auto-delete ok', js);
-      } else {
-        log('REJECT Gagal: ' + (js.message || 'Terjadi kesalahan'), js);
-      }
-      
-      await loadPvDocs();
-    }catch(e){ log('REJECT Gagal: '+e.message);} 
-  }; }
+  // Button handlers removed from card - now handled in dropdown
+  // Functions handleVerify, handleApprove, handleReject are defined above
   async function gateActions(){
     try{
       const [authRes, certRes] = await Promise.all([
@@ -1055,27 +1530,63 @@ if(btnApprove){
         if(hasSig && certOk){ authBadge.textContent = 'Auth siap'; authBadge.classList.add('ok'); }
         else { authBadge.textContent = 'Auth belum siap'; authBadge.classList.add('warn'); }
       }
-      // Gate buttons
+      // Gate buttons in dropdown
       // Verify gated by auth; Approve/Reject gated by auth and per-doc verify success
-      const verifyBtn = el('pv-verify');
-      if(verifyBtn) verifyBtn.disabled = !(hasSig && certOk);
-      const approveBtn = el('pv-approve');
-      const rejectBtn = el('pv-reject');
+      const canVerify = hasSig && certOk;
       const canAct = (hasSig && certOk && noVal() && noVal() === lastVerifiedNoVal);
-      if(approveBtn) approveBtn.disabled = !canAct;
-      if(rejectBtn) rejectBtn.disabled = !canAct;
+      
+      // Update all dropdown buttons
+      document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
+        btn.disabled = !canVerify;
+        if (!canVerify) {
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      });
+      
+      document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
+        const btnNoValidasi = btn.getAttribute('data-no-validasi');
+        const btnCanAct = canAct && btnNoValidasi === noVal();
+        btn.disabled = !btnCanAct;
+        if (!btnCanAct) {
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      });
+      
+      document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
+        const btnNoValidasi = btn.getAttribute('data-no-validasi');
+        const btnCanAct = canAct && btnNoValidasi === noVal();
+        btn.disabled = !btnCanAct;
+        if (!btnCanAct) {
+          btn.style.opacity = '0.6';
+          btn.style.cursor = 'not-allowed';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+        }
+      });
     }catch(_){
       if(authBadge){ authBadge.textContent = 'Auth belum siap'; authBadge.classList.remove('ok'); authBadge.classList.add('warn'); }
-      const verifyBtn = el('pv-verify');
-      if(verifyBtn) verifyBtn.disabled = true;
-      const approveBtn = el('pv-approve');
-      const rejectBtn = el('pv-reject');
-      if(approveBtn) approveBtn.disabled = true;
-      if(rejectBtn) rejectBtn.disabled = true;
+      // Disable all dropdown buttons
+      document.querySelectorAll('.pv-btn-verify-dropdown, .pv-btn-approve-dropdown, .pv-btn-reject-dropdown').forEach(btn => {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.style.cursor = 'not-allowed';
+      });
     }
   }
   // Initial gate
   gateActions();
+  
+  // Expose gateActions globally for dropdown button updates
+  window.gateActions = gateActions;
 
   // Preview: rebuild dokumen dengan generator terbaru lalu buka viewer; fallback ke versi lama bila gagal
   const btnPreview = el('pv-preview-btn');

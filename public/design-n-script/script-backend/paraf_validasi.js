@@ -201,6 +201,18 @@ function toggleDropdown(row) {
 
     const isVisible = dropdownCell.style.display === 'table-cell';
     dropdownCell.style.display = isVisible ? 'none' : 'table-cell';
+    
+    // Update dropdown buttons when opening dropdown
+    if (!isVisible) {
+        const novalidasi = row.getAttribute('data-novalidasi');
+        if (novalidasi && typeof window.gateActions === 'function') {
+            // Update input field first
+            const input = document.getElementById('pv-no-validasi');
+            if (input) input.value = novalidasi;
+            // Then update button states
+            setTimeout(() => window.gateActions(), 100);
+        }
+    }
 
     if (!isVisible && typeof enableViewDocumentButton === 'function') {
         enableViewDocumentButton(selectedNoBooking);
@@ -351,7 +363,23 @@ function generateDropdownContent(item) {
                         </button>
                     </div>
                     <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
-                        <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan panel "Proses Validasi (PV)" di atas.
+                        <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan tombol di bawah ini.
+                    </div>
+                </div>
+
+                <!-- PV Action Buttons Section -->
+                <div class="pv-action-buttons-dropdown" style="margin-top: 16px; padding: 16px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 10px;">
+                    <h6 style="color: #e5e7eb; margin: 0 0 12px 0; font-weight: 600; font-size: 14px;">Aksi Validasi:</h6>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="pv-verify-dropdown-${item.no_validasi}" class="pv-btn-verify-dropdown" data-no-validasi="${item.no_validasi}" style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
+                            Verify
+                        </button>
+                        <button id="pv-approve-dropdown-${item.no_validasi}" class="pv-btn-approve-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); opacity: 0.6;">
+                            Setujui & Kirim ke LSB
+                        </button>
+                        <button id="pv-reject-dropdown-${item.no_validasi}" class="pv-btn-reject-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #DC2626 0%, #b91c1c 100%); color: white; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3); opacity: 0.6;">
+                            Tolak
+                        </button>
                     </div>
                 </div>
 
