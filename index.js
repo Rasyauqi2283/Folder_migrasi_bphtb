@@ -4537,8 +4537,6 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
             lsb.*,
             pb.noppbb,
             pb.tahunajb,
-            pb.pdf_dokumen_path,
-            pb.pdf_dokumen_path AS file_booking_path
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
         WHERE lsb.trackstatus = 'Siap Diserahkan'
