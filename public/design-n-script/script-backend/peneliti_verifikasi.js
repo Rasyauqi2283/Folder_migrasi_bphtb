@@ -230,8 +230,6 @@ function createCard(container, item) {
                     return (value === undefined || value === null || value === '' || value === '-') ? 'Belum diisi' : value;
                 };
                 
-                const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
-                
         card.innerHTML = `
             <div class="card-header">
                 <div>
@@ -244,18 +242,6 @@ function createCard(container, item) {
                 <div class="info-item">
                     <span class="info-label">NOP PBB</span>
                     <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">User ID</span>
-                    <span class="info-value ${formatValue(item.userid) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.userid)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Nama Wajib Pajak</span>
-                    <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Pemilik Objek</span>
-                    <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Special Field</span>
@@ -275,7 +261,9 @@ function createCard(container, item) {
                     </button>
                 </div>
                 <div class="footer-actions">
-                    <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                    <button class="btn-save-verification" data-nobooking="${item.nobooking}">
+                        <i class="fas fa-save"></i> Simpan Verifikasi
+                    </button>
                     <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
                         <span>❌</span> Tolak
                     </button>
@@ -442,10 +430,7 @@ function createCard(container, item) {
 
                             <!-- Action Buttons Section -->
                         <div class="action-buttons">
-                                <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}">
-                                    <i class="fas fa-save"></i> Simpan Verifikasi
-                                </button>
-                                <button type="button" class="btn-send-to-paraf" data-nobooking="${item.nobooking}">
+                                <button type="button" class="btn-send-to-paraf" data-nobooking="${item.nobooking}" style="width: 100%;">
                                     <i class="fas fa-paper-plane"></i> Kirim ke Paraf
                             </button>
                         </div>
@@ -876,11 +861,34 @@ function viewDocument(nobooking) {
 
         console.log('📄 [VIEW DOCUMENT] Opening PDF for nobooking:', nobooking);
         
-        // Open PDF in new tab - menggunakan API yang benar
-        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
-        window.open(pdfUrl, '_blank');
-        
-        showAlert('success', 'Dokumen berhasil dibuka');
+        const encodedBooking = encodeURIComponent(String(nobooking).trim());
+        const pdfUrl = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodedBooking}`;
+
+        // Try opening directly; fallback to blob if the popup is blocked
+        const newWindow = window.open(pdfUrl, '_blank', 'noopener');
+
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            // Popup blocked, fetch and open via blob
+            fetch(pdfUrl, { credentials: 'include' })
+                .then(async (res) => {
+                    if (!res.ok) {
+                        const errText = await res.text();
+                        throw new Error(errText || `Gagal membuka dokumen (${res.status})`);
+                    }
+                    return res.blob();
+                })
+                .then((blob) => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    window.open(blobUrl, '_blank', 'noopener');
+                    showAlert('success', 'Dokumen berhasil dibuka');
+                })
+                .catch((err) => {
+                    console.error('View Document Fetch Error:', err);
+                    showAlert('error', `Gagal membuka dokumen: ${err.message}`);
+                });
+        } else {
+            showAlert('success', 'Dokumen berhasil dibuka');
+        }
     } catch (error) {
         console.error('View Document Error:', error);
         showAlert('error', `Gagal membuka dokumen: ${error.message}`);
