@@ -4543,9 +4543,6 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
             COALESCE(lsb.namapemilikobjekpajak, '') AS namapemilikobjekpajak,
             COALESCE(lsb.status, '') AS status,
             COALESCE(lsb.trackstatus, '') AS trackstatus,
-            COALESCE(lsb.keterangan, '') AS keterangan,
-            COALESCE(lsb.file_withstempel_path, '') AS file_withstempel_path,
-            COALESCE(pb.pdf_dokumen_path, '') AS file_booking_path,
             lsb.updated_at
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
