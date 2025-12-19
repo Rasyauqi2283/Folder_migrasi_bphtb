@@ -204,6 +204,56 @@
             background: #e0a800;
         }
         
+        /* Button Styling - View Dokumen and Tolak */
+        .btn.viewpdf {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .btn.viewpdf:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn.viewpdf:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn.tolak {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            font-size: 14px;
+        }
+        
+        .btn.tolak:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+        }
+        
+        .btn.tolak:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
         /* Pagination Styles - Dark Theme to match table */
         .pagination-container {
             margin-top: 20px;
@@ -215,7 +265,7 @@
             justify-content: center;
             align-items: center;
             box-shadow: 0 10px 30px rgba(0,0,0,.35);
-            width: 100%;
+            width: 95%;
             box-sizing: border-box;
         }
         
