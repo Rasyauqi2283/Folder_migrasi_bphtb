@@ -23,27 +23,87 @@ async function loadTableDataLTB() {
 
         console.log('✅ [FRONTEND] User division validated, proceeding with API call...');
         console.log('🔍 [FRONTEND] Making API request to /api/ltb_get-ltb-berkas...');
+        console.log('🔍 [FRONTEND] Request details:', {
+            url: '/api/ltb_get-ltb-berkas',
+            credentials: 'include',
+            timestamp: new Date().toISOString()
+        });
 
         const response = await fetch('/api/ltb_get-ltb-berkas', { credentials: 'include' }); // Endpoint API untuk mendapatkan data berkas LTB
-        const data = await response.json();
+        
+        console.log('📡 [FRONTEND] Raw HTTP Response:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
+            headers: Object.fromEntries(response.headers.entries()),
+            contentType: response.headers.get('content-type')
+        });
+
+        // Check if response is OK before parsing
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [FRONTEND] HTTP Error Response:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        // Try to parse JSON
+        let data;
+        try {
+            const responseText = await response.text();
+            console.log('📄 [FRONTEND] Response text (first 500 chars):', responseText.substring(0, 500));
+            
+            data = JSON.parse(responseText);
+            console.log('✅ [FRONTEND] JSON parsed successfully');
+        } catch (parseError) {
+            console.error('❌ [FRONTEND] JSON Parse Error:', {
+                error: parseError.message,
+                stack: parseError.stack
+            });
+            throw new Error(`Failed to parse JSON: ${parseError.message}`);
+        }
 
         console.log('✅ [FRONTEND] API response received:', {
             success: data.success,
             dataLength: Array.isArray(data.data) ? data.data.length : 0,
             dataType: typeof data.data,
             hasData: !!data.data,
-            fullResponse: data
+            isArray: Array.isArray(data.data),
+            debug: data.debug || 'No debug info',
+            fullResponseKeys: Object.keys(data),
+            firstDataItem: Array.isArray(data.data) && data.data.length > 0 ? {
+                keys: Object.keys(data.data[0]),
+                sample: data.data[0]
+            } : 'No data items'
         });
 
         if (data.success) {
             console.log('✅ [FRONTEND] Success response received, processing data...');
+            console.log('📊 [FRONTEND] Data structure analysis:', {
+                hasData: !!data.data,
+                isArray: Array.isArray(data.data),
+                dataLength: Array.isArray(data.data) ? data.data.length : 'Not an array',
+                dataType: typeof data.data,
+                debugInfo: data.debug || 'No debug info'
+            });
             
             const tbody = document.querySelector('.data-masuk');
             if (!tbody) {
                 console.error('❌ [FRONTEND] Table body element not found!');
+                console.error('❌ [FRONTEND] Searching for selector: .data-masuk');
+                console.error('❌ [FRONTEND] Available tbody elements:', document.querySelectorAll('tbody'));
                 throw new Error('Table body element not found');
             }
-            console.log('✅ [FRONTEND] Table body found:', tbody);
+            console.log('✅ [FRONTEND] Table body found:', {
+                element: tbody,
+                tagName: tbody.tagName,
+                className: tbody.className,
+                id: tbody.id,
+                parentElement: tbody.parentElement?.tagName
+            });
 
             // Pagination setup
             const PAGE_SIZE = 8;
@@ -54,15 +114,34 @@ async function loadTableDataLTB() {
                 pageSize: PAGE_SIZE,
                 totalRows: rows.length,
                 rowsType: Array.isArray(rows) ? 'Array' : typeof rows,
+                rowsIsArray: Array.isArray(rows),
+                rowsConstructor: rows.constructor?.name,
                 firstRowSample: rows.length > 0 ? {
                     no_registrasi: rows[0].no_registrasi,
                     nobooking: rows[0].nobooking,
                     noppbb: rows[0].noppbb,
                     namawajibpajak: rows[0].namawajibpajak,
                     trackstatus: rows[0].trackstatus,
-                    status: rows[0].status
-                } : 'No data'
+                    status: rows[0].status,
+                    allKeys: Object.keys(rows[0])
+                } : 'No data',
+                allRowsPreview: rows.length > 0 ? rows.slice(0, 3).map((r, i) => ({
+                    index: i,
+                    no_registrasi: r.no_registrasi,
+                    nobooking: r.nobooking,
+                    trackstatus: r.trackstatus,
+                    status: r.status
+                })) : []
             });
+
+            if (rows.length === 0) {
+                console.warn('⚠️ [FRONTEND] No rows to display!');
+                console.warn('⚠️ [FRONTEND] This could mean:');
+                console.warn('  1. Database query returned no results');
+                console.warn('  2. WHERE clause filters are too strict');
+                console.warn('  3. Data structure mismatch');
+                console.warn('⚠️ [FRONTEND] Check backend logs for query results');
+            }
 
             function renderPage(page) {
                 console.log(`📄 [PAGINATION] Rendering page ${page}:`, {
@@ -319,16 +398,25 @@ async function loadTableDataLTB() {
         } else {
             console.log('❌ [FRONTEND] API returned success: false');
             console.log('❌ [FRONTEND] Response data:', data);
-            alert('No data available');
+            console.log('❌ [FRONTEND] Full response object:', JSON.stringify(data, null, 2));
+            console.log('❌ [FRONTEND] Response keys:', Object.keys(data));
+            alert(`No data available. ${data.message || 'Please check console for details.'}`);
         }
     } catch (error) {
         console.error('❌ [FRONTEND] Main Function Error:', error);
         console.error('❌ [FRONTEND] Error details:', {
             message: error.message,
             stack: error.stack,
-            name: error.name
+            name: error.name,
+            cause: error.cause,
+            timestamp: new Date().toISOString()
         });
-        alert('An error occurred while fetching data.');
+        console.error('❌ [FRONTEND] Error occurred at:', {
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            divisi: getUserDivisi()
+        });
+        alert(`An error occurred while fetching data: ${error.message}`);
     }
 }
 

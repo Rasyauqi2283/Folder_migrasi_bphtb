@@ -880,6 +880,21 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
     const statusResult = await pool.query(statusCheckQuery);
     console.log('📊 [LTB] Status breakdown:', statusResult.rows);
 
+    // Check what trackstatus and status values exist in the table
+    const valueCheckQuery = `
+      SELECT DISTINCT 
+        trackstatus,
+        status,
+        UPPER(TRIM(COALESCE(trackstatus, ''))) as trackstatus_upper,
+        UPPER(TRIM(COALESCE(status, ''))) as status_upper,
+        COUNT(*) as count
+      FROM ltb_1_terima_berkas_sspd
+      GROUP BY trackstatus, status
+      ORDER BY count DESC;
+    `;
+    const valueResult = await pool.query(valueCheckQuery);
+    console.log('📊 [LTB] All trackstatus and status values in table:', valueResult.rows);
+
     // Main query - simplified without DISTINCT ON
     const ltbDataQuery = `
       SELECT 
@@ -911,18 +926,32 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
     `;
 
     console.log('🔍 [LTB] Executing main query...');
+    console.log('🔍 [LTB] Query WHERE clause expects:', {
+      trackstatus: 'DIOLAH',
+      status: 'DITERIMA'
+    });
+    
     const result = await pool.query(ltbDataQuery);
     
     console.log('📊 [LTB] Main query result:', {
       rowCount: result.rows.length,
+      columnNames: result.rows.length > 0 ? Object.keys(result.rows[0]) : [],
       sample: result.rows.length > 0 ? {
         id: result.rows[0].id,
         nobooking: result.rows[0].nobooking,
         no_registrasi: result.rows[0].no_registrasi,
         trackstatus: result.rows[0].trackstatus,
         status: result.rows[0].status,
-        namawajibpajak: result.rows[0].namawajibpajak
-      } : null
+        namawajibpajak: result.rows[0].namawajibpajak,
+        noppbb: result.rows[0].noppbb,
+        namapemilikobjekpajak: result.rows[0].namapemilikobjekpajak
+      } : null,
+      allRows: result.rows.length > 0 ? result.rows.map(r => ({
+        no_registrasi: r.no_registrasi,
+        nobooking: r.nobooking,
+        trackstatus: r.trackstatus,
+        status: r.status
+      })) : []
     });
 
     // Always return success with data array (even if empty)
