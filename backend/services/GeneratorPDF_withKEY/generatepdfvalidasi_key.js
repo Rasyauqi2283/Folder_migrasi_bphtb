@@ -44,8 +44,23 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     }
     const data = rows[0];
     
-    // 2) Tentukan PV userid yang dipakai (prioritas: parameter -> pv_1_paraf_validate -> pv_2_signing_requests)
+    // 2) Tentukan PV userid yang dipakai
+    // Prioritas: parameter pvUserid (harusnya userid yang sedang login) -> pv_1_paraf_validate.pemverifikasi -> pv_2_signing_requests.signer_userid
     let effectivePvUserid = pvUserid || null;
+
+    // Jika noValidasi kosong, coba ambil dari pv_1_paraf_validate dengan nobooking
+    if (!noValidasi && nobooking) {
+        try {
+            const nvQ = await pool.query(`SELECT no_validasi FROM pv_1_paraf_validate WHERE nobooking = $1 LIMIT 1`, [nobooking]);
+            if (nvQ.rows.length > 0) {
+                noValidasi = nvQ.rows[0].no_validasi;
+                console.log('[PDF-PV] noValidasi resolved from pv_1_paraf_validate:', noValidasi);
+            }
+        } catch (e) {
+            console.warn('[PDF-PV] Failed to resolve no_validasi from pv_1_paraf_validate:', e.message);
+        }
+    }
+
     if (!effectivePvUserid) {
         try {
             const pvUserFromValidate = await pool.query(
@@ -60,6 +75,7 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
             console.warn('[PDF-PV] Failed to fetch pemverifikasi from pv_1_paraf_validate:', e.message);
         }
     }
+
     if (!effectivePvUserid) {
         try {
             const signerQ = await pool.query(
