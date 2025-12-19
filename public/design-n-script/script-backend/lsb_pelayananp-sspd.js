@@ -50,7 +50,15 @@ async function loadTableLSB() {
         try {
 		if (!data) {
                 console.log('📥 [LSB-Frontend] Parsing JSON response, status:', response.status, response.statusText);
-                data = await response.json();
+                const responseText = await response.text();
+                console.log('📥 [LSB-Frontend] Raw response text (first 500 chars):', responseText.substring(0, 500));
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseErr) {
+                    console.error('❌ [LSB-Frontend] JSON Parse Error:', parseErr);
+                    console.error('❌ [LSB-Frontend] Full response text:', responseText);
+                    throw new Error(`Invalid JSON response: ${parseErr.message}`);
+                }
             }
             
             console.log('📦 [LSB-Frontend] Received data:', {
@@ -60,7 +68,7 @@ async function loadTableLSB() {
                 statusText: response.statusText,
                 hasData: !!data?.data,
                 dataType: Array.isArray(data?.data) ? 'array' : typeof data?.data,
-                fullResponse: JSON.stringify(data).substring(0, 200)
+                fullResponse: JSON.stringify(data).substring(0, 500)
             });
             
             if (!data || typeof data !== 'object') {
@@ -75,6 +83,7 @@ async function loadTableLSB() {
             
             if (!Array.isArray(data.data)) {
                 console.error('❌ [LSB-Frontend] Data is not an array:', data);
+                console.error('❌ [LSB-Frontend] Data type:', typeof data.data, 'Value:', data.data);
                 throw new Error('Expected array data not found in response');
             }
             
@@ -85,8 +94,11 @@ async function loadTableLSB() {
                     status: data.data[0].status,
                     trackstatus: data.data[0].trackstatus,
                     noppbb: data.data[0].noppbb,
-                    tahunajb: data.data[0].tahunajb
+                    tahunajb: data.data[0].tahunajb,
+                    namawajibpajak: data.data[0].namawajibpajak,
+                    namapemilikobjekpajak: data.data[0].namapemilikobjekpajak
                 });
+                console.log('📋 [LSB-Frontend] Full first record:', JSON.stringify(data.data[0], null, 2));
             } else {
                 console.log('⚠️ [LSB-Frontend] No records in data array - table will show empty');
             }
@@ -122,7 +134,11 @@ async function loadTableLSB() {
 		// Filter out items that are already sent (trackstatus = 'Diserahkan')
 		// Note: API sudah filter di backend, jadi seharusnya tidak ada item dengan trackstatus = 'Diserahkan'
 		let allItems = Array.isArray(data.data) ? data.data.filter(item => {
-			const track = String(item.trackstatus || '').toLowerCase();
+			if (!item) {
+				console.warn('⚠️ [LSB-Frontend] Found null/undefined item in data array');
+				return false;
+			}
+			const track = String(item.trackstatus || '').toLowerCase().trim();
 			const shouldInclude = track !== 'diserahkan';
 			if (!shouldInclude) {
 				console.log(`⚠️ [LSB-Frontend] Filtering out item with trackstatus='Diserahkan':`, item.nobooking);
@@ -135,7 +151,15 @@ async function loadTableLSB() {
 			console.log('📋 [LSB-Frontend] Sample filtered item:', {
 				nobooking: allItems[0].nobooking,
 				status: allItems[0].status,
-				trackstatus: allItems[0].trackstatus
+				trackstatus: allItems[0].trackstatus,
+				noppbb: allItems[0].noppbb,
+				tahunajb: allItems[0].tahunajb
+			});
+		} else if (data.data.length > 0) {
+			console.warn('⚠️ [LSB-Frontend] All items were filtered out! Sample item:', {
+				nobooking: data.data[0].nobooking,
+				status: data.data[0].status,
+				trackstatus: data.data[0].trackstatus
 			});
 		}
 		totalRecords = allItems.length;

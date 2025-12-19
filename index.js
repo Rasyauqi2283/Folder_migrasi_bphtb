@@ -4536,13 +4536,16 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         const query = `
         SELECT 
             lsb.nobooking,
-            pb.noppbb,
-            pb.tahunajb,
-            lsb.namawajibpajak,
-            lsb.namapemilikobjekpajak,
-            lsb.status,
-            lsb.trackstatus,
-            lsb.keterangan,
+            lsb.userid,
+            COALESCE(pb.noppbb::text, '') AS noppbb,
+            COALESCE(pb.tahunajb::text, '') AS tahunajb,
+            COALESCE(lsb.namawajibpajak, '') AS namawajibpajak,
+            COALESCE(lsb.namapemilikobjekpajak, '') AS namapemilikobjekpajak,
+            COALESCE(lsb.status, '') AS status,
+            COALESCE(lsb.trackstatus, '') AS trackstatus,
+            COALESCE(lsb.keterangan, '') AS keterangan,
+            COALESCE(lsb.file_withstempel_path, '') AS file_withstempel_path,
+            COALESCE(pb.pdf_dokumen_path, '') AS file_booking_path,
             lsb.updated_at
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
@@ -4550,6 +4553,26 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         ORDER BY lsb.nobooking DESC;
         `;
         const result = await pool.query(query);
+        console.log(`✅ [LSB-API] Query returned ${result.rows.length} rows`);
+        if (result.rows.length > 0) {
+            console.log('📋 [LSB-API] Sample row:', {
+                nobooking: result.rows[0].nobooking,
+                status: result.rows[0].status,
+                trackstatus: result.rows[0].trackstatus,
+                noppbb: result.rows[0].noppbb,
+                tahunajb: result.rows[0].tahunajb,
+                namawajibpajak: result.rows[0].namawajibpajak,
+                namapemilikobjekpajak: result.rows[0].namapemilikobjekpajak
+            });
+            // Log all rows for debugging
+            console.log('📋 [LSB-API] All rows:', JSON.stringify(result.rows, null, 2));
+        } else {
+            console.log('⚠️ [LSB-API] No rows returned from query');
+            // Check if there are any records with different trackstatus
+            const checkQuery = `SELECT trackstatus, COUNT(*) as count FROM lsb_1_serah_berkas GROUP BY trackstatus`;
+            const checkResult = await pool.query(checkQuery);
+            console.log('📊 [LSB-API] Trackstatus breakdown:', checkResult.rows);
+        }
         return res.status(200).json({
             success: true,
             data: result.rows
