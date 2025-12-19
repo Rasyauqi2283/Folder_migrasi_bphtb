@@ -909,8 +909,8 @@ app.get('/api/ltb_get-ltb-berkas', async (req, res) => {
         COALESCE(b.noppbb, '') as noppbb,
         COALESCE(b.namawajibpajak, t.namawajibpajak, '') as namawajibpajak,
         COALESCE(b.namapemilikobjekpajak, t.namapemilikobjekpajak, '') as namapemilikobjekpajak,
-        COALESCE(b.tanggal, '') as tanggal,
-        COALESCE(b.tahunajb, '') as tahunajb,
+        COALESCE(b.tanggal::text, '') as tanggal,
+        COALESCE(b.tahunajb::text, '') as tahunajb,
         COALESCE(o.letaktanahdanbangunan, '') as letaktanahdanbangunan,
         COALESCE(vu.nama, t.nama, '') as nama_ppat,
         COALESCE(vu.userid, t.userid, '') as userid_ppat
