@@ -355,29 +355,7 @@ function generateDropdownContent(item) {
                 ${item.keterangan ? `<p><strong>Keterangan:</strong> ${item.keterangan}</p>` : ''}
             </div>
 
-                <div class="action-buttons">
-                    <div>
-                        <h5>Dokumen Permohonan</h5>
-                        <div class="form-actions">
-                            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
-                                <i class="fas fa-file-pdf"></i> Lihat Dokumen Permohonan
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <h5>Dokumen Booking</h5>
-                        <div class="form-actions">
-                            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewDocument('${item.nobooking}')">
-                                <i class="fas fa-file-pdf"></i> Lihat Dokumen Booking
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
-                    <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan tombol di bawah ini.
-                </div>
-
-            <!-- Document Links Section -->
+            <!-- Document Links Section (dibawah data) -->
             <div class="document-links-section">
                 <h6 class="document-links-title">Dokumen Terkait:</h6>
                 <div class="document-links-list">
@@ -385,21 +363,46 @@ function generateDropdownContent(item) {
                 </div>
             </div>
 
-                <!-- PV Action Buttons Section -->
-                <div class="pv-action-buttons-dropdown" style="margin-top: 16px; padding: 16px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 10px;">
-                    <h6 style="color: #e5e7eb; margin: 0 0 12px 0; font-weight: 600; font-size: 14px;">Aksi Validasi:</h6>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button id="pv-verify-dropdown-${item.no_validasi}" class="pv-btn-verify-dropdown" data-no-validasi="${item.no_validasi}" style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
-                            Verify
-                        </button>
-                        <button id="pv-approve-dropdown-${item.no_validasi}" class="pv-btn-approve-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); opacity: 0.6;">
-                            Setujui & Kirim ke LSB
-                        </button>
-                        <button id="pv-reject-dropdown-${item.no_validasi}" class="pv-btn-reject-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #DC2626 0%, #b91c1c 100%); color: white; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3); opacity: 0.6;">
-                            Tolak
+            <!-- Dokumen Permohonan & Booking Section -->
+            <div class="action-buttons">
+                <div>
+                    <h5>Dokumen Permohonan</h5>
+                    <div class="form-actions">
+                        <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
+                            <i class="fas fa-file-pdf"></i> Lihat Dokumen Permohonan
                         </button>
                     </div>
                 </div>
+                <div>
+                    <h5>Dokumen Booking</h5>
+                    <div class="form-actions">
+                        <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewDocument('${item.nobooking}')">
+                            <i class="fas fa-file-pdf"></i> Lihat Dokumen Booking
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Box (dibawah 2 dokumen) -->
+            <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
+                <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan tombol di bawah ini.
+            </div>
+
+            <!-- PV Action Buttons Section (dibawah info) -->
+            <div class="pv-action-buttons-dropdown" style="margin-top: 16px; padding: 16px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 10px;">
+                <h6 style="color: #e5e7eb; margin: 0 0 12px 0; font-weight: 600; font-size: 14px;">Aksi Validasi:</h6>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="pv-verify-dropdown-${item.no_validasi}" class="pv-btn-verify-dropdown" data-no-validasi="${item.no_validasi}" style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);">
+                        Verify
+                    </button>
+                    <button id="pv-approve-dropdown-${item.no_validasi}" class="pv-btn-approve-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3); opacity: 0.6;">
+                        Setujui & Kirim ke LSB
+                    </button>
+                    <button id="pv-reject-dropdown-${item.no_validasi}" class="pv-btn-reject-dropdown" data-no-validasi="${item.no_validasi}" disabled style="padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: not-allowed; transition: all 0.3s ease; background: linear-gradient(135deg, #DC2626 0%, #b91c1c 100%); color: white; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3); opacity: 0.6;">
+                        Tolak
+                    </button>
+                </div>
+            </div>
         </div>
     `;
 }

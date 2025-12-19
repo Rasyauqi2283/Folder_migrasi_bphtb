@@ -1757,7 +1757,7 @@
   // Expose gateActions globally for dropdown button updates
   window.gateActions = gateActions;
 
-  // Preview: rebuild dokumen dengan generator terbaru lalu buka viewer; fallback ke versi lama bila gagal
+  // Preview: menggunakan generator PDF validasi key (generatepdfvalidasi_key.js)
   const btnPreview = el('pv-preview-btn');
   if (btnPreview) {
     btnPreview.addEventListener('click', async ()=>{
@@ -1766,31 +1766,35 @@
       try {
         const nv = noVal();
         if (!nv) throw new Error('Pilih no_validasi terlebih dahulu.');
-        // Selalu coba build ulang menggunakan generator terbaru
-        let data = {};
-        let pdfUrl = '';
-        try {
-          const prepRes = await fetch(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`, { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' } });
-          const prepJs = await prepRes.json();
-          if (prepRes.ok && prepJs.success) {
-            pdfUrl = prepJs.source_pdf_path || '';
-          }
-        } catch(_) { /* abaikan, lanjut fallback */ }
-        // Ambil status terkini untuk judul/appearance dan fallback pdfUrl
+        
+        // Ambil status untuk mendapatkan nobooking
         const stRes = await fetch(`/api/validasi/${encodeURIComponent(nv)}/status`, { credentials:'include' });
         const stJs = await stRes.json();
         if (!stRes.ok || !stJs.success) throw new Error(stJs.message||'Gagal mengambil status');
-        data = stJs.data || {};
-        if (!pdfUrl) pdfUrl = data.source_pdf_path || '';
-        if (!pdfUrl) throw new Error('Dokumen belum disiapkan.');
-        const ap = data.appearance_json || { page:1 };
-        const page = ap.page || 1;
-        const zoom = 125;
-        const title = data.nobooking ? `${data.nobooking}-Tervalidasi` : 'Preview Dokumen';
-        const viewerUrl = `/viewer/native-pdf.html?src=${encodeURIComponent(pdfUrl)}&title=${encodeURIComponent(title)}&page=${encodeURIComponent(page)}&zoom=${encodeURIComponent(zoom)}`;
-        window.open(viewerUrl, '_blank');
+        const data = stJs.data || {};
+        const nobooking = data.nobooking;
+        
+        if (!nobooking) {
+          throw new Error('No Booking tidak ditemukan untuk nomor validasi ini.');
+        }
+        
+        // Gunakan endpoint PDF validasi key (generatepdfvalidasi_key.js)
+        const pdfUrl = `/api/ppat/generate-pdf-validasi/${encodeURIComponent(nobooking)}`;
+        const w = window.open(pdfUrl, '_blank');
+        if (!w || w.closed || typeof w.closed === 'undefined') {
+          // Popup terblokir, fallback ke anchor
+          const a = document.createElement('a');
+          a.href = pdfUrl;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
         if (msg) msg.textContent = '';
-      } catch (e){ if (msg) msg.textContent = e.message; }
+      } catch (e){ 
+        if (msg) msg.textContent = e.message;
+        alert('Gagal membuka preview: ' + e.message);
+      }
     });
   }
 })();
