@@ -374,6 +374,24 @@
     color: #9ca3af;
   }
 
+  /* Ensure sertifikat dropdown is visible */
+  #sertif-dropdown {
+    display: none !important;
+  }
+  
+  #sertif-dropdown[style*="display: block"],
+  #sertif-dropdown[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  #sertif-select option {
+    background: #0b0f1a;
+    color: #f3f4f6;
+    padding: 8px;
+  }
+
   .pv-btn-primary {
     padding: 10px 20px;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -875,14 +893,16 @@
       <div class="pv-card-body">
         <div class="sertif_aktif">
           <button id="pilih_sertifikat" class="pv-btn-primary">Pilih Sertifikat</button>
-          <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; margin-top:16px; padding:16px; background: rgba(15, 23, 42, 0.5); border: 1px solid #374151; border-radius: 8px;">
+          <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; margin-top:16px; padding:16px; background: rgba(15, 23, 42, 0.95); border: 1px solid #374151; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
             <div class="pv-input-group">
-              <label>Pilih Sertifikat:</label>
-              <select id="sertif-select" class="pv-select-input" style="flex: 1; min-width: 200px;"></select>
+              <label style="color: #e5e7eb; font-weight: 600;">Pilih Sertifikat:</label>
+              <select id="sertif-select" class="pv-select-input" style="flex: 1; min-width: 200px; background: #0b0f1a; border: 1px solid #374151; color: #f3f4f6; padding: 10px 12px; border-radius: 8px;">
+                <option value="">-- Memuat sertifikat... --</option>
+              </select>
             </div>
             <div class="pv-input-group">
-              <label>Passphrase:</label>
-              <input id="sertif-pass" type="password" placeholder="Passphrase sertifikat" class="pv-text-input" style="flex: 1; min-width: 200px;"/>
+              <label style="color: #e5e7eb; font-weight: 600;">Passphrase:</label>
+              <input id="sertif-pass" type="password" placeholder="Masukkan passphrase sertifikat" class="pv-text-input" style="flex: 1; min-width: 200px; background: #0b0f1a; border: 1px solid #374151; color: #f3f4f6;"/>
             </div>
             <div class="pv-button-group">
               <button id="sertif-verify" class="pv-btn-verify">Gunakan Sertifikat</button>
@@ -1371,22 +1391,63 @@
   // Sertifikat dropdown behavior
   async function loadCertList(){
     try{
+      console.log('[SERTIF] loadCertList: Starting to load certificate list...');
       const res = await fetch('/api/pv/cert/list', { credentials:'include' });
-      const js = await res.json();
+      console.log('[SERTIF] loadCertList: Response status:', res.status, res.ok);
+      
+      const js = await res.json().catch(err => {
+        console.error('[SERTIF] loadCertList: JSON parse error:', err);
+        return { success: false, message: 'Failed to parse response' };
+      });
+      
+      console.log('[SERTIF] loadCertList: Response data:', js);
+      
       const sel = el('sertif-select');
-      if(!sel) return;
-      sel.innerHTML = '';
+      if(!sel) {
+        console.error('[SERTIF] loadCertList: Select element not found!');
+        return;
+      }
+      
+      sel.innerHTML = '<option value="">-- Pilih Sertifikat --</option>';
+      
       if(res.ok && js.success){
-        (js.data||[]).forEach(c=>{
+        const certs = js.data || [];
+        console.log('[SERTIF] loadCertList: Found', certs.length, 'certificates');
+        
+        if(certs.length === 0) {
+          console.warn('[SERTIF] loadCertList: No certificates found');
+          sel.innerHTML = '<option value="">-- Tidak ada sertifikat tersedia --</option>';
+          return;
+        }
+        
+        let addedCount = 0;
+        certs.forEach(c=>{
           if(c.status === 'active' || c.status === 'expired'){
             const opt = document.createElement('option');
             opt.value = c.serial_number;
             opt.textContent = `${c.serial_number} | ${c.subject_cn||''}`.trim();
             sel.appendChild(opt);
+            addedCount++;
           }
         });
+        
+        console.log('[SERTIF] loadCertList: Added', addedCount, 'certificates to dropdown');
+        
+        if(addedCount === 0) {
+          sel.innerHTML = '<option value="">-- Tidak ada sertifikat aktif --</option>';
+          console.warn('[SERTIF] loadCertList: No active/expired certificates found');
+        }
+      } else {
+        console.error('[SERTIF] loadCertList: Failed to load certificates:', js.message || 'Unknown error');
+        sel.innerHTML = '<option value="">-- Error memuat sertifikat --</option>';
       }
-    }catch(_){}
+    }catch(err){
+      console.error('[SERTIF] loadCertList: Exception:', err);
+      const sel = el('sertif-select');
+      if(sel) {
+        sel.innerHTML = '<option value="">-- Error: ' + (err.message || 'Unknown error') + ' --</option>';
+      }
+    }
   }
   async function refreshVerified(){
     try{
@@ -1412,17 +1473,40 @@
   const overlay = document.getElementById('sertif-overlay');
   const overlayClose = document.getElementById('sertif-overlay-close');
   
+  console.log('[SERTIF] Setup: pilihBtn found:', !!pilihBtn, 'dd found:', !!dd, 'overlay found:', !!overlay);
+  
   // Button "Pilih Sertifikat" inside card - toggle dropdown
   if(pilihBtn && dd){
+    console.log('[SERTIF] Setup: Adding click listener to pilih_sertifikat button');
     pilihBtn.addEventListener('click', async (e)=>{
       e.stopPropagation(); // Prevent event bubbling
-      const isVisible = dd.style.display !== 'none' && dd.style.display !== '';
-      dd.style.display = isVisible ? 'none' : 'block';
-      if(!isVisible && dd.style.display === 'block'){ 
-        await loadCertList(); 
-        await refreshVerified(); 
+      console.log('[SERTIF] Button clicked: Toggling dropdown');
+      
+      const currentDisplay = dd.style.display;
+      const computedDisplay = window.getComputedStyle(dd).display;
+      const isVisible = (currentDisplay !== 'none' && currentDisplay !== '') || 
+                       (computedDisplay !== 'none' && computedDisplay !== '');
+      
+      console.log('[SERTIF] Current dropdown state:', { currentDisplay, computedDisplay, isVisible });
+      
+      if(isVisible) {
+        dd.style.display = 'none';
+        console.log('[SERTIF] Dropdown hidden');
+      } else {
+        dd.style.display = 'block';
+        console.log('[SERTIF] Dropdown shown, loading certificate list...');
+        
+        try {
+          await loadCertList(); 
+          await refreshVerified();
+          console.log('[SERTIF] Certificate list loaded successfully');
+        } catch(err) {
+          console.error('[SERTIF] Error loading certificate list:', err);
+        }
       }
     });
+  } else {
+    console.error('[SERTIF] Setup: Missing elements! pilihBtn:', !!pilihBtn, 'dd:', !!dd);
   }
   
   // Close button in card header
@@ -1502,20 +1586,75 @@
   
   // Setup event listeners for dropdown buttons
   function setupDropdownButtons() {
+    console.log('🔧 [SETUP] setupDropdownButtons: Starting setup...');
+    
     // Verify buttons in dropdown
-    document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    const verifyButtons = document.querySelectorAll('.pv-btn-verify-dropdown');
+    console.log('🔧 [SETUP] Found', verifyButtons.length, 'verify buttons');
+    
+    verifyButtons.forEach((btn, index) => {
+      const noValidasi = btn.getAttribute('data-no-validasi');
+      console.log(`🔧 [SETUP] Setting up verify button ${index + 1}:`, { 
+        id: btn.id, 
+        noValidasi: noValidasi,
+        disabled: btn.disabled,
+        className: btn.className
+      });
+      
+      // Remove existing listeners (prevent duplicates)
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      
+      newBtn.addEventListener('click', async (e) => {
+        console.log('🔵 [VERIFY-BTN] Button clicked!');
+        console.log('🔵 [VERIFY-BTN] Event:', e);
+        console.log('🔵 [VERIFY-BTN] Button element:', newBtn);
+        console.log('🔵 [VERIFY-BTN] Data attributes:', {
+          'data-no-validasi': newBtn.getAttribute('data-no-validasi'),
+          id: newBtn.id,
+          disabled: newBtn.disabled,
+          className: newBtn.className
+        });
+        
         e.stopPropagation();
-        const noValidasi = btn.getAttribute('data-no-validasi');
-        if (!noValidasi) return;
+        e.preventDefault();
+        
+        const noValidasi = newBtn.getAttribute('data-no-validasi');
+        console.log('🔵 [VERIFY-BTN] Extracted noValidasi:', noValidasi);
+        
+        if (!noValidasi) {
+          console.error('❌ [VERIFY-BTN] No validasi is missing!');
+          alert('Error: No Validasi tidak ditemukan. Silakan refresh halaman.');
+          return;
+        }
+        
+        // Check if button is disabled
+        if (newBtn.disabled) {
+          console.warn('⚠️ [VERIFY-BTN] Button is disabled!');
+          alert('Button Verify tidak aktif. Pastikan sertifikat digital sudah dipilih dan passphrase sudah diisi.');
+          return;
+        }
         
         // Update input field
         const input = el('pv-no-validasi');
-        if (input) input.value = noValidasi;
+        if (input) {
+          input.value = noValidasi;
+          console.log('✅ [VERIFY-BTN] Updated input field:', noValidasi);
+        } else {
+          console.warn('⚠️ [VERIFY-BTN] Input field not found!');
+        }
         
+        console.log('🔵 [VERIFY-BTN] Calling handleVerify with:', noValidasi);
         // Call verify function
-        await handleVerify(noValidasi);
+        try {
+          await handleVerify(noValidasi);
+        } catch(err) {
+          console.error('❌ [VERIFY-BTN] Error in handleVerify:', err);
+          alert('Terjadi kesalahan: ' + err.message);
+        }
       });
+      
+      console.log(`✅ [SETUP] Verify button ${index + 1} setup complete`);
     });
     
     // Approve buttons in dropdown
@@ -1553,24 +1692,63 @@
   
   // Extract verify logic to reusable function
   async function handleVerify(nv) {
+    console.log('🔵 [VERIFY] ========== VERIFY STARTED ==========');
+    console.log('🔵 [VERIFY] No Validasi:', nv);
+    console.log('🔵 [VERIFY] Timestamp:', new Date().toISOString());
+    
     try {
-      if(!nv){ log('Pilih no_validasi dulu'); return; }
-      console.debug('[PV][FE] Verify clicked', { nv });
+      if(!nv){ 
+        console.error('❌ [VERIFY] No validasi tidak ada!');
+        log('Pilih no_validasi dulu'); 
+        return; 
+      }
+      
+      console.log('🔵 [VERIFY] Step 1: Claiming document...');
       // Claim (idempotent)
-      try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(err){ console.warn('[PV][FE] claim warn', err?.message); }
+      try{ 
+        const claimResult = await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`);
+        console.log('✅ [VERIFY] Claim successful:', claimResult);
+      }catch(err){ 
+        console.warn('⚠️ [VERIFY] Claim warning (non-fatal):', err?.message);
+      }
+      
+      console.log('🔵 [VERIFY] Step 2: Preparing document...');
       // Prepare document (server enforces signature + verified cert)
       const prep = await callPV(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`);
-      console.debug('[PV][FE] prepare ok', prep);
+      console.log('✅ [VERIFY] Prepare document successful:', prep);
+      
+      console.log('🔵 [VERIFY] Step 3: Verifying document...');
       // Verify
       const js = await callPV(`/api/validasi/${encodeURIComponent(nv)}/verify`);
+      console.log('✅ [VERIFY] Verify API response:', js);
+      
       log('Verifikasi berhasil', js);
+      
       // Enable approve/reject after success
       lastVerifiedNoVal = nv;
+      console.log('✅ [VERIFY] lastVerifiedNoVal set to:', lastVerifiedNoVal);
+      
+      console.log('🔵 [VERIFY] Step 4: Updating button states...');
       // Update dropdown buttons state
       await gateActions();
+      console.log('✅ [VERIFY] Button states updated');
+      
+      console.log('🔵 [VERIFY] Step 5: Reloading table...');
       // Reload table to refresh UI
       await loadPvDocs();
-    }catch(e){ log('Gagal verifikasi: '+e.message); }
+      console.log('✅ [VERIFY] Table reloaded');
+      
+      console.log('🟢 [VERIFY] ========== VERIFY COMPLETED SUCCESSFULLY ==========');
+      
+    }catch(e){ 
+      console.error('❌ [VERIFY] ========== VERIFY FAILED ==========');
+      console.error('❌ [VERIFY] Error type:', e.constructor.name);
+      console.error('❌ [VERIFY] Error message:', e.message);
+      console.error('❌ [VERIFY] Error stack:', e.stack);
+      console.error('❌ [VERIFY] Full error object:', e);
+      log('Gagal verifikasi: '+e.message);
+      alert('Gagal verifikasi: ' + e.message);
+    }
   }
   
   // Extract approve logic to reusable function
