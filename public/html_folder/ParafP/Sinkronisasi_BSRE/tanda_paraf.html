@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autentikasi | BAPPENDA</title>
+    <title>Tanda Paraf | BAPPENDA</title>
     <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
     <!---->
     <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
@@ -15,8 +15,8 @@
     <!---->
     <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
     <style>
-        /* BSRE Page Specific Styles */
-        .bsre-content {
+        /* Tanda Paraf Page Specific Styles */
+        .paraf-content {
             margin: 20px;
             max-width: 1200px;
         }
@@ -28,16 +28,12 @@
         button:hover {background: #f9fafb;}
         .muted{color:#666; font-size:12px}
         .result{margin-top:10px; padding:10px; background:#f7f7f7; border-radius:6px}
-        .tabs{display:flex; gap:8px; margin:16px 0}
-        .tab{padding:8px 12px; border:1px solid #ddd; border-radius:6px; cursor:pointer; user-select:none; transition: all 0.2s;}
-        .tab.active{background:#eef5ff; border-color:#a3c4ff}
-        .tab:hover:not(.active) {background: #f9fafb;}
         .hidden{display:none}
         canvas{border:1px dashed #bbb; border-radius:6px}
         
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .bsre-content {
+            .paraf-content {
                 margin: 16px;
             }
             .row {
@@ -48,31 +44,9 @@
             label {
                 min-width: auto;
             }
-            .tabs {
-                flex-wrap: wrap;
-            }
         }
     </style>
     <script>
-    async function getToken(){
-        try{
-            const btn = document.getElementById('btnToken');
-            btn.disabled = true; btn.textContent = 'Meminta token...';
-            const resp = await fetch('/api/bsre/auth', {method:'POST', credentials:'include'});
-            const json = await resp.json().catch(()=>({success:false,message:'JSON parse error'}));
-            if(!resp.ok || json.success===false){ throw new Error(json.message||('HTTP '+resp.status)); }
-            document.getElementById('token').value = json.token || '';
-            document.getElementById('tokenOut').textContent = json.token || '';
-            document.getElementById('health').textContent = 'OK';
-        }catch(e){
-            document.getElementById('health').textContent = 'Gagal: '+(e.message||e);
-            alert('Gagal mendapatkan token: '+(e.message||e));
-        }finally{
-            const btn = document.getElementById('btnToken');
-            btn.disabled = false; btn.textContent = 'Dapatkan Token';
-        }
-    }
-
     // ===== Current Signature Preview (PV) =====
     async function loadCurrentSignature(){
         try{
@@ -83,13 +57,7 @@
             if (el) el.src = path ? (path + '?t=' + Date.now()) : '';
         }catch(_){ /* ignore */ }
     }
-    async function checkHealth(){
-        try{
-            const resp = await fetch('/api/bsre/health', {credentials:'include'});
-            const json = await resp.json().catch(()=>({success:false}));
-            document.getElementById('health').textContent = json.success? 'OK' : 'Gagal';
-        }catch{ document.getElementById('health').textContent = 'Gagal'; }
-    }
+    
     // ===== Signature Upload & Canvas =====
     async function uploadSignatureFile(){
         try{
@@ -228,12 +196,6 @@
             img.src = json.path + '?t=' + Date.now();
         }catch(e){ alert('Gagal generate QR: '+(e.message||e)); }
     }
-    function switchTab(id){
-        document.querySelectorAll('.tab').forEach(t=> t.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p=> p.classList.add('hidden'));
-        document.querySelector(`[data-tab="${id}"]`).classList.add('active');
-        document.getElementById(id).classList.remove('hidden');
-    }
     </script>
 </head>
 <body class="paraf-validasi-page">
@@ -252,7 +214,7 @@
           <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
       </div>            
       <!-- Header Title -->
-      <div class="header-title">Autentikasi </div>
+      <div class="header-title">Tanda Paraf</div>
   </div>
           
   <div class="header-right">
@@ -320,7 +282,7 @@
         </div>
         <div class="dropdown-content">
           <a href="Sertifikat_digital.html">Sertifikat Digital</a>
-          <a href="autentikasi_bsre.html">AUTENTIKASI TANDA PARAF(BSRE)</a>
+          <a href="tanda_paraf.html">Tanda Paraf</a>
         </div>
       </div>
       <div class="box">
@@ -360,75 +322,43 @@
   <!---->
   <!-- MAIN -->
   <main class="main-content">
-    <div class="bsre-content">
+    <div class="paraf-content">
     <div class="card">
-        <div class="tabs">
-            <div class="tab active" data-tab="tab-token" onclick="switchTab('tab-token')">Token Autentikasi</div>
-            <div class="tab" data-tab="tab-sign" onclick="switchTab('tab-sign')">Tanda Tangan & QR</div>
+        <h3>Upload/Gambar Tanda Tangan & QR</h3>
+        <div class="row">
+            <label>Upload File</label>
+            <input type="file" id="signatureFile" accept="image/*" style="flex:1;"/>
+            <button onclick="uploadSignatureFile()">Upload</button>
         </div>
-
-        <div id="tab-token" class="tab-pane">
-            <h3>Autentikasi BSRE</h3>
-            <p class="muted">Endpoint backend: <code>POST /api/bsre/auth</code> — Token disimpan di server (ENV), UI hanya meminta token.</p>
-            <div class="row">
-                <label>API Key</label>
-                <input type="text" placeholder="Dikelola di server (ENV)" disabled>
-            </div>
-            <div class="row">
-                <label>Secret Key</label>
-                <input type="password" placeholder="Dikelola di server (ENV)" disabled>
-            </div>
-            <div class="row">
-                <button id="btnToken" onclick="getToken()">Dapatkan Token</button>
-                <button onclick="checkHealth()">Cek Koneksi</button>
-                <span>Status: <strong id="health">-</strong></span>
-            </div>
-            <div class="row">
-                <label>Token BSRE</label>
-                <input type="text" id="token" readonly placeholder="Token akan muncul di sini">
-            </div>
-            <div class="result">
-                <div><strong>Token:</strong> <span id="tokenOut"></span></div>
+        <div class="row">
+            <label>Gambar Manual</label>
+            <div>
+                <canvas id="drawCanvas" width="420" height="160"></canvas><br>
+                <button onclick="saveCanvasSignature()">Simpan dari Canvas</button>
+                <button id="clearCanvas">Bersihkan</button>
             </div>
         </div>
-
-        <div id="tab-sign" class="tab-pane hidden">
-            <h3>Upload/Gambar Tanda Tangan & QR (pengujian)</h3>
-            <div class="row">
-                <label>Upload File</label>
-                <input type="file" id="signatureFile" accept="image/*" style="flex:1;"/>
-                <button onclick="uploadSignatureFile()">Upload</button>
-            </div>
-            <div class="row">
-                <label>Gambar Manual</label>
-                <div>
-                    <canvas id="drawCanvas" width="420" height="160"></canvas><br>
-                    <button onclick="saveCanvasSignature()">Simpan dari Canvas</button>
-                    <button id="clearCanvas">Bersihkan</button>
-                </div>
-            </div>
-            <div class="row">
-                <label>Preview</label>
-                <img id="sigPreview" alt="Preview Tanda Tangan" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
-            </div>
-            <div class="preview-tandaterupload">
-                <label>Tanda Tangan yang dipakai</label>
-                <img id="sigUsedPreview" alt="Preview Tanda Tangan yang dipakai" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
-            </div>
-            <hr>
-            <div class="row">
-                <label>QR Text</label>
-                <input type="text" id="qrText" placeholder="Isi bebas (mis. checksum, timestamp)"/>
-            </div>
-            <div class="row">
-                <label>No. Validasi</label>
-                <input type="text" id="qrNoVal" placeholder="opsional (untuk nama file)"/>
-                <button onclick="generateQR()">Generate QR</button>
-            </div>
-            <div class="row">
-                <label>QR Preview</label>
-                <img id="qrPreview" alt="QR" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
-            </div>
+        <div class="row">
+            <label>Preview</label>
+            <img id="sigPreview" alt="Preview Tanda Tangan" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
+        </div>
+        <div class="preview-tandaterupload">
+            <label>Tanda Tangan yang dipakai</label>
+            <img id="sigUsedPreview" alt="Preview Tanda Tangan yang dipakai" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
+        </div>
+        <hr>
+        <div class="row">
+            <label>QR Text</label>
+            <input type="text" id="qrText" placeholder="Isi bebas (mis. checksum, timestamp)"/>
+        </div>
+        <div class="row">
+            <label>No. Validasi</label>
+            <input type="text" id="qrNoVal" placeholder="opsional (untuk nama file)"/>
+            <button onclick="generateQR()">Generate QR</button>
+        </div>
+        <div class="row">
+            <label>QR Preview</label>
+            <img id="qrPreview" alt="QR" style="height:120px; border:1px solid #eee; padding:6px; border-radius:6px;"/>
         </div>
     </div>
     </div>
@@ -463,3 +393,4 @@
       </script>
 </body>
 </html>
+
