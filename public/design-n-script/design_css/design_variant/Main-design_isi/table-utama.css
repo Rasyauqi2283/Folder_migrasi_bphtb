@@ -976,6 +976,19 @@ body, html {
 
 .btn-kirim-prominent:active,
 .btn-view-document:active,
+.btn-paraf-prominent.paraf-approved {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.btn-paraf-prominent.paraf-approved:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
 .btn-paraf-prominent:active,
 .btn-reject:active {
   transform: scale(0.98);

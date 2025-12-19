@@ -479,13 +479,13 @@ function createCard(container, item) {
                 <!-- GROUP 2: Status & Actions -->
                 <div class="action-group status-actions-group">
                     <div class="status-section">
-                        <span class="status-badge ${statusClass}">${formatValue(item.trackstatus)}</span>
+                        <span class="status-badge ${statusClass}">${item.tanda_paraf_path ? formatValue(item.pemverifikasi_nama || item.pemverifikasi) : formatValue(item.trackstatus)}</span>
                     </div>
                     <div class="button-section">
-                        <button class="btn-paraf-prominent" data-nobooking="${item.nobooking}">
-                            <span>✍️</span> Paraf
+                        <button class="btn-paraf-prominent ${item.tanda_paraf_path ? 'paraf-approved' : ''}" data-nobooking="${item.nobooking}" ${item.tanda_paraf_path ? 'disabled' : ''}>
+                            <span>${item.tanda_paraf_path ? '✅' : '✍️'}</span> ${item.tanda_paraf_path ? 'Disetujui' : 'Paraf'}
                         </button>
-                        <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan">
+                        <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan" ${item.tanda_paraf_path ? 'disabled' : ''}>
                             <span>❌</span> Tolak
                         </button>
                     </div>
@@ -493,9 +493,10 @@ function createCard(container, item) {
             </div>
         `;
         
-        // Add event listener to paraf button
+        // Add event listener to paraf button (only if paraf hasn't been given)
         const parafButton = card.querySelector('.btn-paraf-prominent');
-        parafButton.addEventListener('click', async () => {
+        if (!item.tanda_paraf_path && parafButton) {
+            parafButton.addEventListener('click', async () => {
             try {
                 const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
                 
@@ -506,11 +507,12 @@ function createCard(container, item) {
 
                     const result = await saveParafData(item);
                     if (result && result.success) {
-                        parafButton.disabled = true;
-                        parafButton.innerHTML = '<span>✅</span> Berhasil';
-                        parafButton.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
                         try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                         showAlert('success', "Paraf berhasil diberikan!");
+                        // Refresh halaman setelah 1 detik
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
                     } else {
                         const msg = (result && result.message) ? result.message : "Gagal memberikan paraf.";
                         throw new Error(msg);
@@ -523,6 +525,7 @@ function createCard(container, item) {
                 showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
             }
         });
+        }
 
         // Button "Kirim ke Pejabat" removed - functionality moved to dropdown
         
