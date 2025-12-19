@@ -221,13 +221,24 @@ async function loadTableDataLTB() {
                     const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
 
                     if (confirmation) {
-                        if (!item || !item.nobooking || !item.userid || !item.namawajibpajak || !item.namapemilikobjekpajak) {
-                            alert("Data yang diperlukan tidak lengkap.");
+                        // Validasi data yang diperlukan - gunakan userid_ppat jika userid tidak ada
+                        const useridToUse = item.userid_ppat || item.userid;
+                        if (!item || !item.nobooking || !useridToUse || !item.no_registrasi) {
+                            console.error('❌ [KIRIM] Data tidak lengkap:', {
+                                nobooking: item?.nobooking,
+                                userid: useridToUse,
+                                no_registrasi: item?.no_registrasi,
+                                userid_ppat: item?.userid_ppat,
+                                allKeys: item ? Object.keys(item) : []
+                            });
+                            alert("Data yang diperlukan tidak lengkap. Pastikan No. Booking, No. Registrasi, dan User ID tersedia.");
                             return;
                         }
                         // Jika pengguna mengklik "OK", maka kirim data
                         try {
-                            const result = await sendToPeneliti(item);
+                            // Pastikan userid ada di item
+                            const itemWithUserid = { ...item, userid: useridToUse };
+                            const result = await sendToPeneliti(itemWithUserid);
                             if (result.success) {
                                 // Ubah status tombol setelah sukses (misalnya menonaktifkan tombol)
                                 sendButton.disabled = true;
@@ -235,11 +246,11 @@ async function loadTableDataLTB() {
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
                                 showAlert('success', "Data berhasil dikirim ke peneliti!");
                             } else {
-                                showAlert('error', "Gagal mengirim data ke peneliti.");
+                                showAlert('error', `Gagal mengirim data ke peneliti: ${result.message || 'Terjadi kesalahan'}`);
                             }
                         } catch (error) {
-                            console.error("terjadi kesalahan", error)
-                            showAlert('error', "Terjadi kesalahan saat mengirim data.");
+                            console.error("❌ [KIRIM] Terjadi kesalahan:", error);
+                            showAlert('error', `Terjadi kesalahan saat mengirim data: ${error.message}`);
                         }
                     } else {
                         // Jika pengguna mengklik "Batal", tampilkan notifikasi
@@ -590,17 +601,14 @@ async function confirmReject() {
     }
     
     try {
-        // Cek apakah nobooking sudah pernah digunakan
-        const checkResponse = await fetch(`/api/check-nobooking-usage/${selectedNoBooking}`, { credentials: 'include' });
-        const checkData = await checkResponse.json();
+        console.log('🔍 [TOLAK] Starting rejection process:', {
+            nobooking: selectedNoBooking,
+            userid: userid,
+            hasReason: !!rejectionReason
+        });
         
-        if (checkData.success && checkData.isUsed) {
-            alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
-            return;
-        }
-        
-        // Kirim data penolakan ke backend dengan auto-delete
-        const response = await fetch('/api/ltb/reject-with-auto-delete', {
+        // Kirim data penolakan ke backend
+        const response = await fetch('/api/ltb_ltb-reject', {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -608,27 +616,45 @@ async function confirmReject() {
             },
             body: JSON.stringify({
                 nobooking: selectedNoBooking,
+                trackstatus: 'Ditolak',
                 rejectionReason: rejectionReason,
                 userid: userid
             })
         });
         
+        console.log('📡 [TOLAK] Response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [TOLAK] HTTP Error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
         const data = await response.json();
-        console.log('Rejection response:', data);
+        console.log('✅ [TOLAK] Rejection response:', data);
         
         if (data.success) {
-            alert(`Dokumen berhasil ditolak.\nData akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(data.scheduledDeleteAt).toLocaleString('id-ID')}`);
+            alert(`Dokumen berhasil ditolak.\n${data.message || 'Data telah dihapus dari sistem.'}`);
+            // Menutup overlay setelah konfirmasi
+            document.getElementById('overlay').style.display = 'none';
+            // Reload halaman untuk refresh data
             location.reload();
         } else {
             alert(`Gagal menolak dokumen: ${data.message || 'Terjadi kesalahan'}`);
         }
         
-        // Menutup overlay setelah konfirmasi
-        document.getElementById('overlay').style.display = 'none';
-        
     } catch (error) {
-        console.error('Terjadi kesalahan:', error);
-        alert('Terjadi kesalahan, coba lagi nanti.');
+        console.error('❌ [TOLAK] Terjadi kesalahan:', error);
+        console.error('❌ [TOLAK] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        alert(`Terjadi kesalahan saat menolak dokumen: ${error.message || 'Coba lagi nanti.'}`);
     }
 }
 
@@ -643,28 +669,67 @@ document.getElementById('tolakdokument').addEventListener('click', showRejectOve
 // Fungsi untuk mengirim data ke peneliti
 async function sendToPeneliti(item) {
     try {
+        console.log('🔍 [KIRIM] Starting send to peneliti:', {
+            nobooking: item.nobooking,
+            no_registrasi: item.no_registrasi,
+            userid: item.userid,
+            userid_ppat: item.userid_ppat,
+            allKeys: Object.keys(item)
+        });
+
         const namaPengirim = sessionStorage.getItem('nama') || localStorage.getItem('nama');
+        
+        // Gunakan userid_ppat jika userid tidak ada (untuk kompatibilitas)
+        const useridToSend = item.userid_ppat || item.userid;
+        
+        if (!useridToSend) {
+            throw new Error('User ID tidak ditemukan. Pastikan data lengkap.');
+        }
+
+        if (!item.no_registrasi) {
+            throw new Error('No. Registrasi tidak ditemukan. Pastikan data lengkap.');
+        }
+
+        if (!item.nobooking) {
+            throw new Error('No. Booking tidak ditemukan. Pastikan data lengkap.');
+        }
+
+        const requestBody = {
+            no_registrasi: item.no_registrasi,
+            nobooking: item.nobooking,
+            userid: useridToSend,
+            nama_pengirim: namaPengirim,
+            namawajibpajak: item.namawajibpajak || '',
+            namapemilikobjekpajak: item.namapemilikobjekpajak || '',
+            tanggal_terima: item.tanggal_terima || new Date().toISOString().split('T')[0],
+            status: 'Diajukan',
+            trackstatus: 'Dilanjutkan',
+            pengirim_ltb: `Dikirim oleh: ${namaPengirim} Loket Terima Berkas`
+        };
+
+        console.log('📤 [KIRIM] Sending request:', requestBody);
 
         const response = await fetch('/api/ltb_send-to-peneliti', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                no_registrasi: item.no_registrasi,
-                nobooking: item.nobooking,
-                userid: item.userid,
-                nama_pengirim: namaPengirim,
-                namawajibpajak: item.namawajibpajak,
-                namapemilikobjekpajak: item.namapemilikobjekpajak,
-                tanggal_terima: item.tanggal_terima,
-                status: 'Diajukan',
-                trackstatus: 'Dilanjutkan',
-                pengirim_ltb: `Dikirim oleh: ${namaPengirim} Loket Terima Berkas`
-            }),
-            credentials: 'include' // Untuk mengirim session cookie
+            body: JSON.stringify(requestBody)
         });
 
+        console.log('📡 [KIRIM] Response status:', response.status, response.statusText);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ [KIRIM] HTTP Error:', {
+                status: response.status,
+                statusText: response.statusText,
+                body: errorText
+            });
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
         const result = await response.json();
+        console.log('✅ [KIRIM] Response data:', result);
         
         if (result.success) {
             alert('Data berhasil dikirim ke peneliti!');
@@ -675,8 +740,14 @@ async function sendToPeneliti(item) {
         return result;
 
     } catch (error) {
-        console.error('Error:', error);
-        alert('Koneksi gagal. Coba lagi atau hubungi admin.');
+        console.error('❌ [KIRIM] Error:', error);
+        console.error('❌ [KIRIM] Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        alert(`Koneksi gagal: ${error.message || 'Coba lagi atau hubungi admin.'}`);
+        throw error;
     }
 }
 

@@ -1047,18 +1047,39 @@ app.post('/api/ltb_ltb-reject', async (req, res) => {
     const { nobooking, trackstatus, rejectionReason, userid } = req.body;
 
     try {
+        console.log('🔍 [LTB-REJECT] Request received:', {
+            nobooking,
+            trackstatus,
+            hasRejectionReason: !!rejectionReason,
+            userid
+        });
+
+        // Validasi data yang diterima
+        if (!nobooking || !rejectionReason || !userid) {
+            console.error('❌ [LTB-REJECT] Missing required fields:', {
+                hasNobooking: !!nobooking,
+                hasRejectionReason: !!rejectionReason,
+                hasUserid: !!userid
+            });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Data yang diperlukan tidak lengkap. Pastikan No. Booking, alasan penolakan, dan User ID tersedia.' 
+            });
+        }
+
         // Memastikan userid valid
         const userCheckQuery = 'SELECT * FROM a_2_verified_users WHERE userid = $1';
         const userCheckResult = await pool.query(userCheckQuery, [userid]);
 
         if (userCheckResult.rows.length === 0) {
-            return res.status(400).json({ success: false, message: 'User ID tidak ditemukan.' });
+            console.error('❌ [LTB-REJECT] User ID not found:', userid);
+            return res.status(400).json({ 
+                success: false, 
+                message: 'User ID tidak ditemukan.' 
+            });
         }
-        // Validasi data yang diterima
-        if (!nobooking || !trackstatus || !rejectionReason || !userid) {
-            return res.status(400).json({ success: false, message: 'Data yang diperlukan tidak lengkap.' });
-        }
-        console.log(req.body);  // Log data yang diterima
+
+        console.log('✅ [LTB-REJECT] User validated, proceeding with rejection...');
 
         // Memperbarui trackstatus di pat_1_bookingsspd menjadi 'Ditolak'
         const updateTrackQuery = 'UPDATE pat_1_bookingsspd SET trackstatus = $1 WHERE nobooking = $2';
@@ -1066,24 +1087,47 @@ app.post('/api/ltb_ltb-reject', async (req, res) => {
         const updateTrackResult = await pool.query(updateTrackQuery, updateTrackValues);
 
         if (updateTrackResult.rowCount === 0) {
-            return res.status(400).json({ success: false, message: 'No Booking tidak ditemukan.' });
+            console.error('❌ [LTB-REJECT] No booking found:', nobooking);
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No Booking tidak ditemukan di database.' 
+            });
         }
 
+        console.log('✅ [LTB-REJECT] Booking trackstatus updated');
+
         // Memperbarui status di ltb_1_terima_berkas_sspd
-        const deleteTerimaBerkasQuery = `UPDATE ltb_1_terima_berkas_sspd set status=$2 WHERE nobooking = $1`;
-        const deleteTerimaBerkasValues = [nobooking, "Ditolak"];
-        await pool.query(deleteTerimaBerkasQuery, deleteTerimaBerkasValues);
-        // Kirim email pemberitahuan penolakan
-        const userName = userCheckResult.rows[0].nama;  // Ambil nama pengguna dari database
-        await sendRejectionEmail(userid, nobooking, userName, rejectionReason);  // Mengirim email penolakan
+        const updateLTBQuery = `UPDATE ltb_1_terima_berkas_sspd SET status = $2, trackstatus = $3 WHERE nobooking = $1`;
+        const updateLTBValues = [nobooking, 'Ditolak', 'Ditolak'];
+        const updateLTBResult = await pool.query(updateLTBQuery, updateLTBValues);
+
+        console.log('✅ [LTB-REJECT] LTB status updated, rows affected:', updateLTBResult.rowCount);
+
+        // Kirim email pemberitahuan penolakan (jika ada fungsi sendRejectionEmail)
+        try {
+            const userName = userCheckResult.rows[0].nama;
+            if (typeof sendRejectionEmail === 'function') {
+                await sendRejectionEmail(userid, nobooking, userName, rejectionReason);
+                console.log('✅ [LTB-REJECT] Rejection email sent');
+            } else {
+                console.warn('⚠️ [LTB-REJECT] sendRejectionEmail function not available');
+            }
+        } catch (emailError) {
+            console.error('⚠️ [LTB-REJECT] Email sending failed (non-critical):', emailError.message);
+            // Jangan gagalkan proses jika email gagal
+        }
 
         res.status(200).json({
             success: true,
-            message: `Dokumen dengan No. Booking ${nobooking} telah ditolak dan dihapus dari terimaberkas_sspd.`
+            message: `Dokumen dengan No. Booking ${nobooking} telah ditolak.`
         });
     } catch (error) {
-        console.error('Terjadi kesalahan:', error);
-        res.status(500).json({ success: false, message: 'Terjadi kesalahan saat memproses penolakan.' });
+        console.error('❌ [LTB-REJECT] Error:', error);
+        console.error('❌ [LTB-REJECT] Error stack:', error.stack);
+        res.status(500).json({ 
+            success: false, 
+            message: `Terjadi kesalahan saat memproses penolakan: ${error.message}` 
+        });
     }
 });
 // Fungsi untuk mengirimkan email pemberitahuan penolakan LTB
