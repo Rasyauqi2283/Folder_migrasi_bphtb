@@ -11,21 +11,56 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch('/api/user/dashboard')
         .then(response => response.json())
         .then(data => {
-            // Pastikan data ada
-            if (data.userid && data.divisi && data.username) {
-                // Update elemen-elemen HTML dengan data pengguna
-                const usernameElement = document.querySelector('.Username');
-                const divisiElement = document.querySelector('.Divisi');
+            // Update elemen-elemen HTML dengan data pengguna
+            const usernameElement = document.querySelector('.Username');
+            const divisiElement = document.querySelector('.Divisi');
 
-                // Memasukkan data ke dalam elemen
-                usernameElement.textContent = data.username;
-                divisiElement.textContent = data.divisi;
-            } else {
-                console.log('Data pengguna tidak ditemukan');
+            // Update Username: gunakan username jika ada, jika tidak gunakan userid sebagai fallback
+            if (usernameElement) {
+                // Validasi username: harus ada, tidak null, tidak undefined, tidak string kosong, dan bukan string "null"/"undefined"
+                const hasValidUsername = data.username && 
+                                        data.username !== null && 
+                                        data.username !== undefined && 
+                                        String(data.username).trim() !== '' && 
+                                        String(data.username).trim().toLowerCase() !== 'null' && 
+                                        String(data.username).trim().toLowerCase() !== 'undefined';
+                
+                if (hasValidUsername) {
+                    // Username sudah ada dan valid, gunakan username
+                    usernameElement.textContent = String(data.username).trim();
+                } else if (data.userid) {
+                    // Username belum ada atau tidak valid, gunakan userid sebagai fallback
+                    usernameElement.textContent = String(data.userid);
+                } else {
+                    // Fallback jika userid juga tidak ada
+                    usernameElement.textContent = 'Pengguna';
+                }
+            }
+
+            // Update Divisi: selalu update jika ada (karena pasti ada dari awal login)
+            if (divisiElement) {
+                // Validasi divisi: harus ada dan tidak kosong
+                const hasValidDivisi = data.divisi && 
+                                      data.divisi !== null && 
+                                      data.divisi !== undefined && 
+                                      String(data.divisi).trim() !== '';
+                
+                if (hasValidDivisi) {
+                    divisiElement.textContent = String(data.divisi).trim();
+                } else {
+                    // Fallback jika divisi tidak ada (seharusnya tidak terjadi karena divisi wajib dari awal login)
+                    console.warn('⚠️ Divisi tidak ditemukan, menggunakan fallback');
+                    divisiElement.textContent = 'Sistem';
+                }
             }
         })
         .catch(error => {
             console.error('Error fetching user data:', error);
+            // Fallback jika API error
+            const usernameElement = document.querySelector('.Username');
+            const divisiElement = document.querySelector('.Divisi');
+            if (usernameElement) usernameElement.textContent = 'Pengguna';
+            if (divisiElement) divisiElement.textContent = 'Sistem';
         });
 });
 

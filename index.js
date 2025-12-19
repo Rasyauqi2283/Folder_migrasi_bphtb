@@ -841,11 +841,13 @@ app.post('/api/select-month/dashboard', async (req, res) => {
 app.get('/api/user/dashboard', (req, res) => {
     if (req.session.user) {
         // Kirim data yang ada di session
+        // Pastikan userid dan divisi selalu ada (wajib dari awal login)
+        // Username bisa null/undefined untuk user baru
         res.json({
-            userid: req.session.user.userid,
-            divisi: req.session.user.divisi,
-            username: req.session.user.username,
-            email: req.session.user.email
+            userid: req.session.user.userid || null,
+            divisi: req.session.user.divisi || null,
+            username: req.session.user.username || null, // Bisa null untuk user baru
+            email: req.session.user.email || null
         });
     } else {
         res.status(401).json({ message: 'User not logged in' });
