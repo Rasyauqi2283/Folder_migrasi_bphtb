@@ -77,16 +77,27 @@ async function loadTableLSB() {
 		if (!pager) {
 			pager = document.createElement('div');
 			pager.id = 'paginationLSB';
-			pager.style.marginTop = '12px';
-			pager.style.display = 'flex';
-			pager.style.justifyContent = 'space-between';
-			pager.style.alignItems = 'center';
-			table.parentNode.appendChild(pager);
+			pager.className = 'pagination-container';
+			// Insert after the table-scroll container
+			const tableScroll = document.querySelector('.table-scroll');
+			if (tableScroll && tableScroll.parentNode) {
+				tableScroll.parentNode.insertBefore(pager, tableScroll.nextSibling);
+			} else if (table && table.parentNode) {
+				table.parentNode.appendChild(pager);
+			}
 		}
 
-		const PAGE_SIZE = 10;
+		const PAGE_SIZE = 5; // Changed to match Bank pagination
 		let currentPage = 1;
-		const allItems = Array.isArray(data.data) ? data.data : [];
+		let totalPages = 1;
+		let totalRecords = 0;
+		// Filter out items that are already sent (trackstatus = 'Diserahkan')
+		let allItems = Array.isArray(data.data) ? data.data.filter(item => {
+			const track = String(item.trackstatus || '').toLowerCase();
+			return track !== 'diserahkan';
+		}) : [];
+		totalRecords = allItems.length;
+		totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
 
 		function renderRows(items) {
 			tbody.innerHTML = '';
@@ -94,7 +105,10 @@ async function loadTableLSB() {
 				const emptyRow = tbody.insertRow();
 				const emptyCell = emptyRow.insertCell(0);
 				emptyCell.colSpan = 10;
-				emptyCell.textContent = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+				emptyCell.textContent = 'Tidak ada data';
+				emptyCell.style.textAlign = 'center';
+				emptyCell.style.color = '#6b7280';
+				renderPagination(); // Still render pagination even if no data
 				return;
 			}
 			items.forEach(item => {
@@ -139,10 +153,24 @@ async function loadTableLSB() {
 							sendBtn.textContent = 'Mengirim...';
                             const res = await sendToPPAT_complete({ nobooking: item.nobooking, keterangan: item.keterangan||'' });
 							if (res && res.success) {
-								// Update UI
-								row.cells[7].textContent = 'Diserahkan';
-								sendBtn.textContent = 'Terkirim';
-								sendBtn.title = 'Sudah Diserahkan';
+								// Remove item from allItems array
+								allItems = allItems.filter(i => i.nobooking !== item.nobooking);
+								
+								// Update pagination
+								totalRecords = allItems.length;
+								totalPages = Math.max(1, Math.ceil(totalRecords / PAGE_SIZE));
+								
+								// If current page is empty after removal, go to previous page
+								if (allItems.length > 0 && (currentPage - 1) * PAGE_SIZE >= allItems.length && currentPage > 1) {
+									currentPage--;
+								}
+								
+								// Re-render with updated data (this will remove the row from UI)
+								const start = (currentPage - 1) * PAGE_SIZE;
+								const end = start + PAGE_SIZE;
+								renderRows(allItems.slice(start, end));
+								renderPagination();
+								
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
 							} else {
 								throw new Error(res?.message || 'Gagal menyerahkan');
@@ -198,46 +226,112 @@ async function loadTableLSB() {
 			});
 		}
 
-		function renderPagination(total, pageSize, page) {
-			const totalPages = Math.max(1, Math.ceil(total / pageSize));
-			pager.innerHTML = '';
-			const info = document.createElement('div');
-			const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
-			const end = Math.min(total, page * pageSize);
-			info.textContent = `Showing ${start} to ${end} of ${total} entries`;
-			const controls = document.createElement('div');
-			controls.style.display = 'flex';
-			controls.style.gap = '8px';
-			function mkBtn(label, disabled, onClick) {
-				const btn = document.createElement('button');
-				btn.textContent = label;
-				btn.disabled = !!disabled;
-				btn.addEventListener('click', onClick);
-				return btn;
+		function generatePageNumbers(maxPages = totalPages) {
+			let pages = [];
+			const maxVisible = 5; // Maximum visible page numbers
+			const effectiveTotalPages = Math.max(maxPages, totalPages, currentPage);
+			
+			if (effectiveTotalPages <= maxVisible) {
+				// Show all pages if total pages is small
+				for (let i = 1; i <= effectiveTotalPages; i++) {
+					pages.push(i);
+				}
+			} else {
+				// Show pages with ellipsis
+				if (currentPage <= 3) {
+					// Show first pages
+					for (let i = 1; i <= 4; i++) {
+						pages.push(i);
+					}
+					pages.push('ellipsis');
+					pages.push(effectiveTotalPages);
+				} else if (currentPage >= effectiveTotalPages - 2) {
+					// Show last pages
+					pages.push(1);
+					pages.push('ellipsis');
+					for (let i = effectiveTotalPages - 3; i <= effectiveTotalPages; i++) {
+						pages.push(i);
+					}
+				} else {
+					// Show middle pages
+					pages.push(1);
+					pages.push('ellipsis');
+					for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+						pages.push(i);
+					}
+					pages.push('ellipsis');
+					pages.push(effectiveTotalPages);
+				}
 			}
-			controls.appendChild(mkBtn('<', page <= 1, () => goTo(page - 1)));
-			for (let p = 1; p <= totalPages; p++) {
-				const b = mkBtn(String(p), p === page, () => goTo(p));
-				if (p === page) b.style.fontWeight = '700';
-				controls.appendChild(b);
-			}
-			controls.appendChild(mkBtn('>', page >= totalPages, () => goTo(page + 1)));
-			pager.appendChild(info);
-			pager.appendChild(controls);
+			
+			return pages.map(page => {
+				if (page === 'ellipsis') {
+					return '<span class="page-ellipsis">...</span>';
+				}
+				const isActive = page === currentPage;
+				return `<button class="page-number ${isActive ? 'active' : ''}" onclick="goToPageLSB(${page})">${page}</button>`;
+			}).join('');
 		}
 
-		function goTo(page) {
-			const total = allItems.length;
-			const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+		function renderPagination() {
+			pager.innerHTML = '';
+			
+			// Always show pagination if we have data and (totalPages > 1 OR current page > 1 OR we got full page)
+			const hasData = tbody.children.length > 0;
+			const gotFullPage = tbody.children.length === PAGE_SIZE;
+			const shouldShowPagination = hasData && (totalPages > 1 || currentPage > 1 || gotFullPage);
+			
+			if (!shouldShowPagination) {
+				return;
+			}
+			
+			const pagination = document.createElement('div');
+			pagination.className = 'pagination-controls';
+			pagination.innerHTML = `
+				<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPageLSB(${currentPage - 1})">
+					<i class="fa fa-chevron-left"></i> Prev
+				</button>
+				<div class="page-numbers">
+					${generatePageNumbers(totalPages)}
+				</div>
+				<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="goToPageLSB(${currentPage + 1})">
+					Next <i class="fa fa-chevron-right"></i>
+				</button>
+				<div class="page-info">
+					Halaman ${currentPage} dari ${totalPages}${totalRecords > 0 ? ` (Total: ${totalRecords} data)` : ''}
+				</div>
+			`;
+			
+			pager.appendChild(pagination);
+		}
+
+		function goToPageLSB(page) {
+			if (page < 1 || page === currentPage) return;
+			if (page > totalPages) {
+				console.warn('⚠️ [LSB] Page exceeds totalPages, but allowing navigation');
+			}
 			currentPage = Math.min(Math.max(1, page), totalPages);
 			const start = (currentPage - 1) * PAGE_SIZE;
 			const end = start + PAGE_SIZE;
 			renderRows(allItems.slice(start, end));
-			renderPagination(total, PAGE_SIZE, currentPage);
+			renderPagination();
+			// Scroll to top of table
+			const tableScroll = document.querySelector('.table-scroll');
+			if (tableScroll) {
+				tableScroll.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}
+
+		// Make goToPageLSB globally available
+		window.goToPageLSB = goToPageLSB;
+
+		function goTo(page) {
+			// Legacy function for backward compatibility
+			goToPageLSB(page);
 		}
 
 		// initial render
-		goTo(1);
+		goToPageLSB(1);
 
 	} catch (mainError) {
 		console.error('Main Function Error:', mainError);

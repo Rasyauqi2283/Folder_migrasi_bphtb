@@ -4296,7 +4296,7 @@ app.post('/api/pv/send-to-lsb', async (req, res) => {
 // END PARAF VALIDASI ENDPOINT //
 // Start LSB (Loket Serah Berkas) Endpoint //
 app.get('/api/LSB_berkas-complete', async (req, res) => {
-    // Cek apakah pengguna sudah login dan apakah divisinya Peneliti
+    // Cek apakah pengguna sudah login dan apakah divisinya LSB
     if (!req.session.user || req.session.user.divisi !== 'LSB') {
         return res.status(403).json({
             success: false,
@@ -4304,11 +4304,17 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         });
     }
     try {
-
+        // Hanya ambil data yang belum diserahkan (Siap Diserahkan)
+        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb dan tahunajb
         const query = `
-        SELECT * FROM lsb_1_serah_berkas
-        WHERE status = 'Terselesaikan'
-        ORDER BY nobooking DESC;
+        SELECT 
+            lsb.*,
+            pb.noppbb,
+            pb.tahunajb
+        FROM lsb_1_serah_berkas lsb
+        LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
+        WHERE lsb.status = 'Terselesaikan' AND lsb.trackstatus = 'Siap Diserahkan'
+        ORDER BY lsb.nobooking DESC;
         `;
         
         const result = await pool.query(query);
@@ -4319,9 +4325,9 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
                 data: result.rows
             });
         } else {
-            return res.status(404).json({
-                success: false,
-                message: 'No data found for LSB'
+            return res.status(200).json({
+                success: true,
+                data: []
             });
         }
     } catch (error) {
@@ -4329,6 +4335,77 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'An error occurred while fetching data.'
+        });
+    }
+});
+
+// Endpoint untuk monitoring bulanan (data yang sudah diserahkan)
+app.get('/api/LSB_monitoring-penyerahan', async (req, res) => {
+    // Cek apakah pengguna sudah login dan apakah divisinya LSB
+    if (!req.session.user || req.session.user.divisi !== 'LSB') {
+        return res.status(403).json({
+            success: false,
+            message: 'Akses ditolak. Hanya pengguna dengan divisi Loket Serah Berkas yang dapat mengakses data ini.'
+        });
+    }
+    try {
+        // Ambil data yang sudah diserahkan, group by bulan
+        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb dan tahunajb
+        const query = `
+        SELECT 
+            lsb.*,
+            pb.noppbb,
+            pb.tahunajb,
+            DATE_TRUNC('month', lsb.updated_at) AS bulan,
+            TO_CHAR(DATE_TRUNC('month', lsb.updated_at), 'YYYY-MM') AS bulan_key,
+            TO_CHAR(DATE_TRUNC('month', lsb.updated_at), 'Month YYYY') AS bulan_label
+        FROM lsb_1_serah_berkas lsb
+        LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
+        WHERE lsb.trackstatus = 'Diserahkan'
+        ORDER BY lsb.updated_at DESC;
+        `;
+        
+        const result = await pool.query(query);
+        
+        // Group by bulan
+        const groupedByMonth = {};
+        result.rows.forEach(row => {
+            const bulanKey = row.bulan_key;
+            if (!groupedByMonth[bulanKey]) {
+                // Format bulan label to Indonesian
+                const bulanDate = new Date(row.bulan);
+                const bulanNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                const bulanLabel = `${bulanNames[bulanDate.getMonth()]} ${bulanDate.getFullYear()}`;
+                
+                groupedByMonth[bulanKey] = {
+                    bulan_key: bulanKey,
+                    bulan_label: bulanLabel,
+                    bulan_date: row.bulan,
+                    count: 0,
+                    data: []
+                };
+            }
+            groupedByMonth[bulanKey].count++;
+            groupedByMonth[bulanKey].data.push(row);
+        });
+        
+        // Convert to array and sort by bulan_date descending
+        const monthsArray = Object.values(groupedByMonth).sort((a, b) => {
+            return new Date(b.bulan_date) - new Date(a.bulan_date);
+        });
+        
+        return res.status(200).json({
+            success: true,
+            months: monthsArray,
+            total: result.rows.length
+        });
+    } catch (error) {
+        console.error('Error fetching monitoring data:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching monitoring data.',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
