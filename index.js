@@ -4531,24 +4531,6 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
         const statusResult = await pool.query(statusCheckQuery);
         console.log('📊 [LSB-API] Status breakdown:', statusResult.rows);
         
-        // Check specific record
-        const checkRecordQuery = `SELECT * FROM lsb_1_serah_berkas WHERE nobooking = '20008-2025-000025' LIMIT 1`;
-        const checkResult = await pool.query(checkRecordQuery);
-        if (checkResult.rows.length > 0) {
-            const rec = checkResult.rows[0];
-            console.log('📋 [LSB-API] Sample record (20008-2025-000025):', {
-                nobooking: rec.nobooking,
-                status: rec.status,
-                trackstatus: rec.trackstatus,
-                statusType: typeof rec.status,
-                trackstatusType: typeof rec.trackstatus,
-                statusLength: rec.status?.length,
-                trackstatusLength: rec.trackstatus?.length
-            });
-        }
-        
-        // Hanya ambil data yang belum diserahkan (Siap Diserahkan)
-        // Join dengan pat_1_bookingsspd untuk mendapatkan noppbb, tahunajb, dan pdf_dokumen_path
         // file_booking_path akan menggunakan pdf_dokumen_path atau endpoint generate PDF
         const query = `
         SELECT 
@@ -4559,8 +4541,7 @@ app.get('/api/LSB_berkas-complete', async (req, res) => {
             pb.pdf_dokumen_path AS file_booking_path
         FROM lsb_1_serah_berkas lsb
         LEFT JOIN pat_1_bookingsspd pb ON lsb.nobooking = pb.nobooking
-        WHERE lsb.status = 'Terselesaikan' AND lsb.trackstatus = 'Siap Diserahkan'
-        ORDER BY lsb.nobooking DESC;
+        WHERE lsb.trackstatus = 'Siap Diserahkan'
         `;
         
         console.log('🔍 [LSB-API] Executing query with conditions: status="Terselesaikan", trackstatus="Siap Diserahkan"');
