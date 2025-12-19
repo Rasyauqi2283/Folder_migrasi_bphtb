@@ -308,16 +308,12 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
             function drawCheckbox(x, y, checked) {
                 doc.rect(x, y, 12, 12).stroke();
                 if (checked) {
-                    // tinggi kotak 12, ukuran font 12, jadi kita geser sedikit ke kanan & ke bawah
-                    const fontSize = 12;
+                    // Kotak checkbox: 12x12, font size 10 agar checkmark pas di tengah
+                    const fontSize = 10;
+                    // Posisi checkmark: x + 1 (sedikit ke kanan dari border), y + 1 (sedikit ke bawah dari border)
+                    // Font ZapfDingbats character '4' adalah checkmark
                     doc.font('ZapfDingbats').fontSize(fontSize)
-                       .text('4', x + 2, y - 1, { // geser kanan 2px, turun 1px
-                           width: 12,
-                           height: 12,
-                           align: 'center',
-                           valign: 'center'   // opsi ini tidak selalu ada di semua versi pdfkit,
-                                               // tapi width/align membantu center horizontal.
-                       })
+                       .text('4', x + 1, y + 1)
                        .font('Helvetica'); // kembalikan font
                 }
             }
@@ -469,9 +465,7 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 } catch (_) { return null; }
             })();
             drawCenteredText(doc, `tanggal : ${verifiedAtDate || '.........'}`, col3X, signatureYPosition + 20, columnWidth);
-            doc.moveTo(col3X + (columnWidth - signatureWidth)/2, signatureYPosition + 50)
-                .lineTo(col3X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 50)
-                .stroke();
+            // Garis untuk tanda tangan dihapus - tidak diperlukan
             drawCenteredText(doc, '(................................)', col3X, signatureYPosition + 70, columnWidth);
 
 // Stempel BAPPENDA di sisi kiri kolom "TEMPAT PEMBAYARAN BPHTB" (lebih besar 1.5x dari sebelumnya, proporsi asli)
@@ -497,6 +491,18 @@ try {
 
             const col4X = col3X + columnWidth + gapBetween + 20;
 
+            // Teks "Telah Diverifikasi" dan "BADAN PENDAPATAN DAERAH" ditulis dulu
+            drawCenteredText(doc, 'Telah Diverifikasi', col4X, signatureYPosition, columnWidth);
+            drawCenteredText(doc, 'BADAN PENDAPATAN DAERAH', col4X, signatureYPosition + 10, columnWidth);
+            
+            // Kotak untuk tanda tangan
+            const stampWidth = signatureWidth + 30;
+            const boxX = col4X + (columnWidth - stampWidth)/2;
+            const boxY = signatureYPosition + 30;
+            const boxHeight = 50;
+            doc.rect(boxX, boxY, stampWidth, boxHeight).stroke();
+            
+            // Tanda tangan di dalam kotak (di bawah teks BADAN PENDAPATAN DAERAH)
             try {
                 const toAbsolutePublicPath = (p) => {
                     if (!p || typeof p !== 'string') return null;
@@ -509,25 +515,13 @@ try {
                 const bphtbAbs = toAbsolutePublicPath(data.tanda_tangan_validasi_path);
                 if (bphtbAbs && fs.existsSync(bphtbAbs)) {
                     const processedImage = await sharp(bphtbAbs).trim().toBuffer();
-                    // Letakkan tepat di bawah teks "Telah Diverifikasi / BPD" di dalam kotak
-                    const sigYInBox = signatureYPosition + 40;
-                    doc.image(processedImage, col4X + (columnWidth - signatureWidth)/2, sigYInBox - 40, { width: signatureWidth });
-                } else {
-                    doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40 - 40)
-                        .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40 - 40)
-                        .stroke();
+                    // Tanda tangan di tengah kotak, sedikit di bawah teks "BADAN PENDAPATAN DAERAH"
+                    const sigY = signatureYPosition + 22; // Di bawah teks BADAN PENDAPATAN DAERAH (y+10 dengan lineHeight ~10-12)
+                    doc.image(processedImage, boxX + (stampWidth - signatureWidth)/2, sigY, { width: signatureWidth });
                 }
             } catch (err) {
                 console.warn('Failed to render BPHTB signature:', err?.message || err);
-                doc.moveTo(col4X + (columnWidth - signatureWidth)/2, signatureYPosition + 40 - 40)
-                    .lineTo(col4X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40 - 40)
-                    .stroke();
             }
-
-            drawCenteredText(doc, 'Telah Diverifikasi', col4X, signatureYPosition, columnWidth);
-            drawCenteredText(doc, 'BADAN PENDAPATAN DAERAH', col4X, signatureYPosition + 10, columnWidth);
-            const stampWidth = signatureWidth + 30;
-            doc.rect(col4X + (columnWidth - stampWidth)/2, signatureYPosition + 30, stampWidth, 50).stroke();
 
             // Nama/gelar pejabat PV di bawah kotak tanda tangan validasi
             const pvName = data.pv_special_parafv || '........................';

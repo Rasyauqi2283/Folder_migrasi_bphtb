@@ -44,36 +44,55 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
     }
     const data = rows[0];
     
-    // 2) Ambil data PV user (yang melakukan validasi) secara terpisah
-    let pvUserData = { nip: '', special_parafv: '', subject_cn: '', cert_created_at: null };
-    if (pvUserid) {
+    // 2) Tentukan PV userid yang dipakai (prioritas: parameter -> pv_1_paraf_validate)
+    let effectivePvUserid = pvUserid || null;
+    if (!effectivePvUserid) {
         try {
-            // Get PV user profile
+            const pvUserFromValidate = await pool.query(
+                `SELECT pemverifikasi FROM pv_1_paraf_validate WHERE no_validasi = $1 OR nobooking = $2 LIMIT 1`,
+                [noValidasi, nobooking]
+            );
+            if (pvUserFromValidate.rows.length > 0) {
+                effectivePvUserid = pvUserFromValidate.rows[0].pemverifikasi || null;
+                console.log('[PDF-PV] effectivePvUserid from pv_1_paraf_validate:', effectivePvUserid);
+            }
+        } catch (e) {
+            console.warn('[PDF-PV] Failed to fetch pemverifikasi from pv_1_paraf_validate:', e.message);
+        }
+    }
+
+    // 3) Ambil data PV user (yang melakukan validasi) secara terpisah
+    let pvUserData = { nip: '', special_parafv: '', subject_cn: '', cert_created_at: null };
+    if (effectivePvUserid) {
+        try {
+            // Get PV user profile (nip & special_parafv)
             const pvUserQ = await pool.query(
                 `SELECT nip, special_parafv FROM a_2_verified_users WHERE userid = $1 LIMIT 1`,
-                [pvUserid]
+                [effectivePvUserid]
             );
             if (pvUserQ.rows.length > 0) {
                 pvUserData.nip = pvUserQ.rows[0].nip || '';
                 pvUserData.special_parafv = pvUserQ.rows[0].special_parafv || '';
             }
             
-            // Get PV user's active certificate
+            // Get PV user's active certificate (subject_cn & created_at)
             const pvCertQ = await pool.query(
                 `SELECT subject_cn, created_at FROM pv_local_certs 
                  WHERE userid = $1 AND status = 'active' 
                  ORDER BY valid_to DESC LIMIT 1`,
-                [pvUserid]
+                [effectivePvUserid]
             );
             if (pvCertQ.rows.length > 0) {
                 pvUserData.subject_cn = pvCertQ.rows[0].subject_cn || '';
                 pvUserData.cert_created_at = pvCertQ.rows[0].created_at || null;
             }
             
-            console.log('[PDF-PV] PV User data fetched:', pvUserData);
+            console.log('[PDF-PV] PV User data fetched:', { effectivePvUserid, ...pvUserData });
         } catch (e) {
             console.warn('[PDF-PV] Failed to fetch PV user data:', e.message);
         }
+    } else {
+        console.warn('[PDF-PV] effectivePvUserid not found; NIP/special_parafv may be empty');
     }
     
     // Use provided params as fallback, then fetched data
