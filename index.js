@@ -1225,6 +1225,13 @@ app.post('/api/ltb_send-to-peneliti', async (req, res) => {
     
     try {
         await client.query('BEGIN');
+        // Allow heavier PDF generation queries to complete without premature timeout
+        // Default Postgres statement_timeout on Railway can be low; extend just for this txn.
+        try {
+            await client.query(`SET LOCAL statement_timeout = '60s'`);
+        } catch (_) {
+            // If SET LOCAL fails, continue; worst case we hit default timeout again.
+        }
 
         // Destructure dengan validasi
         const { 
