@@ -18,35 +18,69 @@ function formatDate(date) {
 }
 
 export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath, pvName, pvNip, pvTitle, pvCn, qrImageAbsPath, passphrase, pvUserid = null }) {
-    // 1) Ambil data dari DB
+    // 1) Ambil data booking dan objek pajak dari DB
     const { rows } = await pool.query(
         `SELECT 
-            pb.*, bp.*, o.*, pp.*, 
-            vu.nama, vu.special_field,
-            pav.no_validasi, pv.tanda_tangan_path AS ttd_peneliti_path, pc.tanda_paraf_path,
-            -- Data dari user yang membuat QR (approved_by)
-            au.nip AS qr_user_nip, au.special_parafv AS qr_user_special_parafv,
-            pc_cert.subject_cn AS qr_user_subject_cn
+            pb.*, bp.*, pp.*, 
+            o.letaktanahdanbangunan, o.rt_rwobjekpajak, o.status_kepemilikan, o.keterangan,
+            o.nomor_sertifikat, o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran,
+            o.harga_transaksi, o.kelurahandesalp, o.kecamatanlp, o.jenis_perolehan,
+            -- Data pembuat booking (PPAT/Notaris)
+            vu.nama AS ppat_nama, vu.special_field AS ppat_special_field, 
+            vu.pejabat_umum AS ppat_pejabat_umum, vu.nip AS ppat_nip,
+            pav.no_validasi
         FROM pat_1_bookingsspd pb
         LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
         LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
         LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
-        LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid AND pb.nama = vu.nama
+        LEFT JOIN a_2_verified_users vu ON pb.userid = vu.userid
         LEFT JOIN pv_1_paraf_validate pav ON pb.nobooking = pav.nobooking
-        LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
-        LEFT JOIN p_3_clear_to_paraf pc ON pb.nobooking = pc.nobooking
-        -- Join untuk mendapatkan data user yang membuat QR
-        LEFT JOIN pv_2_signing_requests psr ON pav.no_validasi = psr.no_validasi
-        LEFT JOIN a_2_verified_users au ON psr.approved_by = au.userid
-        LEFT JOIN pv_local_certs pc_cert ON psr.approved_by = pc_cert.userid AND pc_cert.status = 'active'
         WHERE pb.nobooking = $1
         LIMIT 1`,
         [nobooking]
     );
-      if (rows.length === 0) {
+    if (rows.length === 0) {
         throw new Error('Data tidak ditemukan untuk nobooking ' + nobooking);
-      }
-      const data = rows[0];
+    }
+    const data = rows[0];
+    
+    // 2) Ambil data PV user (yang melakukan validasi) secara terpisah
+    let pvUserData = { nip: '', special_parafv: '', subject_cn: '', cert_created_at: null };
+    if (pvUserid) {
+        try {
+            // Get PV user profile
+            const pvUserQ = await pool.query(
+                `SELECT nip, special_parafv FROM a_2_verified_users WHERE userid = $1 LIMIT 1`,
+                [pvUserid]
+            );
+            if (pvUserQ.rows.length > 0) {
+                pvUserData.nip = pvUserQ.rows[0].nip || '';
+                pvUserData.special_parafv = pvUserQ.rows[0].special_parafv || '';
+            }
+            
+            // Get PV user's active certificate
+            const pvCertQ = await pool.query(
+                `SELECT subject_cn, created_at FROM pv_local_certs 
+                 WHERE userid = $1 AND status = 'active' 
+                 ORDER BY valid_to DESC LIMIT 1`,
+                [pvUserid]
+            );
+            if (pvCertQ.rows.length > 0) {
+                pvUserData.subject_cn = pvCertQ.rows[0].subject_cn || '';
+                pvUserData.cert_created_at = pvCertQ.rows[0].created_at || null;
+            }
+            
+            console.log('[PDF-PV] PV User data fetched:', pvUserData);
+        } catch (e) {
+            console.warn('[PDF-PV] Failed to fetch PV user data:', e.message);
+        }
+    }
+    
+    // Use provided params as fallback, then fetched data
+    const finalPvNip = pvUserData.nip || pvNip || '';
+    const finalPvSpecialParafv = pvUserData.special_parafv || pvTitle || '';
+    const finalPvSubjectCn = pvUserData.subject_cn || pvCn || 'Kepala Bidang Pelayanan dan Penetapan';
+    const certCreatedAt = pvUserData.cert_created_at || new Date();
 
     // 2) Siapkan stream file
     const outDir = path.dirname(outputPath);
@@ -291,68 +325,94 @@ const jenisPerolehanMap = {
 
     // === FOOTER ===
     const footerY = boxD_Y + 50;
+    
+    // LEFT SIDE: Booking info + PPAT info
     doc.text('No Booking', 55, footerY);
     doc.text(String(data.nobooking || ''), 55, footerY + 10);
+    
     doc.text('Tgl Bayar', 55, footerY + 30);
-    doc.text(formatDate(data.tanggal_pembayaran) || 'Belum dibayar', 55, footerY + 40);
+    // tanggal_pembayaran dari pat_4_objek_pajak
+    const tglBayar = data.tanggal_pembayaran;
+    let tglBayarFormatted = 'Invalid Date';
+    if (tglBayar) {
+        // Handle berbagai format tanggal
+        if (typeof tglBayar === 'string' && tglBayar.includes('-')) {
+            // Format: DD-MM-YYYY atau YYYY-MM-DD
+            const parts = tglBayar.split('-');
+            if (parts[0].length === 4) {
+                // YYYY-MM-DD
+                tglBayarFormatted = formatDate(new Date(tglBayar));
+            } else {
+                // DD-MM-YYYY
+                const [day, month, year] = parts;
+                tglBayarFormatted = formatDate(new Date(`${year}-${month}-${day}`));
+            }
+        } else if (tglBayar instanceof Date) {
+            tglBayarFormatted = formatDate(tglBayar);
+        } else {
+            tglBayarFormatted = String(tglBayar);
+        }
+    }
+    doc.text(tglBayarFormatted, 55, footerY + 40);
+    
     doc.text('No Validasi', 55, footerY + 60);
-    doc.text(String(noValidasi || data.no_validasi || ''), 55, footerY + 70);
+    const nv = String(noValidasi || data.no_validasi || '').trim();
+    doc.text(nv || '-', 55, footerY + 70);
+    
+    // PPAT/PPATS/NOTARIS: pejabat_umum dari a_2_verified_users (pembuat booking)
     doc.text('PPAT / PPATS / NOTARIS', 55, footerY + 90);
-    doc.text(String(data.special_field || 'Tidak diketahui'), 55, footerY + 100);
+    const ppatJenis = data.ppat_pejabat_umum || data.pejabat_umum || 'Tidak diketahui';
+    doc.text(ppatJenis, 55, footerY + 100);
 
-    // Tanda tangan kanan + QR
+    // RIGHT SIDE: Tanda tangan PV + QR
     const rightX = 350;
     doc.text('Cibinong, ' + formatDate(new Date()), rightX, footerY, { align: 'center' });
     doc.text('Mengetahui,', rightX, footerY + 15, { align: 'center' });
-    doc.text(String(data.qr_user_subject_cn || 'Kepala Bidang Pelayanan dan Penetapan'), rightX, footerY + 25, { align: 'center' });
-    // Generate QR dengan data real dari sertifikat + nomor validasi untuk keunikan
-    // SIMPLIFIED: Now more lenient - will use provided QR path or generate simple QR
-    let qrAbsPath = qrImageAbsPath;
     
-    const nv = String(noValidasi || data.no_validasi || '').trim();
+    // subject_cn dari pv_local_certs (sertifikat aktif PV user)
+    doc.text(finalPvSubjectCn, rightX, footerY + 25, { align: 'center' });
+    
+    // Generate QR dengan format: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
     console.log(`[QR-DEBUG] Starting QR generation for nobooking: ${nobooking}`);
-    console.log(`[QR-DEBUG] noValidasi parameter: ${noValidasi}`);
-    console.log(`[QR-DEBUG] data.no_validasi: ${data.no_validasi}`);
     console.log(`[QR-DEBUG] nv (final): ${nv}`);
     console.log(`[QR-DEBUG] pvUserid: ${pvUserid}`);
-    console.log(`[QR-DEBUG] qrImageAbsPath: ${qrImageAbsPath}`);
+    console.log(`[QR-DEBUG] finalPvNip: ${finalPvNip}`);
+    console.log(`[QR-DEBUG] finalPvSpecialParafv: ${finalPvSpecialParafv}`);
+    console.log(`[QR-DEBUG] certCreatedAt: ${certCreatedAt}`);
     
-    // If QR path already provided, use it
+    let qrAbsPath = qrImageAbsPath;
+    
+    // If QR path already provided and exists, use it
     if (qrAbsPath && fs.existsSync(qrAbsPath)) {
       console.log(`[QR-DEBUG] Using provided QR path: ${qrAbsPath}`);
-    } else if (nv && pvUserid && pool) {
-      // Try to generate QR with certificate data from DB
-      console.log(`[QR-DEBUG] Attempting to generate QR with data from DB...`);
+    } else if (nv) {
+      // Generate QR with proper format: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
       try {
-        const saved = await generateQrWithValidasiFromDB({
-          pool,
-          userid: pvUserid,
-          nomorValidasi: nv,
-          filename: `validasi_${nv}`,
-          size: 256
+        // Format tanggal sertifikat: DD/MM/YYYY
+        const certDate = certCreatedAt instanceof Date ? certCreatedAt : new Date(certCreatedAt);
+        const dd = String(certDate.getDate()).padStart(2, '0');
+        const mm = String(certDate.getMonth() + 1).padStart(2, '0');
+        const yyyy = certDate.getFullYear();
+        const formattedCertDate = `${dd}/${mm}/${yyyy}`;
+        
+        // Build QR payload: NIP/DD/MM/YYYY/special_parafv//E-BPHTB BAPPENDA KAB BOGOR|nomor_validasi
+        const qrPayload = `${finalPvNip}/${formattedCertDate}/${finalPvSpecialParafv}//E-BPHTB BAPPENDA KAB BOGOR|${nv}`;
+        
+        console.log(`[QR-PAYLOAD] Generated QR payload: ${qrPayload}`);
+        
+        const saved = await saveQrToPublic({ 
+          filename: `validasi_${nv}`, 
+          text: qrPayload, 
+          size: 256 
         });
         qrAbsPath = saved.abs;
-        console.log(`[QR-GENERATED] QR dengan data real dari sertifikat - userid: ${pvUserid}, nomor validasi: ${nv}`);
-      } catch (dbError) {
-        console.warn('[QR-WARN] Gagal generate QR dengan data sertifikat:', dbError.message);
-        // Fallback: generate simple QR with basic payload
-        try {
-          const simplePayload = `${nv}/${nobooking}/E-BPHTB BAPPENDA KAB BOGOR`;
-          const { saveQrToPublic } = await import('../../utils/qrcode.js');
-          const saved = await saveQrToPublic({ 
-            filename: `validasi_${nv}`, 
-            text: simplePayload, 
-            size: 256 
-          });
-          qrAbsPath = saved.abs;
-          console.log(`[QR-FALLBACK] Simple QR generated: ${saved.path}`);
-        } catch (fallbackErr) {
-          console.warn('[QR-WARN] Fallback QR also failed:', fallbackErr.message);
-          qrAbsPath = null;
-        }
+        console.log(`[QR-GENERATED] QR saved to: ${saved.path}`);
+      } catch (qrError) {
+        console.warn('[QR-WARN] Failed to generate QR:', qrError.message);
+        qrAbsPath = null;
       }
     } else {
-      console.warn('[QR-WARN] Missing required data for QR generation, skipping:', { nv: !!nv, pvUserid: !!pvUserid, pool: !!pool });
+      console.warn('[QR-WARN] No validasi number, skipping QR generation');
       qrAbsPath = null;
     }
 
@@ -361,8 +421,10 @@ const jenisPerolehanMap = {
     } else {
         doc.text('Tempat QR CODE', rightX, footerY + 30, { align: 'center' });
     }
-    doc.text(String(data.qr_user_special_parafv || 'Tidak diketahui'), rightX, footerY + 160, { align: 'center' });
-    doc.text(String(data.qr_user_nip || 'NIP Tidak Diketahui'), rightX, footerY + 170, { align: 'center' });
+    
+    // Di bawah QR: special_parafv dan nip dari a_2_verified_users (PV user)
+    doc.text(finalPvSpecialParafv || 'Tidak diketahui', rightX, footerY + 160, { align: 'center' });
+    doc.text(finalPvNip ? `NIP ${finalPvNip}` : 'NIP Tidak Diketahui', rightX, footerY + 170, { align: 'center' });
 
       doc.end();
       

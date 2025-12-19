@@ -680,24 +680,6 @@
     border: 1px solid #e5e7eb;
   }
 
-  /* Dropdown button styles */
-  .pv-btn-verify-dropdown:hover:not(:disabled) {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
-  }
-
-  .pv-btn-approve-dropdown:hover:not(:disabled) {
-    background: linear-gradient(135deg, #047857 0%, #065f46 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4) !important;
-  }
-
-  .pv-btn-reject-dropdown:hover:not(:disabled) {
-    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4) !important;
-  }
 
   /* Responsive adjustments */
   @media (max-width: 768px) {
@@ -1589,12 +1571,18 @@
     });
   }
   // Table row click -> fill no_validasi AND no_booking in panel
+  // NOTE: This should NOT interfere with dropdown toggle in paraf_validasi.js
+  // We only update panel inputs, dropdown toggle is handled by paraf_validasi.js
   const tb = document.querySelector('#penelitikasieTable tbody.data-masuk');
   if(tb){
     tb.addEventListener('click', (ev)=>{
-      let tr = ev.target;
-      while(tr && tr.tagName !== 'TR') tr = tr.parentElement;
-      if(!tr || tr.classList.contains('dropdown-row')) return;
+      // Don't interfere with dropdown clicks - let paraf_validasi.js handle it
+      if(ev.target.closest('.dropdown-row') || ev.target.closest('.dropdown-content-wrapper')) {
+        return;
+      }
+      
+      let tr = ev.target.closest('tr:not(.dropdown-row)');
+      if(!tr) return;
       
       // Get no_validasi from cell[0] and no_booking from cell[2]
       const cellNoVal = tr.cells && tr.cells[0];
@@ -1627,7 +1615,7 @@
         // Update panel buttons state
         gateActions();
         
-        // Auto-claim saat memilih baris untuk mengunci dokumen ini
+        // Auto-claim saat memilih baris untuk mengunci dokumen ini (non-blocking)
         (async ()=>{ try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(_){ /* abaikan jika sudah di-claim */ } })();
       }
     });
@@ -1649,118 +1637,11 @@
         const statusCell = tr.querySelector('[data-field="status_display"]');
         if (statusCell) statusCell.innerHTML = renderStatusBadge(statusCell.textContent.trim());
       });
-      // Setup dropdown button event listeners
-      setupDropdownButtons();
-      // Update gate actions for dropdown buttons
+      // Update gate actions for panel buttons
       await gateActions();
     }catch(e){ log('Gagal memuat daftar: '+e.message); }
   }
   
-  // Setup event listeners for dropdown buttons
-  function setupDropdownButtons() {
-    console.log('🔧 [SETUP] setupDropdownButtons: Starting setup...');
-    
-    // Verify buttons in dropdown
-    const verifyButtons = document.querySelectorAll('.pv-btn-verify-dropdown');
-    console.log('🔧 [SETUP] Found', verifyButtons.length, 'verify buttons');
-    
-    verifyButtons.forEach((btn, index) => {
-      const noValidasi = btn.getAttribute('data-no-validasi');
-      console.log(`🔧 [SETUP] Setting up verify button ${index + 1}:`, { 
-        id: btn.id, 
-        noValidasi: noValidasi,
-        disabled: btn.disabled,
-        className: btn.className
-      });
-      
-      // Remove existing listeners (prevent duplicates)
-      const newBtn = btn.cloneNode(true);
-      btn.parentNode.replaceChild(newBtn, btn);
-      
-      newBtn.addEventListener('click', async (e) => {
-        console.log('🔵 [VERIFY-BTN] Button clicked!');
-        console.log('🔵 [VERIFY-BTN] Event:', e);
-        console.log('🔵 [VERIFY-BTN] Button element:', newBtn);
-        console.log('🔵 [VERIFY-BTN] Data attributes:', {
-          'data-no-validasi': newBtn.getAttribute('data-no-validasi'),
-          id: newBtn.id,
-          disabled: newBtn.disabled,
-          className: newBtn.className
-        });
-        
-        e.stopPropagation();
-        e.preventDefault();
-        
-        const noValidasi = newBtn.getAttribute('data-no-validasi');
-        console.log('🔵 [VERIFY-BTN] Extracted noValidasi:', noValidasi);
-        
-        if (!noValidasi) {
-          console.error('❌ [VERIFY-BTN] No validasi is missing!');
-          alert('Error: No Validasi tidak ditemukan. Silakan refresh halaman.');
-          return;
-        }
-        
-        // Check if button is disabled
-        if (newBtn.disabled) {
-          console.warn('⚠️ [VERIFY-BTN] Button is disabled!');
-          alert('Button Verify tidak aktif. Pastikan sertifikat digital sudah dipilih dan passphrase sudah diisi.');
-          return;
-        }
-        
-        // Update input field
-        const input = el('pv-no-validasi');
-        if (input) {
-          input.value = noValidasi;
-          console.log('✅ [VERIFY-BTN] Updated input field:', noValidasi);
-        } else {
-          console.warn('⚠️ [VERIFY-BTN] Input field not found!');
-        }
-        
-        console.log('🔵 [VERIFY-BTN] Calling handleVerify with:', noValidasi);
-        // Call verify function
-        try {
-          await handleVerify(noValidasi);
-        } catch(err) {
-          console.error('❌ [VERIFY-BTN] Error in handleVerify:', err);
-          alert('Terjadi kesalahan: ' + err.message);
-        }
-      });
-      
-      console.log(`✅ [SETUP] Verify button ${index + 1} setup complete`);
-    });
-    
-    // Approve buttons in dropdown
-    document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const noValidasi = btn.getAttribute('data-no-validasi');
-        if (!noValidasi) return;
-        
-        // Update input field
-        const input = el('pv-no-validasi');
-        if (input) input.value = noValidasi;
-        
-        // Call approve function
-        await handleApprove(noValidasi);
-      });
-    });
-    
-    // Reject buttons in dropdown
-    document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const noValidasi = btn.getAttribute('data-no-validasi');
-        if (!noValidasi) return;
-        
-        // Update input field
-        const input = el('pv-no-validasi');
-        if (input) input.value = noValidasi;
-        
-        // Call reject function
-        await handleReject(noValidasi);
-      });
-    });
-  }
   
   // Extract verify logic to reusable function
   async function handleVerify(nv) {
@@ -2086,39 +1967,12 @@
         }
       }
       
-      // Also update dropdown buttons (for backward compatibility)
-      document.querySelectorAll('.pv-btn-verify-dropdown').forEach(btn => {
-        btn.disabled = !canVerify;
-        btn.style.opacity = canVerify ? '1' : '0.6';
-        btn.style.cursor = canVerify ? 'pointer' : 'not-allowed';
-      });
-      
-      document.querySelectorAll('.pv-btn-approve-dropdown').forEach(btn => {
-        const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal;
-        btn.disabled = !btnCanAct;
-        btn.style.opacity = btnCanAct ? '1' : '0.6';
-        btn.style.cursor = btnCanAct ? 'pointer' : 'not-allowed';
-      });
-      
-      document.querySelectorAll('.pv-btn-reject-dropdown').forEach(btn => {
-        const btnNoValidasi = btn.getAttribute('data-no-validasi');
-        const btnCanAct = hasSig && certOk && lastVerifiedNoVal && btnNoValidasi === lastVerifiedNoVal;
-        btn.disabled = !btnCanAct;
-        btn.style.opacity = btnCanAct ? '1' : '0.6';
-        btn.style.cursor = btnCanAct ? 'pointer' : 'not-allowed';
-      });
     }catch(_){
       if(authBadge){ authBadge.textContent = 'Auth belum siap'; authBadge.classList.remove('ok'); authBadge.classList.add('warn'); }
-      // Disable all buttons
+      // Disable all panel buttons
       ['pv-verify-btn', 'pv-approve-btn', 'pv-reject-btn'].forEach(id => {
         const btn = el(id);
         if(btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
-      });
-      document.querySelectorAll('.pv-btn-verify-dropdown, .pv-btn-approve-dropdown, .pv-btn-reject-dropdown').forEach(btn => {
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-        btn.style.cursor = 'not-allowed';
       });
     }
   }
