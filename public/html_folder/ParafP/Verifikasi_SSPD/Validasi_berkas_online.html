@@ -89,6 +89,30 @@
     gap: 16px;
     color: #d1d5db; /* slate-300 */
   }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .action-buttons h5 {
+    color: #e5e7eb;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .action-buttons .form-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .action-buttons {
+      grid-template-columns: 1fr;
+    }
+  }
   .document-info-section {
     background: #0b0f1a;
     border: 1px solid #1f2937;
@@ -171,6 +195,30 @@
     transition: box-shadow 0.3s ease;
   }
 
+  /* Dark theme card for sertifikat (matches table theme) */
+  #sertif-overlay.pv-card {
+    background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+    border: 1px solid #1f2937;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    color: #e5e7eb;
+  }
+
+  #sertif-overlay.pv-card:hover {
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+
+  #sertif-overlay .pv-card-header {
+    border-bottom: 2px solid #374151;
+  }
+
+  #sertif-overlay .pv-card-title {
+    color: #f3f4f6;
+  }
+
+  #sertif-overlay .pv-card-body {
+    color: #e5e7eb;
+  }
+
   .pv-card:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
@@ -192,6 +240,25 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .pv-card-close-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+  }
+
+  .pv-card-close-btn:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
   }
 
   .pv-card-body {
@@ -244,6 +311,63 @@
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Dark theme inputs for sertifikat card */
+  #sertif-overlay .pv-input-group label {
+    color: #e5e7eb;
+  }
+
+  #sertif-overlay .pv-text-input,
+  #sertif-overlay .pv-select-input {
+    background: #0b0f1a;
+    border: 1px solid #374151;
+    color: #f3f4f6;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #sertif-overlay .pv-text-input:focus,
+  #sertif-overlay .pv-select-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  #sertif-overlay .pv-text-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .pv-btn-primary {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  .pv-badge-success {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(5, 150, 105, 0.2);
+    border: 1px solid #059669;
+    border-radius: 8px;
+    color: #10b981;
+    font-weight: 600;
+    font-size: 14px;
   }
 
   .pv-button-group {
@@ -705,26 +829,35 @@
       </div>
     </div>
 
-    <div> <!--Overlay Sertifikat Digital-->
-        <div class="modal-sertifikat" id="sertif-overlay" style="display:none;">
-            <div class="Check_sertifikat">
-                <h4>Check Sertifikat <button id="sertif-overlay-close" style="margin-left:8px; padding:4px 8px;">Tutup</button></h4>
-                <div class="sertif_aktif">
-                    <!--sertifikat aktif akan muncul disini -->
-                    <button id="pilih_sertifikat">Pilih Sertifikat</button> <!--ketika button pilih sertifikat diklik akan muncul overlay pilih sertifikat-->
-                    <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; padding:12px; border:1px solid #e5e5e5; border-radius:8px; margin-top:8px;">
-                        <!--isi paraprase dari sertifikat aktif yang dipilih, dan akan bisa digunakan selama user tidak melakukan logout, dan jika user melakukan logout, maka sertifikat yang dipilih harus diisi kembali paraprase(password) sebagai bentuk keamanan-->
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                            <select id="sertif-select" style="min-width:280px; padding:6px;"></select>
-                            <input id="sertif-pass" type="password" placeholder="Passphrase sertifikat" style="padding:6px; min-width:240px;"/>
-                            <button id="sertif-verify">Gunakan Sertifikat</button>
-                            <span id="sertif-badge" style="margin-left:8px; font-weight:600; color:#059669;"></span>
-                        </div>
-                    </div>
-                </div>
+    <!-- Sertifikat Digital Card -->
+    <section id="sertif-overlay" class="pv-card" style="display:none;">
+      <div class="pv-card-header">
+        <h3 class="pv-card-title">
+          Sertifikat Digital
+        </h3>
+        <button id="sertif-overlay-close" class="pv-card-close-btn">Tutup</button>
+      </div>
+      
+      <div class="pv-card-body">
+        <div class="sertif_aktif">
+          <button id="pilih_sertifikat" class="pv-btn-primary">Pilih Sertifikat</button>
+          <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; margin-top:16px; padding:16px; background: rgba(15, 23, 42, 0.5); border: 1px solid #374151; border-radius: 8px;">
+            <div class="pv-input-group">
+              <label>Pilih Sertifikat:</label>
+              <select id="sertif-select" class="pv-select-input" style="flex: 1; min-width: 200px;"></select>
             </div>
+            <div class="pv-input-group">
+              <label>Passphrase:</label>
+              <input id="sertif-pass" type="password" placeholder="Passphrase sertifikat" class="pv-text-input" style="flex: 1; min-width: 200px;"/>
+            </div>
+            <div class="pv-button-group">
+              <button id="sertif-verify" class="pv-btn-verify">Gunakan Sertifikat</button>
+            </div>
+            <div id="sertif-badge" class="pv-badge-success" style="display:none;"></div>
+          </div>
         </div>
-    </div>
+      </div>
+    </section>
 
         <!-- PV Actions Panel (Peneliti Validasi) -->
         <section id="pv-actions" class="pv-card">
@@ -775,7 +908,6 @@
           <div class="pv-preview-header">
             <h3>Review Dokumen</h3>
             <button id="pv-preview-btn">Buka Preview di Tab Baru</button>
-            <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button>
             <span id="pv-preview-msg"></span>
           </div>
         </section>
@@ -1130,6 +1262,28 @@
     if(usermsg){ usermsg.textContent = (msg||''); }
     if(out){ out.textContent = (msg||'') + (data? ('\n'+JSON.stringify(data,null,2)):''); }
   }
+  // Function to toggle sertifikat overlay
+  async function drop_downsertifikat() {
+    const overlay = el('sertif-overlay');
+    if (overlay) {
+      const isVisible = overlay.style.display !== 'none';
+      overlay.style.display = isVisible ? 'none' : 'block';
+      if (!isVisible) {
+        await loadCertList();
+        await refreshVerified();
+        // Auto-expand dropdown if no cert is active
+        const badge = el('sertif-badge');
+        const dd = el('sertif-dropdown');
+        if (badge && dd && badge.style.display === 'none') {
+          dd.style.display = 'block';
+        }
+      }
+    }
+  }
+  
+  // Expose function globally
+  window.drop_downsertifikat = drop_downsertifikat;
+
   // Sertifikat dropdown behavior
   async function loadCertList(){
     try{
@@ -1156,8 +1310,14 @@
       const js = await res.json();
       const badge = el('sertif-badge');
       if(!badge) return;
-      if(js.success && js.verified){ badge.textContent = `Aktif: ${js.serial_number}`; }
-      else { badge.textContent = ''; }
+      if(js.success && js.verified){ 
+        badge.textContent = `Aktif: ${js.serial_number}`;
+        badge.style.display = 'block';
+      }
+      else { 
+        badge.textContent = '';
+        badge.style.display = 'none';
+      }
       // update global auth badge + gating
       await gateActions();
     }catch(_){ }
@@ -1166,15 +1326,20 @@
   const dd = el('sertif-dropdown');
   const overlay = el('sertif-overlay');
   const overlayClose = el('sertif-overlay-close');
+  // Event listener for trigger button is handled by drop_downsertifikat() function
+  // Keep existing listener as fallback
   const triggerOverlayBtn = document.querySelector('.btn.pilih_sertifikat');
   if (triggerOverlayBtn && overlay) {
-    triggerOverlayBtn.addEventListener('click', async ()=>{
-      overlay.style.display = overlay.style.display==='none' ? 'block' : 'none';
-      if (overlay.style.display==='block') { await loadCertList(); await refreshVerified(); }
+    triggerOverlayBtn.addEventListener('click', async (e)=>{
+      e.preventDefault();
+      drop_downsertifikat();
     });
   }
   if (overlayClose && overlay) {
-    overlayClose.addEventListener('click', ()=>{ overlay.style.display = 'none'; });
+    overlayClose.addEventListener('click', ()=>{ 
+      overlay.style.display = 'none';
+      dd.style.display = 'none';
+    });
   }
   if(pilihBtn && dd){
     pilihBtn.addEventListener('click', async ()=>{
@@ -1193,8 +1358,12 @@
         const js = await res.json();
         if(!res.ok || !js.success) throw new Error(js.message||'Verifikasi gagal');
         const badge = el('sertif-badge');
-        if(badge) badge.textContent = `Aktif: ${serial}`;
+        if(badge) {
+          badge.textContent = `Aktif: ${serial}`;
+          badge.style.display = 'block';
+        }
         if(el('sertif-pass')) el('sertif-pass').value='';
+        if(dd) dd.style.display = 'none';
         alert('Sertifikat siap digunakan');
         await gateActions();
       }catch(e){ alert(e.message); }

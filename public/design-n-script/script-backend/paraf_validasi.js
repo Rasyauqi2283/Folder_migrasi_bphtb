@@ -356,16 +356,34 @@ function generateDropdownContent(item) {
             </div>
 
                 <div class="action-buttons">
-                    <h5>Dokumen Permohonan</h5>
-                    <div class="form-actions">
-                        <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
-                            <i class="fas fa-file-pdf"></i> Lihat Dokumen Permohonan
-                        </button>
+                    <div>
+                        <h5>Dokumen Permohonan</h5>
+                        <div class="form-actions">
+                            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewPDF('${item.nobooking}')">
+                                <i class="fas fa-file-pdf"></i> Lihat Dokumen Permohonan
+                            </button>
+                        </div>
                     </div>
-                    <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
-                        <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan tombol di bawah ini.
+                    <div>
+                        <h5>Dokumen Booking</h5>
+                        <div class="form-actions">
+                            <button class="btn-view" data-nobooking="${item.nobooking}" onclick="viewDocument('${item.nobooking}')">
+                                <i class="fas fa-file-pdf"></i> Lihat Dokumen Booking
+                            </button>
+                        </div>
                     </div>
                 </div>
+                <div style="margin-top: 8px; padding: 8px; background: #F0FDF4; border: 1px solid #A7F3D0; border-radius: 6px; color: #065F46; font-size: 14px;">
+                    <strong>Info:</strong> Untuk menyetujui atau menolak dokumen, gunakan tombol di bawah ini.
+                </div>
+
+            <!-- Document Links Section -->
+            <div class="document-links-section">
+                <h6 class="document-links-title">Dokumen Terkait:</h6>
+                <div class="document-links-list">
+                    ${generateDocumentLinks(item)}
+                </div>
+            </div>
 
                 <!-- PV Action Buttons Section -->
                 <div class="pv-action-buttons-dropdown" style="margin-top: 16px; padding: 16px; background: #0b0f1a; border: 1px solid #1f2937; border-radius: 10px;">
@@ -382,14 +400,6 @@ function generateDropdownContent(item) {
                         </button>
                     </div>
                 </div>
-
-            <!-- Document Links Section -->
-            <div class="document-links-section">
-                <h6 class="document-links-title">Dokumen Terkait:</h6>
-                <div class="document-links-list">
-                    ${generateDocumentLinks(item)}
-                </div>
-            </div>
         </div>
     `;
 }
@@ -674,6 +684,9 @@ async function viewPDF(nobooking) {
         }
     }
 }
+
+// Expose viewPDF globally for dropdown onclick
+window.viewPDF = viewPDF;
 ///////////===================\\\\
 function setupPDFZoomControls(container) {
     const iframe = container.querySelector('.pdf-iframe');
@@ -728,6 +741,9 @@ async function viewDocument(nobooking) {
         alert('Terjadi kesalahan saat mengambil dokumen PDF.');
     }
 }
+
+// Expose viewDocument globally for dropdown onclick
+window.viewDocument = viewDocument;
 ///////
 // =======
 ///////
