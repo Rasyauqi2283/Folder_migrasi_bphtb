@@ -27,12 +27,27 @@
     }
 
     .main-content {
+      margin-left: 70px;
+      margin-right: 15px;
+      width: calc(100vw - 70px - 15px);
+      max-width: calc(100vw - 70px - 15px);
+      height: calc(100vh - 80px - 40px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-x: hidden;
+      overflow-y: auto;
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      min-height: calc(100vh - 80px);
       padding: 20px;
-      max-width: calc(100vw - 40px); /* Ensure content doesn't exceed viewport */
-      margin: 0 auto; /* Center content */
       box-sizing: border-box;
+    }
+    
+    .main-content.shifted {
+      margin-left: 260px; /* 250px sidebar + gutter */
+      margin-right: 15px;
+      width: calc(100vw - 260px - 15px);
+      max-width: calc(100vw - 260px - 15px);
+      height: calc(100vh - 80px - 40px);
+      transform: none; /* hentikan dorongan translate */
+      overflow-x: hidden;
     }
 
     h2 {
@@ -407,10 +422,232 @@
     .btn-warning:hover {
       background: #e0a800;
     }
+    
+    /* Pagination Styles */
+    .pagination-container {
+      margin-top: 20px;
+      padding: 20px;
+      background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+      border-radius: 12px;
+      border: 1px solid #374151;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .page-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+    
+    .page-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .page-btn:disabled {
+      background: #374151;
+      color: #6b7280;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    
+    .page-numbers {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .page-number {
+      background: #1f2937;
+      color: #e5e7eb;
+      border: 1px solid #374151;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 40px;
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .page-number:hover:not(.active) {
+      background: #374151;
+      border-color: #3b82f6;
+      color: #3b82f6;
+    }
+    
+    .page-number.active {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border-color: #3b82f6;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    .page-ellipsis {
+      color: #9ca3af;
+      padding: 8px 4px;
+      font-weight: 600;
+    }
+    
+    .page-info {
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 500;
+      margin-left: 12px;
+      padding: 8px 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
+    @media (max-width: 768px) {
+      .pagination-controls {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .page-info {
+        margin-left: 0;
+        text-align: center;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body class="bank-page">
-  <div class="main-content">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Verifikasi Pembayaran Bank</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <div class="profile-header">
+                <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic">
+                <div class="profile-info">
+                    <h4><span class="nama">Load</span></h4>
+                    <p><span class="userid">Load</span></p>
+                </div>
+            </div>
+            <div class="overlay-buttons">
+                <a href="../../../profile.html">
+                <button class="profile-btn" id="profileButton"> 
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor"/>
+                        <path d="M12 14C7.58172 14 4 17.5817 4 22H20C20 17.5817 16.4183 14 12 14Z" fill="currentColor"/>
+                    </svg>
+                    Profil
+                </button>
+                </a>
+                <button class="AUT logout-button">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 16L21 12M21 12L17 8M21 12H7M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Keluar
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../bank-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-usd sidebar-icon"></i>
+                <span class="sidebar-text">Transaksi BANK</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="hasil_transaksi.html">Hasil transaksi</a>
+        </div>
+    </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
     <h2>Verifikasi Pembayaran Bank</h2>
     
     <!-- Navigation Tabs -->
@@ -468,7 +705,29 @@
         </tbody>
       </table>
     </div>
-  </div>
+    
+    <!-- Pagination Container -->
+    <div id="bankPagination" class="pagination-container"></div>
+  </main>
+
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
   <script>
     (function(){
       const tbody = document.getElementById('trxBody');
@@ -479,8 +738,15 @@
       // Tab management
       let currentTab = 'pending';
       
+      // Pagination state
+      let currentPage = 1;
+      let totalPages = 1;
+      let totalRecords = 0;
+      const PAGE_SIZE = 5;
+      
       function switchTab(tab) {
         currentTab = tab;
+        currentPage = 1; // Reset to first page when switching tabs
         
         // Update tab UI
         document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
@@ -533,8 +799,10 @@
         if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
         return js;
       }
-      async function load(){
+      async function load(page = currentPage){
         try{
+          currentPage = page; // Update current page
+          
           const qs = [];
           
           // Add tab parameter first
@@ -552,18 +820,26 @@
             qs.push('q='+encodeURIComponent(q));
           }
           
-          const url = '/api/bank/transaksi?page=1&limit=8' + (qs.length?'&'+qs.join('&'):'');
+          const url = `/api/bank/transaksi?page=${currentPage}&limit=${PAGE_SIZE}` + (qs.length?'&'+qs.join('&'):'');
           console.log('🔍 [BANK] Loading data with URL:', url);
           console.log('🔍 [BANK] Current tab:', currentTab);
+          console.log('🔍 [BANK] Current page:', currentPage);
           console.log('🔍 [BANK] Filter status:', st);
           console.log('🔍 [BANK] Search query:', q);
           
           const js = await fetchJSON(url);
           const rows = js.rows||[];
           
+          // Get pagination info from response
+          totalRecords = js.total || rows.length;
+          totalPages = js.totalPages || Math.ceil(totalRecords / PAGE_SIZE) || 1;
+          
           console.log('✅ [BANK] Received data:', {
             success: js.success,
             rowCount: rows.length,
+            totalRecords: totalRecords,
+            totalPages: totalPages,
+            currentPage: currentPage,
             sampleData: rows.slice(0, 2)
           });
           
@@ -571,14 +847,18 @@
           if(!rows.length){
             const tr = document.createElement('tr');
             tr.innerHTML = `<td colspan="9" style="text-align:center;color:#888">Tidak ada data</td>`;
-            tbody.appendChild(tr); 
+            tbody.appendChild(tr);
+            renderPagination(); // Still render pagination even if no data
             return;
           }
+          
+          // Calculate starting number for current page
+          const startNumber = (currentPage - 1) * PAGE_SIZE + 1;
           
           rows.forEach((r, idx)=>{
             const tr = document.createElement('tr');
             tr.innerHTML = `
-              <td data-label="No">${idx+1}</td>
+              <td data-label="No">${startNumber + idx}</td>
               <td data-label="No. Registrasi">${r.no_registrasi||'-'}</td>
               <td data-label="No. Booking">${r.nobooking||'-'}</td>
               <td data-label="Nama WP">${r.namawajibpajak||'-'}</td>
@@ -599,11 +879,105 @@
             `;
             tbody.appendChild(tr);
           });
+          
+          // Render pagination controls
+          renderPagination();
         }catch(e){
           console.error('❌ [BANK] Load error:', e);
           tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#c00">Gagal memuat data: ${e.message}</td></tr>`;
+          renderPagination(); // Still render pagination on error
         }
       }
+      
+      function renderPagination() {
+        const container = document.getElementById('bankPagination');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (totalPages <= 1) {
+          // Don't show pagination if only one page or no data
+          return;
+        }
+        
+        const pagination = document.createElement('div');
+        pagination.className = 'pagination-controls';
+        pagination.innerHTML = `
+          <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goToPage(${currentPage - 1})">
+            <i class="fa fa-chevron-left"></i> Prev
+          </button>
+          <div class="page-numbers">
+            ${generatePageNumbers()}
+          </div>
+          <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goToPage(${currentPage + 1})">
+            Next <i class="fa fa-chevron-right"></i>
+          </button>
+          <div class="page-info">
+            Halaman ${currentPage} dari ${totalPages} (Total: ${totalRecords} data)
+          </div>
+        `;
+        
+        container.appendChild(pagination);
+      }
+      
+      function generatePageNumbers() {
+        let pages = [];
+        const maxVisible = 5; // Maximum visible page numbers
+        
+        if (totalPages <= maxVisible) {
+          // Show all pages if total pages is small
+          for (let i = 1; i <= totalPages; i++) {
+            pages.push(i);
+          }
+        } else {
+          // Show pages with ellipsis
+          if (currentPage <= 3) {
+            // Show first pages
+            for (let i = 1; i <= 4; i++) {
+              pages.push(i);
+            }
+            pages.push('ellipsis');
+            pages.push(totalPages);
+          } else if (currentPage >= totalPages - 2) {
+            // Show last pages
+            pages.push(1);
+            pages.push('ellipsis');
+            for (let i = totalPages - 3; i <= totalPages; i++) {
+              pages.push(i);
+            }
+          } else {
+            // Show middle pages
+            pages.push(1);
+            pages.push('ellipsis');
+            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+              pages.push(i);
+            }
+            pages.push('ellipsis');
+            pages.push(totalPages);
+          }
+        }
+        
+        return pages.map(page => {
+          if (page === 'ellipsis') {
+            return '<span class="page-ellipsis">...</span>';
+          }
+          const isActive = page === currentPage;
+          return `<button class="page-number ${isActive ? 'active' : ''}" onclick="goToPage(${page})">${page}</button>`;
+        }).join('');
+      }
+      
+      function goToPage(page) {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        load(page);
+        // Scroll to top of table
+        const table = document.querySelector('.table-scroll');
+        if (table) {
+          table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      
+      // Make goToPage globally available
+      window.goToPage = goToPage;
 
       async function approve(nobooking){
         const ok = await window.universalAlert.confirm(
@@ -613,7 +987,8 @@
         if(!ok) return;
         await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/approve`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({}) });
         try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-        await load();
+        // Reload current page (don't reset to page 1)
+        await load(currentPage);
       }
       async function reject(nobooking){
         // TODO: Implement custom input dialog for rejection reason
@@ -626,7 +1001,8 @@
         if(!ok) return;
         await fetchJSON(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/reject`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ catatan: cat.trim() }) });
         try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-        await load();
+        // Reload current page (don't reset to page 1)
+        await load(currentPage);
       }
 
       document.addEventListener('click', (e)=>{
@@ -651,6 +1027,7 @@
       // Event listeners
       filter.addEventListener('change', () => {
         console.log('🔍 [BANK] Filter changed to:', filter.value);
+        currentPage = 1; // Reset to first page when filter changes
         // Track user activity
         if (window.trackUserActivity) {
           window.trackUserActivity();
@@ -661,6 +1038,7 @@
       search.addEventListener('keyup', (e)=>{ 
         if(e.key==='Enter') {
           console.log('🔍 [BANK] Search triggered:', search.value);
+          currentPage = 1; // Reset to first page when search changes
           // Track user activity
           if (window.trackUserActivity) {
             window.trackUserActivity();
@@ -678,6 +1056,7 @@
       
       reload.addEventListener('click', () => {
         console.log('🔄 [BANK] Reload clicked');
+        currentPage = 1; // Reset to first page on reload
         // Track user activity
         if (window.trackUserActivity) {
           window.trackUserActivity();
@@ -1048,37 +1427,14 @@
   <!-- Universal Alert System -->
   <script src="../../../design-n-script/script_backend/universal-alert.js"></script>
   
-  <!-- WebSocket Client -->
-  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-  <script src="../../js/websocket-client.js"></script>
-  
   <script>
-    // Ping notification system for Bank
+    // Ping notification system for Bank (using poller only)
     let lastPingCheck = new Date().toISOString();
     let pingPollingInterval = null;
     
     document.addEventListener('DOMContentLoaded', () => {
       // Start ping polling
       startPingPolling();
-      
-      // Try WebSocket integration as fallback
-      setTimeout(() => {
-        if (window.bappendaWS) {
-          // Set user ID (you can get this from session or user data)
-          window.bappendaWS.setUserId('bank_user_001');
-          
-          // Listen for ping notifications
-          window.bappendaWS.on('ping_received', (data) => {
-            console.log('🔔 Bank received ping via WebSocket:', data);
-            showBankPingNotification(data);
-            if (typeof load === 'function') {
-              load();
-            }
-          });
-          
-          console.log('✅ Bank WebSocket integration ready');
-        }
-      }, 2000);
     });
     
     // Start ping polling
@@ -1111,8 +1467,8 @@
             });
             
             // Refresh table data
-            if (typeof load === 'function') {
-              load();
+            if (window.load) {
+              window.load();
             }
           } else {
             console.log('📭 Bank no new notifications');
@@ -1298,6 +1654,11 @@
     }
   </script>
   
+  <!--script front-->
+  <script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+  <script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
   <script type="module">
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
