@@ -1,7 +1,9 @@
 let selectedNoBooking = null;
 let allData = []; // Store all data
+let filteredData = []; // Store filtered data for search
 let currentPage = 1;
 const itemsPerPage = 6; // 6 items per page
+let searchQuery = ''; // Store current search query
 
 // Fungsi UTAMA untuk memuat data ke dalam card layout
 async function loadTableDataPenelitiV() {
@@ -99,6 +101,7 @@ async function loadTableDataPenelitiV() {
 
         // Store all data for pagination
         allData = data.data;
+        filteredData = data.data; // Initialize filtered data
         
         // Log sample data to verify persetujuan and pemilihan fields
         if (allData.length > 0) {
@@ -131,6 +134,9 @@ async function loadTableDataPenelitiV() {
         const paginationContainer = document.createElement('div');
         paginationContainer.className = 'pagination-container';
         tbody.appendChild(paginationContainer);
+
+        // Create search and pagination controls container
+        createSearchAndPaginationControls();
 
         // Display current page
         displayPage(currentPage);
@@ -182,6 +188,27 @@ async function loadTableDataPenelitiV() {
     }
 }
 
+// Function to filter data based on search query
+function filterData(query) {
+    if (!query || query.trim() === '') {
+        filteredData = allData;
+        return;
+    }
+    
+    const searchTerm = query.toLowerCase().trim();
+    filteredData = allData.filter(item => {
+        const noppbb = String(item.noppbb || '').toLowerCase();
+        const specialField = String(item.creator_special_field || '').toLowerCase();
+        const nobooking = String(item.nobooking || '').toLowerCase();
+        const noRegistrasi = String(item.no_registrasi || '').toLowerCase();
+        
+        return noppbb.includes(searchTerm) ||
+               specialField.includes(searchTerm) ||
+               nobooking.includes(searchTerm) ||
+               noRegistrasi.includes(searchTerm);
+    });
+}
+
 // Function to display specific page
 function displayPage(page) {
     const cardsContainer = document.querySelector('.verification-cards-container');
@@ -192,11 +219,11 @@ function displayPage(page) {
     // Clear existing cards
     cardsContainer.innerHTML = '';
     
-    // Calculate pagination
-    const totalPages = Math.ceil(allData.length / itemsPerPage);
+    // Calculate pagination based on filtered data
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const startIndex = (page - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const currentData = allData.slice(startIndex, endIndex);
+    const currentData = filteredData.slice(startIndex, endIndex);
     
     // Create cards for current page
     currentData.forEach(item => {
@@ -208,6 +235,220 @@ function displayPage(page) {
     
     // Update current page
     currentPage = page;
+    
+    // Update search results info
+    updateSearchResultsInfo();
+}
+
+// Function to create search and pagination controls
+function createSearchAndPaginationControls() {
+    // Check if controls already exist
+    const existingControls = document.querySelector('.search-pagination-controls');
+    if (existingControls && existingControls.querySelector('#verification-search-input')) {
+        return; // Already exists
+    }
+    
+    // Find the main content area
+    const mainContent = document.querySelector('#verifikasi_p1_design');
+    if (!mainContent) return;
+    
+    // Find the controls row (where real-time controls are)
+    let controlsRow = mainContent.querySelector('div[style*="justify-content: space-between"]');
+    if (!controlsRow) {
+        // Create controls row if it doesn't exist
+        controlsRow = document.createElement('div');
+        controlsRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 20px; flex-wrap: wrap;';
+        
+        // Find where to insert (before the table)
+        const table = mainContent.querySelector('#penelitiverifikasiTable');
+        if (table && table.parentElement) {
+            table.parentElement.insertBefore(controlsRow, table);
+        } else {
+            mainContent.insertBefore(controlsRow, mainContent.firstChild);
+        }
+    }
+    
+    // Create controls container
+    const controlsContainer = document.createElement('div');
+    controlsContainer.className = 'search-pagination-controls';
+    controlsContainer.style.cssText = `
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 20px;
+        flex-wrap: wrap;
+    `;
+    
+    // Create search container
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'search-container';
+    searchContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 300px;
+    `;
+    
+    // Create search input
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'verification-search-input';
+    searchInput.placeholder = 'Cari berdasarkan NOP PBB, Special Field, No. Booking, atau No. Registrasi...';
+    searchInput.className = 'verification-search-input';
+    searchInput.value = searchQuery;
+    searchInput.style.cssText = `
+        flex: 1;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #374151;
+        border-radius: 8px;
+        color: #e5e7eb;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    `;
+    
+    // Add focus styles
+    searchInput.addEventListener('focus', function() {
+        this.style.borderColor = '#8b5cf6';
+        this.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.1)';
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        this.style.borderColor = '#374151';
+        this.style.boxShadow = 'none';
+    });
+    
+    // Search functionality with debounce
+    let searchTimeout;
+    searchInput.addEventListener('input', function(e) {
+        clearTimeout(searchTimeout);
+        const query = e.target.value;
+        searchQuery = query;
+        
+        searchTimeout = setTimeout(() => {
+            filterData(query);
+            currentPage = 1; // Reset to first page on new search
+            displayPage(1);
+        }, 300); // 300ms debounce
+    });
+    
+    // Create search icon
+    const searchIcon = document.createElement('i');
+    searchIcon.className = 'fa fa-search';
+    searchIcon.style.cssText = `
+        color: #9ca3af;
+        font-size: 16px;
+    `;
+    
+    // Create clear button
+    const clearButton = document.createElement('button');
+    clearButton.className = 'clear-search-btn';
+    clearButton.innerHTML = '<i class="fa fa-times"></i>';
+    clearButton.title = 'Hapus pencarian';
+    clearButton.style.cssText = `
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        display: ${searchQuery ? 'block' : 'none'};
+    `;
+    
+    clearButton.addEventListener('click', function() {
+        searchInput.value = '';
+        searchQuery = '';
+        filterData('');
+        currentPage = 1;
+        displayPage(1);
+        this.style.display = 'none';
+    });
+    
+    clearButton.addEventListener('mouseenter', function() {
+        this.style.color = '#ef4444';
+        this.style.background = 'rgba(239, 68, 68, 0.1)';
+    });
+    
+    clearButton.addEventListener('mouseleave', function() {
+        this.style.color = '#9ca3af';
+        this.style.background = 'transparent';
+    });
+    
+    // Update clear button visibility when typing
+    searchInput.addEventListener('input', function() {
+        clearButton.style.display = this.value ? 'block' : 'none';
+    });
+    
+    // Assemble search container
+    searchContainer.appendChild(searchIcon);
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(clearButton);
+    
+    // Create results info container
+    const resultsInfo = document.createElement('div');
+    resultsInfo.className = 'search-results-info';
+    resultsInfo.style.cssText = `
+        color: #9ca3af;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+    `;
+    
+    // Insert search container into controls row (left side)
+    if (controlsRow) {
+        // Check if search container already exists
+        const existingSearch = controlsRow.querySelector('.search-container');
+        if (!existingSearch) {
+            controlsRow.insertBefore(searchContainer, controlsRow.firstChild);
+        }
+        
+        // Insert results info after search container
+        const existingResults = controlsRow.querySelector('.search-results-info');
+        if (!existingResults) {
+            controlsRow.insertBefore(resultsInfo, controlsRow.querySelector('.real-time-controls'));
+        }
+    } else {
+        // Fallback: create standalone container
+        controlsContainer.appendChild(searchContainer);
+        controlsContainer.appendChild(resultsInfo);
+        
+        // Insert before the table
+        const table = mainContent.querySelector('#penelitiverifikasiTable');
+        if (table && table.parentElement) {
+            table.parentElement.insertBefore(controlsContainer, table);
+        } else {
+            mainContent.insertBefore(controlsContainer, mainContent.firstChild);
+        }
+    }
+    
+    // Store reference for updating
+    window.updateSearchResultsInfo = function() {
+        const resultsInfoEl = document.querySelector('.search-results-info');
+        if (!resultsInfoEl) return;
+        
+        const total = filteredData.length;
+        const all = allData.length;
+        if (searchQuery && searchQuery.trim() !== '') {
+            resultsInfoEl.textContent = `Menampilkan ${total} dari ${all} hasil`;
+            resultsInfoEl.style.color = total === 0 ? '#ef4444' : '#10b981';
+        } else {
+            resultsInfoEl.textContent = `Total: ${all} data`;
+            resultsInfoEl.style.color = '#9ca3af';
+        }
+    };
+    
+    // Initial update
+    updateSearchResultsInfo();
+}
+
+// Function to update search results info
+function updateSearchResultsInfo() {
+    if (window.updateSearchResultsInfo) {
+        window.updateSearchResultsInfo();
+    }
 }
 
 // Function to create individual card
@@ -626,10 +867,11 @@ function setupFormInteractions(card, item) {
         });
     });
 
-    // Save verification button
+    // Save verification button (in card footer)
     const saveButton = card.querySelector('.btn-save-verification');
     if (saveButton) {
-        saveButton.addEventListener('click', async () => {
+        saveButton.addEventListener('click', async (e) => {
+            e.stopPropagation(); // Prevent card click
             try {
                 await saveVerificationData(card, item);
             } catch (error) {
@@ -785,15 +1027,25 @@ async function sendToParafKasie(item) {
 function createPagination(container, currentPage, totalPages) {
     container.innerHTML = '';
     
-    if (totalPages <= 1) return; // No pagination needed
+    if (totalPages <= 1) {
+        container.style.display = 'none';
+        return; // No pagination needed
+    }
+    
+    container.style.display = 'flex';
     
     // Pagination info
     const startItem = (currentPage - 1) * itemsPerPage + 1;
-    const endItem = Math.min(currentPage * itemsPerPage, allData.length);
+    const endItem = Math.min(currentPage * itemsPerPage, filteredData.length);
     
     const info = document.createElement('div');
     info.className = 'pagination-info';
-    info.textContent = `Menampilkan ${startItem}-${endItem} dari ${allData.length} data`;
+    const totalItems = filteredData.length;
+    if (searchQuery && searchQuery.trim() !== '') {
+        info.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} hasil pencarian`;
+    } else {
+        info.textContent = `Menampilkan ${startItem}-${endItem} dari ${totalItems} data`;
+    }
     container.appendChild(info);
     
     // Previous button
@@ -968,6 +1220,9 @@ function showRejectModal(nobooking) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 [FRONTEND] Peneliti Verifikasi Cards initialized');
     loadTableDataPenelitiV();
+    
+    // Expose loadTableDataPenelitiV globally for real-time refresh
+    window.loadPenelitiData = loadTableDataPenelitiV;
 });
 
 // Add CSS animations

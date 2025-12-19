@@ -263,8 +263,12 @@ main.shifted #verifikasi_p1_design {
   <!-- MAIN -->
   <main id="verifikasi_p1_design" class="main-content">
     
-    <!-- Real-time controls -->
-    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px;">
+    <!-- Controls Row: Search and Real-time -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 20px; flex-wrap: wrap;">
+      <!-- Search and Pagination Controls (will be created by JavaScript) -->
+      <div class="search-pagination-controls" style="flex: 1; min-width: 300px;"></div>
+      
+      <!-- Real-time controls -->
       <div class="real-time-controls">
         <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
           <i class="fa fa-pause"></i> Pause Real-time
