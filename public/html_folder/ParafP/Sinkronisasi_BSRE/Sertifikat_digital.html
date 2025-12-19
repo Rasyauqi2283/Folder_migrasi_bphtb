@@ -399,7 +399,6 @@
                         <ul>
                             <li><strong>Kunci (Keypair)</strong>: sepasang kunci <em>privat</em> dan <em>publik</em>. Kunci privat <strong>tetap di browser Anda</strong>; kunci publik dikirim ke server untuk diterbitkan sertifikat.</li>
                             <li><strong>CN</strong>: nama yang akan tampil di sertifikat. Isi dengan nama jabatan/nama Anda (mis. "Kepala Bidang A").</li>
-                            <li><strong>Email</strong> dan <strong>Organisasi</strong>: opsional untuk informasi tambahan pada sertifikat.</li>
                             <li><strong>Masa berlaku</strong>: jumlah hari sertifikat aktif. <strong>365</strong> = 1 tahun.</li>
                             <li><strong>Passphrase</strong>: sandi untuk mengunci penggunaan sertifikat saat tanda tangan. <strong>Tidak bisa di-reset</strong>. Jika lupa, buat sertifikat baru.</li>
                         </ul>
@@ -416,7 +415,7 @@
                         <div class="info-box-title">Langkah singkat</div>
                         <ol>
                             <li>Klik <strong>Buat Kunci Otomatis</strong> (otomatis, tidak perlu instal apa pun).</li>
-                            <li>Isi <strong>CN</strong>, (opsional) Email & Organisasi, pilih masa berlaku.</li>
+                            <li>Isi <strong>CN</strong> dan pilih masa berlaku.</li>
                             <li>Masukkan <strong>Passphrase</strong> yang mudah diingat namun aman.</li>
                             <li>Klik <strong>Daftarkan Sertifikat</strong>.</li>
                         </ol>
@@ -434,9 +433,7 @@
             <div id="pub-preview" class="pub-preview"></div>
             <div class="form-group form-grid">
                 <input id="sub-cn" placeholder="Nama tampil di sertifikat (mis. Kepala Bidang)" title="CN = Common Name (nama tampilan)">
-                <input id="sub-email" placeholder="Email (opsional)" title="Boleh dikosongkan">
-                <input id="sub-org" placeholder="Organisasi (opsional)" title="Boleh dikosongkan">
-                <input id="sub-days" type="number" min="1" value="365" title="Masa berlaku sertifikat (hari)">
+                <input id="sub-days" type="number" min="1" value="365" title="Masa berlaku sertifikat (hari)" readonly>
                 <input id="sub-pass" type="password" class="input-full" placeholder="Passphrase untuk mengunci pemakaian (≥4 karakter)" title="Sandi ini diminta saat tanda tangan">
                 <button id="btn-issue" class="input-full" disabled title="Klik setelah kunci dibuat dan data terisi">Daftarkan Sertifikat</button>
             </div>
@@ -518,8 +515,6 @@
         const body = {
             public_key_pem: generated.pem,
             subject_cn: el('sub-cn').value||undefined,
-            subject_email: el('sub-email').value||undefined,
-            subject_org: el('sub-org').value||undefined,
             algorithm: 'ECDSA-P256',
             valid_days: Number(el('sub-days').value||365),
             passphrase: pass
@@ -531,8 +526,6 @@
         alert('Sertifikat terbit: ' + js.cert.serial_number);
         // Reset form
         el('sub-cn').value = '';
-        el('sub-email').value = '';
-        el('sub-org').value = '';
         el('sub-days').value = '365';
         el('sub-pass').value = '';
         el('pub-preview').style.display = 'none';
