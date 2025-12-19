@@ -36,6 +36,7 @@ class UniversalAlert {
      * @param {Function} options.onClose - Callback when alert closes
      * @param {boolean} options.clickOutsideToClose - Allow click outside to close (default: true)
      * @param {boolean} options.showProgress - Show progress bar (default: true)
+     * @param {string} options.alertId - Optional custom alert ID (for confirm dialogs)
      */
     show(options = {}) {
         const {
@@ -47,7 +48,8 @@ class UniversalAlert {
             onClose = null,
             clickOutsideToClose = true,
             showProgress = true,
-            showCloseButton = true
+            showCloseButton = true,
+            alertId = null
         } = options;
 
         // Validate type
@@ -57,21 +59,21 @@ class UniversalAlert {
             type = 'info';
         }
 
-        // Create alert ID
-        const alertId = this.generateId();
+        // Create alert ID (use provided or generate new)
+        const finalAlertId = alertId || this.generateId();
 
         // Create overlay
-        const overlay = this.createOverlay(alertId, clickOutsideToClose, onClose);
+        const overlay = this.createOverlay(finalAlertId, clickOutsideToClose, onClose);
         
         // Create alert container
-        const container = this.createAlertContainer(alertId, type, title, message, buttons, showCloseButton, showProgress);
+        const container = this.createAlertContainer(finalAlertId, type, title, message, buttons, showCloseButton, showProgress);
         
         // Add to DOM
         overlay.appendChild(container);
         document.body.appendChild(overlay);
 
         // Add to active alerts
-        this.activeAlerts.add(alertId);
+        this.activeAlerts.add(finalAlertId);
 
         // Show with animation
         requestAnimationFrame(() => {
@@ -82,12 +84,12 @@ class UniversalAlert {
         // Auto close
         if (duration > 0) {
             const timeoutId = setTimeout(() => {
-                this.close(alertId);
+                this.close(finalAlertId);
             }, duration);
-            this.autoCloseTimeouts.set(alertId, timeoutId);
+            this.autoCloseTimeouts.set(finalAlertId, timeoutId);
         }
 
-        return alertId;
+        return finalAlertId;
     }
 
     /**
@@ -286,23 +288,27 @@ class UniversalAlert {
      */
     confirm(message, title = 'Konfirmasi', options = {}) {
         return new Promise((resolve) => {
+            // Generate alert ID first
+            const alertId = this.generateId();
+            
+            // Store resolve function and alert ID
+            this._resolveConfirm = resolve;
+            this._confirmAlertId = alertId;
+            
             const buttons = [
                 {
                     text: options.cancelText || 'Batal',
                     class: 'alert-btn alert-btn-secondary',
                     icon: 'fa-times',
-                    onclick: `window.universalAlert.close('${this.generateId()}'); window.universalAlert._resolveConfirm(false);`
+                    onclick: `window.universalAlert._handleConfirmClick('${alertId}', false);`
                 },
                 {
                     text: options.confirmText || 'Ya',
                     class: 'alert-btn alert-btn-primary',
                     icon: 'fa-check',
-                    onclick: `window.universalAlert.close('${this.generateId()}'); window.universalAlert._resolveConfirm(true);`
+                    onclick: `window.universalAlert._handleConfirmClick('${alertId}', true);`
                 }
             ];
-
-            // Store resolve function
-            this._resolveConfirm = resolve;
 
             this.show({
                 type: 'warning',
@@ -311,9 +317,25 @@ class UniversalAlert {
                 buttons,
                 duration: 0,
                 showProgress: false,
-                clickOutsideToClose: false
+                clickOutsideToClose: false,
+                alertId: alertId // Pass alertId to show method
             });
         });
+    }
+    
+    /**
+     * Handle confirm button click
+     */
+    _handleConfirmClick(alertId, confirmed) {
+        // Close the alert
+        this.close(alertId);
+        
+        // Resolve the promise
+        if (this._resolveConfirm) {
+            this._resolveConfirm(confirmed);
+            this._resolveConfirm = null;
+        }
+        this._confirmAlertId = null;
     }
 }
 
