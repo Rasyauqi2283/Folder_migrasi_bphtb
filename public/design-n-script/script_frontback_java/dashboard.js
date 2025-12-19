@@ -82,15 +82,34 @@ function updateCalendar() {
         calendarGrid.innerHTML += '<div class="empty"></div>';
     }
 
+    // Get today's date for highlighting
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === currentMonthIndex && today.getFullYear() === currentYear;
+    const todayDate = isCurrentMonth ? today.getDate() : null;
+
     // Generate days of the month
     for (let day = 1; day <= totalDaysInMonth; day++) {
         const dayElement = document.createElement('div');
         dayElement.classList.add('date');
         dayElement.textContent = day;
 
-        // Highlight weekend days
-        if ((firstDayOfMonth + day - 1) % 7 === 0 || (firstDayOfMonth + day - 1) % 7 === 6) {
+        // Calculate the day of week for weekend detection
+        // firstDayOfMonth: 0=Sunday, 1=Monday, ..., 6=Saturday
+        // Calendar starts with Monday, so we need to adjust
+        // Convert Sunday-based to Monday-based: Sunday (0) becomes 6, Monday (1) becomes 0
+        const mondayBasedFirstDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+        const dayOfWeek = (mondayBasedFirstDay + day - 1) % 7;
+        // Now: 0=Monday, 1=Tuesday, ..., 5=Saturday, 6=Sunday
+
+        // Highlight weekend days (Saturday=5, Sunday=6)
+        if (dayOfWeek === 5 || dayOfWeek === 6) {
             dayElement.classList.add('weekend');
+        }
+
+        // Highlight today's date
+        if (isCurrentMonth && day === todayDate) {
+            dayElement.classList.add('today');
+            dayElement.classList.add('current-day');
         }
 
         calendarGrid.appendChild(dayElement);

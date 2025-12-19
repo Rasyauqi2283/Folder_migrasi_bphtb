@@ -93,32 +93,34 @@
 .calendar-container {
     position: relative;
     flex-shrink: 0; /* Don't shrink calendar */
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(65, 90, 119, 0.2));
+    /* Use same gradient as welcome-banner for consistency */
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
     padding: 15px;
     border-radius: 15px;
     width: 180px;
     min-width: 180px; /* Prevent calendar from shrinking too much */
     max-width: 180px; /* Prevent calendar from expanding */
     text-align: center;
-    border: 1px solid rgba(65, 90, 119, 0.3);
-    backdrop-filter: blur(10px);
+    border: 1px solid rgba(65, 90, 119, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     box-sizing: border-box; /* Include padding in width */
 }
 
 .calendar-month {
-    background: linear-gradient(135deg, #0d1b2a, #1b263b);
-    color: #fff;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+    color: #ffffff;
     padding: 5px 10px;
     border-radius: 8px;
     font-weight: bold;
     margin-bottom: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
+    gap: 3px;
 }
 
 .day, .date {
@@ -128,32 +130,61 @@
     width: 20px;
     height: 20px;
     font-size: 0.7em;
-    color: #333;
     border-radius: 5px;
 }
 
 .day {
     font-weight: bold;
-    color: #415a77;
+    color: #e5e7eb; /* Light gray for better contrast on dark background */
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .weekend {
-    color: #1e88e5; /* Blue for weekends */
+    color: #fca5a5; /* Light red/pink for weekends - better contrast */
 }
 
 .date {
-    background-color: #f3f3f3;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f3f4f6; /* Light gray for dates - better readability */
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.date:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
 }
 
 .date.previous-month, .date.next-month {
-    color: #ccc;
+    color: rgba(156, 163, 175, 0.5); /* Muted gray for previous/next month */
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.date.weekend {
+    color: #fca5a5; /* Light red/pink for weekend dates */
+}
+
+/* Today's date - highlight with distinct color */
+.date.today {
+    background: linear-gradient(135deg, #10b981, #059669); /* Green gradient for today */
+    color: #ffffff;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transform: scale(1.15);
+}
+
+.date.today:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.6);
 }
 
 .date.current-day {
-    background: linear-gradient(135deg, #415a77, #1b263b);
-    color: #fff;
+    background: linear-gradient(135deg, #10b981, #059669); /* Same as today for consistency */
+    color: #ffffff;
     font-weight: bold;
-    box-shadow: 0 4px 15px rgba(65, 90, 119, 0.4);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .date:hover {
