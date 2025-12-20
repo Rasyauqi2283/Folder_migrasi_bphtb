@@ -83,6 +83,47 @@
             opacity: 1 !important;
         }
 
+        /* ===== PARAF KASIE MAIN CONTENT INTEGRATION (match verifikasi-data) ===== */
+        main.shifted #paraf_kasie_design {
+            width: calc(100vw - 250px - 15px);
+            max-width: calc(100vw - 250px - 15px);
+        }
+
+        /* Real-time controls styling for Peneliti (same as verifikasi-data) */
+        .real-time-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .real-time-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator-dot.paused {
+            background: #6c757d;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
         /* ===== Paraf Kasie Dropdown (match reference verifikasi-data) ===== */
         #peneliti_paraf_kasie_Table tr.dropdown-row td {
             border: none !important;
@@ -330,10 +371,21 @@
   <!-- MAIN -->
   <main id="paraf_kasie_design" class="main-content">
     
-    <!-- Controls Row: Search and Pagination Controls -->
+    <!-- Controls Row: Search and Real-time (match verifikasi-data.html) -->
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 20px; gap: 20px; flex-wrap: wrap;">
-      <!-- Search and Pagination Controls (will be created by JavaScript) -->
+      <!-- Search and Pagination Controls (created by JS) -->
       <div class="search-pagination-controls" style="flex: 1; min-width: 300px;"></div>
+      
+      <!-- Real-time controls -->
+      <div class="real-time-controls">
+        <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+          <i class="fa fa-pause"></i> Pause Real-time
+        </button>
+        <div class="real-time-indicator" id="realTimeIndicator">
+          <div class="indicator-dot"></div>
+          <span>Real-time</span>
+        </div>
+      </div>
     </div>
 
     <div class="table-scroll">
@@ -382,6 +434,125 @@
   <!---->
   <script src="../../../design-n-script/script-backend/header-backend.js"></script>
   <script src="../../../design-n-script/script-backend/peneliti_paraf.js"></script>
+
+  <!-- Real-time monitoring script for Peneliti (match verifikasi-data.html; adapted to paraf-kasie table) -->
+  <script>
+    (function(){
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) userIsInteracting = false;
+        }, 5000);
+      }
+
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) clearInterval(realTimeInterval);
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          if (userIsInteracting) return;
+          try { await checkForNewData(); } catch (error) { console.error('❌ Error in Paraf Kasie real-time monitoring:', error); }
+        }, 5000);
+      }
+
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+      }
+
+      async function checkForNewData() {
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody');
+        const currentCount = tbody ? tbody.children.length : 0;
+
+        if (currentCount > lastDataCount && lastDataCount > 0) {
+          lastDataCount = currentCount;
+          if (refreshDebounceTimer) clearTimeout(refreshDebounceTimer);
+
+          refreshDebounceTimer = setTimeout(() => {
+            if (!userIsInteracting) {
+              // reload table data
+              try {
+                if (typeof loadTableDataPenelitiP === 'function') loadTableDataPenelitiP();
+              } catch (e) {
+                console.warn('Reload Paraf Kasie data failed:', e);
+              }
+            }
+          }, 2000);
+        } else if (currentCount !== lastDataCount) {
+          lastDataCount = currentCount;
+        }
+      }
+
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+            button.title = 'Klik untuk menghentikan auto-refresh';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+            button.title = 'Klik untuk memulai auto-refresh';
+          }
+        }
+
+        if (dot) {
+          if (isEnabled) dot.classList.remove('paused');
+          else dot.classList.add('paused');
+        }
+      }
+
+      function initializeRealTime() {
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        startRealTimeMonitoring();
+      }
+
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => initializeRealTime(), 1000);
+
+        const table = document.querySelector('#peneliti_paraf_kasie_Table');
+        if (table) {
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) trackUserActivity();
+          });
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) realTimeToggle.addEventListener('click', trackUserActivity);
+      });
+    })();
+  </script>
   <script type="module">
     import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
