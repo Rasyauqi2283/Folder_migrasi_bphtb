@@ -15,6 +15,148 @@
     <!---->
     <link rel="stylesheet" href="../../design-n-script/design_css/design_text/design_text.css">
 
+    <style>
+        .summary-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 24px auto;
+            padding: 0 20px;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .summary-card:has(.summary-card-icon.blue)::before {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .summary-card:has(.summary-card-icon.green)::before {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .summary-card:has(.summary-card-icon.purple)::before {
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .summary-card:has(.summary-card-icon.orange)::before {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .summary-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .summary-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .summary-card-icon.blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .summary-card-icon.green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .summary-card-icon.purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .summary-card-icon.orange {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .summary-card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .summary-card-label {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .summary-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .summary-card-link {
+            color: #3b82f6;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s;
+        }
+
+        .summary-card-link:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .summary-cards-container {
+                grid-template-columns: 1fr;
+                padding: 0 16px;
+            }
+        }
+    </style>
+
 </head>
 <body>
   <!-- Header Section -->
@@ -174,6 +316,11 @@
             </div>
         </div>
     </section>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards-container" id="summaryCardsContainer">
+        <!-- Cards will be populated by JavaScript -->
+    </div>
 </main>
 
     <!-- Footer berada di dalam page-wrapper -->
@@ -200,6 +347,95 @@
 <script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="../../design-n-script/script-backend/header-backend.js"></script>
+  <script>
+    // Load Summary Cards for Peneliti Dashboard
+    (async function loadPenelitiSummaryCards() {
+      try {
+        const container = document.getElementById('summaryCardsContainer');
+        if (!container) return;
+
+        // Fetch data from peneliti endpoints
+        const [verifikasiRes, parafRes] = await Promise.all([
+          fetch('/api/peneliti_get-berkas-fromltb', { credentials: 'include' }).catch(() => null),
+          fetch('/api/peneliti/get-berkas-till-verif', { credentials: 'include' }).catch(() => null)
+        ]);
+
+        // Process Verifikasi SSPD data
+        let verifikasiCount = 0;
+        if (verifikasiRes && verifikasiRes.ok) {
+          try {
+            const verifikasiData = await verifikasiRes.json();
+            if (verifikasiData && verifikasiData.success && Array.isArray(verifikasiData.data)) {
+              verifikasiCount = verifikasiData.data.length;
+            }
+          } catch (e) {
+            console.warn('Error parsing verifikasi data:', e);
+          }
+        }
+
+        // Process Paraf Kasie SSPD data
+        let parafCount = 0;
+        if (parafRes && parafRes.ok) {
+          try {
+            const parafData = await parafRes.json();
+            if (parafData && parafData.success && Array.isArray(parafData.data)) {
+              parafCount = parafData.data.length;
+            }
+          } catch (e) {
+            console.warn('Error parsing paraf data:', e);
+          }
+        }
+
+        // Create summary cards
+        const cards = [
+          {
+            title: 'Verifikasi SSPD',
+            value: verifikasiCount,
+            label: 'Data yang perlu diverifikasi',
+            icon: '<i class="fas fa-gavel"></i>',
+            iconClass: 'blue',
+            link: 'Verifikasi_sspd/verifikasi-data.html',
+            linkText: 'Lihat Detail'
+          },
+          {
+            title: 'Paraf Kasie SSPD',
+            value: parafCount,
+            label: 'Data yang perlu diparaf',
+            icon: '<i class="fas fa-stamp"></i>',
+            iconClass: 'green',
+            link: 'ParafKasie-sspd/paraf-kasie.html',
+            linkText: 'Lihat Detail'
+          }
+        ];
+
+        // Render cards
+        container.innerHTML = cards.map(card => `
+          <div class="summary-card" onclick="window.location.href='${card.link}'">
+            <div class="summary-card-header">
+              <div class="summary-card-title">
+                <div class="summary-card-icon ${card.iconClass}">${card.icon}</div>
+                ${card.title}
+              </div>
+            </div>
+            <div class="summary-card-value">${card.value}</div>
+            <div class="summary-card-label">${card.label}</div>
+            <div class="summary-card-footer">
+              <a href="${card.link}" class="summary-card-link" onclick="event.stopPropagation();">
+                ${card.linkText} <i class="fa fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error loading peneliti summary cards:', error);
+        const container = document.getElementById('summaryCardsContainer');
+        if (container) {
+          container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data summary</p>';
+        }
+      }
+    })();
+  </script>
   <script type="module">
         import { initNotifications } from '../../design-n-script/script-backend/notification-setup.js';
     initNotifications();
