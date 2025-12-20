@@ -2,10 +2,12 @@
 .photo-overlay {
     display: none;
     position: fixed;
-    top: 0;
+    top: var(--app-header-height, 80px);
+    bottom: var(--app-footer-height, 40px);
     left: 0;
+    right: 0;
     width: 100%;
-    height: 100%;
+    height: auto;
     background: rgba(0, 0, 0, 0.8);
     z-index: 1000;
     backdrop-filter: blur(5px);
@@ -20,20 +22,17 @@
 }
 
 .photo-overlay-content {
-    position: fixed;              /* tempelkan ke viewport */
-    top: 50%;                     /* titik referensi di tengah vertikal */
-    left: 50%;                    /* titik referensi di tengah horizontal */
-    transform: translate(-50%, -50%); /* geser balik agar pusat elemen pas */
+    position: relative;
     
     background: linear-gradient(135deg, #4facfe, #00f2fe);
     border-radius: 20px;
     padding: 30px;
     max-width: 500px;
     width: 90%;
-    max-height: 90vh;
+    max-height: calc(100% - 40px);
     overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    z-index: 9999;                /* pastikan di atas layer lain */
+    z-index: 1001;
 }
 
 

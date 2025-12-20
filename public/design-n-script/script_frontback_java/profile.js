@@ -26,8 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // General function to show an overlay
     function showOverlay(overlay) {
         closeOverlays(); // Close any open overlays
-        overlay.style.display = 'block';
-        overlayBackdrop.style.display = 'block';
+        // Photo overlay already has its own backdrop; don't double-darken with overlayBackdrop.
+        if (overlay && overlay.id === 'photo-overlay') {
+            overlay.style.display = 'flex';
+            overlay.classList.add('show');
+            overlayBackdrop.style.display = 'none';
+        } else {
+            overlay.style.display = 'block';
+            overlayBackdrop.style.display = 'block';
+        }
     }
 
     // General function to close all overlays
@@ -36,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const signatureOverlay = document.getElementById('signature-overlay');
         if (signatureOverlay) signatureOverlay.style.display = 'none';
         photoOverlay.style.display = 'none';
+        photoOverlay.classList.remove('show');
         overlayBackdrop.style.display = 'none';
         resetPhotoInput();
     }
