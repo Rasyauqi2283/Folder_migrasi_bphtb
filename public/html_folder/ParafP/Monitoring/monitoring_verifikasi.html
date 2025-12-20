@@ -722,6 +722,20 @@
             <div><strong>Tanggal Update:</strong> ${item.updated_at}</div>
             ${item.keterangan ? `<div><strong>Keterangan:</strong> ${item.keterangan}</div>` : ''}
           </div>
+
+          <!-- Bagian Lihat PDF (Validasi & Verif Paraf) -->
+          <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <h4 style="margin: 0 0 12px 0; color: #93c5fd; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Dokumen Hasil (PDF):</h4>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <button class="btn-view" style="background: linear-gradient(135deg, #10b981, #059669); border: none; flex: 1; min-width: 160px;" onclick="viewPDF('validasi', '${item.nobooking}')">
+                <i class="fas fa-file-signature"></i> Lihat PDF Validasi
+              </button>
+              <button class="btn-view" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; flex: 1; min-width: 160px;" onclick="viewPDF('verif-paraf', '${item.nobooking}')">
+                <i class="fas fa-file-alt"></i> Lihat PDF Verif Paraf
+              </button>
+            </div>
+          </div>
+
           ${item.akta_tanah_path || item.sertifikat_tanah_path || item.pelengkap_path ? `
             <div style="margin-top: 16px;">
               <h4 style="margin: 0 0 8px 0;">Dokumen Terkait:</h4>
@@ -757,6 +771,29 @@
     if (!path) return;
     const fullPath = path.startsWith('/') ? path : '/' + path;
     window.open(fullPath, '_blank');
+  }
+
+  // View PDF specifically for Validasi and Verif Paraf
+  function viewPDF(type, nobooking) {
+    console.log(`🔍 [MONITORING-PDF] Opening PDF: ${type} for nobooking: ${nobooking}`);
+    const nb = encodeURIComponent(String(nobooking || ''));
+    if (!nb) { 
+      alert('No Booking tidak valid'); 
+      return; 
+    }
+    
+    let pdfUrl = '';
+    if (type === 'validasi') {
+      pdfUrl = `/api/ppat/generate-pdf-validasi/${nb}`;
+    } else if (type === 'verif-paraf') {
+      pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nb}`;
+    } else {
+      alert('Jenis PDF tidak valid');
+      return;
+    }
+    
+    // Open in new tab
+    window.open(pdfUrl, '_blank');
   }
 
   // Render pagination
