@@ -385,34 +385,40 @@ export default function registerGeneratePdfBooking(app, pool) {
                 });
                 
                 if (wpAbs && fs.existsSync(wpAbs)) {
-                    // Gunakan ukuran sedang dan trim area kosong agar sejajar dengan PPAT
-                    const mediumSignatureWidth = 80; 
-                    
+                    // Render WP signature clean (tanpa border) dan pastikan tidak menyentuh garis pembatas bawah.
+                    // Kita batasi ke "signature box" agar tinggi terkontrol (mirip feel PPAT, tapi tidak nabrak line bawah).
+                    const sigBoxW = 100;
+                    const sigBoxH = 45;
+                    const sigY = signatureYPosition + 35; // di bawah nama WP (y+20) dan tetap di atas garis pembatas (y+85)
+
                     const processedWPImage = await sharp(wpAbs)
-                        .trim() // Membuang ruang kosong di sekitar ttd
-                        .resize(400, 400, {
+                        .trim()
+                        .resize(600, 300, {
                             fit: 'contain',
                             background: { r: 255, g: 255, b: 255, alpha: 0 }
                         })
-                        .png()
+                        .png({
+                            compressionLevel: 9,
+                            adaptiveFiltering: true,
+                            palette: true,
+                            quality: 100
+                        })
                         .toBuffer();
 
-                    // Geser ke Y + 35 agar berada di bawah nama WP dan sejajar dengan area ttd PPAT
-                    doc.image(processedWPImage, col1X + (columnWidth - mediumSignatureWidth)/2, signatureYPosition + 35, { 
-                        width: mediumSignatureWidth 
-                    });
-                    console.log('✅ [PDF] WP Signature rendered successfully (trimmed and aligned)');
+                    doc.image(
+                        processedWPImage,
+                        col1X + (columnWidth - sigBoxW) / 2,
+                        sigY,
+                        { fit: [sigBoxW, sigBoxH] }
+                    );
+                    console.log('✅ [PDF] WP Signature rendered successfully (clean & bounded)');
                 } else {
-                    console.warn('⚠️ [PDF] WP Signature file not found, drawing line instead');
-                    doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
-                        .lineTo(col1X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
-                        .stroke();
+                    // Kalau ttd WP tidak ada, biarkan kosong (jangan gambar garis placeholder agar tidak terlihat seperti border).
+                    console.warn('⚠️ [PDF] WP Signature file not found; leaving blank');
                 }
             } catch (err) {
                 console.warn('❌ [PDF] Failed to render WP signature:', err?.message || err);
-                doc.moveTo(col1X + (columnWidth - signatureWidth)/2, signatureYPosition + 40)
-                    .lineTo(col1X + (columnWidth - signatureWidth)/2 + signatureWidth, signatureYPosition + 40)
-                    .stroke();
+                // Jangan gambar garis fallback agar area tanda tangan tetap clean.
             }
 
             drawCenteredText(doc, `${data.kabupatenkotawp}, tgl ${data.tanggal}`, col1X, signatureYPosition, columnWidth);
