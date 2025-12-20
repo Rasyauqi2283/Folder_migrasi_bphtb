@@ -501,45 +501,25 @@ function createTableRow(tbody, item) {
         cellJenisWP.textContent = formatValue(item.jenis_wajib_pajak);
         cellTanggal.textContent = formatValue(item.tanggal_terima);
         
-        // Create action buttons container
+        // Create action button container - only "Kirim Kasie" button
         const actionContainer = document.createElement('div');
-        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center; justify-content: center;';
         
-        // View button
-        const viewBtn = document.createElement('button');
-        viewBtn.className = 'btn-view-document';
-        viewBtn.innerHTML = '<i class="fas fa-eye"></i> View';
-        viewBtn.onclick = (e) => {
-            e.stopPropagation();
-            viewDocument(item.nobooking);
-        };
-        actionContainer.appendChild(viewBtn);
-        
-        // Save button
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'btn-save-verification';
-        saveBtn.innerHTML = '<i class="fas fa-save"></i> Simpan';
-        saveBtn.dataset.nobooking = item.nobooking;
-        saveBtn.onclick = async (e) => {
+        // Kirim Kasie button
+        const kirimKasieBtn = document.createElement('button');
+        kirimKasieBtn.className = 'btn-kirim-kasie';
+        kirimKasieBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Kasie';
+        kirimKasieBtn.style.cssText = 'padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;';
+        kirimKasieBtn.onclick = async (e) => {
             e.stopPropagation();
             try {
-                await saveVerificationDataFromRow(row, item);
+                await sendToParafKasie(item);
             } catch (error) {
-                console.error('Save Verification Error:', error);
-                showAlert('error', `Gagal menyimpan: ${error.message}`);
+                console.error('Kirim Kasie Error:', error);
+                showAlert('error', `Gagal mengirim: ${error.message}`);
             }
         };
-        actionContainer.appendChild(saveBtn);
-        
-        // Reject button
-        const rejectBtn = document.createElement('button');
-        rejectBtn.className = 'btn-reject';
-        rejectBtn.innerHTML = '<i class="fas fa-times"></i> Tolak';
-        rejectBtn.onclick = (e) => {
-            e.stopPropagation();
-            showRejectModal(item.nobooking);
-        };
-        actionContainer.appendChild(rejectBtn);
+        actionContainer.appendChild(kirimKasieBtn);
         
         cellAksi.appendChild(actionContainer);
         
@@ -690,9 +670,15 @@ function createTableRow(tbody, item) {
                     </div>
 
                     <!-- Action Buttons Section -->
-                    <div class="action-buttons">
-                        <button type="button" class="btn-send-to-paraf" data-nobooking="${item.nobooking}" style="width: 100%;">
-                            <i class="fas fa-paper-plane"></i> Kirim ke Paraf
+                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
+                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-save"></i> Simpan
+                        </button>
+                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Tolak
                         </button>
                     </div>
 
@@ -771,16 +757,40 @@ function setupFormInteractionsFromRow(dropdownContent, item) {
         });
     });
 
-    // Send to paraf button
-    const sendToParafButton = dropdownContent.querySelector('.btn-send-to-paraf');
-    if (sendToParafButton) {
-        sendToParafButton.addEventListener('click', async () => {
+    // View button
+    const viewButton = dropdownContent.querySelector('.btn-view-document');
+    if (viewButton) {
+        viewButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            viewDocument(item.nobooking);
+        });
+    }
+
+    // Save button
+    const saveButton = dropdownContent.querySelector('.btn-save-verification');
+    if (saveButton) {
+        saveButton.addEventListener('click', async (e) => {
+            e.stopPropagation();
             try {
-                await sendToParafKasie(item);
+                const row = dropdownContent.closest('tr')?.previousElementSibling;
+                if (row) {
+                    await saveVerificationDataFromRow(row, item);
+                } else {
+                    throw new Error('Could not find table row');
+                }
             } catch (error) {
-                console.error('Send to Paraf Error:', error);
-                showAlert('error', `Gagal mengirim: ${error.message}`);
+                console.error('Save Verification Error:', error);
+                showAlert('error', `Gagal menyimpan: ${error.message}`);
             }
+        });
+    }
+
+    // Reject button
+    const rejectButton = dropdownContent.querySelector('.btn-reject');
+    if (rejectButton) {
+        rejectButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRejectModal(item.nobooking);
         });
     }
 }
