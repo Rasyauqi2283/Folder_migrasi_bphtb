@@ -82,6 +82,147 @@
             visibility: visible !important;
             opacity: 1 !important;
         }
+
+        /* ===== Paraf Kasie Dropdown (match reference verifikasi-data) ===== */
+        #peneliti_paraf_kasie_Table tr.dropdown-row td {
+            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-content-wrapper {
+            color: #e5e7eb;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            margin-bottom: 14px;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #f3f4f6;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-subtitle {
+            font-size: 13px;
+            color: #cbd5e1;
+            white-space: nowrap;
+        }
+
+        /* Reuse info-grid naming from table-utama.css feel */
+        #peneliti_paraf_kasie_Table .document-info-section .info-grid{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 16px;
+            padding: 14px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+        }
+        #peneliti_paraf_kasie_Table .info-label{
+            font-size: 12px;
+            font-weight: 700;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+        #peneliti_paraf_kasie_Table .info-value{
+            font-size: 14px;
+            color: #e5e7eb;
+            word-break: break-word;
+        }
+        #peneliti_paraf_kasie_Table .info-value.paraf-sudah{ color: #86efac; font-weight: 700; }
+        #peneliti_paraf_kasie_Table .info-value.paraf-belum{ color: #fbbf24; font-weight: 700; }
+
+        /* Actions */
+        #peneliti_paraf_kasie_Table .action-buttons{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button{
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button:hover:not(:disabled){
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button:disabled{
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Button palette */
+        #peneliti_paraf_kasie_Table .btn-view-document{ background: linear-gradient(135deg,#3b82f6,#2563eb); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-paraf-prominent{ background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-reject{ background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-kirim-kabid{ background: linear-gradient(135deg,#8b5cf6,#7c3aed); color: #fff; }
+
+        /* Aksi column container */
+        #peneliti_paraf_kasie_Table .aksi-actions{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid{
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* Docs list */
+        #peneliti_paraf_kasie_Table .document-links-section{
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        #peneliti_paraf_kasie_Table .document-links-title{
+            margin: 0 0 10px 0;
+            font-weight: 800;
+            font-size: 13px;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        #peneliti_paraf_kasie_Table .document-link{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            margin: 6px 8px 0 0;
+            border-radius: 999px;
+            background: rgba(59,130,246,0.14);
+            border: 1px solid rgba(59,130,246,0.25);
+            color: #bfdbfe;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        #peneliti_paraf_kasie_Table .document-link:hover{
+            background: rgba(59,130,246,0.22);
+            border-color: rgba(59,130,246,0.4);
+        }
     </style>
 
 </head>

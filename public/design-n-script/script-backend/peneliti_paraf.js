@@ -445,17 +445,23 @@ function createTableRow(tbody, item) {
         const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
         cellTanggal.textContent = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
         
-        // Create action button container - only "Kirim ke Kabid" button
+        // ===== AKSI (kolom terakhir) =====
+        // Button "Kirim ke Kabid" (Pejabat Validasi)
         const actionContainer = document.createElement('div');
-        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center; justify-content: center;';
+        actionContainer.className = 'aksi-actions';
         
-        // Kirim ke Kabid button
+        // Aktivasi tombol: hanya boleh kirim kalau sudah paraf (biar alur rapi)
+        const canSendKabid = !!item.tanda_paraf_path;
+
         const kirimKabidBtn = document.createElement('button');
         kirimKabidBtn.className = 'btn-kirim-kabid';
         kirimKabidBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim ke Kabid';
-        kirimKabidBtn.style.cssText = 'padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;';
+        kirimKabidBtn.type = 'button';
+        kirimKabidBtn.disabled = !canSendKabid;
+        kirimKabidBtn.title = canSendKabid ? 'Kirim ke Kabid untuk validasi & pembuatan QR' : 'Paraf dulu sebelum kirim ke Kabid';
         kirimKabidBtn.onclick = async (e) => {
             e.stopPropagation();
+            if (!canSendKabid) return;
             try {
                 const result = await sendToPejabatValidation(item);
                 if (result && result.success) {
@@ -484,40 +490,48 @@ function createTableRow(tbody, item) {
         dropdownContent.className = 'dropdown-content';
         
         try {
+            const parafDone = !!item.tanda_paraf_path;
             dropdownContent.innerHTML = `
-                <div class="dropdown-content-wrapper">
-                    <!-- Document Info Section -->
-                    <div class="document-info-section">
-                        <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
-                        <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
-                        <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
-                        <p><strong>Tahun AJB:</strong> ${item.tahunajb || 'N/A'}</p>
-                        <p><strong>Status:</strong> ${item.status || 'N/A'}</p>
+                <div class="dropdown-content-wrapper paraf-kasie-dropdown">
+                    <div class="dropdown-header">
+                        <div class="dropdown-title">Detail Berkas</div>
+                        <div class="dropdown-subtitle">No. Booking: <strong>${item.nobooking || 'N/A'}</strong></div>
                     </div>
 
-                    <!-- Action Buttons Section -->
-                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
-                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-eye"></i> View
+                    <div class="document-info-section">
+                        <div class="info-grid">
+                            <div class="info-item"><div class="info-label">No. Registrasi</div><div class="info-value">${item.no_registrasi || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">NOP PBB</div><div class="info-value">${item.noppbb || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">Nama Wajib Pajak</div><div class="info-value">${item.namawajibpajak || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">Nama Pemilik Objek</div><div class="info-value">${item.namapemilikobjekpajak || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">Tahun AJB</div><div class="info-value">${item.tahunajb || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">Status Paraf</div><div class="info-value ${parafDone ? 'paraf-sudah' : 'paraf-belum'}">${parafDone ? 'Sudah' : 'Belum'}</div></div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}">
+                            <i class="fas fa-eye"></i> Lihat Dokumen
                         </button>
-                        <button type="button" class="btn-paraf-prominent" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; ${item.tanda_paraf_path ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${item.tanda_paraf_path ? 'disabled' : ''}>
+                        <button type="button" class="btn-paraf-prominent" data-nobooking="${item.nobooking}" ${parafDone ? 'disabled' : ''}>
                             <i class="fas fa-pen"></i> Paraf
                         </button>
-                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; ${item.tanda_paraf_path ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${item.tanda_paraf_path ? 'disabled' : ''}>
+                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" ${parafDone ? 'disabled' : ''}>
                             <i class="fas fa-times"></i> Tolak
+                        </button>
+                        <button type="button" class="btn-kirim-kabid" data-nobooking="${item.nobooking}" ${parafDone ? '' : 'disabled'} title="${parafDone ? 'Kirim ke Kabid untuk validasi & QR' : 'Paraf dulu sebelum kirim'}">
+                            <i class="fas fa-paper-plane"></i> Kirim ke Kabid
                         </button>
                     </div>
 
-                    <!-- Document Links Section -->
                     <div class="document-links-section">
-                        <h6 class="document-links-title">Dokumen Terkait:</h6>
+                        <h6 class="document-links-title">Dokumen Terkait</h6>
                         <div class="document-links-list">
                             ${generateDocumentLinks(item)}
                         </div>
                     </div>
                 </div>
             `;
-            
         } catch (dropdownError) {
             console.error('Dropdown Creation Error:', dropdownError);
             dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
@@ -621,6 +635,28 @@ function setupParafFormInteractionsFromRow(dropdownContent, item) {
         rejectButton.addEventListener('click', (e) => {
             e.stopPropagation();
             showRejectModal(item.nobooking);
+        });
+    }
+
+    // Kirim ke Kabid button (di dalam dropdown)
+    const kirimKabidBtn = dropdownContent.querySelector('.btn-kirim-kabid');
+    if (kirimKabidBtn) {
+        const canSend = !kirimKabidBtn.disabled;
+        kirimKabidBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!canSend) return;
+            try {
+                const result = await sendToPejabatValidation(item);
+                if (result && result.success) {
+                    showAlert('success', 'Data berhasil dikirim ke Kabid!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(result?.message || 'Gagal mengirim data ke Kabid');
+                }
+            } catch (error) {
+                console.error('Kirim ke Kabid Error:', error);
+                showAlert('error', `Gagal mengirim: ${error.message}`);
+            }
         });
     }
 }
