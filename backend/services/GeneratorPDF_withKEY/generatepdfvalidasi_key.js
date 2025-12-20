@@ -94,9 +94,10 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
         }
     }
 
-    // Harus menemukan PV userid yang valid
+    // Jika PV userid tidak ditemukan, tetap lanjutkan generate PDF dengan fallback dari parameter.
+    // Ini penting untuk mencegah PDF gagal dibuat pada data lama/tidak lengkap.
     if (!effectivePvUserid) {
-        throw new Error('PV user tidak ditemukan untuk dokumen ini.');
+        console.warn('[PDF-PV] PV userid tidak ditemukan; lanjut dengan fallback parameter');
     }
 
     // 3) Ambil data PV user (yang melakukan validasi) secara terpisah
@@ -134,20 +135,22 @@ export async function buildValidasiPdf({ pool, nobooking, noValidasi, outputPath
         console.warn('[PDF-PV] effectivePvUserid not found; NIP/special_parafv may be empty');
     }
     
-    // Validasi minimal: divisi harus Peneliti Validasi, nip & special_parafv wajib ada
-    if ((pvUserData.divisi || '').toLowerCase() !== 'peneliti validasi') {
-        throw new Error('User PV bukan Peneliti Validasi');
+    // Validasi minimal: jangan hard-fail untuk kebutuhan unduh PDF di rekap,
+    // tapi tetap log supaya mudah ditelusuri kalau ada data PV yang tidak lengkap.
+    if (effectivePvUserid && (pvUserData.divisi || '').toLowerCase() !== 'peneliti validasi') {
+        console.warn('[PDF-PV] PV user divisi bukan Peneliti Validasi:', pvUserData.divisi);
     }
-    if (!pvUserData.nip) {
-        throw new Error('NIP PV tidak ditemukan');
+    if (effectivePvUserid && !pvUserData.nip) {
+        console.warn('[PDF-PV] NIP PV tidak ditemukan dari DB, pakai fallback parameter jika ada');
     }
-    if (!pvUserData.special_parafv) {
-        throw new Error('special_parafv PV tidak ditemukan');
+    if (effectivePvUserid && !pvUserData.special_parafv) {
+        console.warn('[PDF-PV] special_parafv PV tidak ditemukan dari DB, pakai fallback parameter jika ada');
     }
     
     // Use provided params as fallback, then fetched data
-    const finalPvNip = pvUserData.nip || pvNip || '';
-    const finalPvSpecialParafv = pvUserData.special_parafv || pvTitle || '';
+    const finalPvNip = pvUserData.nip || pvNip || '....................';
+    // pvTitle di beberapa pemanggilan berisi jabatan/gelar; kalau kosong pakai pvName atau placeholder.
+    const finalPvSpecialParafv = pvUserData.special_parafv || pvTitle || pvName || '........................';
     const finalPvSubjectCn = pvUserData.subject_cn || pvCn || 'Kepala Bidang Pelayanan dan Penetapan';
     const certCreatedAt = pvUserData.cert_created_at || null;
 

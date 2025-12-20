@@ -277,17 +277,32 @@
           item.trackstatus
         ];
         vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v||'-'; tr.appendChild(td); });
+        // dropdown row (detail + 2 dokumen PDF)
+        const dd = document.createElement('tr');
+        const ddTd = document.createElement('td');
+        ddTd.colSpan = 9;
+        ddTd.style.display = 'none';
+        ddTd.innerHTML = buildDropdownContent(item);
+        dd.appendChild(ddTd);
+
+        // action column: toggle dropdown (bukan unduh file stempel/pdf lama)
         const action = document.createElement('td');
         const btn = document.createElement('button');
-        btn.textContent = 'Unduh Berkas';
-        btn.addEventListener('click', ()=> downloadValidatedFiles(item));
-        action.appendChild(btn); tr.appendChild(action);
+        btn.textContent = 'Dokumen PDF';
+        btn.addEventListener('click', (e)=> {
+          e.stopPropagation();
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+        action.appendChild(btn);
+        tr.appendChild(action);
+
         tbody.appendChild(tr);
-        // dropdown row
-        const dd = document.createElement('tr');
-        const ddTd = document.createElement('td'); ddTd.colSpan = 9; ddTd.style.display = 'none';
-        ddTd.innerHTML = buildDropdownContent(item);
-        dd.appendChild(ddTd); tbody.appendChild(dd);
+        tbody.appendChild(dd);
+
+        // wire buttons inside dropdown
+        wireDropdownButtons(ddTd, item);
+
         tr.addEventListener('click', ()=>{
           const show = ddTd.style.display === 'none';
           ddTd.style.display = show ? 'table-cell' : 'none';
@@ -296,71 +311,57 @@
     }
 
     function buildDropdownContent(item){
-      const fileStempel = item.file_withstempel_path ? `<a href="/${item.file_withstempel_path}" target="_blank">File Stempel</a>` : '<em>Tidak tersedia</em>';
-      const filePDF = item.pdf_dokumen_path ? `<a href="/${item.pdf_dokumen_path}" target="_blank">Dokumen PDF</a>` : '<em>Tidak tersedia</em>';
       const nomorValidasi = item.nomor_validasi ? `<p><strong>Nomor Validasi:</strong> ${item.nomor_validasi}</p>` : '';
-      
-      // PDF Actions with improved styling
-      const pdfValidasiBtn = `<button onclick="viewPDF('validasi', '${item.nobooking}')" class="btn-pdf" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; cursor: pointer;">
-        📄 Lihat PDF Validasi
-      </button>`;
-      
-      const pdfVerifParafBtn = `<button onclick="viewPDF('verif-paraf', '${item.nobooking}')" class="btn-pdf" style="background: #2196F3; color: white; border: none; padding: 8px 12px; cursor: pointer;">
-        📋 Lihat PDF Verif Paraf
-      </button>`;
-      
-      const pdfValidasiDownloadBtn = `<button onclick="downloadPDF('validasi', '${item.nobooking}')" class="btn-pdf" style="background: #FF9800; color: white; border: none; padding: 8px 12px; cursor: pointer;">
-        💾 Unduh PDF Validasi
-      </button>`;
-      
-      const pdfVerifParafDownloadBtn = `<button onclick="downloadPDF('verif-paraf', '${item.nobooking}')" class="btn-pdf" style="background: #9C27B0; color: white; border: none; padding: 8px 12px; cursor: pointer;">
-        💾 Unduh PDF Verif Paraf
-      </button>`;
       
       return `<div style="padding:12px;">
         <p><strong>No Booking:</strong> ${item.nobooking}</p>
         <p><strong>NOP PBB:</strong> ${item.noppbb}</p>
         ${nomorValidasi}
-        <p><strong>Unduhan:</strong> ${fileStempel} | ${filePDF}</p>
         <div class="pdf-section">
-          <p>📄 PDF Dokumen</p>
+          <p>📄 Dokumen (2 file)</p>
           <div class="pdf-buttons">
-            ${pdfValidasiBtn}
-            ${pdfVerifParafBtn}
-            ${pdfValidasiDownloadBtn}
-            ${pdfVerifParafDownloadBtn}
+            <button data-action="view" data-type="validasi" class="btn-pdf" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; cursor: pointer;">📄 Lihat PDF Validasi</button>
+            <button data-action="view" data-type="verif-paraf" class="btn-pdf" style="background: #2196F3; color: white; border: none; padding: 8px 12px; cursor: pointer;">📋 Lihat PDF Verif Paraf</button>
+            <button data-action="download" data-type="validasi" class="btn-pdf" style="background: #FF9800; color: white; border: none; padding: 8px 12px; cursor: pointer;">💾 Unduh PDF Validasi</button>
+            <button data-action="download" data-type="verif-paraf" class="btn-pdf" style="background: #9C27B0; color: white; border: none; padding: 8px 12px; cursor: pointer;">💾 Unduh PDF Verif Paraf</button>
           </div>
         </div>
       </div>`;
     }
 
-    async function downloadValidatedFiles(item){
-      try {
-        if (item.file_withstempel_path) {
-          window.open('/'+item.file_withstempel_path, '_blank');
-        } else if (item.pdf_dokumen_path) {
-          window.open('/'+item.pdf_dokumen_path, '_blank');
-        } else {
-          alert('Tidak ada berkas untuk diunduh');
-        }
-      } catch(e){ 
-        console.error('Download error:', e);
-        alert('Gagal mengunduh: '+e.message); 
-      }
+    function wireDropdownButtons(containerTd, item){
+      if (!containerTd) return;
+      const nobooking = (item && item.nobooking) ? String(item.nobooking) : '';
+      const buttons = containerTd.querySelectorAll('button[data-action][data-type]');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = btn.getAttribute('data-action');
+          const type = btn.getAttribute('data-type');
+          if (!nobooking) {
+            alert('No Booking tidak ditemukan.');
+            return;
+          }
+          if (action === 'view') window.viewPDF(type, nobooking);
+          else if (action === 'download') window.downloadPDF(type, nobooking);
+        });
+      });
     }
 
     // Global function for PDF viewing
     window.viewPDF = function(type, nobooking) {
       console.log(`🔍 [PDF-VIEWER] Opening PDF: ${type} for nobooking: ${nobooking}`);
+      const nb = encodeURIComponent(String(nobooking || ''));
+      if (!nb) { alert('No Booking tidak valid'); return; }
       
       let pdfUrl = '';
       let pdfName = '';
       
       if (type === 'validasi') {
-        pdfUrl = `/api/ppat/generate-pdf-validasi/${nobooking}`;
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nb}`;
         pdfName = 'PDF Validasi';
       } else if (type === 'verif-paraf') {
-        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nobooking}`;
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nb}`;
         pdfName = 'PDF Verif Paraf';
       } else {
         alert('Jenis PDF tidak valid');
@@ -424,15 +425,17 @@
     // Global function for PDF downloading
     window.downloadPDF = function(type, nobooking) {
       console.log(`🔍 [PDF-DOWNLOAD] Downloading PDF: ${type} for nobooking: ${nobooking}`);
+      const nb = encodeURIComponent(String(nobooking || ''));
+      if (!nb) { alert('No Booking tidak valid'); return; }
       
       let pdfUrl = '';
       let pdfName = '';
       
       if (type === 'validasi') {
-        pdfUrl = `/api/ppat/generate-pdf-validasi/${nobooking}?download=true`;
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nb}?download=true`;
         pdfName = 'PDF_Validasi';
       } else if (type === 'verif-paraf') {
-        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nobooking}?download=true`;
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nb}?download=true`;
         pdfName = 'PDF_Verif_Paraf';
       } else {
         alert('Jenis PDF tidak valid');

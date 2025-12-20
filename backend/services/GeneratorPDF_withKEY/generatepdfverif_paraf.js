@@ -3,6 +3,13 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 
+function safeText(v, fallback = '') {
+    if (v === null || v === undefined) return fallback;
+    const s = String(v);
+    if (s.trim() === '' || s === 'null' || s === 'undefined') return fallback;
+    return s;
+}
+
 // Helper: convert web/public path -> absolute filesystem path under /public
 function toAbsolutePublicPath(p) {
     if (!p || typeof p !== 'string') return null;
@@ -140,16 +147,16 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 .text('RT/RW', 320, 210)
                 .text('Kodepos', 320, 225);
             doc.font('Helvetica').fontSize(10)
-                .text(':', rightX - 10, 125).text(data.nobooking, rightX, 125)
-                .text(':', rightX - 10, 140).text(data.npwpwp, rightX, 140)
-                .text(':', rightX - 10, 155).text(data.namawajibpajak, rightX, 155)
-                .text(':', rightX - 10, 170).text(data.alamatwajibpajak, rightX, 170)
-                .text(':', rightX - 10, 195).text(data.kabupatenkotawp, rightX, 195)
-                .text(':', rightX - 10, 210).text(data.kecamatanwp, rightX, 210)
-                .text(':', rightX - 10, 225).text(data.tahunajb, rightX, 225)
-                .text(':', 420 - 10, 195).text(data.kelurahandesawp, 420, 195)
-                .text(':', 420 - 10, 210).text(data.rtrwwp, 420, 210)
-                .text(':', 420 - 10, 225).text(data.kodeposwp, 420, 225);
+                .text(':', rightX - 10, 125).text(safeText(data.nobooking, '-'), rightX, 125)
+                .text(':', rightX - 10, 140).text(safeText(data.npwpwp, '-'), rightX, 140)
+                .text(':', rightX - 10, 155).text(safeText(data.namawajibpajak, '-'), rightX, 155)
+                .text(':', rightX - 10, 170).text(safeText(data.alamatwajibpajak, '-'), rightX, 170)
+                .text(':', rightX - 10, 195).text(safeText(data.kabupatenkotawp, '-'), rightX, 195)
+                .text(':', rightX - 10, 210).text(safeText(data.kecamatanwp, '-'), rightX, 210)
+                .text(':', rightX - 10, 225).text(safeText(data.tahunajb, '-'), rightX, 225)
+                .text(':', 420 - 10, 195).text(safeText(data.kelurahandesawp, '-'), 420, 195)
+                .text(':', 420 - 10, 210).text(safeText(data.rtrwwp, '-'), 420, 210)
+                .text(':', 420 - 10, 225).text(safeText(data.kodeposwp, '-'), 420, 225);
             doc.fontSize(10).text(`Jenis Wajib Pajak     : Badan Usaha`, 320, 125);
 
             function formatTanggal(tanggalString) {
@@ -175,18 +182,18 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 .text('Tanggal Perolehan', 320, 310)
                 .text('Tanggal Pembayaran', 320, 325);
             doc.font('Helvetica').fontSize(10)
-                .text(':', 230 - 10, 245).text(data.noppbb, 230, 245)
-                .text(':', 230 - 10, 260).text(data.letaktanahdanbangunan, 230, 260)
-                .text(':', rightX - 10, 295).text(data.keterangan, rightX, 295)
-                .text(':', rightX - 10, 310).text(data.rt_rwobjekpajak, rightX, 310)
-                .text(':', rightX - 10, 325).text(data.status_kepemilikan, rightX, 325)
-                .text(':', 460 - 10, 295).text(data.nomor_bukti_pembayaran, 460, 295)
+                .text(':', 230 - 10, 245).text(safeText(data.noppbb, '-'), 230, 245)
+                .text(':', 230 - 10, 260).text(safeText(data.letaktanahdanbangunan, '-'), 230, 260)
+                .text(':', rightX - 10, 295).text(safeText(data.keterangan, '-'), rightX, 295)
+                .text(':', rightX - 10, 310).text(safeText(data.rt_rwobjekpajak, '-'), rightX, 310)
+                .text(':', rightX - 10, 325).text(safeText(data.status_kepemilikan, '-'), rightX, 325)
+                .text(':', 460 - 10, 295).text(safeText(data.nomor_bukti_pembayaran, '-'), 460, 295)
                 .text(':', 460 - 10, 310).text(`${tanggalFormattedO}`, 460, 310)
                 .text(':', 460 - 10, 325).text(`${tanggalFormattedB}`, 460, 325);
 
             doc.font('Helvetica-Bold').fontSize(10).text('Nomor Sertifikat', 320, 350)
                 .text(':', 410 - 10, 350)
-                .text(data.nomor_sertifikat, 410, 350);
+                .text(safeText(data.nomor_sertifikat, '-'), 410, 350);
 
             function formatCurrency(amount) {
                 if (amount == null) return 'Rp 0.00';
@@ -413,11 +420,11 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                 docObj.text(text, startX, y);
             }
             const col1X = leftMargin;
-            drawCenteredText(doc, `${data.kabupatenkotawp}, tgl ${data.tanggal}`, col1X, signatureYPosition, columnWidth);
+            drawCenteredText(doc, `${safeText(data.kabupatenkotawp, 'Kabupaten/Kota')}, tgl ${safeText(data.tanggal, '........')}`, col1X, signatureYPosition, columnWidth);
             drawCenteredText(doc, 'WAJIB PAJAK/PENYETOR', col1X, signatureYPosition + lineHeight, columnWidth);
-            drawCenteredText(doc, `${data.namawajibpajak || '........................'}`, col1X, signatureYPosition + 20, columnWidth);
+            drawCenteredText(doc, `${safeText(data.namawajibpajak, '........................')}`, col1X, signatureYPosition + 20, columnWidth);
             drawCenteredText(doc, 'Nomor Validasi', col1X, signatureYPosition + 90, columnWidth);
-            drawCenteredText(doc, `${data.no_validasi || '........................'}`, col1X, signatureYPosition + 105, columnWidth);
+            drawCenteredText(doc, `${safeText(data.no_validasi, '........................')}`, col1X, signatureYPosition + 105, columnWidth);
 
             const col2X = col1X + columnWidth + gapBetween;
             drawCenteredText(doc, 'PPAT/PPATS/NOTARIS', col2X, signatureYPosition, columnWidth);
@@ -447,8 +454,8 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                     .stroke();
             }
 
-            drawCenteredText(doc, `${data.nama || '........................'}`, col2X, signatureYPosition + 10, columnWidth);
-            drawCenteredText(doc, `${data.special_field || '........................'}`, col2X, signatureYPosition + 70, columnWidth);
+            drawCenteredText(doc, `${safeText(data.nama, '........................')}`, col2X, signatureYPosition + 10, columnWidth);
+            drawCenteredText(doc, `${safeText(data.special_field, '........................')}`, col2X, signatureYPosition + 70, columnWidth);
 
             const col3X = col2X + columnWidth + gapBetween;
             drawCenteredText(doc, 'DITERIMA OLEH:', col3X, signatureYPosition, columnWidth);

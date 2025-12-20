@@ -5257,8 +5257,17 @@ app.get('/api/ppat/generate-pdf-verif-paraf/:nobooking', async (req, res) => {
         
         const { userid, nama } = bookingCheck.rows[0];
         
-        // Use the existing endpoint by redirecting to it
-        const existingEndpoint = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
+        // Use the existing endpoint by redirecting to it (preserve querystring, e.g. ?download=true)
+        const existingEndpointBase = `/api/Validasi_lanjutan-generate-pdf-bookingsspd/${nobooking}`;
+        const qs = (() => {
+            try {
+                const s = new URLSearchParams(req.query || {}).toString();
+                return s ? `?${s}` : '';
+            } catch (_) {
+                return '';
+            }
+        })();
+        const existingEndpoint = `${existingEndpointBase}${qs}`;
         
         console.log(`✅ [PDF-VERIF-PARAF] Redirecting to existing endpoint: ${existingEndpoint}`);
         
