@@ -449,34 +449,52 @@
 /* ===== DROPDOWN PENELITI VERIFIKASI ===== */
 /* DROPDOWN CONTENT (Detail Card) - DARK THEME */
 #penelitiverifikasiTable .dropdown-content {
-  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%) !important;
   border-radius: 12px;
-  padding: 20px;
+  padding: 20px !important;
   margin: 15px 0;
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   animation: fadeInDropdown 0.3s ease;
   border: 1px solid #1f2937;
+  display: table-cell !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #e5e7eb !important;
+}
+
+/* Ensure dropdown content is visible when displayed */
+#penelitiverifikasiTable .dropdown-content[style*="table-cell"] {
+  display: table-cell !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 /* DROPDOWN CONTENT WRAPPER - DARK THEME */
 .dropdown-content-wrapper {
-  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  background: transparent !important;
   border-radius: 12px;
-  padding: 20px;
-  margin: 15px 0;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-  border: 1px solid #1f2937;
-  color: #e5e7eb;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: #e5e7eb !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100% !important;
 }
 
 /* Document Info Section */
 .document-info-section {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid #374151;
+  background: rgba(17, 24, 39, 0.8) !important;
+  border: 1px solid #374151 !important;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .document-info-section p {
@@ -492,11 +510,14 @@
 
 /* Signature Section */
 .signature-section {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid #374151;
+  background: rgba(17, 24, 39, 0.8) !important;
+  border: 1px solid #374151 !important;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .signature-section .form-group {
@@ -537,11 +558,14 @@
 
 /* Calculation Section */
 .calculation-section {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid #374151;
+  background: rgba(17, 24, 39, 0.8) !important;
+  border: 1px solid #374151 !important;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 16px !important;
+  margin-bottom: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .section-title {
@@ -615,9 +639,12 @@
 
 /* Action Buttons */
 .action-buttons {
-  margin-top: 20px;
-  padding-top: 16px;
+  margin-top: 20px !important;
+  padding-top: 16px !important;
   border-top: 1px solid #374151;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .btn-simpaninput {
@@ -651,11 +678,14 @@
 
 /* Document Links Section */
 .document-links-section {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid #374151;
+  background: rgba(17, 24, 39, 0.8) !important;
+  border: 1px solid #374151 !important;
   border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
+  padding: 16px !important;
+  margin-top: 16px !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .document-links-title {
