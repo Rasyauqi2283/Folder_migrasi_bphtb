@@ -88,7 +88,7 @@ async function loadTableDataPenelitiP() {
         if (!Array.isArray(data) || data.length === 0) {
             const row = tbody.insertRow();
             const cell = row.insertCell(0);
-            cell.colSpan = 10;
+            cell.colSpan = 7;
             cell.className = 'empty-message';
             cell.textContent = 'Tidak ada data berkas yang ditemukan';
             cell.style.textAlign = 'center';
@@ -356,7 +356,7 @@ function displayPage(page) {
         if (currentData.length === 0) {
             const row = tbody.insertRow();
             const cell = row.insertCell(0);
-            cell.colSpan = 10;
+            cell.colSpan = 7;
             cell.className = 'empty-message';
             cell.textContent = 'Tidak ada data';
             cell.style.textAlign = 'center';
@@ -416,34 +416,25 @@ function createTableRow(tbody, item) {
         // Create main table row
         const row = tbody.insertRow();
         
-        // Insert cells for each column
+        // Insert cells for each column (7 columns total)
         const cellNoReg = row.insertCell(0);
-        const cellNoBooking = row.insertCell(1);
-        const cellNOPPBB = row.insertCell(2);
-        const cellNamaWP = row.insertCell(3);
-        const cellNamaPemilik = row.insertCell(4);
-        const cellTahunAJB = row.insertCell(5);
-        const cellPembuat = row.insertCell(6);
-        const cellParaf = row.insertCell(7);
-        const cellTanggal = row.insertCell(8);
-        const cellAksi = row.insertCell(9);
+        const cellNOPPBB = row.insertCell(1);
+        const cellNamaWP = row.insertCell(2);
+        const cellNamaPemilik = row.insertCell(3);
+        const cellPembuat = row.insertCell(4);
+        const cellParaf = row.insertCell(5);
+        const cellAksi = row.insertCell(6);
         
         // Fill cells with data
         cellNoReg.textContent = formatValue(item.no_registrasi);
-        cellNoBooking.textContent = formatValue(item.nobooking);
         cellNOPPBB.textContent = formatValue(item.noppbb);
         cellNamaWP.textContent = formatValue(item.namawajibpajak);
         cellNamaPemilik.textContent = formatValue(item.namapemilikobjekpajak);
-        cellTahunAJB.textContent = formatValue(item.tahunajb);
         cellPembuat.textContent = formatValue(item.creator_special_field || item.special_field);
         
         // Paraf status
         const parafStatus = item.tanda_paraf_path ? 'Sudah' : 'Belum';
         cellParaf.innerHTML = `<span class="status-badge ${item.tanda_paraf_path ? 'success' : 'warning'}">${parafStatus}</span>`;
-        
-        // Tanggal
-        const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
-        cellTanggal.textContent = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
         
         // ===== AKSI (kolom terakhir) =====
         // Button "Kirim ke Kabid" (Pejabat Validasi)
@@ -491,27 +482,31 @@ function createTableRow(tbody, item) {
         const dropdownRow = document.createElement('tr');
         dropdownRow.className = 'dropdown-row';
         const dropdownContent = document.createElement('td');
-        dropdownContent.colSpan = 10;
+        dropdownContent.colSpan = 7;
         dropdownContent.style.setProperty('display', 'none', 'important');
         dropdownContent.className = 'dropdown-content';
         dropdownContent.removeAttribute('data-visible'); // Ensure not visible initially
         
         try {
             const parafDone = !!item.tanda_paraf_path;
+            const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
+            const formattedTanggal = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
+            
             dropdownContent.innerHTML = `
                 <div class="dropdown-content-wrapper paraf-kasie-dropdown">
                     <div class="dropdown-header">
                         <div class="dropdown-title">Detail Berkas</div>
-                        <div class="dropdown-subtitle">No. Booking: <strong>${item.nobooking || 'N/A'}</strong></div>
+                        <div class="dropdown-subtitle">No. Registrasi: <strong>${item.no_registrasi || 'N/A'}</strong></div>
                     </div>
 
                     <div class="document-info-section">
                         <div class="info-grid">
-                            <div class="info-item"><div class="info-label">No. Registrasi</div><div class="info-value">${item.no_registrasi || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">No. Booking</div><div class="info-value">${item.nobooking || 'N/A'}</div></div>
                             <div class="info-item"><div class="info-label">NOP PBB</div><div class="info-value">${item.noppbb || 'N/A'}</div></div>
                             <div class="info-item"><div class="info-label">Nama Wajib Pajak</div><div class="info-value">${item.namawajibpajak || 'N/A'}</div></div>
                             <div class="info-item"><div class="info-label">Nama Pemilik Objek</div><div class="info-value">${item.namapemilikobjekpajak || 'N/A'}</div></div>
                             <div class="info-item"><div class="info-label">Tahun AJB</div><div class="info-value">${item.tahunajb || 'N/A'}</div></div>
+                            <div class="info-item"><div class="info-label">Tanggal Masuk</div><div class="info-value">${formattedTanggal}</div></div>
                             <div class="info-item"><div class="info-label">Status Paraf</div><div class="info-value ${parafDone ? 'paraf-sudah' : 'paraf-belum'}">${parafDone ? 'Sudah' : 'Belum'}</div></div>
                         </div>
                     </div>
@@ -603,7 +598,7 @@ function createTableRow(tbody, item) {
         // Create error row
         const errorRow = tbody.insertRow();
         const errorCell = errorRow.insertCell(0);
-        errorCell.colSpan = 10;
+        errorCell.colSpan = 7;
         errorCell.className = 'empty-message';
         errorCell.textContent = `Error: ${itemError.message}`;
         errorCell.style.color = '#ef4444';
@@ -1205,7 +1200,7 @@ function showErrorUI(errorMessage) {
     const errorContainer = document.querySelector('#peneliti_paraf_kasie_Table tbody.data-masuk') || document.body;
     errorContainer.innerHTML = `
         <tr>
-            <td colspan="10">
+            <td colspan="7">
                 <div class="error-state" style="text-align: center; padding: 40px; color: #ef4444;">
                     <h3>Terjadi Kesalahan</h3>
                     <p>${errorMessage}</p>
