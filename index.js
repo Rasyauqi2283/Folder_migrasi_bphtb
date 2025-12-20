@@ -1608,7 +1608,7 @@ SELECT DISTINCT ON (p.no_registrasi)
     p.angkapersen,
     p.keterangandihitungSendiri,
     p.isiketeranganlainnya,
-    p.pemberi_persetujuan,
+    pemberi_user.nama AS pemberi_persetujuan,
     -- data booking
     b.noppbb,
     b.namawajibpajak,
@@ -1625,7 +1625,7 @@ SELECT DISTINCT ON (p.no_registrasi)
     creator.special_field AS creator_special_field,
     -- sumber penandatangan (paraf) untuk pesan2
     pc.tanda_paraf_path,
-    au.userid AS signer_userid
+    au.nama AS signer_userid
 FROM 
     p_1_verifikasi p
 LEFT JOIN pat_1_bookingsspd b 
@@ -1634,6 +1634,8 @@ LEFT JOIN a_2_verified_users v
     ON v.userid = $1                     -- ini user Peneliti yang sedang login
 LEFT JOIN a_2_verified_users creator 
     ON creator.userid = b.userid         -- ini pembuat booking
+LEFT JOIN a_2_verified_users pemberi_user
+    ON pemberi_user.userid = p.pemberi_persetujuan  -- ini penandatangan verifikasi
 LEFT JOIN bank_1_cek_hasil_transaksi bk 
     ON bk.nobooking = p.nobooking
 LEFT JOIN ltb_1_terima_berkas_sspd ltb 

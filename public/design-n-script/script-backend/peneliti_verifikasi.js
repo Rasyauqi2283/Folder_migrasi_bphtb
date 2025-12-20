@@ -550,9 +550,9 @@ function createTableRow(tbody, item) {
             const pesan1 = (sudahSetuju && adaPemilihan) ? `<p>Booking ini telah diberi persetujuan dan pemilihan (${item.pemilihan}).</p>` : '<p>Booking ini belum diberi persetujuan dan pemilihan.</p>';
             
             // Use pemberi_persetujuan from database as the primary source
-            const signerUser = item.pemberi_persetujuan || item.signer_userid || (String(item.tanda_tangan_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
-            const hasSignature = item.peneliti_tanda_tangan_path || item.pemberi_persetujuan || item.signer_userid;
-            const pesan2 = hasSignature ? `<p>Pemberi tanda tangan/paraf (${signerUser})</p>` : '<p>Belum diberikan tanda tangan/paraf</p>';
+            const signerUser = item.pemberi_persetujuan || item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+            const hasSignature = !!(item.tanda_paraf_path || item.pemberi_persetujuan || item.signer_userid);
+            const pesan2 = hasSignature ? `<p class="signer-info-text">Disetujui oleh: <strong>${signerUser}</strong></p>` : '<p class="signer-info-text italic">Belum diberikan persetujuan (paraf)</p>';
             
             dropdownContent.innerHTML = `
                 <div class="dropdown-content-wrapper">
@@ -561,14 +561,16 @@ function createTableRow(tbody, item) {
                         <p><strong>No. Registrasi:</strong> ${item.no_registrasi || 'N/A'}</p>
                         <p><strong>Nama Wajib Pajak:</strong> ${item.namawajibpajak || 'N/A'}</p>
                         <p><strong>Nama Pemilik Objek:</strong> ${item.namapemilikobjekpajak || 'N/A'}</p>
-                        ${pesan1}
-                        ${pesan2}
+                        <div class="signer-status-box" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 4px solid ${hasSignature ? '#10b981' : '#f59e0b'}; border-radius: 4px;">
+                            ${pesan1}
+                            ${pesan2}
+                        </div>
                     </div>
 
                     <!-- View Button Section (for viewing booking documents) -->
                     <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; margin-bottom: 20px;">
                         <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-eye"></i> Dokumen Booking
+                            <i class="fas fa-eye"></i>Lihat Dokumen Booking
                         </button>
                     </div>
 
@@ -595,16 +597,6 @@ function createTableRow(tbody, item) {
                         </div>
                         <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
                     `}
-
-                    <!-- Save and Reject Buttons Section (before Calculation Section) -->
-                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; margin-bottom: 20px;">
-                        <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
-                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-times"></i> Tolak
-                        </button>
-                    </div>
 
                     <!-- Calculation Form Section -->
                     <div class="calculation-section">
@@ -684,6 +676,16 @@ function createTableRow(tbody, item) {
                                 </div>
                             </div>
                         `}
+                    </div>
+
+                    <!-- Save and Reject Buttons Section (after Calculation Section) -->
+                    <div class="action-buttons" style="display: flex; gap: 12px; margin-top: 20px; margin-bottom: 20px;">
+                        <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}" style="padding: 10px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                            <i class="fas fa-save"></i> Simpan
+                        </button>
+                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="padding: 10px 20px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                            <i class="fas fa-times"></i> Tolak
+                        </button>
                     </div>
 
                     <!-- Document Links Section -->

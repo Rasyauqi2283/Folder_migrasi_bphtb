@@ -492,6 +492,10 @@ function createTableRow(tbody, item) {
             const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
             const formattedTanggal = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
             
+            // Logika penentuan penandatangan (signer) - mengambil Nama jika tersedia
+            const signerName = item.signer_userid || (String(item.tanda_paraf_path||'').match(/ttd-([^\/\\]+)\.(png|jpg|jpeg|webp)$/i)?.[1]) || '—';
+            const showSignerMessage = parafDone ? `<p class="signer-info-text">Disetujui oleh: <strong>${signerName}</strong></p>` : '<p class="signer-info-text italic">Belum diberikan persetujuan (paraf)</p>';
+
             dropdownContent.innerHTML = `
                 <div class="dropdown-content-wrapper paraf-kasie-dropdown">
                     <div class="dropdown-header">
@@ -508,6 +512,9 @@ function createTableRow(tbody, item) {
                             <div class="info-item"><div class="info-label">Tahun AJB</div><div class="info-value">${item.tahunajb || 'N/A'}</div></div>
                             <div class="info-item"><div class="info-label">Tanggal Masuk</div><div class="info-value">${formattedTanggal}</div></div>
                             <div class="info-item"><div class="info-label">Status Paraf</div><div class="info-value ${parafDone ? 'paraf-sudah' : 'paraf-belum'}">${parafDone ? 'Sudah' : 'Belum'}</div></div>
+                        </div>
+                        <div class="signer-status-box" style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 4px solid ${parafDone ? '#10b981' : '#f59e0b'}; border-radius: 4px;">
+                            ${showSignerMessage}
                         </div>
                     </div>
 
