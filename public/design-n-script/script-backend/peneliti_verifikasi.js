@@ -565,6 +565,13 @@ function createTableRow(tbody, item) {
                         ${pesan2}
                     </div>
 
+                    <!-- View Button Section (for viewing booking documents) -->
+                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; margin-bottom: 20px;">
+                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-eye"></i> Dokumen Booking
+                        </button>
+                    </div>
+
                     <!-- Signature Section -->
                     ${item.peneliti_tanda_tangan_path ? `
                         <div class="signature-section">
@@ -588,6 +595,16 @@ function createTableRow(tbody, item) {
                         </div>
                         <input type="hidden" name="ParafVerif-${item.nobooking}" value="null">
                     `}
+
+                    <!-- Save and Reject Buttons Section (before Calculation Section) -->
+                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; margin-bottom: 20px;">
+                        <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-save"></i> Simpan
+                        </button>
+                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Tolak
+                        </button>
+                    </div>
 
                     <!-- Calculation Form Section -->
                     <div class="calculation-section">
@@ -667,19 +684,6 @@ function createTableRow(tbody, item) {
                                 </div>
                             </div>
                         `}
-                    </div>
-
-                    <!-- Action Buttons Section -->
-                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
-                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <button type="button" class="btn-save-verification" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
-                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            <i class="fas fa-times"></i> Tolak
-                        </button>
                     </div>
 
                     <!-- Document Links Section -->
