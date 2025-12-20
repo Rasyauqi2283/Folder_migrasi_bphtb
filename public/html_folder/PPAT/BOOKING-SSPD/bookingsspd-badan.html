@@ -615,7 +615,6 @@
                 <tr>
                     <th>No Booking</th>
                     <th>NOP PBB</th>
-                    <th>Tanggal</th>
                     <th>Tahun AJB</th>
                     <th>Nama Wajib Pajak</th>
                     <th>Nama Pemilik Objek Pajak</th>
@@ -627,7 +626,7 @@
             <tbody class="data-tabel-badan" id="table-body">
                 <!-- Data akan dimuat di sini menggunakan JavaScript -->
                 <tr>
-                    <td colspan="9" class="empty-message">Memuat data...</td>
+                    <td colspan="8" class="empty-message">Memuat data...</td>
                 </tr>
             </tbody>
         </table>
@@ -749,7 +748,7 @@
         nr = document.createElement('tr');
         nr.className = 'no-results-row';
         var td = document.createElement('td');
-        td.colSpan = 9;
+        td.colSpan = 8;
         td.className = 'empty-message';
         td.textContent = 'Tidak ada hasil';
         nr.appendChild(td);

@@ -63,20 +63,16 @@ async function loadTableData(page = 1) {
                 // Membuat sel untuk data
                 const cellNoBooking = row.insertCell(0);
                 const cellNoppbb = row.insertCell(1);
-                const cellTanggalAjb = row.insertCell(2);
-                const cellTahunAjb = row.insertCell(3);
-                const cellNamaWajibPajak = row.insertCell(4);
-                const cellNamaPemilikObjek = row.insertCell(5);
-                const cellNpwp = row.insertCell(6);
-                const celltrackingstats = row.insertCell(7);
-                const cellkirim = row.insertCell(8);
+                const cellTahunAjb = row.insertCell(2);
+                const cellNamaWajibPajak = row.insertCell(3);
+                const cellNamaPemilikObjek = row.insertCell(4);
+                const cellNpwp = row.insertCell(5);
+                const celltrackingstats = row.insertCell(6);
+                const cellkirim = row.insertCell(7);
                 
                 // Menambahkan data ke dalam sel
                 cellNoBooking.textContent = item.nobooking;
                 cellNoppbb.textContent = item.noppbb;
-                
-                const formattedTanggalAjb = item.tanggal;
-                cellTanggalAjb.textContent = formattedTanggalAjb;
                 // Menampilkan data lainnya
                 cellTahunAjb.textContent = item.tahunajb;
                 cellNamaWajibPajak.textContent = item.namawajibpajak;
@@ -118,7 +114,7 @@ async function loadTableData(page = 1) {
                 // Membuat dropdown row di bawah baris ini
                 const dropdownRow = document.createElement('tr');
                 const dropdownContent = document.createElement('td');
-                dropdownContent.colSpan = 9;
+                dropdownContent.colSpan = 8;
                 dropdownContent.style.display = 'none'; // Dropdown akan disembunyikan pertama kali
 dropdownContent.innerHTML = `
 <div id='dropdown-case-bookingsspd' class="dropdown-container">
