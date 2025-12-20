@@ -447,26 +447,19 @@ function createTableRow(tbody, item) {
         
         // Create action button container - only "Kirim ke Kabid" button
         const actionContainer = document.createElement('div');
-        actionContainer.className = 'action-container';
-        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center; justify-content: center; width: 100%;';
+        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center; justify-content: center;';
         
         // Kirim ke Kabid button
         const kirimKabidBtn = document.createElement('button');
         kirimKabidBtn.className = 'btn-kirim-kabid';
         kirimKabidBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim ke Kabid';
-        kirimKabidBtn.style.cssText = 'padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; pointer-events: auto; z-index: 10; position: relative;';
+        kirimKabidBtn.style.cssText = 'padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;';
         kirimKabidBtn.onclick = async (e) => {
             e.stopPropagation();
-            e.preventDefault();
-            console.log('Kirim ke Kabid button clicked for nobooking:', item.nobooking);
             try {
                 const result = await sendToPejabatValidation(item);
                 if (result && result.success) {
-                    if (typeof showAlert === 'function') {
-                        showAlert('success', 'Data berhasil dikirim ke Kabid!');
-                    } else {
-                        alert('Data berhasil dikirim ke Kabid!');
-                    }
+                    showAlert('success', 'Data berhasil dikirim ke Kabid!');
                     setTimeout(() => {
                         location.reload();
                     }, 1000);
@@ -475,20 +468,12 @@ function createTableRow(tbody, item) {
                 }
             } catch (error) {
                 console.error('Kirim ke Kabid Error:', error);
-                if (typeof showAlert === 'function') {
-                    showAlert('error', `Gagal mengirim: ${error.message}`);
-                } else {
-                    alert(`Gagal mengirim: ${error.message}`);
-                }
+                showAlert('error', `Gagal mengirim: ${error.message}`);
             }
         };
         actionContainer.appendChild(kirimKabidBtn);
         
-        // Ensure cellAksi is properly set up
-        cellAksi.style.cssText = 'text-align: center; padding: 10px;';
         cellAksi.appendChild(actionContainer);
-        
-        console.log('Action button created for nobooking:', item.nobooking, 'Button element:', kirimKabidBtn);
         
         // Create dropdown row
         const dropdownRow = document.createElement('tr');
@@ -539,81 +524,42 @@ function createTableRow(tbody, item) {
         }
 
         dropdownRow.appendChild(dropdownContent);
-        // IMPORTANT: Append dropdown row immediately after main row (not at end of tbody)
-        // Use insertAdjacentElement to ensure dropdown is right after the main row
-        try {
-            row.insertAdjacentElement('afterend', dropdownRow);
-        } catch (e) {
-            // Fallback: insert before next sibling or append to end
-            console.warn('insertAdjacentElement failed, using fallback:', e);
-            if (row.nextSibling) {
-                tbody.insertBefore(dropdownRow, row.nextSibling);
-            } else {
-                tbody.appendChild(dropdownRow);
-            }
-        }
+        tbody.appendChild(dropdownRow);
 
-        // Add click handler to toggle dropdown - use capture phase to ensure it fires
+        // Add click handler to toggle dropdown
         row.addEventListener('click', function(e) {
             // Don't toggle if clicking on buttons, inputs, labels, or form elements
-            const clickedElement = e.target;
-            if (clickedElement.closest('button') || 
-                clickedElement.closest('input') || 
-                clickedElement.closest('label') ||
-                clickedElement.closest('select') ||
-                clickedElement.closest('textarea') ||
-                clickedElement.closest('.dropdown-content') ||
-                clickedElement.closest('.dropdown-content-wrapper') ||
-                clickedElement.closest('.action-container') ||
-                clickedElement.closest('.btn-kirim-kabid')) {
-                console.log('Click blocked - interactive element:', clickedElement);
+            if (e.target.closest('button') || 
+                e.target.closest('input') || 
+                e.target.closest('label') ||
+                e.target.closest('select') ||
+                e.target.closest('textarea') ||
+                e.target.closest('.dropdown-content') ||
+                e.target.closest('.dropdown-content-wrapper')) {
                 return;
             }
-            
-            console.log('Row clicked, toggling dropdown for nobooking:', item.nobooking);
             
             // Check if dropdown is currently visible
             // Check both inline style and computed style
             const inlineDisplay = dropdownContent.style.display;
             const computedDisplay = window.getComputedStyle(dropdownContent).display;
-            const isVisible = inlineDisplay === 'table-cell' || (inlineDisplay === '' && computedDisplay === 'table-cell');
-            
-            console.log('Dropdown visibility check:', {
-                inlineDisplay,
-                computedDisplay,
-                isVisible,
-                dropdownElement: dropdownContent,
-                dropdownRow: dropdownRow
-            });
+            const isVisible = inlineDisplay === 'table-cell' || computedDisplay === 'table-cell';
             
             // Toggle dropdown
             if (isVisible) {
                 // Close this dropdown
-                console.log('Closing dropdown');
                 dropdownContent.style.display = 'none';
-                dropdownContent.style.visibility = 'hidden';
             } else {
                 // Close all other dropdowns first
                 document.querySelectorAll('#peneliti_paraf_kasie_Table .dropdown-content').forEach(dd => {
                     if (dd !== dropdownContent) {
                         dd.style.display = 'none';
-                        dd.style.visibility = 'hidden';
                     }
                 });
                 // Show this dropdown
-                console.log('Opening dropdown');
                 dropdownContent.style.display = 'table-cell';
-                dropdownContent.style.visibility = 'visible';
-                
-                // Force reflow to ensure CSS is applied
-                void dropdownContent.offsetHeight;
             }
         });
-        
-        // Ensure row is clickable and has proper styling
-        row.style.cursor = 'pointer';
-        row.style.position = 'relative';
-        row.setAttribute('data-nobooking', item.nobooking);
 
         // Setup form interactions
         setupParafFormInteractionsFromRow(dropdownContent, item);

@@ -82,47 +82,6 @@
             visibility: visible !important;
             opacity: 1 !important;
         }
-        
-        /* Ensure table rows are clickable */
-        #peneliti_paraf_kasie_Table tbody tr:not(.dropdown-row) {
-            cursor: pointer !important;
-            position: relative !important;
-        }
-        
-        /* Ensure action buttons are clickable and visible */
-        #peneliti_paraf_kasie_Table .btn-kirim-kabid,
-        #peneliti_paraf_kasie_Table .action-container,
-        #peneliti_paraf_kasie_Table .action-container button {
-            pointer-events: auto !important;
-            z-index: 10 !important;
-            position: relative !important;
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-        }
-        
-        /* Ensure action cell (last column) is visible */
-        #peneliti_paraf_kasie_Table tbody tr:not(.dropdown-row) td:last-child {
-            display: table-cell !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            text-align: center !important;
-        }
-        
-        /* Ensure dropdown content doesn't block clicks when hidden */
-        #peneliti_paraf_kasie_Table .dropdown-content[style*="display: none"] {
-            pointer-events: none !important;
-        }
-        
-        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
-            pointer-events: auto !important;
-        }
-        
-        /* Debug: Ensure all cells are visible */
-        #peneliti_paraf_kasie_Table tbody tr:not(.dropdown-row) td {
-            display: table-cell !important;
-            visibility: visible !important;
-        }
     </style>
 
 </head>
