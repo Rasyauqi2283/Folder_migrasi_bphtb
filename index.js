@@ -112,6 +112,7 @@ import bsreAuthRouter from './backend/routesxcontroller/8_bsre/bsre_auth_routes.
 import bsreCertRouter from './backend/routesxcontroller/8_bsre/bsre_certificate_routes.js';
 import bsreValidationRouter from './backend/routesxcontroller/8_bsre/bsre_validation_routes.js';
 import { buildValidasiPdf } from './backend/services/GeneratorPDF_withKEY/generatepdfvalidasi_key.js';
+import { buildVerifParafPdf } from './backend/services/GeneratorPDF_withKEY/generatepdfverif_paraf.js';
 
 // App part (core & api couriers)
 const app = express();
@@ -4176,18 +4177,21 @@ if (row.nobooking) {
             if (userEmail && noValidasiEmail) {
               try {
                 const { sendDocumentCompletionEmail } = await import('./backend/services/emailservice.js');
-                // 1) Generate PDF final sementara
+                // 1) Generate kedua PDF (Validasi dan Verif Paraf) untuk attachment email
                 const ts = Date.now();
-                const outName = `validasi_${row.nobooking}_${ts}.pdf`;
-                const outPath = path.join(process.cwd(), 'temp_uploads', outName);
-                try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch(_) {}
+                const validasiOutName = `validasi_${row.nobooking}_${ts}.pdf`;
+                const verifParafOutName = `verif_paraf_${row.nobooking}_${ts}.pdf`;
+                const validasiOutPath = path.join(process.cwd(), 'temp_uploads', validasiOutName);
+                const verifParafOutPath = path.join(process.cwd(), 'temp_uploads', verifParafOutName);
+                try { fs.mkdirSync(path.dirname(validasiOutPath), { recursive: true }); } catch(_) {}
 
+                // Generate PDF Validasi
                 try {
                   await buildValidasiPdf({
                     pool,
                     nobooking: row.nobooking,
                     noValidasi: noValidasiEmail,
-                    outputPath: outPath,
+                    outputPath: validasiOutPath,
                     pvName: 'Peneliti Validasi',
                     pvNip: '',
                     pvTitle: '',
@@ -4196,30 +4200,65 @@ if (row.nobooking) {
                     passphrase: 'bappenda2025',
                     pvUserid: currentUser
                   });
+                  console.log(`✅ [PV-EMAIL] PDF Validasi generated: ${validasiOutPath}`);
                 } catch (pdfErr) {
-                  console.error('❌ [PV-EMAIL] Gagal membuat PDF untuk lampiran email:', pdfErr.message);
+                  console.error('❌ [PV-EMAIL] Gagal membuat PDF Validasi untuk lampiran email:', pdfErr.message);
                 }
 
-                // 2) Siapkan lampiran jika kecil
+                // Generate PDF Verif Paraf
+                try {
+                  await buildVerifParafPdf({
+                    pool,
+                    nobooking: row.nobooking,
+                    outputPath: verifParafOutPath,
+                    sessionUser: req.session?.user || null
+                  });
+                  console.log(`✅ [PV-EMAIL] PDF Verif Paraf generated: ${verifParafOutPath}`);
+                } catch (pdfErr) {
+                  console.error('❌ [PV-EMAIL] Gagal membuat PDF Verif Paraf untuk lampiran email:', pdfErr.message);
+                }
+
+                // 2) Siapkan lampiran kedua PDF jika kecil (max 10MB per file, total max 20MB)
                 let attachments = [];
                 try {
-                  if (fs.existsSync(outPath)) {
-                    const stats = fs.statSync(outPath);
+                  // Attach PDF Validasi
+                  if (fs.existsSync(validasiOutPath)) {
+                    const stats = fs.statSync(validasiOutPath);
                     const sizeMb = stats.size / (1024 * 1024);
                     if (sizeMb <= 10) {
-                      const b64 = fs.readFileSync(outPath).toString('base64');
+                      const b64 = fs.readFileSync(validasiOutPath).toString('base64');
                       attachments.push({
                         filename: `Validasi_${row.nobooking}.pdf`,
                         contentBase64: b64,
-                        mimeType: 'application/pdf'
+                        contentType: 'application/pdf'
                       });
+                      console.log(`✅ [PV-EMAIL] PDF Validasi attached (${sizeMb.toFixed(2)} MB)`);
+                    } else {
+                      console.warn(`⚠️ [PV-EMAIL] PDF Validasi terlalu besar untuk attachment (${sizeMb.toFixed(2)} MB)`);
+                    }
+                  }
+                  
+                  // Attach PDF Verif Paraf
+                  if (fs.existsSync(verifParafOutPath)) {
+                    const stats = fs.statSync(verifParafOutPath);
+                    const sizeMb = stats.size / (1024 * 1024);
+                    if (sizeMb <= 10) {
+                      const b64 = fs.readFileSync(verifParafOutPath).toString('base64');
+                      attachments.push({
+                        filename: `Verif_Paraf_${row.nobooking}.pdf`,
+                        contentBase64: b64,
+                        contentType: 'application/pdf'
+                      });
+                      console.log(`✅ [PV-EMAIL] PDF Verif Paraf attached (${sizeMb.toFixed(2)} MB)`);
+                    } else {
+                      console.warn(`⚠️ [PV-EMAIL] PDF Verif Paraf terlalu besar untuk attachment (${sizeMb.toFixed(2)} MB)`);
                     }
                   }
                 } catch (attErr) {
                   console.warn('⚠️ [PV-EMAIL] Tidak dapat menyiapkan attachment PDF:', attErr.message);
                 }
 
-                // 3) Buat signed link publik yang kedaluwarsa
+                // 3) Buat signed link publik yang kedaluwarsa (untuk PDF Validasi)
                 const secret = process.env.PUBLIC_DOWNLOAD_SECRET || 'public-download-secret';
                 const expires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 hari
                 const tokenPayload = `${row.nobooking}.${noValidasiEmail}.${expires}`;
@@ -4228,7 +4267,7 @@ if (row.nobooking) {
                 const baseUrl = process.env.BASE_URL || process.env.FRONTEND_URL || 'https://bphtb-bappenda.up.railway.app';
                 const publicDownloadUrl = `${baseUrl}/api/public/validasi-download/${token}`;
 
-                // 4) Kirim email
+                // 4) Kirim email dengan kedua PDF sebagai attachment
                 await sendDocumentCompletionEmail(
                   userEmail,
                   row.nobooking,
@@ -4237,9 +4276,13 @@ if (row.nobooking) {
                   userType,
                   { attachments, publicDownloadUrl }
                 );
-                // Hapus file temp jika ada
-                try { if (fs.existsSync(outPath)) fs.unlinkSync(outPath); } catch(_) {}
-                console.log(`✅ [PV-EMAIL] Document email sent to ${userEmail} for nobooking: ${row.nobooking}`);
+                
+                // 5) Cleanup: Hapus file temp setelah email dikirim
+                try { 
+                  if (fs.existsSync(validasiOutPath)) fs.unlinkSync(validasiOutPath);
+                  if (fs.existsSync(verifParafOutPath)) fs.unlinkSync(verifParafOutPath);
+                } catch(_) {}
+                console.log(`✅ [PV-EMAIL] Document email sent to ${userEmail} for nobooking: ${row.nobooking} with ${attachments.length} PDF attachments`);
               } catch (emailError) {
                 console.error(`❌ [PV-EMAIL] Failed to send document email to ${userEmail}:`, emailError.message);
               }

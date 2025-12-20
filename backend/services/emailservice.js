@@ -772,6 +772,12 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
                                 <li>Nomor validasi telah diterbitkan: <strong>${noValidasi}</strong></li>
                                 <li>Dokumen siap untuk diambil sesuai prosedur</li>
                                 <li>QR Code telah terintegrasi untuk verifikasi keaslian</li>
+                                <li><strong>📎 2 file PDF terlampir dalam email ini:</strong>
+                                    <ul style="margin-top: 5px; padding-left: 20px;">
+                                        <li>PDF Validasi (Bukti Validasi SSPD-BPHTB)</li>
+                                        <li>PDF Verif Paraf (SSPD-BPHTB Terstempel)</li>
+                                    </ul>
+                                </li>
                             </ul>
                         </div>
 
