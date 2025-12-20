@@ -392,17 +392,16 @@ export default function registerGeneratePdfBooking(app, pool) {
                     const sigY = signatureYPosition + 35; // di bawah nama WP (y+20) dan tetap di atas garis pembatas (y+85)
 
                     const processedWPImage = await sharp(wpAbs)
-                        .trim()
+                        // Flatten ke putih agar artefak garis tepi (hasil scan/crop) tidak ikut kebawa sebagai border.
+                        // Lalu trim dengan threshold supaya garis tipis kiri/kanan ikut terbuang.
+                        .flatten({ background: { r: 255, g: 255, b: 255 } })
+                        .trim({ threshold: 15 })
                         .resize(600, 300, {
                             fit: 'contain',
-                            background: { r: 255, g: 255, b: 255, alpha: 0 }
+                            background: { r: 255, g: 255, b: 255, alpha: 1 }
                         })
-                        .png({
-                            compressionLevel: 9,
-                            adaptiveFiltering: true,
-                            palette: true,
-                            quality: 100
-                        })
+                        // Output opaque PNG supaya PDFKit tidak menampilkan edge artefacts dari alpha.
+                        .png({ compressionLevel: 9 })
                         .toBuffer();
 
                     doc.image(
