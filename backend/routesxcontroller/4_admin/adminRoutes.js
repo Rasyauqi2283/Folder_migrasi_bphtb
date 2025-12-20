@@ -849,4 +849,84 @@ router.get('/validate-qr-search', verifyValidationRoles, async (req, res) => {
   }
 });
 
+// GET /api/admin/validation-statistics - Get validation statistics for pie chart
+router.get('/validation-statistics', verifyAdmin, async (req, res) => {
+  try {
+    console.log('🔍 [ADMIN] Fetching validation statistics for pie chart');
+
+    // 1. Sudah di Validasi: LSB sudah memberikan dokumen terverifikasi ke PPAT
+    // (trackstatus = 'Diserahkan' di lsb_1_serah_berkas)
+    const sudahValidasiQuery = `
+      SELECT COUNT(DISTINCT lsb.nobooking) as count
+      FROM lsb_1_serah_berkas lsb
+      WHERE UPPER(TRIM(COALESCE(lsb.trackstatus, ''))) = 'DISERAHKAN'
+    `;
+
+    // 2. Tinggal Verifikasi: Dokumen sudah masuk ke peneliti validasi
+    // (status_tertampil = 'Menunggu' di pv_1_paraf_validate)
+    const tinggalVerifikasiQuery = `
+      SELECT COUNT(DISTINCT pv.nobooking) as count
+      FROM pv_1_paraf_validate pv
+      WHERE UPPER(TRIM(COALESCE(pv.status_tertampil, ''))) = 'MENUNGGU'
+    `;
+
+    // 3. Belum Terurus: masih di dalam layanan LTB
+    // (trackstatus = 'DIOLAH' atau status = 'DITERIMA' di ltb_1_terima_berkas_sspd)
+    const belumTerurusQuery = `
+      SELECT COUNT(DISTINCT ltb.nobooking) as count
+      FROM ltb_1_terima_berkas_sspd ltb
+      WHERE (UPPER(TRIM(COALESCE(ltb.trackstatus, ''))) = 'DIOLAH'
+         OR UPPER(TRIM(COALESCE(ltb.status, ''))) = 'DITERIMA')
+    `;
+
+    const [sudahValidasiResult, tinggalVerifikasiResult, belumTerurusResult] = await Promise.all([
+      pool.query(sudahValidasiQuery),
+      pool.query(tinggalVerifikasiQuery),
+      pool.query(belumTerurusQuery)
+    ]);
+
+    const sudahValidasi = parseInt(sudahValidasiResult.rows[0]?.count || 0);
+    const tinggalVerifikasi = parseInt(tinggalVerifikasiResult.rows[0]?.count || 0);
+    const belumTerurus = parseInt(belumTerurusResult.rows[0]?.count || 0);
+    const total = sudahValidasi + tinggalVerifikasi + belumTerurus;
+
+    const statistics = {
+      sudahValidasi: {
+        count: sudahValidasi,
+        label: 'Sudah di Validasi',
+        description: 'LSB sudah memberikan dokumen terverifikasi ke PPAT',
+        percentage: total > 0 ? Math.round((sudahValidasi / total) * 100) : 0
+      },
+      tinggalVerifikasi: {
+        count: tinggalVerifikasi,
+        label: 'Tinggal Verifikasi',
+        description: 'Dokumen sudah masuk ke role atau layanan pejabat (peneliti validasi)',
+        percentage: total > 0 ? Math.round((tinggalVerifikasi / total) * 100) : 0
+      },
+      belumTerurus: {
+        count: belumTerurus,
+        label: 'Belum Terurus',
+        description: 'Masih di dalam layanan LTB',
+        percentage: total > 0 ? Math.round((belumTerurus / total) * 100) : 0
+      },
+      total: total
+    };
+
+    console.log('✅ [ADMIN] Validation statistics:', statistics);
+
+    res.json({
+      success: true,
+      data: statistics
+    });
+
+  } catch (error) {
+    console.error('❌ [ADMIN] Error fetching validation statistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil statistik validasi',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 export default router;

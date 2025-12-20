@@ -129,6 +129,49 @@
             }
         }
         
+        /* Chart Legend Styles */
+        .chart-legend {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .chart-legend li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .chart-legend li span.legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .chart-legend li .legend-label {
+            flex: 1;
+            font-weight: 600;
+            color: #374151;
+        }
+        .chart-legend li .legend-count {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .chart-legend li .legend-percentage {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-section > .card.chart-card > div {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        
         /* Ensure admin dashboard main-content is responsive to sidebar expansion */
         .admin-dashboard .main-content {
             margin-left: 70px;
@@ -455,64 +498,29 @@
             </div>
         </div>
     </section>
-    <section class="content_admin">
-        <div class="content-cards">
-            <div class="card">
-                <h3>User</h3>
-                <div class="user-dropdown">
-                    <label for="jumlahKaryawan">Jumlah Anggota</label>
-                    <select id="jumlahKaryawan" name="jumlahKaryawan">
-                        <option value="Administrator">Admin</option>
-                        <option value="PPAT">PPAT/PPATS</option>
-                        <option value="LTB">Loket Terima Berkas</option>
-                        <option value="LSB">Loket Serah Berkas</option>
-                        <option value="Peneliti">Peneliti</option>
-                        <option value="BANK">Bank</option>
-                        <option value="Wajib Pajak">Wajib Pajak</option>
-                    </select>
-                    <p id="memberValue" class="slide-down"></p>
-                </div>
-            </div>
-            <div class="card">
-                <h3>Permohonan Validasi</h3>
-                <span class="icon ini">&#x1F5C3;</span>
-                <a href="#" class="view-all">View All</a>
-            </div>
-            <div class="card special-access">
-                <h3>Hak Akses Khusus</h3>
-                <ul id="accessList">
-                    <li><span class="user-icon"></span>Bapak Hendri Aji - <span class="status" id="status-hendri">Offline</span></li>
-                    <li><span class="user-icon"></span>Bapak Ilham - <span class="status" id="status-ilham">Offline</span></li>
-                </ul>
-            </div>
-            <div class="card">
-                <h3>Jumlah Penerimaan BPHTB</h3>
-                <img src="../../asset/JumlahPenerimaanPajak_dekorasi.png" alt="gambar_dekorasi JMP BPHTB" class="img-dekor">
-                <a href="#" class="view-all">View All</a>
-            </div>
-            <div class="card chart">
-                <h3>Statistik Total Permohonan Validasi</h3>
-                <div class="chart-container">
-                    <canvas id="pieChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="card chart">
-            <h3>Statistik Total Permohonan Validasi</h3>
-            <div class="chart-container">
-                <ul class="chart-legend">
-                    <li><span class="green"></span>Sudah Di Validasi 20%</li>
-                    <li><span class="blue"></span>Tinggal Verifikasi 30%</li>
-                    <li><span class="orange"></span>Masih Pending 15%</li>
-                    <li><span class="grey"></span>Belum Terurus 35%</li>
-                </ul>
-            </div>
-        </div>
-    </section>
 
     <!-- Summary Cards -->
     <div class="summary-cards-container" id="summaryCardsContainer">
         <!-- Cards will be populated by JavaScript -->
+    </div>
+
+    <!-- Validation Statistics Chart -->
+    <div class="chart-section" style="max-width: 1400px; margin: 24px auto; padding: 0 20px;">
+        <div class="card chart-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color: #1f2937; font-size: 20px; font-weight: 700; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px;">
+                Statistik Total Permohonan Validasi
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;">
+                <div>
+                    <canvas id="validationPieChart" style="max-width: 100%; height: 300px;"></canvas>
+                </div>
+                <div>
+                    <ul class="chart-legend" id="chartLegend" style="list-style: none; padding: 0; margin: 0;">
+                        <!-- Will be populated by JavaScript -->
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
@@ -547,6 +555,7 @@
 <script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
   <!---->
   <script src="../../design-n-script/script-backend/header-backend.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // Load Summary Cards for Admin Dashboard
     (async function loadSummaryCards() {
@@ -659,6 +668,129 @@
         const container = document.getElementById('summaryCardsContainer');
         if (container) {
           container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data summary</p>';
+        }
+      }
+    })();
+
+    // Load Validation Statistics Chart
+    (async function loadValidationChart() {
+      try {
+        const canvas = document.getElementById('validationPieChart');
+        const legendContainer = document.getElementById('chartLegend');
+        if (!canvas || !legendContainer) return;
+
+        // Fetch statistics from API
+        const response = await fetch('/api/admin/validation-statistics', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch validation statistics');
+        
+        const result = await response.json();
+        if (!result.success || !result.data) throw new Error('Invalid response data');
+
+        const stats = result.data;
+        
+        // Prepare chart data
+        const chartData = {
+          labels: [
+            stats.sudahValidasi.label,
+            stats.tinggalVerifikasi.label,
+            stats.belumTerurus.label
+          ],
+          datasets: [{
+            data: [
+              stats.sudahValidasi.count,
+              stats.tinggalVerifikasi.count,
+              stats.belumTerurus.count
+            ],
+            backgroundColor: [
+              '#10b981', // Green for Sudah di Validasi
+              '#3b82f6', // Blue for Tinggal Verifikasi
+              '#f59e0b'  // Orange for Belum Terurus
+            ],
+            borderColor: [
+              '#059669',
+              '#2563eb',
+              '#d97706'
+            ],
+            borderWidth: 2
+          }]
+        };
+
+        // Create pie chart
+        const ctx = canvas.getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'pie',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                display: false // We'll use custom legend
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const total = stats.total || 1;
+                    const percentage = Math.round((value / total) * 100);
+                    return `${label}: ${value} (${percentage}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        // Render custom legend
+        const legendItems = [
+          { 
+            label: stats.sudahValidasi.label, 
+            count: stats.sudahValidasi.count, 
+            percentage: stats.sudahValidasi.percentage,
+            color: '#10b981',
+            description: stats.sudahValidasi.description
+          },
+          { 
+            label: stats.tinggalVerifikasi.label, 
+            count: stats.tinggalVerifikasi.count, 
+            percentage: stats.tinggalVerifikasi.percentage,
+            color: '#3b82f6',
+            description: stats.tinggalVerifikasi.description
+          },
+          { 
+            label: stats.belumTerurus.label, 
+            count: stats.belumTerurus.count, 
+            percentage: stats.belumTerurus.percentage,
+            color: '#f59e0b',
+            description: stats.belumTerurus.description
+          }
+        ];
+
+        legendContainer.innerHTML = legendItems.map(item => `
+          <li style="border-left-color: ${item.color};">
+            <span class="legend-color" style="background-color: ${item.color};"></span>
+            <div style="flex: 1;">
+              <div class="legend-label">${item.label}</div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${item.description}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="legend-percentage">${item.percentage}%</div>
+              <div class="legend-count">${item.count} dokumen</div>
+            </div>
+          </li>
+        `).join('');
+
+        console.log('✅ Validation chart loaded successfully');
+      } catch (error) {
+        console.error('❌ Error loading validation chart:', error);
+        const canvas = document.getElementById('validationPieChart');
+        const legendContainer = document.getElementById('chartLegend');
+        if (canvas && canvas.parentElement) {
+          canvas.parentElement.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data chart</p>';
+        }
+        if (legendContainer) {
+          legendContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #6b7280;">Gagal memuat data statistik</li>';
         }
       }
     })();
