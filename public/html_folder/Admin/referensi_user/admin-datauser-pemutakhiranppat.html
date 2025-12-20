@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin| Pemutakhiran Data Pengguna PPAT</title>
-  <link rel="stylesheet" href="">
-  <link rel="stylesheet" href="design-n-script/design_css/design_table/design_untukppat-pemutakhiran.css">
+  <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/design_untukppat-pemutakhiran.css">
 </head>
 <body>
 <main id="pemutakhiranppat_design" class="main-content">
@@ -13,7 +12,7 @@
 
     <!-- BAGIAN PROFIL -->
     <div class="profile-section">
-      <button class="back-btn">←</button>
+      <button class="back-btn" onclick="window.history.back()">←</button>
   
       <div class="profile-header">
         <div class="profile-image">
@@ -37,13 +36,12 @@
             <label>UserId</label>
             <span id="userIdField">-</span> <!-- a_2_verified_users.userid -->
           </div>
-          <div class="info-row">
-            <label>Pejabat</label>
-            <span id="pejabatUmum">-</span> <!-- a_2_verified_users.pejabat_umum -->
-          </div>
         </div>
   
         <div class="profile-extra">
+          <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Cari..." />
+          </div>
           <div class="extra-box">
             booking yang dikerjakan: <span id="field-booking-count">0</span>
           </div>
@@ -51,10 +49,6 @@
             Nilai Pajak Total<br>
             <small id="field-total-nilai">-</small>
           </div>
-        </div>
-  
-        <div class="search-box">
-          <input type="text" placeholder="Cari...">
         </div>
       </div>
     </div>
@@ -74,19 +68,13 @@
             <th>Aksi</th>
           </tr>
         </thead>
-        <tbody id="bookingBody">
-          <tr><td colspan="9" class="empty-message">Memuat data...</td></tr>
-        </tbody>        
+          <tbody id="bookingBody">
+          <tr><td colspan="8" class="empty-message">Memuat data...</td></tr>
+          </tbody>
       </table>
   
-      <div class="pagination">
-        <a href="#"> &lt; </a>
-        <a href="#" class="active">1</a>
-        <a href="#">2</a>
-        <a href="#">3</a>
-        <span>…</span>
-        <a href="#">n</a>
-        <a href="#"> &gt; </a>
+      <div class="pagination" id="paginationContainer">
+        <!-- Pagination akan di-generate oleh JavaScript -->
       </div>
     </div>
   
@@ -98,6 +86,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   const params = new URLSearchParams(window.location.search);
   const useridParam = (params.get('userid') || '').trim();
 
+  // Global variables for pagination and search
+  let currentPage = 1;
+  let currentLimit = 10;
+  let currentSearch = '';
+  let allBookings = [];
+  let filteredBookings = [];
+
   function createCell(text) {
     const td = document.createElement('td');
     td.textContent = text;
@@ -107,12 +102,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   function renderUserInfo(user) {
     document.getElementById('namaPanjang').textContent = user.nama || '-';
     document.getElementById('namaTitle').textContent = user.special_field || '-';
-        document.getElementById('ppatKhusus').textContent = user.ppat_khusus || '-';
+    document.getElementById('ppatKhusus').textContent = user.ppat_khusus || '-';
     document.getElementById('userIdField').textContent = user.userid || '-';
-    document.getElementById('pejabatUmum').textContent = user.pejabat_umum || '-';
 
     const img = document.getElementById('fotoProfil');
-    if (img) img.src = user.fotoprofil || '/default-profile.png';
+    if (img) {
+      img.src = user.fotoprofil || '/default-profile.png';
+      img.onerror = function() { this.src = '/default-profile.png'; };
+    }
   }
 
   function renderSummary(summary) {
@@ -121,9 +118,169 @@ document.addEventListener('DOMContentLoaded', async function() {
       'Rp ' + Number(summary.total_nilai || 0).toLocaleString('id-ID');
   }
 
+  function filterBookings() {
+    if (!currentSearch.trim()) {
+      filteredBookings = [...allBookings];
+    } else {
+      const searchLower = currentSearch.toLowerCase();
+      filteredBookings = allBookings.filter(booking => {
+        return (
+          (booking.nobooking || '').toLowerCase().includes(searchLower) ||
+          (booking.noppbb || '').toLowerCase().includes(searchLower) ||
+          (booking.namawajibpajak || '').toLowerCase().includes(searchLower) ||
+          (booking.jenis_wajib_pajak || '').toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    renderTable();
+    renderPagination();
+  }
+
+  function renderTable() {
+    const body = document.getElementById('bookingBody');
+    body.innerHTML = '';
+
+    const startIndex = (currentPage - 1) * currentLimit;
+    const endIndex = startIndex + currentLimit;
+    const pageData = filteredBookings.slice(startIndex, endIndex);
+
+    if (pageData.length === 0) {
+      body.innerHTML = '<tr><td colspan="8" class="empty-message">Tidak ada data booking</td></tr>';
+      return;
+    }
+
+    pageData.forEach((r) => {
+      const tr = document.createElement('tr');
+      tr.appendChild(createCell(r.nobooking || '-'));
+      tr.appendChild(createCell(r.tanggal ? r.tanggal.split('T')[0] : '-'));
+      tr.appendChild(createCell(useridParam || '-'));
+      tr.appendChild(createCell(r.noppbb || '-'));
+      tr.appendChild(createCell(r.jenis_wajib_pajak || '-'));
+      tr.appendChild(createCell('Rp ' + Number(r.bphtb_yangtelah_dibayar || 0).toLocaleString('id-ID')));
+      tr.appendChild(createCell(r.namawajibpajak || '-'));
+
+      const aksiTd = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.textContent = 'Detail';
+      btn.classList.add('action-btn');
+      btn.dataset.id = r.nobooking;
+      btn.addEventListener('click', function() {
+        const bookingId = this.dataset.id;
+        alert(`Detail booking NoBooking: ${bookingId}`);
+      });
+      aksiTd.appendChild(btn);
+      tr.appendChild(aksiTd);
+
+      body.appendChild(tr);
+    });
+  }
+
+  function renderPagination() {
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (!paginationContainer) return;
+
+    const totalPages = Math.ceil(filteredBookings.length / currentLimit);
+    paginationContainer.innerHTML = '';
+
+    if (totalPages <= 1) {
+      return;
+    }
+
+    // Previous button
+    const prevBtn = document.createElement('a');
+    prevBtn.href = '#';
+    prevBtn.textContent = ' < ';
+    prevBtn.className = currentPage === 1 ? 'disabled' : '';
+    prevBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+        renderPagination();
+      }
+    });
+    paginationContainer.appendChild(prevBtn);
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+    if (endPage - startPage < maxVisible - 1) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    if (startPage > 1) {
+      const firstBtn = document.createElement('a');
+      firstBtn.href = '#';
+      firstBtn.textContent = '1';
+      firstBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+      });
+      paginationContainer.appendChild(firstBtn);
+
+      if (startPage > 2) {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '…';
+        paginationContainer.appendChild(ellipsis);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const pageBtn = document.createElement('a');
+      pageBtn.href = '#';
+      pageBtn.textContent = i.toString();
+      pageBtn.className = i === currentPage ? 'active' : '';
+      pageBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = i;
+        renderTable();
+        renderPagination();
+      });
+      paginationContainer.appendChild(pageBtn);
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '…';
+        paginationContainer.appendChild(ellipsis);
+      }
+
+      const lastBtn = document.createElement('a');
+      lastBtn.href = '#';
+      lastBtn.textContent = totalPages.toString();
+      lastBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentPage = totalPages;
+        renderTable();
+        renderPagination();
+      });
+      paginationContainer.appendChild(lastBtn);
+    }
+
+    // Next button
+    const nextBtn = document.createElement('a');
+    nextBtn.href = '#';
+    nextBtn.textContent = ' > ';
+    nextBtn.className = currentPage === totalPages ? 'disabled' : '';
+    nextBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+        renderPagination();
+      }
+    });
+    paginationContainer.appendChild(nextBtn);
+  }
+
   async function loadUserBookings(userid) {
     const body = document.getElementById('bookingBody');
-    body.innerHTML = '<tr><td colspan="9" class="empty-message">Memuat data...</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="empty-message">Memuat data...</td></tr>';
 
     try {
       const res = await fetch(`/api/admin/ppat/user/${encodeURIComponent(userid)}/diserahkan`, { credentials: 'include' });
@@ -131,7 +288,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       console.log("Hasil fetch:", js);
 
       if (!res.ok || !js.success) {
-        body.innerHTML = '<tr><td colspan="9">User tidak ditemukan atau data kosong</td></tr>';
+        body.innerHTML = '<tr><td colspan="8">User tidak ditemukan atau data kosong</td></tr>';
         return;
       }
 
@@ -144,43 +301,29 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
 
       const rows = Array.isArray(js.rows) ? js.rows : [];
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="9">Tidak ada data booking</td></tr>';
-        return;
+      allBookings = rows;
+      filteredBookings = [...allBookings];
+      
+      // Initialize search
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            currentSearch = e.target.value.trim();
+            currentPage = 1;
+            filterBookings();
+          }, 300);
+        });
       }
 
-      body.innerHTML = '';
-      rows.forEach((r) => {
-        const tr = document.createElement('tr');
-        tr.appendChild(createCell(r.nobooking || '-'));
-        tr.appendChild(createCell(r.tanggal ? r.tanggal.split('T')[0] : '-'));
-        tr.appendChild(createCell(userid || '-'));
-        tr.appendChild(createCell(r.noppbb || '-'));
-        tr.appendChild(createCell(r.jenis_wajib_pajak || '-'));
-        tr.appendChild(createCell('Rp ' + Number(r.bphtb_yangtelah_dibayar || 0).toLocaleString('id-ID')));
-        tr.appendChild(createCell(r.namawajibpajak || '-'));
-
-        const aksiTd = document.createElement('td');
-        const btn = document.createElement('button');
-        btn.textContent = 'Detail';
-        btn.classList.add('action-btn');
-        btn.dataset.id = r.nobooking;
-        aksiTd.appendChild(btn);
-        tr.appendChild(aksiTd);
-
-        body.appendChild(tr);
-      });
-
-      document.querySelectorAll('.action-btn').forEach(button => {
-        button.addEventListener('click', function() {
-          const bookingId = this.dataset.id;
-          alert(`Detail booking NoBooking: ${bookingId}`);
-        });
-      });
+      renderTable();
+      renderPagination();
 
     } catch (err) {
       console.error('Gagal fetch:', err);
-      body.innerHTML = `<tr><td colspan="9">Gagal memuat data: ${err.message}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="8">Gagal memuat data: ${err.message}</td></tr>`;
     }
   }
 
@@ -188,7 +331,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadUserBookings(useridParam);
   } else {
     document.getElementById('bookingBody').innerHTML =
-      '<tr><td colspan="9">UserId tidak diberikan di URL</td></tr>';
+      '<tr><td colspan="8">UserId tidak diberikan di URL</td></tr>';
   }
 });
 </script>
