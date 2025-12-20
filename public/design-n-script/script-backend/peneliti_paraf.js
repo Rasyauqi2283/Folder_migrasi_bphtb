@@ -73,41 +73,26 @@ async function loadTableDataPenelitiP() {
         // Initialize filtered data
         filteredData = allData;
 
-        // Create cards container and pagination container
-        const mainContent = document.querySelector('.main-content');
-        if (!mainContent) {
-            throw new Error('Main content container tidak ditemukan');
+        // Get table body
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody.data-masuk');
+        if (!tbody) {
+            throw new Error('Table body tidak ditemukan');
         }
 
-        // Remove existing table and create cards container
-        const existingTable = document.querySelector('#peneliti_paraf_kasie_Table');
-        if (existingTable) {
-            existingTable.style.display = 'none';
-        }
-
-        // Create cards container
-        let cardsContainer = document.querySelector('.paraf-cards-container');
-        if (!cardsContainer) {
-            cardsContainer = document.createElement('div');
-            cardsContainer.className = 'paraf-cards-container';
-            cardsContainer.style.display = 'none'; // Initially hidden
-            mainContent.appendChild(cardsContainer);
-        }
-
-        // Create pagination container
-        let paginationContainer = document.querySelector('.pagination-container');
-        if (!paginationContainer) {
-            paginationContainer = document.createElement('div');
-            paginationContainer.className = 'pagination-container';
-            paginationContainer.style.display = 'none'; // Initially hidden
-            mainContent.appendChild(paginationContainer);
-        }
+        // Clear existing content
+        tbody.innerHTML = '';
 
         // Create search and pagination controls
         createSearchAndPaginationControls();
 
         if (!Array.isArray(data) || data.length === 0) {
-            showEmptyStateCards(cardsContainer, 'Tidak ada data berkas yang ditemukan');
+            const row = tbody.insertRow();
+            const cell = row.insertCell(0);
+            cell.colSpan = 10;
+            cell.className = 'empty-message';
+            cell.textContent = 'Tidak ada data berkas yang ditemukan';
+            cell.style.textAlign = 'center';
+            cell.style.padding = '20px';
             return;
         }
 
@@ -345,14 +330,14 @@ function updateSearchResultsInfo() {
 // Display page function for pagination
 function displayPage(page) {
     try {
-        const cardsContainer = document.querySelector('.paraf-cards-container');
-        const paginationContainer = document.querySelector('.pagination-container');
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody.data-masuk');
+        if (!tbody) {
+            console.error('Table body not found');
+            return;
+        }
         
-        if (!cardsContainer || !paginationContainer) return;
-        
-        // Clear existing cards
-        cardsContainer.innerHTML = '';
-        cardsContainer.style.display = 'grid';
+        // Clear existing rows
+        tbody.innerHTML = '';
         
         // Calculate pagination based on filtered data
         const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -368,19 +353,28 @@ function displayPage(page) {
             totalData: allData.length
         });
 
-        // Render cards for current page
+        if (currentData.length === 0) {
+            const row = tbody.insertRow();
+            const cell = row.insertCell(0);
+            cell.colSpan = 10;
+            cell.className = 'empty-message';
+            cell.textContent = 'Tidak ada data';
+            cell.style.textAlign = 'center';
+            cell.style.padding = '20px';
+            return;
+        }
+
+        // Render table rows for current page
         currentData.forEach(item => {
-            createCard(cardsContainer, item);
+            createTableRow(tbody, item);
         });
 
         // Create pagination controls
+        const paginationContainer = document.querySelector('.pagination-container') || createPaginationContainer();
         createPagination(paginationContainer, page, totalPages);
         
         // Update current page
         currentPage = page;
-        
-        // Update search results info
-        updateSearchResultsInfo();
         
         // Update search results info
         updateSearchResultsInfo();
@@ -391,8 +385,22 @@ function displayPage(page) {
     }
 }
 
-// Create card function
-function createCard(container, item) {
+// Helper function to create pagination container if it doesn't exist
+function createPaginationContainer() {
+    const mainContent = document.querySelector('#paraf_kasie_design');
+    if (!mainContent) return null;
+    
+    let paginationContainer = document.querySelector('.pagination-container');
+    if (!paginationContainer) {
+        paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination-container';
+        mainContent.appendChild(paginationContainer);
+    }
+    return paginationContainer;
+}
+
+// Create table row function
+function createTableRow(tbody, item) {
     try {
         const criticalFields = ['no_registrasi', 'nobooking'];
         const missingCritical = criticalFields.filter(field => !item[field]);
@@ -401,140 +409,107 @@ function createCard(container, item) {
             return;
         }
 
-        const card = document.createElement('div');
-        card.className = 'paraf-card';
-        
         const formatValue = (value) => {
             return (value === undefined || value === null || value === '' || value === '-') ? 'Belum diisi' : value;
         };
         
-        const statusClass = (item.trackstatus || '').toLowerCase().replace(/\s+/g, '');
+        // Create main table row
+        const row = tbody.insertRow();
         
-        card.innerHTML = `
-            <!-- SECTION 1: HEADER INFO -->
-            <div class="card-header">
-                <div class="header-content">
-                    <h3 class="primary-info">${formatValue(item.no_registrasi)}</h3>
-                    <p class="secondary-info">${formatValue(item.nobooking)}</p>
-                </div>
-            </div>
-            
-            <!-- SECTION DIVIDER -->
-            <div class="section-divider"></div>
-            
-            <!-- SECTION 2: DATA INFO -->
-            <div class="card-content">
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">NOP PBB</span>
-                        <span class="info-value ${formatValue(item.noppbb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.noppbb)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Nama Wajib Pajak</span>
-                        <span class="info-value ${formatValue(item.namawajibpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namawajibpajak)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Pemilik Objek</span>
-                        <span class="info-value ${formatValue(item.namapemilikobjekpajak) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.namapemilikobjekpajak)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Tahun AJB</span>
-                        <span class="info-value ${formatValue(item.tahunajb) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.tahunajb)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Pembuat Booking</span>
-                        <span class="info-value ${formatValue(item.creator_special_field || item.special_field) === 'Belum diisi' ? 'empty' : ''}">${formatValue(item.creator_special_field || item.special_field)}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Paraf</span>
-                        <span class="info-value ${item.tanda_paraf_path ? 'paraf-sudah' : 'paraf-belum'}">${item.tanda_paraf_path ? 'Sudah' : 'Belum'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECTION DIVIDER -->
-            <div class="section-divider"></div>
-            
-            <!-- SECTION 3: DATE INFO -->
-            <div class="date-section">
-                <div class="tanggal-info">
-                    <span class="calendar-icon">📅</span>
-                    <span class="calendar-icon">📅</span>
-                    <span class="date-text">${item.tanggal_masuk ? new Date(item.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : (item.tanggal_terima ? new Date(item.tanggal_terima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : (item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi'))}</span>
-                </div>
-            </div>
-            
-            <!-- SECTION DIVIDER -->
-            <div class="section-divider"></div>
-            
-            <!-- SECTION 4: ACTION BUTTONS -->
-            <div class="card-footer">
-                <!-- GROUP 1: View Action -->
-                <div class="action-group view-group">
-                    <button class="btn-view-document" onclick="viewDocument('${item.nobooking}')" title="Lihat Dokumen">
-                        <span>📄</span> View
-                    </button>
-                </div>
-                
-                <!-- GROUP 2: Status & Actions -->
-                <div class="action-group status-actions-group">
-                    <div class="status-section">
-                        <span class="status-badge ${statusClass}">${item.tanda_paraf_path ? formatValue(item.pemverifikasi_nama || item.pemverifikasi) : formatValue(item.trackstatus)}</span>
-                    </div>
-                    <div class="button-section">
-                        <button class="btn-paraf-prominent ${item.tanda_paraf_path ? 'paraf-approved' : ''}" data-nobooking="${item.nobooking}" ${item.tanda_paraf_path ? 'disabled' : ''}>
-                            <span>${item.tanda_paraf_path ? '✅' : '✍️'}</span> ${item.tanda_paraf_path ? 'Disetujui' : 'Paraf'}
-                        </button>
-                        <button class="btn-reject" onclick="showRejectModal('${item.nobooking}')" title="Tolak dengan Alasan" ${item.tanda_paraf_path ? 'disabled' : ''}>
-                            <span>❌</span> Tolak
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
+        // Insert cells for each column
+        const cellNoReg = row.insertCell(0);
+        const cellNoBooking = row.insertCell(1);
+        const cellNOPPBB = row.insertCell(2);
+        const cellNamaWP = row.insertCell(3);
+        const cellNamaPemilik = row.insertCell(4);
+        const cellTahunAJB = row.insertCell(5);
+        const cellPembuat = row.insertCell(6);
+        const cellParaf = row.insertCell(7);
+        const cellTanggal = row.insertCell(8);
+        const cellAksi = row.insertCell(9);
         
-        // Add event listener to paraf button (only if paraf hasn't been given)
-        const parafButton = card.querySelector('.btn-paraf-prominent');
-        if (!item.tanda_paraf_path && parafButton) {
-            parafButton.addEventListener('click', async () => {
-            try {
-                const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
-                
-                if (confirmation) {
-                    if (!item || !item.nobooking) {
-                        throw new Error("Data yang diperlukan tidak lengkap (nobooking).");
+        // Fill cells with data
+        cellNoReg.textContent = formatValue(item.no_registrasi);
+        cellNoBooking.textContent = formatValue(item.nobooking);
+        cellNOPPBB.textContent = formatValue(item.noppbb);
+        cellNamaWP.textContent = formatValue(item.namawajibpajak);
+        cellNamaPemilik.textContent = formatValue(item.namapemilikobjekpajak);
+        cellTahunAJB.textContent = formatValue(item.tahunajb);
+        cellPembuat.textContent = formatValue(item.creator_special_field || item.special_field);
+        
+        // Paraf status
+        const parafStatus = item.tanda_paraf_path ? 'Sudah' : 'Belum';
+        cellParaf.innerHTML = `<span class="status-badge ${item.tanda_paraf_path ? 'success' : 'warning'}">${parafStatus}</span>`;
+        
+        // Tanggal
+        const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
+        cellTanggal.textContent = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
+        
+        // Create action buttons container
+        const actionContainer = document.createElement('div');
+        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+        
+        // View button
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'btn-view-document';
+        viewBtn.innerHTML = '<i class="fas fa-eye"></i> View';
+        viewBtn.onclick = (e) => {
+            e.stopPropagation();
+            viewDocument(item.nobooking);
+        };
+        actionContainer.appendChild(viewBtn);
+        
+        // Paraf button
+        const parafBtn = document.createElement('button');
+        parafBtn.className = `btn-paraf-prominent ${item.tanda_paraf_path ? 'paraf-approved' : ''}`;
+        parafBtn.innerHTML = item.tanda_paraf_path ? '<i class="fas fa-check"></i> Disetujui' : '<i class="fas fa-pen"></i> Paraf';
+        parafBtn.disabled = !!item.tanda_paraf_path;
+        parafBtn.dataset.nobooking = item.nobooking;
+        if (!item.tanda_paraf_path) {
+            parafBtn.onclick = async (e) => {
+                e.stopPropagation();
+                try {
+                    const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
+                    if (confirmation) {
+                        const result = await saveParafData(item);
+                        if (result && result.success) {
+                            try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+                            showAlert('success', "Paraf berhasil diberikan!");
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1000);
+                        } else {
+                            throw new Error(result?.message || "Gagal memberikan paraf.");
+                        }
                     }
-
-                    const result = await saveParafData(item);
-                    if (result && result.success) {
-                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                        showAlert('success', "Paraf berhasil diberikan!");
-                        // Refresh halaman setelah 1 detik
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        const msg = (result && result.message) ? result.message : "Gagal memberikan paraf.";
-                        throw new Error(msg);
-                    }
-                } else {
-                    showAlert('info', "Paraf tidak jadi diberikan.");
+                } catch (buttonError) {
+                    console.error('Button Action Error:', buttonError);
+                    showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
                 }
-            } catch (buttonError) {
-                console.error('Button Action Error:', buttonError);
-                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
-            }
-        });
+            };
         }
-
-        // Button "Kirim ke Pejabat" removed - functionality moved to dropdown
+        actionContainer.appendChild(parafBtn);
         
-        container.appendChild(card);
-
-        // Add dropdown content for detailed view
-        const dropdownContent = document.createElement('div');
-        dropdownContent.className = 'card-dropdown-content';
+        // Reject button
+        const rejectBtn = document.createElement('button');
+        rejectBtn.className = 'btn-reject';
+        rejectBtn.innerHTML = '<i class="fas fa-times"></i> Tolak';
+        rejectBtn.disabled = !!item.tanda_paraf_path;
+        rejectBtn.onclick = (e) => {
+            e.stopPropagation();
+            showRejectModal(item.nobooking);
+        };
+        actionContainer.appendChild(rejectBtn);
+        
+        cellAksi.appendChild(actionContainer);
+        
+        // Create dropdown row
+        const dropdownRow = document.createElement('tr');
+        dropdownRow.className = 'dropdown-row';
+        const dropdownContent = document.createElement('td');
+        dropdownContent.colSpan = 10;
         dropdownContent.style.display = 'none';
+        dropdownContent.className = 'dropdown-content';
         
         try {
             dropdownContent.innerHTML = `
@@ -570,58 +545,63 @@ function createCard(container, item) {
             dropdownContent.innerHTML = '<p>Gagal memuat detail data</p>';
         }
 
-        card.appendChild(dropdownContent);
+        dropdownRow.appendChild(dropdownContent);
+        tbody.appendChild(dropdownRow);
 
-        // Add click event for dropdown toggle
-        card.addEventListener('click', function(e) {
-            if (e.target.closest('button')) return;
-            
-            const dropdown = this.querySelector('.card-dropdown-content');
-            if (dropdown) {
-                const isActive = dropdown.classList.contains('active');
-                
-                // Close all other dropdowns first
-                document.querySelectorAll('.card-dropdown-content.active').forEach(drop => {
-                    if (drop !== dropdown) {
-                        drop.classList.remove('active');
-                        // Remove dropdown-active class from other cards
-                        drop.closest('.verification-card, .paraf-card')?.classList.remove('dropdown-active');
-                    }
-                });
-                
-                // Toggle current dropdown
-                if (isActive) {
-                    dropdown.classList.remove('active');
-                    this.classList.remove('dropdown-active');
-                } else {
-                    dropdown.classList.add('active');
-                    this.classList.add('dropdown-active');
-                }
-                
-                console.log('Dropdown toggled:', dropdown.classList.contains('active') ? 'open' : 'closed');
+        // Add click handler to toggle dropdown
+        row.addEventListener('click', function(e) {
+            // Don't toggle if clicking on buttons
+            if (e.target.closest('button')) {
+                return;
             }
+            
+            const isVisible = dropdownContent.style.display !== 'none';
+            dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
+            
+            // Close other dropdowns
+            document.querySelectorAll('.dropdown-content').forEach(dd => {
+                if (dd !== dropdownContent) {
+                    dd.style.display = 'none';
+                }
+            });
         });
 
-        setupParafFormInteractions(card, item);
+        // Setup form interactions
+        setupParafFormInteractionsFromRow(dropdownContent, item);
 
-            } catch (itemError) {
-                console.error('Error processing item:', itemError);
-        const errorCard = document.createElement('div');
-        errorCard.className = 'paraf-card';
-        errorCard.style.border = '1px solid #ef4444';
-        errorCard.innerHTML = `
-            <div class="card-header">
-                <div>
-                    <h3 class="primary-info">Error</h3>
-                    <p class="secondary-info">Gagal memuat data</p>
-                </div>
-            </div>
-            <div class="card-content">
-                <p style="color: #ef4444;">${itemError.message}</p>
-            </div>
-        `;
-        container.appendChild(errorCard);
+    } catch (itemError) {
+        console.error('Error processing item:', itemError);
+        // Create error row
+        const errorRow = tbody.insertRow();
+        const errorCell = errorRow.insertCell(0);
+        errorCell.colSpan = 10;
+        errorCell.className = 'empty-message';
+        errorCell.textContent = `Error: ${itemError.message}`;
+        errorCell.style.color = '#ef4444';
+        errorCell.style.textAlign = 'center';
+        errorCell.style.padding = '20px';
     }
+}
+
+// Helper function to setup form interactions from dropdown row
+function setupParafFormInteractionsFromRow(dropdownContent, item) {
+    // Send to pejabat button
+    const sendToPejabatButton = dropdownContent.querySelector('.btn-pejabat-validation');
+    if (sendToPejabatButton) {
+        sendToPejabatButton.addEventListener('click', async () => {
+            try {
+                await sendToPejabatValidation(item);
+            } catch (error) {
+                console.error('Send to Pejabat Error:', error);
+                showAlert('error', `Gagal mengirim: ${error.message}`);
+            }
+        });
+    }
+}
+
+// Setup form interactions (kept for backward compatibility)
+function setupParafFormInteractions(dropdownContent, item) {
+    setupParafFormInteractionsFromRow(dropdownContent, item);
 }
 
 // Create pagination function
