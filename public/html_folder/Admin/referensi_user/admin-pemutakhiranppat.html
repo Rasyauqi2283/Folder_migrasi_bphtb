@@ -371,13 +371,12 @@
               <th>Userid</th>
               <th>PPAT Khusus</th>
               <th>Nilai Pajak</th>
-              <th>Booking</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody id="bookingBody">
-              <!-- data akan diisi oleh javascript dari tabel pat_1_bookingsspd dengan status "Diserahkan" -->
-            <tr><td colspan="6" class="empty-message">Memuat data...</td></tr>
+              <!-- data akan diisi oleh javascript - per user (GROUP BY userid) dengan total nilai pajak -->
+            <tr><td colspan="5" class="empty-message">Memuat data...</td></tr>
           </tbody>
         </table>
       </div>
@@ -608,7 +607,7 @@ async function loadPPATRenewalData() {
     const transactionAmount = document.querySelector('.transaction-amount');
     
     // Show loading
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Memuat data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Memuat data...</td></tr>';
     
     // Build URL with filters
     const params = new URLSearchParams({
@@ -639,20 +638,29 @@ async function loadPPATRenewalData() {
     const bookings = data.data || [];
     
     if (bookings.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Tidak ada data ditemukan</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Tidak ada data ditemukan</td></tr>';
     } else {
-      bookings.forEach(booking => {
+      bookings.forEach(user => {
         const row = tbody.insertRow();
         row.innerHTML = `
-          <td>${booking.user_nama || '-'}</td>
-          <td>${booking.userid || '-'}</td>
-                <td>${booking.ppat_khusus || '-'}</td>
-          <td>${booking.nilai_formatted || 'Rp 0'}</td>
-          <td>${booking.nobooking || '-'}</td>
+          <td>${user.user_nama || '-'}</td>
+          <td>${user.userid || '-'}</td>
+          <td>${user.ppat_khusus || '-'}</td>
+          <td>${user.nilai_formatted || 'Rp 0'}</td>
           <td>
-            <button class="btn-sm view-btn" data-booking="${booking.nobooking}">Lihat</button>
+            <button class="btn-sm view-btn" data-userid="${user.userid || ''}">Lihat</button>
           </td>
         `;
+      });
+      
+      // Add event listeners for "Lihat" buttons
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const userid = this.getAttribute('data-userid');
+          if (userid) {
+            window.location.href = `admin-datauser-pemutakhiranppat.html?userid=${encodeURIComponent(userid)}`;
+          }
+        });
       });
     }
     
@@ -667,12 +675,12 @@ async function loadPPATRenewalData() {
     // Update pagination controls
     updatePagination(data.pagination);
     
-    console.log(`✅ Loaded ${bookings.length} PPAT renewal records`);
+    console.log(`✅ Loaded ${bookings.length} PPAT users (grouped by userid)`);
     
   } catch (error) {
     console.error('❌ Error loading PPAT renewal data:', error);
     const tbody = document.getElementById('bookingBody');
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Gagal memuat data: ' + error.message + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Gagal memuat data: ' + error.message + '</td></tr>';
   }
 }
 
@@ -840,18 +848,16 @@ async function exportPPATData() {
       throw new Error(data.message || 'Failed to export data');
     }
     
-    // Create CSV content
-    const headers = ['Nama PPAT', 'UserID', 'PPAT Khusus', 'Nilai Pajak', 'Booking', 'Tanggal Booking', 'Status'];
+    // Create CSV content (per user, not per booking)
+    const headers = ['Nama PPAT', 'UserID', 'PPAT Khusus', 'Total Nilai Pajak', 'Total Booking'];
     const csvContent = [
       headers.join(','),
-      ...data.data.map(booking => [
-        `"${booking.nama_ppat}"`,
-        `"${booking.userid}"`,
-                `"${booking.ppat_khusus}"`,
-        booking.nilai_bphtb || 0,
-        `"${booking.nobooking}"`,
-        `"${booking.tanggal_formatted}"`,
-        `"${booking.status}"`
+      ...data.data.map(user => [
+        `"${user.user_nama || ''}"`,
+        `"${user.userid || ''}"`,
+        `"${user.ppat_khusus || ''}"`,
+        user.total_nilai_bphtb || 0,
+        user.total_booking || 0
       ].join(','))
     ].join('\n');
     

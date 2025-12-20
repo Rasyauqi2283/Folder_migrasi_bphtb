@@ -892,24 +892,23 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
 
         console.log(`🔍 [ADMIN] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-        // Query untuk mendapatkan data PPAT renewal dengan filter
+        // Query untuk mendapatkan data PPAT renewal dengan filter (GROUP BY userid)
         let query = `
             SELECT 
-                b.nobooking,
                 b.userid,
                 vu.ppat_khusus,
-                bp.bphtb_yangtelah_dibayar AS nilai_bphtb,
-                b.created_at as tanggal_booking,
-                b.trackstatus,
                 vu.nama as user_nama,
                 vu.divisi,
-                vu.special_field
+                vu.special_field,
+                COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0) AS total_nilai_bphtb,
+                COUNT(b.nobooking) as total_booking
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
             WHERE b.trackstatus = 'Diserahkan'
             AND b.created_at >= $1
             AND b.created_at <= $2
+            GROUP BY b.userid, vu.ppat_khusus, vu.nama, vu.divisi, vu.special_field
         `;
 
         const queryParams = [startDate.toISOString(), endDate.toISOString()];
@@ -919,7 +918,6 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
         if (search.trim()) {
             paramCount++;
             query += ` AND (
-                b.nobooking ILIKE $${paramCount} OR 
                 b.userid ILIKE $${paramCount} OR 
                 vu.ppat_khusus ILIKE $${paramCount} OR
                 vu.nama ILIKE $${paramCount} OR
@@ -928,8 +926,8 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
             queryParams.push(`%${search}%`);
         }
 
-        // Add ordering and pagination
-        query += ` ORDER BY b.created_at DESC, b.nobooking ASC`;
+        // Add ordering and pagination (order by total nilai bphtb descending)
+        query += ` ORDER BY total_nilai_bphtb DESC, vu.nama ASC`;
         
         paramCount++;
         query += ` LIMIT $${paramCount}`;
@@ -944,11 +942,11 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
 
         const result = await pool.query(query, queryParams);
         console.log('🔍 [ADMIN] PPAT renewal query result rows:', result.rows.length);
-        const bookings = result.rows;
+        const users = result.rows;
 
-        // Get total count for pagination
+        // Get total count for pagination (count distinct users)
         let countQuery = `
-            SELECT COUNT(b.nobooking) as total
+            SELECT COUNT(DISTINCT b.userid) as total
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
             WHERE b.trackstatus = 'Diserahkan'
@@ -959,7 +957,6 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
         const countParams = [startDate.toISOString(), endDate.toISOString()];
         if (search.trim()) {
             countQuery += ` AND (
-                b.nobooking ILIKE $3 OR 
                 b.userid ILIKE $3 OR 
                 vu.ppat_khusus ILIKE $3 OR
                 vu.nama ILIKE $3 OR
@@ -997,32 +994,24 @@ router.get('/ppat-renewal', verifyAdmin, async (req, res) => {
         const sumResult = await pool.query(sumQuery, sumParams);
         const totalBphtb = parseFloat(sumResult.rows[0].total_bphtb || 0);
 
-        // Format response
-        const formattedBookings = bookings.map(booking => ({
-            nobooking: booking.nobooking,
-            userid: booking.userid,
-                ppat_khusus: booking.ppat_khusus || '-',
-            nilai_bphtb: booking.nilai_bphtb || '-',
-            tanggal_booking: booking.tanggal_booking,
-            status: booking.status,
-            trackstatus: booking.trackstatus,
-            user_nama: booking.user_nama || '-',
-            divisi: booking.divisi || '-',
-            special_field: booking.special_field || '-',
+        // Format response (per user, not per booking)
+        const formattedUsers = users.map(user => ({
+            userid: user.userid,
+            ppat_khusus: user.ppat_khusus || '-',
+            user_nama: user.user_nama || '-',
+            divisi: user.divisi || '-',
+            special_field: user.special_field || '-',
+            total_nilai_bphtb: parseFloat(user.total_nilai_bphtb || 0),
+            total_booking: parseInt(user.total_booking || 0),
             // Formatted values for display
-            nilai_formatted: booking.nilai_bphtb ? 
-                `Rp ${Number(booking.nilai_bphtb).toLocaleString('id-ID')}` : 
-                'Rp 0',
-            tanggal_formatted: booking.tanggal_booking ? 
-                new Date(booking.tanggal_booking).toLocaleDateString('id-ID') : 
-                '-'
+            nilai_formatted: `Rp ${Number(user.total_nilai_bphtb || 0).toLocaleString('id-ID')}`
         }));
 
-        console.log(`✅ [ADMIN] Found ${formattedBookings.length} PPAT renewal bookings (total: ${total})`);
+        console.log(`✅ [ADMIN] Found ${formattedUsers.length} PPAT users (total: ${total})`);
 
         res.json({
             success: true,
-            data: formattedBookings,
+            data: formattedUsers,
             pagination: {
                 page,
                 limit,
