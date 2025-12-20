@@ -32,13 +32,23 @@
     font-family: Inter, "Segoe UI", Arial, sans-serif;
     background: linear-gradient(180deg, #eef6ff 0%, #e6f1fb 100%);
     color:#1f3246;
-    padding:28px;
+    /* jangan pakai padding di body karena layout utama sudah diatur oleh `.main-content`
+       (margin-left untuk sidebar + margin-top untuk header). */
+    padding:0;
+  }
+
+  /* kasih napas untuk isi halaman tanpa menjauh dari sidebar */
+  main.main-content{
+    padding: 18px 18px 22px 18px; /* aman: tetap dekat sidebar, tidak mepet */
+    box-sizing: border-box;
   }
 
   /* Layout: left content + right sidebar */
   .main-layout{
-    max-width:1200px;
-    margin:0 auto;
+    /* jangan auto-center; gunakan lebar penuh area `.main-content` agar dekat sidebar */
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
     display:grid;
     grid-template-columns: 1fr 360px;
     gap:20px;
