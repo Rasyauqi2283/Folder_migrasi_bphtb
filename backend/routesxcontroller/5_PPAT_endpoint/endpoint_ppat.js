@@ -507,7 +507,7 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
         }
 
         const userid = req.session.user.userid;
-        const { page = 1, limit = 10, search = '', status = '' } = req.query;
+        const { page = 1, limit = 10, search = '', status = '', jenis_wajib_pajak = '' } = req.query;
         
         // Validate and sanitize pagination parameters
         const pageNum = parseInt(page) || 1;
@@ -530,6 +530,13 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
         const queryParams = [userid];
         let paramCount = 1;
         
+        // Optional filter: jenis wajib pajak (e.g. 'Badan Usaha' / 'Perorangan')
+        if (jenis_wajib_pajak) {
+            paramCount++;
+            whereClause += ` AND jenis_wajib_pajak = $${paramCount}`;
+            queryParams.push(jenis_wajib_pajak);
+        }
+
         if (search) {
             paramCount++;
             whereClause += ` AND (nobooking ILIKE $${paramCount} OR namawajibpajak ILIKE $${paramCount} OR namapemilikobjekpajak ILIKE $${paramCount})`;
