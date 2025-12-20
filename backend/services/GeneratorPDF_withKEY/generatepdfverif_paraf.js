@@ -320,7 +320,8 @@ export default function registerGeneratePdfVerifParaf(app, pool) {
                     // Posisi checkmark: x + 1 (sedikit ke kanan dari border), y + 1 (sedikit ke bawah dari border)
                     // Font ZapfDingbats character '4' adalah checkmark
                     doc.font('ZapfDingbats').fontSize(fontSize)
-                       .text('4', x + 1, y + 1)
+                       // Naikkan sedikit ke bawah agar centang pas di dalam kotak
+                       .text('4', x + 1, y + 7)
                        .font('Helvetica'); // kembalikan font
                 }
             }

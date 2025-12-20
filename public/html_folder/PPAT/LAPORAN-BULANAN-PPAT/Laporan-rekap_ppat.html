@@ -443,16 +443,12 @@
       }
       
       try {
-        // Create a temporary link element for download
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = `${pdfName}_${nobooking}.pdf`;
-        link.target = '_blank';
-        
-        // Add to DOM, click, and remove
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Let server Content-Disposition handle download (more reliable than HTML download attr)
+        const w = window.open(pdfUrl, '_blank', 'noopener');
+        if (!w) {
+          // Popup blocked -> fallback to same-tab navigation
+          window.location.href = pdfUrl;
+        }
         
         console.log(`✅ [PDF-DOWNLOAD] PDF download initiated: ${pdfUrl}`);
         

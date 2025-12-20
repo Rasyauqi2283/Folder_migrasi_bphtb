@@ -5213,17 +5213,41 @@ app.get('/api/ppat/generate-pdf-validasi/:nobooking', async (req, res) => {
         } else {
             res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
         }
-        
-        // Stream the PDF file
-        const fileStream = fs.createReadStream(outputPath);
-        fileStream.pipe(res);
-        
-        // Clean up file after streaming
-        fileStream.on('end', () => {
+
+        // Add Content-Length (helps browser download reliably)
+        try {
+            const st = fs.statSync(outputPath);
+            if (st && Number.isFinite(st.size)) {
+                res.setHeader('Content-Length', String(st.size));
+            }
+        } catch (e) {
+            console.warn('⚠️ [PDF-VALIDASI] Failed to stat temp PDF file for Content-Length:', e?.message || e);
+        }
+
+        // Stream the PDF file with robust cleanup
+        const cleanup = () => {
             fs.unlink(outputPath, (err) => {
                 if (err) console.error('Error deleting temp PDF file:', err);
             });
+        };
+
+        const fileStream = fs.createReadStream(outputPath);
+        fileStream.on('error', (err) => {
+            console.error('❌ [PDF-VALIDASI] File stream error:', err);
+            // If headers not sent yet, respond with JSON error; otherwise just end.
+            if (!res.headersSent) {
+                res.status(500).json({ success: false, message: 'Gagal membaca file PDF' });
+            } else {
+                try { res.end(); } catch (_) {}
+            }
+            cleanup();
         });
+
+        // Clean up when response finished OR client disconnected
+        res.on('finish', cleanup);
+        res.on('close', cleanup);
+
+        fileStream.pipe(res);
         
     } catch (error) {
         console.error('❌ [PDF-VALIDASI] Error generating PDF:', error);
