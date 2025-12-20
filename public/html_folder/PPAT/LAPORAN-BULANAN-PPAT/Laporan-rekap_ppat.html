@@ -334,8 +334,14 @@
       const nobooking = (item && item.nobooking) ? String(item.nobooking) : '';
       const buttons = containerTd.querySelectorAll('button[data-action][data-type]');
       buttons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // Overwrite handler to avoid any accidental double-binding
+        btn.onclick = (e) => {
           e.stopPropagation();
+          // Guard: prevent double-trigger within a short time window
+          if (btn.dataset.busy === '1') return;
+          btn.dataset.busy = '1';
+          setTimeout(() => { try { delete btn.dataset.busy; } catch(_) { btn.dataset.busy = ''; } }, 1200);
+
           const action = btn.getAttribute('data-action');
           const type = btn.getAttribute('data-type');
           if (!nobooking) {
@@ -344,7 +350,7 @@
           }
           if (action === 'view') window.viewPDF(type, nobooking);
           else if (action === 'download') window.downloadPDF(type, nobooking);
-        });
+        };
       });
     }
 
