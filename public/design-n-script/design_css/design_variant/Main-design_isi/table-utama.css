@@ -1362,6 +1362,11 @@ body, html {
   display: table !important; /* Force show for Peneliti Validasi table */
 }
 
+/* Show traditional table for Peneliti Verifikasi pages */
+.main-content table.excel-table#penelitiverifikasiTable {
+  display: table !important; /* Force show for Peneliti Verifikasi table */
+}
+
 /* LTB Specific Styling */
 .main-content #ltbBerkasTable {
   display: table !important;
@@ -1391,8 +1396,25 @@ body, html {
   table-layout: fixed; /* Fixed table layout for better column control */
 }
 
+/* Peneliti Verifikasi Specific Styling */
+.main-content #penelitiverifikasiTable {
+  display: table !important;
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0; /* Remove extra margins since main-content handles positioning */
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+  box-sizing: border-box;
+  table-layout: fixed; /* Fixed table layout for better column control */
+}
+
 .main-content #ltbBerkasTable thead th,
-.main-content #penelitikasieTable thead th {
+.main-content #penelitikasieTable thead th,
+.main-content #penelitiverifikasiTable thead th {
   background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
   color: #f3f4f6;
   font-weight: 600;
@@ -1407,7 +1429,8 @@ body, html {
 }
 
 .main-content #ltbBerkasTable tbody td,
-.main-content #penelitikasieTable tbody td {
+.main-content #penelitikasieTable tbody td,
+.main-content #penelitiverifikasiTable tbody td {
   padding: 10px 12px;
   border-bottom: 1px solid #1f2937;
   color: #e5e7eb;
@@ -1418,17 +1441,20 @@ body, html {
 }
 
 .main-content #ltbBerkasTable tbody tr:nth-child(odd),
-.main-content #penelitikasieTable tbody tr:nth-child(odd) {
+.main-content #penelitikasieTable tbody tr:nth-child(odd),
+.main-content #penelitiverifikasiTable tbody tr:nth-child(odd) {
   background-color: #0b0f1a;
 }
 
 .main-content #ltbBerkasTable tbody tr:nth-child(even),
-.main-content #penelitikasieTable tbody tr:nth-child(even) {
+.main-content #penelitikasieTable tbody tr:nth-child(even),
+.main-content #penelitiverifikasiTable tbody tr:nth-child(even) {
   background-color: #0e1422;
 }
 
 .main-content #ltbBerkasTable tbody tr:hover,
-.main-content #penelitikasieTable tbody tr:hover {
+.main-content #penelitikasieTable tbody tr:hover,
+.main-content #penelitiverifikasiTable tbody tr:hover {
   background-color: #111827;
   transition: background .2s ease;
 }
