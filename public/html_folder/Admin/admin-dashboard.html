@@ -49,6 +49,10 @@
             height: 100%;
             background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
         }
+        /* Gold accent for tax summary card */
+        .summary-card:has(.summary-card-icon.gold)::before {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+        }
         .summary-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -89,6 +93,32 @@
         }
         .summary-card-icon.orange {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .summary-card-icon.gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        /* Mini stats inside a summary card (used for PPAT tax summary) */
+        .summary-mini-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+        .summary-mini-stats .mini-stat {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .summary-mini-stats .mini-label {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .summary-mini-stats .mini-value {
+            margin-top: 4px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
         }
         .summary-card-value {
             font-size: 36px;
@@ -507,6 +537,11 @@
         <!-- Cards will be populated by JavaScript -->
     </div>
 
+    <!-- Summary Card for Pemutakhiran PPAT -->
+    <div class="summary-cards-container" id="ppatTaxSummaryContainer" style="max-width: 1400px; margin: 24px auto; padding: 0 20px;">
+        <!-- Card will be populated by JavaScript -->
+    </div>
+
     <!-- Validation Statistics Chart -->
     <div class="chart-section" style="max-width: 1400px; margin: 24px auto; padding: 0 20px;">
         <div class="card chart-card" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
@@ -671,6 +706,73 @@
         const container = document.getElementById('summaryCardsContainer');
         if (container) {
           container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data summary</p>';
+        }
+      }
+    })();
+
+    // Load PPAT Tax Summary Card
+    (async function loadPPATTaxSummary() {
+      try {
+        const container = document.getElementById('ppatTaxSummaryContainer');
+        if (!container) return;
+
+        container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">Memuat ringkasan Pemutakhiran PPAT...</p>';
+
+        // Fetch summary from ppat-renewal endpoint with minimal params (only need summary)
+        const currentYear = new Date().getFullYear();
+        const response = await fetch(`/api/admin/notification-warehouse/ppat-renewal?page=1&limit=1&jangka_waktu=12&tahun=${currentYear}`, { 
+          credentials: 'include' 
+        }).catch(() => null);
+
+        let taxValueFormatted = 'Rp 0';
+        let totalTransaksi = 0;
+        const periodeLabel = `Periode 12 bulan • Tahun ${currentYear}`;
+
+        if (response && response.ok) {
+          const data = await response.json().catch(() => ({ success: false }));
+          if (data.success && data.summary) {
+            taxValueFormatted = data.summary.total_bphtb_formatted || 'Rp 0';
+            totalTransaksi = Number(data.summary.total_transaksi || 0);
+          }
+        }
+
+        // Render single card for total tax value
+        container.innerHTML = `
+          <div class="summary-card" onclick="window.location.href='referensi_user/admin-pemutakhiranppat.html'" style="max-width: 100%;">
+            <div class="summary-card-header">
+              <div class="summary-card-title">
+                <div class="summary-card-icon gold">
+                  <i class="fas fa-money-bill-wave" style="font-size: 24px;"></i>
+                </div>
+                Nilai Transaksi Pajak
+              </div>
+            </div>
+            <div class="summary-card-value" style="font-size: 32px; font-weight: 700; color: #059669;">${taxValueFormatted}</div>
+            <div class="summary-card-label">${periodeLabel}</div>
+            <div class="summary-mini-stats">
+              <div class="mini-stat">
+                <div class="mini-label">Total Transaksi</div>
+                <div class="mini-value">${totalTransaksi.toLocaleString('id-ID')}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Keterangan</div>
+                <div class="mini-value" style="font-size: 14px; font-weight: 600; color: #374151;">Ringkasan dari Pemutakhiran PPAT</div>
+              </div>
+            </div>
+            <div class="summary-card-footer">
+              <a href="referensi_user/admin-pemutakhiranppat.html" class="summary-card-link" onclick="event.stopPropagation();">
+                Lihat Detail <i class="fa fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        `;
+
+        console.log('✅ PPAT Tax summary card loaded:', taxValueFormatted);
+      } catch (error) {
+        console.error('❌ Error loading PPAT tax summary card:', error);
+        const container = document.getElementById('ppatTaxSummaryContainer');
+        if (container) {
+          container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data nilai transaksi pajak</p>';
         }
       }
     })();
