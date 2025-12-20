@@ -2576,10 +2576,11 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
             try{
                 const now = new Date();
                 const day = now.getDay(); // 0: Sunday, 6: Saturday
-                if (day === 0 || day === 6) {
-                    setStatus('Maaf, pengiriman tidak tersedia pada hari libur (Sabtu/Minggu).', 'error');
-                    return;
-                }
+                // DISABLED FOR TESTING: Weekend validation temporarily disabled
+                // if (day === 0 || day === 6) {
+                //     setStatus('Maaf, pengiriman tidak tersedia pada hari libur (Sabtu/Minggu).', 'error');
+                //     return;
+                // }
                 const d = await fetchQuota(todayIso);
                 showConfirm(`Kirim sekarang? Kuota hari ini ${d.used}/${d.limit}.`, {type:'now'});
             }catch(e){ setStatus(e.message,'error'); }
@@ -2590,13 +2591,14 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
                 const yyyy_mm_dd = dateInput.value;
                 if(!yyyy_mm_dd){ setStatus('Pilih tanggal terlebih dahulu','error'); return; }
                 
+                // DISABLED FOR TESTING: Weekend validation temporarily disabled
                 // Validasi weekend untuk tanggal yang dipilih
-                const selectedDate = new Date(yyyy_mm_dd);
-                const day = selectedDate.getDay();
-                if (day === 0 || day === 6) {
-                    setStatus('Maaf, Bappenda libur pada hari Sabtu dan Minggu. Silakan pilih hari kerja.', 'error');
-                    return;
-                }
+                // const selectedDate = new Date(yyyy_mm_dd);
+                // const day = selectedDate.getDay();
+                // if (day === 0 || day === 6) {
+                //     setStatus('Maaf, Bappenda libur pada hari Sabtu dan Minggu. Silakan pilih hari kerja.', 'error');
+                //     return;
+                // }
 
                 const d = await fetchQuota(yyyy_mm_dd);
                 showConfirm(`Jadwalkan tanggal ${yyyy_mm_dd}? Kuota ${d.used}/${d.limit}.`, {type:'date', date: yyyy_mm_dd});
@@ -2608,14 +2610,15 @@ const url = `/api/ppat/schedule-send?nobooking=${encodeURIComponent(nobooking)}&
             const val = dateInput.value;
             if(!val) return;
             
-            const selectedDate = new Date(val);
-            const day = selectedDate.getDay();
-            if (day === 0 || day === 6) {
-                setStatus('Bappenda libur pada hari Sabtu & Minggu.', 'error');
-                overlay.querySelector('#qmDateLabel').textContent = 'Hari Libur';
-                overlay.querySelector('#qmCounter').textContent = '-/-';
-                return;
-            }
+            // DISABLED FOR TESTING: Weekend validation temporarily disabled
+            // const selectedDate = new Date(val);
+            // const day = selectedDate.getDay();
+            // if (day === 0 || day === 6) {
+            //     setStatus('Bappenda libur pada hari Sabtu & Minggu.', 'error');
+            //     overlay.querySelector('#qmDateLabel').textContent = 'Hari Libur';
+            //     overlay.querySelector('#qmCounter').textContent = '-/-';
+            //     return;
+            // }
 
             overlay.querySelector('#qmDateLabel').textContent = 'Tanggal terpilih';
             await fetchQuota(val);
