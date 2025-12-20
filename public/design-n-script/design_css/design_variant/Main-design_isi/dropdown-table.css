@@ -468,6 +468,27 @@
   opacity: 1 !important;
 }
 
+/* DROPDOWN CONTENT for Peneliti Paraf Kasie - DARK THEME */
+/* Default: hidden */
+#peneliti_paraf_kasie_Table .dropdown-content {
+  display: none !important;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 15px 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  animation: fadeInDropdown 0.3s ease;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+}
+
+/* When explicitly shown via inline style */
+#peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
+  display: table-cell !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
 /* DROPDOWN CONTENT WRAPPER - DARK THEME */
 .dropdown-content-wrapper {
   background: transparent !important;

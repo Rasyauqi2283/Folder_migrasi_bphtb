@@ -44,6 +44,44 @@
         #peneliti_paraf_kasie_Table thead {
             display: table-header-group !important;
         }
+        
+        /* Dropdown content styling - only when visible */
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
+            padding: 20px !important;
+            background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
+            border: 1px solid #1f2937 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Default: dropdown should be hidden */
+        #peneliti_paraf_kasie_Table .dropdown-content {
+            display: none !important;
+        }
+        
+        /* When explicitly shown via inline style */
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
+            display: table-cell !important;
+        }
+        
+        #peneliti_paraf_kasie_Table .dropdown-content-wrapper {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        #peneliti_paraf_kasie_Table .dropdown-content .document-info-section,
+        #peneliti_paraf_kasie_Table .dropdown-content .action-buttons,
+        #peneliti_paraf_kasie_Table .dropdown-content .document-links-section {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
     </style>
 
 </head>

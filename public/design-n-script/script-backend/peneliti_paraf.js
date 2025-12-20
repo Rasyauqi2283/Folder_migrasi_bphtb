@@ -445,61 +445,25 @@ function createTableRow(tbody, item) {
         const tanggal = item.tanggal_masuk || item.tanggal_terima || item.created_at;
         cellTanggal.textContent = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Belum diisi';
         
-        // Create action buttons container
+        // Create action button container - only "Kirim ke Kabid" button
         const actionContainer = document.createElement('div');
-        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+        actionContainer.style.cssText = 'display: flex; gap: 8px; align-items: center; justify-content: center;';
         
-        // View button
-        const viewBtn = document.createElement('button');
-        viewBtn.className = 'btn-view-document';
-        viewBtn.innerHTML = '<i class="fas fa-eye"></i> View';
-        viewBtn.onclick = (e) => {
+        // Kirim ke Kabid button
+        const kirimKabidBtn = document.createElement('button');
+        kirimKabidBtn.className = 'btn-kirim-kabid';
+        kirimKabidBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim ke Kabid';
+        kirimKabidBtn.style.cssText = 'padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;';
+        kirimKabidBtn.onclick = async (e) => {
             e.stopPropagation();
-            viewDocument(item.nobooking);
+            try {
+                await sendToPejabatValidation(item);
+            } catch (error) {
+                console.error('Kirim ke Kabid Error:', error);
+                showAlert('error', `Gagal mengirim: ${error.message}`);
+            }
         };
-        actionContainer.appendChild(viewBtn);
-        
-        // Paraf button
-        const parafBtn = document.createElement('button');
-        parafBtn.className = `btn-paraf-prominent ${item.tanda_paraf_path ? 'paraf-approved' : ''}`;
-        parafBtn.innerHTML = item.tanda_paraf_path ? '<i class="fas fa-check"></i> Disetujui' : '<i class="fas fa-pen"></i> Paraf';
-        parafBtn.disabled = !!item.tanda_paraf_path;
-        parafBtn.dataset.nobooking = item.nobooking;
-        if (!item.tanda_paraf_path) {
-            parafBtn.onclick = async (e) => {
-                e.stopPropagation();
-                try {
-                    const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
-                    if (confirmation) {
-                        const result = await saveParafData(item);
-                        if (result && result.success) {
-                            try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                            showAlert('success', "Paraf berhasil diberikan!");
-                            setTimeout(() => {
-                                location.reload();
-                            }, 1000);
-                        } else {
-                            throw new Error(result?.message || "Gagal memberikan paraf.");
-                        }
-                    }
-                } catch (buttonError) {
-                    console.error('Button Action Error:', buttonError);
-                    showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
-                }
-            };
-        }
-        actionContainer.appendChild(parafBtn);
-        
-        // Reject button
-        const rejectBtn = document.createElement('button');
-        rejectBtn.className = 'btn-reject';
-        rejectBtn.innerHTML = '<i class="fas fa-times"></i> Tolak';
-        rejectBtn.disabled = !!item.tanda_paraf_path;
-        rejectBtn.onclick = (e) => {
-            e.stopPropagation();
-            showRejectModal(item.nobooking);
-        };
-        actionContainer.appendChild(rejectBtn);
+        actionContainer.appendChild(kirimKabidBtn);
         
         cellAksi.appendChild(actionContainer);
         
@@ -524,9 +488,15 @@ function createTableRow(tbody, item) {
                     </div>
 
                     <!-- Action Buttons Section -->
-                    <div class="action-buttons">
-                        <button type="button" class="btn-pejabat-validation" data-nobooking="${item.nobooking}" title="Kirim ke Pejabat untuk Validasi & QR Code">
-                            <span>🏛️</span> Kirim ke Pejabat
+                    <div class="action-buttons" style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
+                        <button type="button" class="btn-view-document" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                        <button type="button" class="btn-paraf-prominent" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; ${item.tanda_paraf_path ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${item.tanda_paraf_path ? 'disabled' : ''}>
+                            <i class="fas fa-pen"></i> Paraf
+                        </button>
+                        <button type="button" class="btn-reject" data-nobooking="${item.nobooking}" style="flex: 1; min-width: 120px; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; ${item.tanda_paraf_path ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${item.tanda_paraf_path ? 'disabled' : ''}>
+                            <i class="fas fa-times"></i> Tolak
                         </button>
                     </div>
 
@@ -550,20 +520,37 @@ function createTableRow(tbody, item) {
 
         // Add click handler to toggle dropdown
         row.addEventListener('click', function(e) {
-            // Don't toggle if clicking on buttons
-            if (e.target.closest('button')) {
+            // Don't toggle if clicking on buttons, inputs, labels, or form elements
+            if (e.target.closest('button') || 
+                e.target.closest('input') || 
+                e.target.closest('label') ||
+                e.target.closest('select') ||
+                e.target.closest('textarea') ||
+                e.target.closest('.dropdown-content') ||
+                e.target.closest('.dropdown-content-wrapper')) {
                 return;
             }
             
-            const isVisible = dropdownContent.style.display !== 'none';
-            dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
+            // Check if dropdown is currently visible
+            // Check both inline style and computed style
+            const inlineDisplay = dropdownContent.style.display;
+            const computedDisplay = window.getComputedStyle(dropdownContent).display;
+            const isVisible = inlineDisplay === 'table-cell' || computedDisplay === 'table-cell';
             
-            // Close other dropdowns
-            document.querySelectorAll('.dropdown-content').forEach(dd => {
-                if (dd !== dropdownContent) {
-                    dd.style.display = 'none';
-                }
-            });
+            // Toggle dropdown
+            if (isVisible) {
+                // Close this dropdown
+                dropdownContent.style.display = 'none';
+            } else {
+                // Close all other dropdowns first
+                document.querySelectorAll('#peneliti_paraf_kasie_Table .dropdown-content').forEach(dd => {
+                    if (dd !== dropdownContent) {
+                        dd.style.display = 'none';
+                    }
+                });
+                // Show this dropdown
+                dropdownContent.style.display = 'table-cell';
+            }
         });
 
         // Setup form interactions
@@ -585,16 +572,47 @@ function createTableRow(tbody, item) {
 
 // Helper function to setup form interactions from dropdown row
 function setupParafFormInteractionsFromRow(dropdownContent, item) {
-    // Send to pejabat button
-    const sendToPejabatButton = dropdownContent.querySelector('.btn-pejabat-validation');
-    if (sendToPejabatButton) {
-        sendToPejabatButton.addEventListener('click', async () => {
+    // View button
+    const viewButton = dropdownContent.querySelector('.btn-view-document');
+    if (viewButton) {
+        viewButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            viewDocument(item.nobooking);
+        });
+    }
+
+    // Paraf button
+    const parafButton = dropdownContent.querySelector('.btn-paraf-prominent');
+    if (parafButton && !item.tanda_paraf_path) {
+        parafButton.addEventListener('click', async (e) => {
+            e.stopPropagation();
             try {
-                await sendToPejabatValidation(item);
-            } catch (error) {
-                console.error('Send to Pejabat Error:', error);
-                showAlert('error', `Gagal mengirim: ${error.message}`);
+                const confirmation = window.confirm("Apakah kamu yakin ingin memberikan paraf pada data ini?");
+                if (confirmation) {
+                    const result = await saveParafData(item);
+                    if (result && result.success) {
+                        try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
+                        showAlert('success', "Paraf berhasil diberikan!");
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        throw new Error(result?.message || "Gagal memberikan paraf.");
+                    }
+                }
+            } catch (buttonError) {
+                console.error('Button Action Error:', buttonError);
+                showAlert('error', `Terjadi kesalahan: ${buttonError.message}`);
             }
+        });
+    }
+
+    // Reject button
+    const rejectButton = dropdownContent.querySelector('.btn-reject');
+    if (rejectButton && !item.tanda_paraf_path) {
+        rejectButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRejectModal(item.nobooking);
         });
     }
 }
