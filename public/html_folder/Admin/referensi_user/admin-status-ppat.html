@@ -50,8 +50,9 @@
     max-width: 100%;
     margin: 0;
     display:grid;
-    grid-template-columns: 1fr 360px;
-    gap:20px;
+    /* 1 kolom: status PPAT/PPATS dipindahkan ke bawah tabel agar tabel tidak menyempit */
+    grid-template-columns: 1fr;
+    gap:16px;
     align-items:start;
   }
 
@@ -215,6 +216,21 @@
   .status-filter input {
     padding:8px 10px; border-radius:10px; border:1px solid rgba(20,30,50,0.06);
     background:#fff; outline:none;
+  }
+
+  /* status filter: aman ketika lebar halaman berubah */
+  .status-filter{
+    flex-wrap: wrap;
+  }
+  .status-filter select{
+    flex: 0 0 160px;
+  }
+  .status-filter input{
+    flex: 1 1 220px;
+    min-width: 180px;
+  }
+  .status-filter #reloadUsers{
+    flex: 0 0 auto;
   }
   .status-table{ width:100%; border-collapse:collapse; font-size:14px; }
   .status-table th{ text-align:left; font-weight:700; color:#516076; padding:8px 6px; }
