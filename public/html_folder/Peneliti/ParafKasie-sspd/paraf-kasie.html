@@ -45,8 +45,17 @@
             display: table-header-group !important;
         }
         
-        /* Dropdown content styling - only when visible */
-        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
+        /* Default: dropdown should be hidden */
+        #peneliti_paraf_kasie_Table .dropdown-content {
+            display: none !important;
+        }
+        
+        /* When explicitly shown via inline style or data attribute - support multiple formats */
+        #peneliti_paraf_kasie_Table .dropdown-content[data-visible="true"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="display: table-cell"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="display:table-cell"] {
+            display: table-cell !important;
             padding: 20px !important;
             background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%) !important;
             border-radius: 12px !important;
@@ -54,16 +63,6 @@
             border: 1px solid #1f2937 !important;
             visibility: visible !important;
             opacity: 1 !important;
-        }
-        
-        /* Default: dropdown should be hidden */
-        #peneliti_paraf_kasie_Table .dropdown-content {
-            display: none !important;
-        }
-        
-        /* When explicitly shown via inline style */
-        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"] {
-            display: table-cell !important;
         }
         
         #peneliti_paraf_kasie_Table .dropdown-content-wrapper {
@@ -224,12 +223,32 @@
             justify-content: center;
             align-items: center;
             gap: 8px;
+            width: 100%;
+            min-height: 40px;
         }
         #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid{
-            padding: 8px 12px;
-            border-radius: 10px;
+            padding: 8px 16px;
+            border-radius: 6px;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 600;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid:hover:not(:disabled){
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid:disabled{
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #6b7280;
         }
 
         /* Docs list */

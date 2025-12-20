@@ -459,6 +459,12 @@ function createTableRow(tbody, item) {
         kirimKabidBtn.type = 'button';
         kirimKabidBtn.disabled = !canSendKabid;
         kirimKabidBtn.title = canSendKabid ? 'Kirim ke Kabid untuk validasi & pembuatan QR' : 'Paraf dulu sebelum kirim ke Kabid';
+        // Ensure button is visible with inline styles as fallback
+        if (!canSendKabid) {
+            kirimKabidBtn.style.cssText += 'opacity: 0.5; cursor: not-allowed; background: #6b7280 !important;';
+        } else {
+            kirimKabidBtn.style.cssText += 'opacity: 1; cursor: pointer; background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; color: #fff !important;';
+        }
         kirimKabidBtn.onclick = async (e) => {
             e.stopPropagation();
             if (!canSendKabid) return;
@@ -486,8 +492,9 @@ function createTableRow(tbody, item) {
         dropdownRow.className = 'dropdown-row';
         const dropdownContent = document.createElement('td');
         dropdownContent.colSpan = 10;
-        dropdownContent.style.display = 'none';
+        dropdownContent.style.setProperty('display', 'none', 'important');
         dropdownContent.className = 'dropdown-content';
+        dropdownContent.removeAttribute('data-visible'); // Ensure not visible initially
         
         try {
             const parafDone = !!item.tanda_paraf_path;
@@ -549,7 +556,8 @@ function createTableRow(tbody, item) {
                 e.target.closest('select') ||
                 e.target.closest('textarea') ||
                 e.target.closest('.dropdown-content') ||
-                e.target.closest('.dropdown-content-wrapper')) {
+                e.target.closest('.dropdown-content-wrapper') ||
+                e.target.closest('.aksi-actions')) {
                 return;
             }
             
@@ -557,21 +565,33 @@ function createTableRow(tbody, item) {
             // Check both inline style and computed style
             const inlineDisplay = dropdownContent.style.display;
             const computedDisplay = window.getComputedStyle(dropdownContent).display;
-            const isVisible = inlineDisplay === 'table-cell' || computedDisplay === 'table-cell';
+            const isVisible = inlineDisplay === 'table-cell' || computedDisplay === 'table-cell' || inlineDisplay === '';
+            
+            console.log('🖱️ [DROPDOWN] Row clicked:', {
+                inlineDisplay,
+                computedDisplay,
+                isVisible,
+                dropdownContent: dropdownContent
+            });
             
             // Toggle dropdown
             if (isVisible) {
                 // Close this dropdown
                 dropdownContent.style.display = 'none';
+                dropdownContent.removeAttribute('data-visible');
+                console.log('📂 [DROPDOWN] Closed dropdown');
             } else {
                 // Close all other dropdowns first
                 document.querySelectorAll('#peneliti_paraf_kasie_Table .dropdown-content').forEach(dd => {
                     if (dd !== dropdownContent) {
                         dd.style.display = 'none';
+                        dd.removeAttribute('data-visible');
                     }
                 });
-                // Show this dropdown
-                dropdownContent.style.display = 'table-cell';
+                // Show this dropdown - use setAttribute to ensure CSS selector matches
+                dropdownContent.style.setProperty('display', 'table-cell', 'important');
+                dropdownContent.setAttribute('data-visible', 'true');
+                console.log('📂 [DROPDOWN] Opened dropdown');
             }
         });
 
