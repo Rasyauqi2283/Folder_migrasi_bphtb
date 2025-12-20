@@ -702,20 +702,37 @@ function createTableRow(tbody, item) {
 
         // Add click handler to toggle dropdown
         row.addEventListener('click', function(e) {
-            // Don't toggle if clicking on buttons
-            if (e.target.closest('button')) {
+            // Don't toggle if clicking on buttons, inputs, labels, or form elements
+            if (e.target.closest('button') || 
+                e.target.closest('input') || 
+                e.target.closest('label') ||
+                e.target.closest('select') ||
+                e.target.closest('textarea') ||
+                e.target.closest('.dropdown-content') ||
+                e.target.closest('.dropdown-content-wrapper')) {
                 return;
             }
             
-            const isVisible = dropdownContent.style.display !== 'none';
-            dropdownContent.style.display = isVisible ? 'none' : 'table-cell';
+            // Check if dropdown is currently visible
+            // Check both inline style and computed style
+            const inlineDisplay = dropdownContent.style.display;
+            const computedDisplay = window.getComputedStyle(dropdownContent).display;
+            const isVisible = inlineDisplay === 'table-cell' || computedDisplay === 'table-cell';
             
-            // Close other dropdowns
-            document.querySelectorAll('.dropdown-content').forEach(dd => {
-                if (dd !== dropdownContent) {
-                    dd.style.display = 'none';
-                }
-            });
+            // Toggle dropdown
+            if (isVisible) {
+                // Close this dropdown
+                dropdownContent.style.display = 'none';
+            } else {
+                // Close all other dropdowns first
+                document.querySelectorAll('#penelitiverifikasiTable .dropdown-content').forEach(dd => {
+                    if (dd !== dropdownContent) {
+                        dd.style.display = 'none';
+                    }
+                });
+                // Show this dropdown
+                dropdownContent.style.display = 'table-cell';
+            }
         });
 
         // Setup form interactions

@@ -448,21 +448,20 @@
 
 /* ===== DROPDOWN PENELITI VERIFIKASI ===== */
 /* DROPDOWN CONTENT (Detail Card) - DARK THEME */
+/* Default: hidden */
 #penelitiverifikasiTable .dropdown-content {
-  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%) !important;
+  display: none !important;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
   border-radius: 12px;
-  padding: 20px !important;
+  padding: 20px;
   margin: 15px 0;
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   animation: fadeInDropdown 0.3s ease;
   border: 1px solid #1f2937;
-  display: table-cell !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  color: #e5e7eb !important;
+  color: #e5e7eb;
 }
 
-/* Ensure dropdown content is visible when displayed */
+/* When explicitly shown via inline style */
 #penelitiverifikasiTable .dropdown-content[style*="table-cell"] {
   display: table-cell !important;
   visibility: visible !important;
