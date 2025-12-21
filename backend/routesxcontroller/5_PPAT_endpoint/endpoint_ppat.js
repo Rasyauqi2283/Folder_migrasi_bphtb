@@ -526,7 +526,9 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
             safe: { safePage, safeLimit, safeOffset }
         });
         
-        let whereClause = "WHERE userid = $1 AND trackstatus != 'Dihapus'";
+        // Filter: exclude 'Dihapus' and 'Diserahkan' status
+        // Data dengan status 'Diserahkan' akan muncul di rincian laporan bulanan, bukan di tabel booking
+        let whereClause = "WHERE userid = $1 AND trackstatus != 'Dihapus' AND trackstatus != 'Diserahkan'";
         const queryParams = [userid];
         let paramCount = 1;
         
@@ -543,6 +545,7 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
             queryParams.push(`%${search}%`);
         }
         
+        // Note: Jika status filter digunakan, pastikan tidak memfilter 'Diserahkan' karena sudah di-exclude di WHERE clause
         if (status) {
             paramCount++;
             whereClause += ` AND trackstatus = $${paramCount}`;
