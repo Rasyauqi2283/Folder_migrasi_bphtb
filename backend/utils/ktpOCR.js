@@ -70,11 +70,11 @@ class KTPOCR {
       console.log(`🔍 [KTP OCR] Processing: ${path.basename(imagePath)}`);
 
       // Multiple preprocessing attempts for better accuracy
+      // Reduced to 2 methods to prevent timeout (adaptive + otsu only)
       const preprocessingMethods = [
+        () => this.preprocessImage(imagePath, 'otsu'), // Fastest and most reliable
         () => this.preprocessImage(imagePath, 'adaptive'),
-        () => this.preprocessImage(imagePath, 'otsu'),
-        () => this.preprocessImage(imagePath, 'gaussian'),
-        // Fallback: Direct OCR without preprocessing
+        // Fallback: Direct OCR without preprocessing (fastest)
         () => Promise.resolve(fs.readFileSync(imagePath))
       ];
 
@@ -86,11 +86,11 @@ class KTPOCR {
         try {
           const processedImage = await preprocessMethod();
           
-          // OCR with timeout
+          // OCR with timeout (reduced to 20 seconds per method to prevent 502)
           const { data } = await Promise.race([
             this.worker.recognize(processedImage),
             new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('OCR timeout')), 30000)
+              setTimeout(() => reject(new Error('OCR timeout')), 20000)
             )
           ]);
 

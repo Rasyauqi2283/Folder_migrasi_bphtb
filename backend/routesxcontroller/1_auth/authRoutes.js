@@ -1012,6 +1012,8 @@ router.post('/simulate-ktp-verification', async (req, res) => {
 
 // Endpoint untuk OCR REAL (scan teks per teks dari gambar KTP)
 router.post('/real-ktp-verification', secureUploadKTP.single('fotoktp'), async (req, res) => {
+  let imagePath = null;
+  
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -1020,12 +1022,30 @@ router.post('/real-ktp-verification', secureUploadKTP.single('fotoktp'), async (
       });
     }
 
+    imagePath = req.file.path;
     console.log('🔍 [OCR REAL] Memulai scan KTP:', req.file.filename);
     
-    const imagePath = req.file.path;
+    // Set response timeout (60 detik untuk OCR)
+    req.setTimeout(60000, () => {
+      console.error('⏱️ [OCR REAL] Request timeout setelah 60 detik');
+      if (!res.headersSent) {
+        res.status(504).json({
+          success: false,
+          message: 'OCR timeout - proses terlalu lama. Silakan coba lagi dengan gambar yang lebih kecil atau jelas.'
+        });
+      }
+    });
     
-    // Gunakan KTPOCR untuk scan teks per teks
-    const ocrResult = await KTPOCR.extract(imagePath);
+    // Wrap OCR dalam Promise dengan timeout
+    const ocrPromise = KTPOCR.extract(imagePath);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('OCR process timeout setelah 50 detik'));
+      }, 50000); // 50 detik timeout
+    });
+    
+    // Race antara OCR dan timeout
+    const ocrResult = await Promise.race([ocrPromise, timeoutPromise]);
     
     console.log('✅ [OCR REAL] Hasil scan:', {
       nik: ocrResult.nik,
@@ -1037,9 +1057,17 @@ router.post('/real-ktp-verification', secureUploadKTP.single('fotoktp'), async (
 
     // Cleanup temporary file
     try {
-      fs.unlinkSync(imagePath);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
     } catch (cleanupError) {
       console.warn('⚠️ [OCR REAL] Failed to cleanup temp file:', cleanupError.message);
+    }
+
+    // Check if response already sent
+    if (res.headersSent) {
+      console.warn('⚠️ [OCR REAL] Response already sent, skipping...');
+      return;
     }
 
     res.json({
@@ -1057,31 +1085,50 @@ router.post('/real-ktp-verification', secureUploadKTP.single('fotoktp'), async (
         jenisKelamin: ocrResult.jenisKelamin,
         golonganDarah: ocrResult.golonganDarah,
         agama: ocrResult.agama,
-        statusPerkawinan: ocrResult.statusPerkawinan, // INI YANG ANDA TANYAKAN!
+        statusPerkawinan: ocrResult.statusPerkawinan,
         pekerjaan: ocrResult.pekerjaan,
         kewarganegaraan: ocrResult.kewarganegaraan,
         berlakuHingga: ocrResult.berlakuHingga,
         status: "VERIFIED_BY_OCR"
       },
       stats: ocrResult.stats,
-      rawText: ocrResult.rawText // Untuk debugging
+      rawText: ocrResult.rawText ? ocrResult.rawText.substring(0, 500) : null // Limit rawText untuk response size
     });
 
   } catch (error) {
     console.error('❌ [OCR REAL] Error:', error.message);
+    console.error('❌ [OCR REAL] Stack:', error.stack);
     
     // Cleanup on error
-    if (req.file && req.file.path) {
+    if (imagePath && fs.existsSync(imagePath)) {
       try {
-        fs.unlinkSync(req.file.path);
+        fs.unlinkSync(imagePath);
       } catch (cleanupError) {
         console.warn('⚠️ [OCR REAL] Failed to cleanup on error:', cleanupError.message);
       }
     }
 
-    res.status(500).json({
+    // Check if response already sent
+    if (res.headersSent) {
+      console.warn('⚠️ [OCR REAL] Response already sent, cannot send error response');
+      return;
+    }
+
+    // Determine error status code
+    let statusCode = 500;
+    let errorMessage = "Gagal memindai KTP";
+    
+    if (error.message.includes('timeout')) {
+      statusCode = 504;
+      errorMessage = "OCR timeout - proses terlalu lama. Silakan coba lagi dengan gambar yang lebih kecil atau jelas.";
+    } else if (error.message.includes('memory') || error.message.includes('Memory')) {
+      statusCode = 507;
+      errorMessage = "Server kehabisan memori. Silakan coba lagi dengan gambar yang lebih kecil.";
+    }
+
+    res.status(statusCode).json({
       success: false,
-      message: "Gagal memindai KTP: " + error.message,
+      message: errorMessage,
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
