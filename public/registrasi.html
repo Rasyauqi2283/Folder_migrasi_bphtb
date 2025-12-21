@@ -307,11 +307,9 @@
             </div>
         </div>
 
-        <div id="autoFillSuggestion" class="auto-fill-suggestion" style="display: none;">
-            <p>Kami menemukan data dari KTP Anda:</p>
-            <p>Nama: <span id="detectedNama"></span></p>
-            <p>NIK: <span id="detectedNIK"></span></p>
-            <button type="button" class="auto-fill-btn" onclick="applyAutoFill()">Gunakan Data Ini</button>
+        <div id="autoFillSuggestion" class="auto-fill-suggestion" 
+             style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; margin-top: 15px; overflow: hidden;">
+            <!-- Konten diisi secara dinamis oleh registrasi.js -->
         </div>
         <small onclick="openModal()">panduan foto KTP!</small>
         <small>pastikan nik dan nama lengkap sesuai dengan ktp yang didaftarkan</small>

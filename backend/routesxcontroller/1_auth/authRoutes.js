@@ -337,39 +337,44 @@ router.post('/register', (req, res, next) => {
   // Handle pre-uploaded KTP file
   if (ktpUploadId && !req.file) {
     try {
-      console.log(`🔍 [REGISTER] Looking for pre-uploaded KTP with ID: ${ktpUploadId}`);
-      
-      // Cari file temporary di temp_uploads
-      const tempUploadsDir = path.join(__dirname, '../../../temp_uploads');
-      const tempFiles = fs.readdirSync(tempUploadsDir)
-        .filter(file => file.startsWith(`ktp_${ktpUploadId}_`));
-      
-      if (tempFiles.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'File KTP tidak ditemukan. Silakan upload ulang KTP.'
-        });
+      // SIMULASI: Jika ID simulasi, lewati pengecekan file fisik
+      if (ktpUploadId.startsWith('SIMULATION_ID_')) {
+        console.log(`✨ [REGISTER] Simulation KTP ID detected, bypassing physical file check`);
+        secureFile = { fileId: ktpUploadId, status: 'simulated' };
+      } else {
+        console.log(`🔍 [REGISTER] Looking for pre-uploaded KTP with ID: ${ktpUploadId}`);
+        
+        // Cari file temporary di temp_uploads
+        const tempUploadsDir = path.join(__dirname, '../../../temp_uploads');
+        const tempFiles = fs.readdirSync(tempUploadsDir)
+          .filter(file => file.startsWith(`ktp_${ktpUploadId}_`));
+        
+        if (tempFiles.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'File KTP tidak ditemukan. Silakan upload ulang KTP.'
+          });
+        }
+        
+        const tempFile = tempFiles[0];
+        const fullTempPath = path.join(tempUploadsDir, tempFile);
+        
+        console.log(`📁 [REGISTER] Found temp file: ${tempFile}`);
+        
+        // Reconstruct req.file object untuk kompatibilitas dengan middleware
+        req.file = {
+          fieldname: 'fotoktp',
+          originalname: tempFile.replace(`ktp_${ktpUploadId}_`, '').replace('.bin', ''),
+          encoding: '7bit',
+          mimetype: 'image/jpeg', // Default, akan diperbaiki oleh processKTPUpload
+          destination: path.dirname(fullTempPath),
+          filename: tempFile,
+          path: fullTempPath,
+          size: fs.statSync(fullTempPath).size
+        };
+        
+        console.log(`✅ [REGISTER] Reconstructed req.file for pre-uploaded KTP`);
       }
-      
-      const tempFile = tempFiles[0];
-      const fullTempPath = path.join(tempUploadsDir, tempFile);
-      
-      console.log(`📁 [REGISTER] Found temp file: ${tempFile}`);
-      
-      // Reconstruct req.file object untuk kompatibilitas dengan middleware
-      req.file = {
-        fieldname: 'fotoktp',
-        originalname: tempFile.replace(`ktp_${ktpUploadId}_`, '').replace('.bin', ''),
-        encoding: '7bit',
-        mimetype: 'image/jpeg', // Default, akan diperbaiki oleh processKTPUpload
-        destination: path.dirname(fullTempPath),
-        filename: tempFile,
-        path: fullTempPath,
-        size: fs.statSync(fullTempPath).size
-      };
-      
-      console.log(`✅ [REGISTER] Reconstructed req.file for pre-uploaded KTP`);
-      
     } catch (error) {
       console.error(`❌ [REGISTER] Error handling pre-uploaded KTP:`, error);
       return res.status(400).json({
@@ -645,7 +650,7 @@ router.post('/register', (req, res, next) => {
     });
     
     // Clean up secure file if registration fails
-    if (secureFile && secureFile.fileId) {
+    if (secureFile && secureFile.fileId && secureFile.status !== 'simulated') {
       try {
         const fs = await import('fs/promises');
         const path = await import('path');
@@ -968,6 +973,35 @@ router.post('/ping', async (req, res) => {
         node_version: process.version,
         environment: process.env.NODE_ENV || 'development'
       }
+    });
+  }
+});
+
+// 8. SIMULASI E-KYC KTP (Hanya untuk Demo TA)
+// Menarik data mock dari imagevalidator.js
+import { getRandomMockData } from '../../services/ValidatorGene/imagevalidator.js';
+
+router.post('/simulate-ktp-verification', async (req, res) => {
+  try {
+    console.log('🔍 [SIMULASI E-KYC] Memulai verifikasi KTP...');
+    
+    // Simulasi delay proses AI/OCR selama 2.5 detik agar terlihat meyakinkan
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    const mockData = getRandomMockData();
+    console.log('✅ [SIMULASI E-KYC] Data terverifikasi:', mockData.nama);
+
+    res.json({
+      success: true,
+      message: "KTP Terverifikasi secara otomatis oleh sistem Bappenda",
+      data: mockData
+    });
+  } catch (error) {
+    console.error('❌ [SIMULASI E-KYC] Error:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: "Gagal verifikasi otomatis",
+      error: error.message 
     });
   }
 });

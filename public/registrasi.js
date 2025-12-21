@@ -555,11 +555,22 @@ let ktpUploadStatus = {
     error: null
 };
 
-// Fungsi untuk upload KTP secara terpisah
+// Fungsi untuk upload KTP & Simulasi Verifikasi (E-KYC)
 async function uploadKTPFile(file) {
     if (ktpUploadStatus.isUploading) {
-        console.log("⏳ [KTP_UPLOAD] Upload already in progress");
+        console.log("⏳ [KTP_UPLOAD] Simulation already in progress");
         return;
+    }
+
+    const autoFill = document.getElementById("autoFillSuggestion");
+    if (autoFill) {
+        autoFill.style.display = "block";
+        autoFill.innerHTML = `
+            <div style="padding: 15px; text-align: center; color: #3b82f6; background: rgba(59,130,246,0.1); border-radius: 8px;">
+                <i class="fas fa-spinner fa-spin"></i> 
+                Sedang memverifikasi KTP ke database kependudukan...
+            </div>
+        `;
     }
 
     ktpUploadStatus.isUploading = true;
@@ -567,41 +578,88 @@ async function uploadKTPFile(file) {
     ktpUploadStatus.error = null;
 
     try {
-        console.log("📤 [KTP_UPLOAD] Starting KTP upload...");
+        console.log("📤 [SIMULASI] Memulai verifikasi KTP...");
         
-        const formData = new FormData();
-        formData.append('fotoktp', file);
-        formData.append('uploadType', 'ktp_verification');
-
-        const response = await fetch('/api/v1/auth/upload-ktp', {
+        // Panggil endpoint simulasi baru
+        const response = await fetch('/api/v1/auth/simulate-ktp-verification', { 
             method: 'POST',
-            body: formData
+            credentials: 'include'
         });
-
         const result = await response.json();
-        console.log("📥 [KTP_UPLOAD] Upload response:", result);
+
+        console.log("📥 [SIMULASI] Response:", result);
 
         if (response.ok && result.success) {
-            ktpUploadStatus.isUploaded = true;
-            ktpUploadStatus.uploadId = result.uploadId;
-            ktpUploadStatus.error = null;
+            if (autoFill) {
+                autoFill.innerHTML = `
+                    <div style="border-left: 4px solid #22c55e; padding: 12px; background: rgba(34,197,94,0.1); border-radius: 8px;">
+                        <p style="color: #22c55e; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle"></i> KTP Terverifikasi (Sistem Bappenda)
+                        </p>
+                        <div style="font-size: 13px; color: #fff;">
+                            <p style="margin: 2px 0;">NIK: <strong id="detectedNIK" style="color: #00c8ff;">${result.data.nik}</strong></p>
+                            <p style="margin: 2px 0;">Nama: <strong id="detectedNama" style="color: #00c8ff;">${result.data.nama}</strong></p>
+                        </div>
+                        <button type="button" class="auto-fill-btn" onclick="applyAutoFill()" 
+                                style="margin-top: 12px; background: #22c55e; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
+                            Gunakan Data Terverifikasi
+                        </button>
+                    </div>
+                `;
+            }
             
-            // Update UI untuk menunjukkan upload berhasil
-            updateKTPUploadStatus('success', 'KTP berhasil diupload');
-            return { success: true, uploadId: result.uploadId };
+            ktpUploadStatus.isUploaded = true;
+            ktpUploadStatus.uploadId = "SIMULATION_ID_" + Date.now();
+            updateKTPUploadStatus('success', 'KTP Terverifikasi Otomatis');
+            return { success: true };
         } else {
-            throw new Error(result.message || 'Upload KTP gagal');
+            throw new Error(result.message || 'Verifikasi gagal');
         }
     } catch (error) {
-        console.error("❌ [KTP_UPLOAD] Upload error:", error);
+        console.error("❌ [SIMULASI] Error:", error);
         ktpUploadStatus.error = error.message;
         ktpUploadStatus.isUploaded = false;
+        if (autoFill) {
+            autoFill.innerHTML = `<p style="color: #ef4444; padding: 10px; background: rgba(239,68,68,0.1); border-radius: 8px;">Gagal memverifikasi KTP otomatis. Silakan isi data manual.</p>`;
+        }
         updateKTPUploadStatus('error', error.message);
         throw error;
     } finally {
         ktpUploadStatus.isUploading = false;
     }
 }
+
+// Fungsi untuk mengisi form otomatis dari hasil deteksi
+window.applyAutoFill = function() {
+    const detectedNama = document.getElementById('detectedNama')?.textContent;
+    const detectedNIK = document.getElementById('detectedNIK')?.textContent;
+    
+    if (detectedNama && detectedNIK) {
+        const namaInput = document.getElementById('nama');
+        const nikInput = document.getElementById('nik');
+        
+        if (namaInput) {
+            namaInput.value = detectedNama;
+            validateNama(namaInput);
+        }
+        
+        if (nikInput) {
+            nikInput.value = detectedNIK;
+            validateNIK(nikInput);
+            // Update counter
+            const counter = document.getElementById('nikCounter');
+            if (counter) {
+                counter.textContent = `${detectedNIK.length}/16 digit`;
+                counter.style.color = '#28a745';
+            }
+        }
+        
+        const autoFill = document.getElementById("autoFillSuggestion");
+        if (autoFill) autoFill.style.display = "none";
+        
+        alert("Data KTP berhasil disalin ke formulir!");
+    }
+};
 
 // Make uploadKTPFile available globally
 window.uploadKTPFile = uploadKTPFile;
