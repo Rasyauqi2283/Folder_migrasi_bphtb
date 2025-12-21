@@ -132,6 +132,13 @@ class KTPOCR {
         nama: null, 
         ttl: null,
         alamat: null,
+        jenisKelamin: null,
+        golonganDarah: null,
+        agama: null,
+        statusPerkawinan: null,
+        pekerjaan: null,
+        kewarganegaraan: null,
+        berlakuHingga: null,
         rawText: '', 
         error: error.message,
         processingTime: Date.now() - startTime
@@ -175,13 +182,20 @@ class KTPOCR {
     return validProvinces.includes(province);
   }
 
-  // Extract all fields at once
+  // Extract all fields at once (LENGKAP)
   extractAllFields(text) {
     return {
       nik: this.extractNIK(text),
       nama: this.extractNama(text),
       ttl: this.extractTTL(text),
       alamat: this.extractAlamat(text),
+      jenisKelamin: this.extractJenisKelamin(text),
+      golonganDarah: this.extractGolonganDarah(text),
+      agama: this.extractAgama(text),
+      statusPerkawinan: this.extractStatusPerkawinan(text),
+      pekerjaan: this.extractPekerjaan(text),
+      kewarganegaraan: this.extractKewarganegaraan(text),
+      berlakuHingga: this.extractBerlakuHingga(text),
       rawText: text
     };
   }
@@ -299,6 +313,179 @@ class KTPOCR {
     return null;
   }
 
+  // Ekstrak Jenis Kelamin
+  extractJenisKelamin(text) {
+    const patterns = [
+      /JENIS\s+KE[LI]AMIN\s*[:\.]?\s*(LAKI-LAKI|PEREMPUAN|LAKI|PEREMPUAN)/i,
+      /JK\s*[:\.]?\s*(LAKI-LAKI|PEREMPUAN|L|P)/i,
+      /(LAKI-LAKI|PEREMPUAN)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const jk = match[1].toUpperCase();
+        if (jk.includes('LAKI')) return 'Laki-laki';
+        if (jk.includes('PEREMPUAN') || jk === 'P') return 'Perempuan';
+        if (jk === 'L') return 'Laki-laki';
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Golongan Darah
+  extractGolonganDarah(text) {
+    const patterns = [
+      /GOL[\.]?\s*DARAH\s*[:\.]?\s*(A|B|AB|O|-\s*)/i,
+      /DARAH\s*[:\.]?\s*(A|B|AB|O)/i,
+      /\b(A|B|AB|O)\b(?=.*DARAH)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const darah = match[1].trim().toUpperCase();
+        if (['A', 'B', 'AB', 'O'].includes(darah)) {
+          return darah;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Agama
+  extractAgama(text) {
+    const agamaList = ['ISLAM', 'KRISTEN', 'KATHOLIK', 'HINDU', 'BUDHA', 'KONGHUCU'];
+    const patterns = [
+      /AGAMA\s*[:\.]?\s*([A-Z]+)/i,
+      /AGAMA\s+([A-Z]+)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const agama = match[1].trim().toUpperCase();
+        for (const validAgama of agamaList) {
+          if (agama.includes(validAgama) || validAgama.includes(agama)) {
+            return validAgama;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Status Perkawinan (PENTING!)
+  extractStatusPerkawinan(text) {
+    const patterns = [
+      /STATUS\s+PERKAWINAN\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
+      /STATUS\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
+      /(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const status = match[1].trim().toUpperCase();
+        // Normalize status
+        if (status.includes('BELUM') || status.includes('KAWIN') && !status.includes('CERAI')) {
+          return 'Belum Kawin';
+        }
+        if (status.includes('KAWIN') && !status.includes('BELUM') && !status.includes('CERAI')) {
+          return 'Kawin';
+        }
+        if (status.includes('CERAI') && status.includes('HIDUP')) {
+          return 'Cerai Hidup';
+        }
+        if (status.includes('CERAI') && status.includes('MATI')) {
+          return 'Cerai Mati';
+        }
+        if (status.includes('JANDA')) {
+          return 'Janda';
+        }
+        if (status.includes('DUDA')) {
+          return 'Duda';
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Pekerjaan
+  extractPekerjaan(text) {
+    const patterns = [
+      /PEKERJAAN\s*[:\.]?\s*([A-Z\s]{3,})/i,
+      /PEKERJAAN\s+([A-Z\s]{3,})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const pekerjaan = match[1].trim().replace(/\s+/g, ' ');
+        // Filter out common false positives
+        if (pekerjaan.length >= 3 && 
+            !pekerjaan.includes('WARGA') && 
+            !pekerjaan.includes('NEGARA') &&
+            !pekerjaan.includes('BERLAKU')) {
+          return pekerjaan;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Kewarganegaraan
+  extractKewarganegaraan(text) {
+    const patterns = [
+      /KEWARGANEGARAAN\s*[:\.]?\s*(WNI|WNA|INDONESIA)/i,
+      /WARGA\s+NEGARA\s*[:\.]?\s*(WNI|WNA|INDONESIA)/i,
+      /\b(WNI|WNA)\b/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const warga = match[1].trim().toUpperCase();
+        if (warga === 'WNI' || warga.includes('INDONESIA')) {
+          return 'WNI';
+        }
+        if (warga === 'WNA') {
+          return 'WNA';
+        }
+      }
+    }
+
+    return 'WNI'; // Default untuk KTP Indonesia
+  }
+
+  // Ekstrak Berlaku Hingga
+  extractBerlakuHingga(text) {
+    const patterns = [
+      /BERLAKU\s+HINGGA\s*[:\.]?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i,
+      /BERLAKU\s*[:\.]?\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i,
+      /SEUMUR\s+HIDUP/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        if (match[0].includes('SEUMUR HIDUP')) {
+          return 'SEUMUR HIDUP';
+        }
+        if (match[1]) {
+          return match[1].trim();
+        }
+      }
+    }
+
+    return null;
+  }
+
   // Preprocess gambar dengan multiple methods
   async preprocessImage(imagePath, method = 'otsu') {
     const imageData = fs.readFileSync(imagePath);
@@ -368,7 +555,7 @@ class KTPOCR {
   // Get extraction statistics
   getExtractionStats(result) {
     const stats = {
-      totalFields: 4, // nik, nama, ttl, alamat
+      totalFields: 11, // nik, nama, ttl, alamat, jenisKelamin, golonganDarah, agama, statusPerkawinan, pekerjaan, kewarganegaraan, berlakuHingga
       extractedFields: 0,
       confidence: result.confidence || 0,
       processingTime: result.processingTime || 0,
@@ -383,6 +570,13 @@ class KTPOCR {
     if (result.nama) stats.extractedFields++;
     if (result.ttl) stats.extractedFields++;
     if (result.alamat) stats.extractedFields++;
+    if (result.jenisKelamin) stats.extractedFields++;
+    if (result.golonganDarah) stats.extractedFields++;
+    if (result.agama) stats.extractedFields++;
+    if (result.statusPerkawinan) stats.extractedFields++;
+    if (result.pekerjaan) stats.extractedFields++;
+    if (result.kewarganegaraan) stats.extractedFields++;
+    if (result.berlakuHingga) stats.extractedFields++;
 
     stats.completeness = (stats.extractedFields / stats.totalFields) * 100;
 

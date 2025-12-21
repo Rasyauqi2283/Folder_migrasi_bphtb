@@ -981,6 +981,10 @@ router.post('/ping', async (req, res) => {
 // Menarik data mock dari imagevalidator.js
 import { getRandomMockData } from '../../services/ValidatorGene/imagevalidator.js';
 
+// 9. OCR REAL KTP (Menggunakan Tesseract.js untuk scan teks per teks)
+import KTPOCR from '../../utils/ktpOCR.js';
+
+// Endpoint untuk simulasi (tetap ada untuk demo)
 router.post('/simulate-ktp-verification', async (req, res) => {
   try {
     console.log('🔍 [SIMULASI E-KYC] Memulai verifikasi KTP...');
@@ -1002,6 +1006,80 @@ router.post('/simulate-ktp-verification', async (req, res) => {
       success: false, 
       message: "Gagal verifikasi otomatis",
       error: error.message 
+    });
+  }
+});
+
+// Endpoint untuk OCR REAL (scan teks per teks dari gambar KTP)
+router.post('/real-ktp-verification', secureUploadKTP.single('fotoktp'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'File KTP tidak ditemukan'
+      });
+    }
+
+    console.log('🔍 [OCR REAL] Memulai scan KTP:', req.file.filename);
+    
+    const imagePath = req.file.path;
+    
+    // Gunakan KTPOCR untuk scan teks per teks
+    const ocrResult = await KTPOCR.extract(imagePath);
+    
+    console.log('✅ [OCR REAL] Hasil scan:', {
+      nik: ocrResult.nik,
+      nama: ocrResult.nama,
+      statusPerkawinan: ocrResult.statusPerkawinan,
+      confidence: ocrResult.confidence,
+      completeness: ocrResult.stats?.completeness
+    });
+
+    // Cleanup temporary file
+    try {
+      fs.unlinkSync(imagePath);
+    } catch (cleanupError) {
+      console.warn('⚠️ [OCR REAL] Failed to cleanup temp file:', cleanupError.message);
+    }
+
+    res.json({
+      success: true,
+      message: "KTP berhasil dipindai secara otomatis",
+      data: {
+        nik: ocrResult.nik,
+        nama: ocrResult.nama,
+        tempatLahir: ocrResult.ttl?.tempat || null,
+        tanggalLahir: ocrResult.ttl?.tanggal || null,
+        alamat: ocrResult.alamat,
+        jenisKelamin: ocrResult.jenisKelamin,
+        golonganDarah: ocrResult.golonganDarah,
+        agama: ocrResult.agama,
+        statusPerkawinan: ocrResult.statusPerkawinan, // INI YANG ANDA TANYAKAN!
+        pekerjaan: ocrResult.pekerjaan,
+        kewarganegaraan: ocrResult.kewarganegaraan,
+        berlakuHingga: ocrResult.berlakuHingga,
+        status: "VERIFIED_BY_OCR"
+      },
+      stats: ocrResult.stats,
+      rawText: ocrResult.rawText // Untuk debugging
+    });
+
+  } catch (error) {
+    console.error('❌ [OCR REAL] Error:', error.message);
+    
+    // Cleanup on error
+    if (req.file && req.file.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupError) {
+        console.warn('⚠️ [OCR REAL] Failed to cleanup on error:', cleanupError.message);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Gagal memindai KTP: " + error.message,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
