@@ -182,13 +182,16 @@ class KTPOCR {
     return validProvinces.includes(province);
   }
 
-  // Extract all fields at once (LENGKAP)
+  // Extract all fields at once (LENGKAP - termasuk field KTP Ohim)
   extractAllFields(text) {
     return {
       nik: this.extractNIK(text),
       nama: this.extractNama(text),
       ttl: this.extractTTL(text),
       alamat: this.extractAlamat(text),
+      rtRw: this.extractRTRW(text),
+      kelurahan: this.extractKelurahan(text),
+      kecamatan: this.extractKecamatan(text),
       jenisKelamin: this.extractJenisKelamin(text),
       golonganDarah: this.extractGolonganDarah(text),
       agama: this.extractAgama(text),
@@ -291,21 +294,83 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak Alamat
+  // Ekstrak Alamat (termasuk RT/RW untuk format KTP Ohim)
   extractAlamat(text) {
     const patterns = [
-      /ALAMAT\s*[:\.]?\s*([A-Z0-9\s,.-]{10,})/i,
-      /Alamat\s*[:\.]?\s*([A-Z0-9\s,.-]{10,})/i,
-      /RT\/RW\s*[:\.]?\s*([A-Z0-9\s,.-]{10,})/i
+      // Pattern untuk: "ALAMAT: KEDUNG BADAK NO.16"
+      /ALAMAT\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})/i,
+      // Pattern untuk: "Alamat: ..."
+      /Alamat\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})/i,
+      // Pattern untuk kombinasi: "ALAMAT: ... RT/RW: ..."
+      /ALAMAT\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})\s*RT\/RW/i
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match && match[1]) {
-        const alamat = match[1].trim().replace(/\s+/g, ' ');
-        // Basic validation: should be reasonable length and contain letters/numbers
-        if (alamat.length >= 10 && (/\d/.test(alamat) || /[A-Z]/.test(alamat))) {
+        let alamat = match[1].trim().replace(/\s+/g, ' ');
+        // Hapus bagian RT/RW jika ikut terambil
+        alamat = alamat.replace(/\s*RT\/RW.*$/i, '').trim();
+        // Basic validation: should be reasonable length
+        if (alamat.length >= 5 && (/\d/.test(alamat) || /[A-Z]/.test(alamat))) {
           return alamat;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak RT/RW (field terpisah untuk KTP Ohim)
+  extractRTRW(text) {
+    const patterns = [
+      /RT\/RW\s*[:\.]?\s*(\d{3,4}\/\d{3,4})/i,
+      /RT\/RW\s+(\d{3,4}\/\d{3,4})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Kelurahan/Desa
+  extractKelurahan(text) {
+    const patterns = [
+      /KEL\/DESA\s*[:\.]?\s*([A-Z\s]{3,})/i,
+      /Kel\/Desa\s*[:\.]?\s*([A-Z\s]{3,})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const kel = match[1].trim().replace(/\s+/g, ' ');
+        if (kel.length >= 3) {
+          return kel;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Ekstrak Kecamatan
+  extractKecamatan(text) {
+    const patterns = [
+      /KECAMATAN\s*[:\.]?\s*([A-Z\s]{3,})/i,
+      /Kecamatan\s*[:\.]?\s*([A-Z\s]{3,})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const kec = match[1].trim().replace(/\s+/g, ' ');
+        if (kec.length >= 3) {
+          return kec;
         }
       }
     }
@@ -381,21 +446,22 @@ class KTPOCR {
   // Ekstrak Status Perkawinan (PENTING!)
   extractStatusPerkawinan(text) {
     const patterns = [
+      // Pattern untuk format: "STATUS PERKAWINAN: BELUM KAWIN" (format KTP Ohim)
       /STATUS\s+PERKAWINAN\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
+      // Pattern untuk format: "STATUS: BELUM KAWIN"
       /STATUS\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
-      /(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i
+      // Pattern untuk format: "BELUM KAWIN" (tanpa label)
+      /\b(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)\b/i
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
-      if (match && match[1]) {
-        const status = match[1].trim().toUpperCase();
-        // Normalize status
-        if (status.includes('BELUM') || status.includes('KAWIN') && !status.includes('CERAI')) {
+      if (match) {
+        const status = (match[1] || match[0]).trim().toUpperCase();
+        
+        // Normalize status dengan prioritas
+        if (status.includes('BELUM') && status.includes('KAWIN')) {
           return 'Belum Kawin';
-        }
-        if (status.includes('KAWIN') && !status.includes('BELUM') && !status.includes('CERAI')) {
-          return 'Kawin';
         }
         if (status.includes('CERAI') && status.includes('HIDUP')) {
           return 'Cerai Hidup';
@@ -408,6 +474,9 @@ class KTPOCR {
         }
         if (status.includes('DUDA')) {
           return 'Duda';
+        }
+        if (status === 'KAWIN' || status.includes('KAWIN')) {
+          return 'Kawin';
         }
       }
     }
