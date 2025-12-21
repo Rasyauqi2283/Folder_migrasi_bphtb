@@ -367,6 +367,20 @@
       border-color: rgba(255, 255, 255, 0.5);
     }
 
+    /* Drag and Drop Visual Feedback */
+    .file-upload.drag-over label {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #3b82f6;
+      border-style: solid;
+      transform: scale(1.02);
+      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .file-upload.drag-over label .upload-icon {
+      transform: scale(1.2);
+      transition: transform 0.3s ease;
+    }
+
     canvas {
       display: none;
     }
@@ -475,8 +489,8 @@
           <div class="file-upload">
             <input id="qrFile" type="file" accept="image/png,image/jpeg,application/pdf" />
             <label for="qrFile">
-              <div style="font-size: 2rem; margin-bottom: 10px;">📤</div>
-              <div>Klik untuk upload gambar atau PDF</div>
+              <div class="upload-icon" style="font-size: 2rem; margin-bottom: 10px;">📤</div>
+              <div>Klik atau seret file ke sini untuk upload (PDF atau Gambar)</div>
               <div style="font-size: 0.85rem; margin-top: 5px; opacity: 0.7;">PNG, JPG, atau PDF</div>
             </label>
           </div>
@@ -792,7 +806,69 @@
     }
 
     // ===== File Upload for QR =====
-    document.getElementById('qrFile').addEventListener('change', handleFileUpload);
+    const qrFileInput = document.getElementById('qrFile');
+    const fileUploadArea = document.querySelector('.file-upload');
+    const fileUploadLabel = fileUploadArea.querySelector('label');
+
+    // Click to upload (existing functionality)
+    qrFileInput.addEventListener('change', handleFileUpload);
+
+    // ===== Drag and Drop Functionality =====
+    // Prevent default drag behaviors on the document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight drop area when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+      fileUploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      fileUploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+      fileUploadArea.classList.add('drag-over');
+    }
+
+    function unhighlight(e) {
+      fileUploadArea.classList.remove('drag-over');
+    }
+
+    // Handle dropped files
+    fileUploadArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      
+      if (files.length > 0) {
+        const file = files[0];
+        // Validate file type
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const isValidType = ext === 'pdf' || 
+                           file.type === 'application/pdf' || 
+                           file.type.startsWith('image/');
+        
+        if (isValidType) {
+          // Create a synthetic event object to reuse handleFileUpload
+          const syntheticEvent = {
+            target: {
+              files: [file]
+            }
+          };
+          handleFileUpload(syntheticEvent);
+        } else {
+          showResult('error', 'Format Tidak Didukung', 'Pilih gambar (PNG/JPG) atau PDF.');
+        }
+      }
+    }
 
     async function handleFileUpload(e) {
       const file = e.target.files && e.target.files[0];

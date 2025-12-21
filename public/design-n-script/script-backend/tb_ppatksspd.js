@@ -220,13 +220,20 @@ async function loadTableDataLTB() {
                 // Kolom Keterangan, ditambah dengan tombol "View Document"
                 const sendCell = row.insertCell(7);
                 const sendButton = document.createElement('button');
-                sendButton.textContent = 'Kirim';
+                sendButton.innerHTML = '<span>✓</span> Kirim';
                 sendButton.classList.add('btn-kirim-document'); // Berikan kelas CSS untuk styling (optional)
                 
                 console.log(`🔧 [ROW ${index + 1}] Button created and added to cell`);
                 // Menambahkan event listener pada tombol
                 sendButton.addEventListener('click', async () => {
-                    const confirmation = window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?");
+                    // Gunakan universalAlert.confirm untuk konsistensi design
+                    const confirmation = await (window.universalAlert ? 
+                        window.universalAlert.confirm(
+                            "Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?",
+                            'Konfirmasi Pengiriman Data'
+                        ) : 
+                        Promise.resolve(window.confirm("Apakah kamu yakin ingin mengirim data ini? Sudah diperiksa?"))
+                    );
 
                     if (confirmation) {
                         // Validasi data yang diperlukan - gunakan userid_ppat jika userid tidak ada
@@ -239,7 +246,14 @@ async function loadTableDataLTB() {
                                 userid_ppat: item?.userid_ppat,
                                 allKeys: item ? Object.keys(item) : []
                             });
-                            alert("Data yang diperlukan tidak lengkap. Pastikan No. Booking, No. Registrasi, dan User ID tersedia.");
+                            if (window.universalAlert) {
+                                window.universalAlert.error(
+                                    "Data yang diperlukan tidak lengkap. Pastikan No. Booking, No. Registrasi, dan User ID tersedia.",
+                                    'Data Tidak Lengkap'
+                                );
+                            } else {
+                                alert("Data yang diperlukan tidak lengkap. Pastikan No. Booking, No. Registrasi, dan User ID tersedia.");
+                            }
                             return;
                         }
                         // Jika pengguna mengklik "OK", maka kirim data
@@ -250,19 +264,47 @@ async function loadTableDataLTB() {
                             if (result.success) {
                                 // Ubah status tombol setelah sukses (misalnya menonaktifkan tombol)
                                 sendButton.disabled = true;
-                                sendButton.textContent = 'Data Terkirim';
+                                sendButton.innerHTML = '<span>✓</span> Data Terkirim';
                                 try { if (window.playSendSound) window.playSendSound(); } catch(_) {}
-                                showAlert('success', "Data berhasil dikirim ke peneliti!");
+                                if (window.universalAlert) {
+                                    window.universalAlert.success(
+                                        "Data berhasil dikirim ke peneliti!",
+                                        'Berhasil'
+                                    );
+                                } else {
+                                    showAlert('success', "Data berhasil dikirim ke peneliti!");
+                                }
                             } else {
-                                showAlert('error', `Gagal mengirim data ke peneliti: ${result.message || 'Terjadi kesalahan'}`);
+                                if (window.universalAlert) {
+                                    window.universalAlert.error(
+                                        `Gagal mengirim data ke peneliti: ${result.message || 'Terjadi kesalahan'}`,
+                                        'Gagal Mengirim'
+                                    );
+                                } else {
+                                    showAlert('error', `Gagal mengirim data ke peneliti: ${result.message || 'Terjadi kesalahan'}`);
+                                }
                             }
                         } catch (error) {
                             console.error("❌ [KIRIM] Terjadi kesalahan:", error);
-                            showAlert('error', `Terjadi kesalahan saat mengirim data: ${error.message}`);
+                            if (window.universalAlert) {
+                                window.universalAlert.error(
+                                    `Terjadi kesalahan saat mengirim data: ${error.message}`,
+                                    'Error'
+                                );
+                            } else {
+                                showAlert('error', `Terjadi kesalahan saat mengirim data: ${error.message}`);
+                            }
                         }
                     } else {
                         // Jika pengguna mengklik "Batal", tampilkan notifikasi
-                        showAlert('info', "Data tidak jadi dikirim.");
+                        if (window.universalAlert) {
+                            window.universalAlert.info(
+                                "Data tidak jadi dikirim.",
+                                'Dibatalkan'
+                            );
+                        } else {
+                            showAlert('info', "Data tidak jadi dikirim.");
+                        }
                     }
                 });
                 
