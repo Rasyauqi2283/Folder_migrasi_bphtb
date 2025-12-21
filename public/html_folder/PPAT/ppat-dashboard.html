@@ -25,11 +25,11 @@
       padding: 0 20px;
     }
     .summary-card {
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-      border: 1px solid #e5e7eb;
+      background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+      border: 1px solid rgba(65, 90, 119, 0.3);
       border-radius: 12px;
       padding: 24px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 5px 15px rgba(65, 90, 119, 0.3);
       transition: all 0.3s ease;
       cursor: pointer;
       position: relative;
@@ -46,7 +46,7 @@
     }
     .summary-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(65, 90, 119, 0.4);
     }
     .summary-card-header {
       display: flex;
@@ -57,7 +57,7 @@
     .summary-card-title {
       font-size: 16px;
       font-weight: 600;
-      color: #374151;
+      color: #ffffff;
       margin: 0;
       display: flex;
       align-items: center;
@@ -76,15 +76,16 @@
     .summary-card-icon.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
     .summary-card-icon.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
     .summary-card-icon.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .summary-card-icon.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
     .summary-card-value {
       font-size: 36px;
       font-weight: 700;
-      color: #1f2937;
+      color: #ffffff;
       margin: 8px 0;
     }
     .summary-card-label {
       font-size: 14px;
-      color: #6b7280;
+      color: rgba(255, 255, 255, 0.8);
       margin-bottom: 12px;
     }
     .summary-card-footer {
@@ -93,20 +94,22 @@
       justify-content: space-between;
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid rgba(65, 90, 119, 0.3);
     }
     .summary-card-link {
-      color: #3b82f6;
+      color: #ffffff;
       font-size: 14px;
       font-weight: 600;
       text-decoration: none;
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: all 0.2s;
     }
     .summary-card-link:hover {
-      color: #2563eb;
+      color: rgba(255, 255, 255, 0.9);
       text-decoration: underline;
+      transform: translateX(2px);
     }
     @media (max-width: 768px) {
       .summary-cards-container {
@@ -310,11 +313,13 @@
         const qsBadan = new URLSearchParams({ page: 1, limit: 1, jenis_wajib_pajak: 'Badan Usaha' });
         const qsPerorangan = new URLSearchParams({ page: 1, limit: 1, jenis_wajib_pajak: 'Perorangan' });
         const qsRekap = new URLSearchParams({ page: 1, limit: 1 });
+        const qsRincian = new URLSearchParams({ page: 1, limit: 1 });
 
-        const [badanRes, perorRes, rekapRes] = await Promise.all([
+        const [badanRes, perorRes, rekapRes, rincianRes] = await Promise.all([
           fetch(`/api/ppat/load-all-booking?${qsBadan}`, { credentials: 'include' }).catch(() => null),
           fetch(`/api/ppat/load-all-booking?${qsPerorangan}`, { credentials: 'include' }).catch(() => null),
-          fetch(`/api/ppat/rekap/diserahkan?${qsRekap}`, { credentials: 'include' }).catch(() => null)
+          fetch(`/api/ppat/rekap/diserahkan?${qsRekap}`, { credentials: 'include' }).catch(() => null),
+          fetch(`/api/ppat/rekap/diserahkan?${qsRincian}`, { credentials: 'include' }).catch(() => null)
         ]);
 
         const readTotal = async (res) => {
@@ -330,6 +335,16 @@
         const badanTotal = await readTotal(badanRes);
         const perorTotal = await readTotal(perorRes);
         const rekapTotal = await readTotal(rekapRes);
+        const rincianTotal = await readTotal(rincianRes);
+
+        // Get Laporan Rekap count from localStorage (since it's frontend-only)
+        let laporanRekapCount = 0;
+        try {
+          const laporanRekapData = JSON.parse(localStorage.getItem('laporanRekapData') || '[]');
+          laporanRekapCount = Array.isArray(laporanRekapData) ? laporanRekapData.length : 0;
+        } catch (e) {
+          console.warn('Failed to read laporan rekap data from localStorage:', e);
+        }
 
         const cards = [
           {
@@ -356,8 +371,26 @@
             iconClass: 'orange',
             value: rekapTotal,
             label: 'Total berkas berstatus Diserahkan',
-            link: 'LAPORAN-BULANAN-PPAT/Laporan-rekap_ppat.html',
+            link: 'LAPORAN-PPAT/laporan_rekap.html',
             linkText: 'Lihat Rekap'
+          },
+          {
+            title: 'Rincian Laporan Bulanan PPAT',
+            icon: '📊',
+            iconClass: 'purple',
+            value: rincianTotal,
+            label: 'Rincian berkas per bulan',
+            link: 'LAPORAN-PPAT/rincian_laporan_bulanan.html',
+            linkText: 'Lihat Rincian'
+          },
+          {
+            title: 'Laporan Rekap PPAT',
+            icon: '📋',
+            iconClass: 'orange',
+            value: laporanRekapCount,
+            label: 'Total laporan rekap bulanan',
+            link: 'LAPORAN-PPAT/laporan_rekap.html',
+            linkText: 'Lihat Laporan'
           }
         ];
 
