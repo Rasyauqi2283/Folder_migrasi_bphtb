@@ -68,7 +68,11 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
     const year = document.getElementById('tahun').value;
     
     if (!day || !month || !year) {
-        alert('Tanggal tidak valid. Sistem akan mengisi otomatis.');
+        if (window.universalAlert) {
+            window.universalAlert.warning('Tanggal tidak valid. Sistem akan mengisi otomatis.', 'Peringatan');
+        } else {
+            alert('Tanggal tidak valid. Sistem akan mengisi otomatis.');
+        }
         setAutoDate(); // Fallback
         return;
     }
@@ -160,7 +164,11 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
     const userid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
 
     if (!userid) {
-        alert('UserID tidak ditemukan. Silakan login terlebih dahulu.');
+        if (window.universalAlert) {
+            window.universalAlert.error('UserID tidak ditemukan. Silakan login terlebih dahulu.', 'Error');
+        } else {
+            alert('UserID tidak ditemukan. Silakan login terlebih dahulu.');
+        }
         return; // Menghentikan proses jika userID tidak ditemukan
     }
     // Data yang akan dikirim ke backend
@@ -245,15 +253,36 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
 
         if (payload && payload.success) {
             document.getElementById('noBooking').value = payload.nobooking;
-            alert('Booking dan perhitungan BPHTB untuk badan usaha berhasil, klik data di tabel untuk menambahkan akta, sertifikat, dan pelengkap lainnya!');
-            location.reload();
+            if (window.universalAlert) {
+                window.universalAlert.success(
+                    'Booking dan perhitungan BPHTB untuk badan usaha berhasil, klik data di tabel untuk menambahkan akta, sertifikat, dan pelengkap lainnya!',
+                    'Berhasil',
+                    {
+                        duration: 5000,
+                        onClose: () => {
+                            location.reload();
+                        }
+                    }
+                );
+            } else {
+                alert('Booking dan perhitungan BPHTB untuk badan usaha berhasil, klik data di tabel untuk menambahkan akta, sertifikat, dan pelengkap lainnya!');
+                location.reload();
+            }
         } else {
             const msg = payload && payload.message ? payload.message : 'Gagal menyimpan data';
-            alert(msg);
+            if (window.universalAlert) {
+                window.universalAlert.error(msg, 'Error');
+            } else {
+                alert(msg);
+            }
         }
     } catch (error) {
         console.error('Error:', error);
-        alert(`Terjadi kesalahan saat menyimpan booking: ${error.message}`);
+        if (window.universalAlert) {
+            window.universalAlert.error(`Terjadi kesalahan saat menyimpan booking: ${error.message}`, 'Error');
+        } else {
+            alert(`Terjadi kesalahan saat menyimpan booking: ${error.message}`);
+        }
     }
 });
 ///////////         ///////////////
