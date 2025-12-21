@@ -230,21 +230,29 @@ class KTPOCR {
     };
   }
 
-  // Ekstrak NIK (16 digit) - Enhanced
+  // Ekstrak NIK (16 digit) - Enhanced (handle OCR errors dengan spasi)
   extractNIK(text) {
     // Multiple patterns for better detection
     const patterns = [
       /\b\d{16}\b/,                    // Standard 16 digits
+      /NIK\s*[:\.]?\s*(\d{1,3}\s*\d{1,3}\s*\d{1,4}\s*\d{1,4}\s*\d{1,4})/i,  // NIK dengan spasi: 327 053010020008
       /NIK\s*[:\.]?\s*(\d{16})/i,      // NIK: 1234567890123456
-      /NIK\s+(\d{16})/i                // NIK 1234567890123456
+      /NIK\s+(\d{16})/i,               // NIK 1234567890123456
+      /\b(\d{3}\s*\d{13})\b/,          // 3 digit + spasi + 13 digit
+      /\b(\d{6}\s*\d{10})\b/           // 6 digit + spasi + 10 digit
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) {
-        const nik = match[1] || match[0];
-        if (this.validateNIK(nik)) {
-          return nik;
+        // Remove all spaces and validate
+        let nik = (match[1] || match[0]).replace(/\s+/g, '');
+        
+        // Should be exactly 16 digits
+        if (nik.length === 16 && /^\d{16}$/.test(nik)) {
+          if (this.validateNIK(nik)) {
+            return nik;
+          }
         }
       }
     }
@@ -252,7 +260,7 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak Nama - Enhanced (untuk KTP Ohim)
+  // Ekstrak Nama - Enhanced (untuk KTP Ohim, handle OCR errors)
   extractNama(text) {
     // Clean text first - remove common OCR errors
     const cleanedText = text
@@ -263,10 +271,12 @@ class KTPOCR {
     const patterns = [
       // Pattern untuk "NAMA: MUCHAMMAD ABDUROHIM"
       /NAMA\s*[:\.]?\s*([A-Z][A-Z\s]{4,30})/i,
+      // Pattern untuk "NM: MUCHAMMAD ABDURQHIM" (OCR error: NM instead of NAMA)
+      /NM\s*[:\.]?\s*([A-Z][A-Z\s]{4,30})/i,
       // Pattern untuk "Nama: MUCHAMMAD ABDUROHIM"
       /Nama\s*[:\.]?\s*([A-Z][A-Z\s]{4,30})/i,
-      // Pattern tanpa label, setelah NIK
-      /(\d{16})\s+([A-Z][A-Z\s]{4,30})/i,
+      // Pattern tanpa label, setelah NIK (handle spasi di NIK)
+      /NIK\s*[:\.]?\s*[\d\s]+\s+([A-Z][A-Z\s]{4,30})/i,
       // Pattern umum
       /NAMA\s+([A-Z][A-Z\s]{4,30})/i
     ];
@@ -281,6 +291,9 @@ class KTPOCR {
           .replace(/[^A-Z\s]/g, '') // Only keep letters and spaces
           .replace(/\s+/g, ' ') // Normalize spaces
           .trim();
+        
+        // Fix common OCR errors: Q -> O (ABDURQHIM -> ABDUROHIM)
+        nama = nama.replace(/Q/g, 'O');
         
         // Validation: should be 5-50 chars, mostly letters, no numbers
         if (nama.length >= 5 && nama.length <= 50 && 
@@ -356,11 +369,13 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak Alamat (termasuk RT/RW untuk format KTP Ohim)
+  // Ekstrak Alamat (termasuk RT/RW untuk format KTP Ohim) - Enhanced
   extractAlamat(text) {
     const patterns = [
       // Pattern untuk: "ALAMAT: KEDUNG BADAK NO.16"
       /ALAMAT\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})/i,
+      // Pattern untuk: "A : KEDUNG BADAK NO 16" (OCR error: A instead of ALAMAT)
+      /^A\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})/im,
       // Pattern untuk: "Alamat: ..."
       /Alamat\s*[:\.]?\s*([A-Z0-9\s,.-]{5,})/i,
       // Pattern untuk kombinasi: "ALAMAT: ... RT/RW: ..."
@@ -373,6 +388,9 @@ class KTPOCR {
         let alamat = match[1].trim().replace(/\s+/g, ' ');
         // Hapus bagian RT/RW jika ikut terambil
         alamat = alamat.replace(/\s*RT\/RW.*$/i, '').trim();
+        alamat = alamat.replace(/\s*RTRW.*$/i, '').trim();
+        // Hapus bagian yang bukan alamat (seperti "KD :", "K :", dll)
+        alamat = alamat.replace(/\s*(KD|K|S|P|B\s*H)\s*[:\.].*$/i, '').trim();
         // Basic validation: should be reasonable length
         if (alamat.length >= 5 && (/\d/.test(alamat) || /[A-Z]/.test(alamat))) {
           return alamat;
@@ -383,17 +401,33 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak RT/RW (field terpisah untuk KTP Ohim)
+  // Ekstrak RT/RW (field terpisah untuk KTP Ohim) - Enhanced untuk OCR errors
   extractRTRW(text) {
     const patterns = [
       /RT\/RW\s*[:\.]?\s*(\d{3,4}\/\d{3,4})/i,
-      /RT\/RW\s+(\d{3,4}\/\d{3,4})/i
+      /RT\/RW\s+(\d{3,4}\/\d{3,4})/i,
+      // Handle OCR error: "RTRW : DOBO02" -> try to find nearby pattern
+      /RTRW\s*[:\.]?\s*[A-Z0-9]+\s+(\d{3,4}\s*[/-]\s*\d{3,4})/i
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match && match[1]) {
-        return match[1].trim();
+        let rtrw = match[1].trim().replace(/\s+/g, '').replace(/-/g, '/');
+        // Validate format: should be like "008/002"
+        if (/^\d{3,4}\/\d{3,4}$/.test(rtrw)) {
+          return rtrw;
+        }
+      }
+    }
+    
+    // Fallback: search for RT/RW pattern anywhere in text
+    const fallbackPattern = /\b(\d{3,4}\s*[/-]\s*\d{3,4})\b/;
+    const fallbackMatch = text.match(fallbackPattern);
+    if (fallbackMatch && fallbackMatch[1]) {
+      const rtrw = fallbackMatch[1].replace(/\s+/g, '').replace(/-/g, '/');
+      if (/^\d{3,4}\/\d{3,4}$/.test(rtrw)) {
+        return rtrw;
       }
     }
 
@@ -505,11 +539,13 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak Status Perkawinan (PENTING!)
+  // Ekstrak Status Perkawinan (PENTING!) - Enhanced untuk OCR errors
   extractStatusPerkawinan(text) {
     const patterns = [
       // Pattern untuk format: "STATUS PERKAWINAN: BELUM KAWIN" (format KTP Ohim)
       /STATUS\s+PERKAWINAN\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
+      // Pattern untuk "S P BELUM KAWIN" (OCR error: spasi di STATUS PERKAWINAN)
+      /S\s+P\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
       // Pattern untuk format: "STATUS: BELUM KAWIN"
       /STATUS\s*[:\.]?\s*(BELUM\s+KAWIN|KAWIN|CERAI\s+HIDUP|CERAI\s+MATI|JANDA|DUDA)/i,
       // Pattern untuk format: "BELUM KAWIN" (tanpa label)
