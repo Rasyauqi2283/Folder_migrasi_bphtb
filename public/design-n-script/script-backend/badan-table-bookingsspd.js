@@ -42,8 +42,8 @@ function getFileName(pathOrUrl) {
 
 async function loadTableData(page = 1) {
     try {
-        // Menggunakan parameter page jika ada
-    const url = `/api/ppat/load-all-booking?page=${page}`;
+        // Menggunakan parameter page jika ada, dengan filter Badan Usaha
+    const url = `/api/ppat/load-all-booking?page=${page}&jenis_wajib_pajak=Badan Usaha`;
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -56,8 +56,27 @@ async function loadTableData(page = 1) {
             // Menghapus baris lama jika ada
             tbody.innerHTML = '';
             
+            // Double-check filter: hanya Badan Usaha (backend sudah filter, ini sebagai safety net)
+            const badanUsahaData = data.data.filter(item => {
+                const jenis = (item.jenis_wajib_pajak || '').trim();
+                return jenis === 'Badan Usaha';
+            });
+            
+            // Jika setelah filter tidak ada data, tampilkan pesan
+            if (badanUsahaData.length === 0) {
+                const emptyRow = tbody.insertRow();
+                const emptyCell = emptyRow.insertCell(0);
+                emptyCell.colSpan = 8;
+                emptyCell.className = 'empty-message';
+                emptyCell.textContent = 'Tidak ada data booking badan usaha';
+                if (window.displayPagination && data.pagination) {
+                    window.displayPagination(data.pagination.page, data.pagination.pages || 1, true);
+                }
+                return;
+            }
+            
             // Loop melalui data dan menambahkannya ke dalam tabel
-            data.data.forEach(async (item) => {
+            badanUsahaData.forEach(async (item) => {
                 const row = tbody.insertRow();
 
                 // Membuat sel untuk data

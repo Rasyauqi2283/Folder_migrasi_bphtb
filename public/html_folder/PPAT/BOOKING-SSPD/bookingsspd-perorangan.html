@@ -838,8 +838,24 @@ function focusPrevInput(currentInput) {
                     return;
                 }
                 
-                // Filter hanya perorangan dan render menggunakan fungsi dari badan-table-bookingsspd.js
-                const peroranganData = data.data.filter(item => item.jenis_wajib_pajak === 'Perorangan');
+                // Double-check filter: hanya perorangan (backend sudah filter, ini sebagai safety net)
+                const peroranganData = data.data.filter(item => {
+                    const jenis = (item.jenis_wajib_pajak || '').trim();
+                    return jenis === 'Perorangan';
+                });
+                
+                // Jika setelah filter tidak ada data, tampilkan pesan
+                if (peroranganData.length === 0) {
+                    const emptyRow = tbody.insertRow();
+                    const emptyCell = emptyRow.insertCell(0);
+                    emptyCell.colSpan = 8;
+                    emptyCell.className = 'empty-message';
+                    emptyCell.textContent = 'Tidak ada data booking perorangan';
+                    if (window.displayPagination && data.pagination) {
+                        window.displayPagination(data.pagination.page, data.pagination.pages || 1, true);
+                    }
+                    return;
+                }
                 
                 // Gunakan fungsi createTableRow dari badan-table-bookingsspd.js jika ada
                 // Atau render manual dengan struktur yang sama

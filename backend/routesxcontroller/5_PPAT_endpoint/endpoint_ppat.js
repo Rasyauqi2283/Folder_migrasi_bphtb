@@ -562,6 +562,7 @@ app.get('/api/ppat/load-all-booking', async (req, res) => {
                 npwpwp,
                 tahunajb,
                 trackstatus,
+                jenis_wajib_pajak,
                 created_at,
                 updated_at,
                 akta_tanah_path,
