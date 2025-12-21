@@ -589,13 +589,31 @@ async function uploadKTPFile(file) {
             credentials: 'include',
             body: formData
         });
+        
+        // Check response status first
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ [OCR REAL] HTTP Error:", response.status, errorText);
+            throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
+        
         const result = await response.json();
 
-        console.log("📥 [OCR REAL] Response:", result);
+        console.log("📥 [OCR REAL] Full Response:", JSON.stringify(result, null, 2));
+        console.log("📥 [OCR REAL] Response status:", response.status);
+        console.log("📥 [OCR REAL] Response success:", result.success);
+        console.log("📥 [OCR REAL] Response data:", result.data);
 
-        if (response.ok && result.success) {
-            const data = result.data;
+        if (response.ok && result.success && result.data) {
+            const data = result.data || {};
             const stats = result.stats || {};
+            
+            console.log("✅ [OCR REAL] Data extracted:", {
+                nik: data.nik,
+                nama: data.nama,
+                statusPerkawinan: data.statusPerkawinan,
+                totalFields: Object.keys(data).length
+            });
             
             // Build HTML untuk menampilkan semua field yang terdeteksi
             let fieldsHTML = `
@@ -678,7 +696,15 @@ async function uploadKTPFile(file) {
             updateKTPUploadStatus('success', 'KTP Berhasil Dipindai dengan OCR');
             return { success: true, data: data };
         } else {
-            throw new Error(result.message || 'OCR scan gagal');
+            // Log detailed error info
+            console.error("❌ [OCR REAL] Response tidak valid:", {
+                ok: response.ok,
+                success: result.success,
+                hasData: !!result.data,
+                message: result.message,
+                error: result.error
+            });
+            throw new Error(result.message || result.error || 'OCR scan gagal - data tidak ditemukan');
         }
     } catch (error) {
         console.error("❌ [OCR REAL] Error:", error);

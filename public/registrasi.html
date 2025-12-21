@@ -169,12 +169,40 @@
     
     // === Modal open/close ===
     function openModal() {
-        document.getElementById('modalOverlay').classList.add('show');
+        const modal = document.getElementById('modalOverlay');
+        if (modal) {
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        } else {
+            console.error('Modal overlay not found!');
+        }
     }
     
     function closeModal(e) {
-        document.getElementById('modalOverlay').classList.remove('show');
+        const modal = document.getElementById('modalOverlay');
+        if (modal) {
+            modal.classList.remove('show');
+            document.body.style.overflow = ''; // Restore scroll
+        }
+        // Prevent event bubbling
+        if (e) {
+            e.stopPropagation();
+        }
     }
+    
+    // Make functions globally available
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    
+    // Close modal dengan ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('modalOverlay');
+            if (modal && modal.classList.contains('show')) {
+                closeModal();
+            }
+        }
+    });
 
     // KTP Preview Functions
     function showKTPPreview(file) {
@@ -377,8 +405,11 @@
 <!---->
 <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
   <div class="modal-content" onclick="event.stopPropagation()">
-      <h2>Panduan Foto KTP</h2>
-      <img src="asset/Panduan_FOTOKTP.png" alt="Panduan Foto KTP" class="guide-image">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h2 style="margin: 0; color: #fff;">Panduan Foto KTP</h2>
+          <button onclick="closeModal(event)" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='none'">×</button>
+      </div>
+      <img src="asset/Panduan_FOTOKTP.png" alt="Panduan Foto KTP" class="guide-image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
   </div>
 </div>
   <!--script backend-->
