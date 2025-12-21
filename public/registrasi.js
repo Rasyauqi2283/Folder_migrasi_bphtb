@@ -555,10 +555,10 @@ let ktpUploadStatus = {
     error: null
 };
 
-// Fungsi untuk upload KTP & Simulasi Verifikasi (E-KYC)
+// Fungsi untuk upload KTP & OCR Real Verifikasi (E-KYC)
 async function uploadKTPFile(file) {
     if (ktpUploadStatus.isUploading) {
-        console.log("⏳ [KTP_UPLOAD] Simulation already in progress");
+        console.log("⏳ [KTP_UPLOAD] OCR already in progress");
         return;
     }
 
@@ -568,7 +568,7 @@ async function uploadKTPFile(file) {
         autoFill.innerHTML = `
             <div style="padding: 15px; text-align: center; color: #3b82f6; background: rgba(59,130,246,0.1); border-radius: 8px;">
                 <i class="fas fa-spinner fa-spin"></i> 
-                Sedang memverifikasi KTP ke database kependudukan...
+                Sedang memindai KTP dengan OCR (Optical Character Recognition)...
             </div>
         `;
     }
@@ -578,27 +578,89 @@ async function uploadKTPFile(file) {
     ktpUploadStatus.error = null;
 
     try {
-        console.log("📤 [SIMULASI] Memulai verifikasi KTP...");
+        console.log("📤 [OCR REAL] Memulai scan KTP dengan Tesseract.js...");
         
-        // Panggil endpoint simulasi baru
-        const response = await fetch('/api/v1/auth/simulate-ktp-verification', { 
+        // Upload file ke endpoint OCR real
+        const formData = new FormData();
+        formData.append('fotoktp', file);
+        
+        const response = await fetch('/api/v1/auth/real-ktp-verification', { 
             method: 'POST',
-            credentials: 'include'
+            credentials: 'include',
+            body: formData
         });
         const result = await response.json();
 
-        console.log("📥 [SIMULASI] Response:", result);
+        console.log("📥 [OCR REAL] Response:", result);
 
         if (response.ok && result.success) {
+            const data = result.data;
+            const stats = result.stats || {};
+            
+            // Build HTML untuk menampilkan semua field yang terdeteksi
+            let fieldsHTML = `
+                <p style="margin: 4px 0;"><strong>NIK:</strong> <span id="detectedNIK" style="color: #00c8ff;">${data.nik || '-'}</span></p>
+                <p style="margin: 4px 0;"><strong>Nama:</strong> <span id="detectedNama" style="color: #00c8ff;">${data.nama || '-'}</span></p>
+            `;
+            
+            // Tambahkan field tambahan jika ada
+            if (data.tempatLahir || data.tanggalLahir) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>TTL:</strong> <span id="detectedTTL" style="color: #00c8ff;">${(data.tempatLahir || '') + (data.tanggalLahir ? ', ' + data.tanggalLahir : '')}</span></p>`;
+            }
+            if (data.alamat) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Alamat:</strong> <span id="detectedAlamat" style="color: #00c8ff;">${data.alamat}</span></p>`;
+            }
+            if (data.rtRw) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>RT/RW:</strong> <span id="detectedRTRW" style="color: #00c8ff;">${data.rtRw}</span></p>`;
+            }
+            if (data.kelurahan) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Kelurahan:</strong> <span id="detectedKelurahan" style="color: #00c8ff;">${data.kelurahan}</span></p>`;
+            }
+            if (data.kecamatan) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Kecamatan:</strong> <span id="detectedKecamatan" style="color: #00c8ff;">${data.kecamatan}</span></p>`;
+            }
+            if (data.jenisKelamin) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Jenis Kelamin:</strong> <span id="detectedJenisKelamin" style="color: #00c8ff;">${data.jenisKelamin}</span></p>`;
+            }
+            if (data.golonganDarah) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Gol. Darah:</strong> <span id="detectedGolDarah" style="color: #00c8ff;">${data.golonganDarah}</span></p>`;
+            }
+            if (data.agama) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Agama:</strong> <span id="detectedAgama" style="color: #00c8ff;">${data.agama}</span></p>`;
+            }
+            if (data.statusPerkawinan) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Status Perkawinan:</strong> <span id="detectedStatusPerkawinan" style="color: #00c8ff; font-weight: bold;">${data.statusPerkawinan}</span></p>`;
+            }
+            if (data.pekerjaan) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Pekerjaan:</strong> <span id="detectedPekerjaan" style="color: #00c8ff;">${data.pekerjaan}</span></p>`;
+            }
+            if (data.kewarganegaraan) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Kewarganegaraan:</strong> <span id="detectedKewarganegaraan" style="color: #00c8ff;">${data.kewarganegaraan}</span></p>`;
+            }
+            if (data.berlakuHingga) {
+                fieldsHTML += `<p style="margin: 4px 0;"><strong>Berlaku Hingga:</strong> <span id="detectedBerlakuHingga" style="color: #00c8ff;">${data.berlakuHingga}</span></p>`;
+            }
+            
+            // Tambahkan statistik OCR
+            if (stats.confidence || stats.completeness) {
+                fieldsHTML += `
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <p style="margin: 2px 0; font-size: 11px; opacity: 0.8;">
+                            <strong>Akurasi OCR:</strong> ${stats.confidence ? stats.confidence.toFixed(1) + '%' : 'N/A'} | 
+                            <strong>Kelengkapan:</strong> ${stats.completeness ? stats.completeness.toFixed(1) + '%' : 'N/A'}
+                        </p>
+                    </div>
+                `;
+            }
+            
             if (autoFill) {
                 autoFill.innerHTML = `
-                    <div style="border-left: 4px solid #22c55e; padding: 12px; background: rgba(34,197,94,0.1); border-radius: 8px;">
-                        <p style="color: #22c55e; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-check-circle"></i> KTP Terverifikasi (Sistem Bappenda)
+                    <div style="border-left: 4px solid #22c55e; padding: 12px; background: rgba(34,197,94,0.1); border-radius: 8px; max-height: 500px; overflow-y: auto;">
+                        <p style="color: #22c55e; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-check-circle"></i> KTP Terverifikasi (OCR Real - Sistem Bappenda)
                         </p>
-                        <div style="font-size: 13px; color: #fff;">
-                            <p style="margin: 2px 0;">NIK: <strong id="detectedNIK" style="color: #00c8ff;">${result.data.nik}</strong></p>
-                            <p style="margin: 2px 0;">Nama: <strong id="detectedNama" style="color: #00c8ff;">${result.data.nama}</strong></p>
+                        <div style="font-size: 13px; color: #fff; line-height: 1.6;">
+                            ${fieldsHTML}
                         </div>
                         <button type="button" class="auto-fill-btn" onclick="applyAutoFill()" 
                                 style="margin-top: 12px; background: #22c55e; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: 600; transition: background 0.2s;">
@@ -608,19 +670,34 @@ async function uploadKTPFile(file) {
                 `;
             }
             
+            // Simpan data lengkap untuk auto-fill
+            window.detectedKTPData = data;
+            
             ktpUploadStatus.isUploaded = true;
-            ktpUploadStatus.uploadId = "SIMULATION_ID_" + Date.now();
-            updateKTPUploadStatus('success', 'KTP Terverifikasi Otomatis');
-            return { success: true };
+            ktpUploadStatus.uploadId = "OCR_REAL_ID_" + Date.now();
+            updateKTPUploadStatus('success', 'KTP Berhasil Dipindai dengan OCR');
+            return { success: true, data: data };
         } else {
-            throw new Error(result.message || 'Verifikasi gagal');
+            throw new Error(result.message || 'OCR scan gagal');
         }
     } catch (error) {
-        console.error("❌ [SIMULASI] Error:", error);
+        console.error("❌ [OCR REAL] Error:", error);
         ktpUploadStatus.error = error.message;
         ktpUploadStatus.isUploaded = false;
         if (autoFill) {
-            autoFill.innerHTML = `<p style="color: #ef4444; padding: 10px; background: rgba(239,68,68,0.1); border-radius: 8px;">Gagal memverifikasi KTP otomatis. Silakan isi data manual.</p>`;
+            autoFill.innerHTML = `
+                <div style="border-left: 4px solid #ef4444; padding: 12px; background: rgba(239,68,68,0.1); border-radius: 8px;">
+                    <p style="color: #ef4444; font-weight: bold; margin-bottom: 8px;">
+                        <i class="fas fa-exclamation-circle"></i> Gagal Memindai KTP
+                    </p>
+                    <p style="font-size: 12px; color: #fff; opacity: 0.9;">
+                        ${error.message || 'Silakan coba lagi atau isi data manual.'}
+                    </p>
+                    <p style="font-size: 11px; color: #fff; opacity: 0.7; margin-top: 8px;">
+                        Tips: Pastikan gambar KTP jelas, tidak blur, dan pencahayaan cukup.
+                    </p>
+                </div>
+            `;
         }
         updateKTPUploadStatus('error', error.message);
         throw error;
@@ -629,36 +706,76 @@ async function uploadKTPFile(file) {
     }
 }
 
-// Fungsi untuk mengisi form otomatis dari hasil deteksi
+// Fungsi untuk mengisi form otomatis dari hasil deteksi OCR (SEMUA FIELD)
 window.applyAutoFill = function() {
-    const detectedNama = document.getElementById('detectedNama')?.textContent;
-    const detectedNIK = document.getElementById('detectedNIK')?.textContent;
+    // Gunakan data yang sudah disimpan dari OCR result
+    const data = window.detectedKTPData;
     
-    if (detectedNama && detectedNIK) {
-        const namaInput = document.getElementById('nama');
-        const nikInput = document.getElementById('nik');
+    if (!data) {
+        // Fallback: ambil dari DOM jika data tidak ada
+        const detectedNama = document.getElementById('detectedNama')?.textContent;
+        const detectedNIK = document.getElementById('detectedNIK')?.textContent;
         
-        if (namaInput) {
-            namaInput.value = detectedNama;
-            validateNama(namaInput);
+        if (detectedNama && detectedNIK) {
+            const namaInput = document.getElementById('nama');
+            const nikInput = document.getElementById('nik');
+            
+            if (namaInput) {
+                namaInput.value = detectedNama;
+                validateNama(namaInput);
+            }
+            
+            if (nikInput) {
+                nikInput.value = detectedNIK;
+                validateNIK(nikInput);
+                const counter = document.getElementById('nikCounter');
+                if (counter) {
+                    counter.textContent = `${detectedNIK.length}/16 digit`;
+                    counter.style.color = '#28a745';
+                }
+            }
         }
-        
-        if (nikInput) {
-            nikInput.value = detectedNIK;
-            validateNIK(nikInput);
-            // Update counter
-            const counter = document.getElementById('nikCounter');
-            if (counter) {
-                counter.textContent = `${detectedNIK.length}/16 digit`;
-                counter.style.color = '#28a745';
+    } else {
+        // Isi semua field yang tersedia dari data OCR
+        if (data.nama) {
+            const namaInput = document.getElementById('nama');
+            if (namaInput) {
+                namaInput.value = data.nama;
+                validateNama(namaInput);
             }
         }
         
-        const autoFill = document.getElementById("autoFillSuggestion");
-        if (autoFill) autoFill.style.display = "none";
+        if (data.nik) {
+            const nikInput = document.getElementById('nik');
+            if (nikInput) {
+                nikInput.value = data.nik;
+                validateNIK(nikInput);
+                const counter = document.getElementById('nikCounter');
+                if (counter) {
+                    counter.textContent = `${data.nik.length}/16 digit`;
+                    counter.style.color = '#28a745';
+                }
+            }
+        }
         
-        alert("Data KTP berhasil disalin ke formulir!");
+        // Isi gender jika tersedia
+        if (data.jenisKelamin) {
+            const genderSelect = document.getElementById('gender');
+            if (genderSelect) {
+                if (data.jenisKelamin.toLowerCase().includes('laki')) {
+                    genderSelect.value = 'Laki-laki';
+                } else if (data.jenisKelamin.toLowerCase().includes('perempuan')) {
+                    genderSelect.value = 'Perempuan';
+                }
+                validateGender(genderSelect);
+            }
+        }
     }
+    
+    const autoFill = document.getElementById("autoFillSuggestion");
+    if (autoFill) autoFill.style.display = "none";
+    
+    alert("Data KTP berhasil disalin ke formulir!");
 };
 
 // Make uploadKTPFile available globally
