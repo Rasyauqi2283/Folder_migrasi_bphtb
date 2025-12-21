@@ -397,6 +397,43 @@
       <p>Ringkasan bulanan berkas yang sudah diserahkan</p>
     </div>
 
+    <!-- Summary Section -->
+    <div class="summary-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+      <div class="rincian-card" style="cursor: default; border-left: 4px solid #10b981; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);">
+        <div class="card-header">
+          <div class="card-month">Total Transaksi (Akumulasi)</div>
+          <div class="card-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <i class="fa fa-money-bill-wave"></i>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-count" id="totalNominal" style="color: #10b981; font-size: 32px;">Rp 0</div>
+          <div class="card-label">Total BPHTB yang Telah Dibayar</div>
+        </div>
+      </div>
+
+      <div class="rincian-card" style="cursor: default; border-left: 4px solid #3b82f6; background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);">
+        <div class="card-header">
+          <div class="card-month">Total Berkas Selesai</div>
+          <div class="card-icon">
+            <i class="fa fa-file-check"></i>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-count" id="totalBerkas">0</div>
+          <div class="card-label">Jumlah Berkas Status "Diserahkan"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section" style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background: white; padding: 15px; border-radius: 12px; border: 1px solid rgba(81, 81, 95, 0.2);">
+      <span style="font-weight: 600; color: #374151;">Pilih Tahun:</span>
+      <div id="yearButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- Year buttons will be populated here -->
+      </div>
+    </div>
+
     <!-- Cards Grid -->
     <div class="rincian-cards-grid" id="rincianCardsGrid">
       <!-- Cards will be populated by JavaScript -->
@@ -487,6 +524,7 @@
     let currentMonthRows = [];
     let currentPage = 1;
     let currentMonth = null;
+    let selectedYear = new Date().getFullYear();
     const tbody = document.getElementById('table-body');
     const pager = document.getElementById('pager');
     const searchInput = document.getElementById('searchInput');
@@ -555,11 +593,15 @@
 
     function buildDropdownContent(item){
       const nomorValidasi = item.nomor_validasi ? `<p><strong>Nomor Validasi:</strong> ${item.nomor_validasi}</p>` : '';
+      const bphtbDibayar = item.bphtb_yangtelah_dibayar ? `<p><strong>BPHTB yang Telah Dibayar:</strong> Rp ${Number(item.bphtb_yangtelah_dibayar).toLocaleString('id-ID')}</p>` : '';
+      const keteranganSerah = item.keterangan_serah ? `<p><strong>Keterangan LSB:</strong> ${item.keterangan_serah}</p>` : '';
       
       return `<div style="padding:12px;">
         <p><strong>No Booking:</strong> ${item.nobooking}</p>
         <p><strong>NOP PBB:</strong> ${item.noppbb}</p>
         ${nomorValidasi}
+        ${bphtbDibayar}
+        ${keteranganSerah}
         <div class="pdf-section">
           <p>📄 Dokumen (2 file)</p>
           <div class="pdf-buttons">
@@ -729,16 +771,32 @@
         console.log('🔍 [FRONTEND] Loading all data from:', url);
         
         const res = await fetch(url, { credentials:'include' });
-        console.log('🔍 [FRONTEND] Response status:', res.status);
-        
         const js = await res.json();
-        console.log('🔍 [FRONTEND] Response data:', js);
         
         if (!res.ok || !js.success) throw new Error(js.message||'Gagal memuat');
         allRows = Array.isArray(js.rows) ? js.rows : [];
         console.log('🔍 [FRONTEND] Loaded rows:', allRows.length);
         
-        // Render cards
+        // Update summary
+        const totalNominalEl = document.getElementById('totalNominal');
+        const totalBerkasEl = document.getElementById('totalBerkas');
+        if (totalNominalEl) totalNominalEl.textContent = 'Rp ' + (js.totalNominal || 0).toLocaleString('id-ID');
+        if (totalBerkasEl) totalBerkasEl.textContent = js.pagination?.total || allRows.length;
+
+        // Extract available years
+        const years = [...new Set(allRows.map(item => {
+          const dateStr = item.tanggal_serah || item.updated_at || item.created_at;
+          return dateStr ? new Date(dateStr).getFullYear() : null;
+        }))].filter(y => y !== null).sort((a, b) => b - a);
+
+        // If current year is not in the list, add it
+        const currentYear = new Date().getFullYear();
+        if (!years.includes(currentYear)) {
+          years.unshift(currentYear);
+          years.sort((a, b) => b - a);
+        }
+
+        renderYearButtons(years);
         renderCards();
         
         // Show empty state if no data
@@ -764,55 +822,85 @@
       }
     }
 
+    function renderYearButtons(years) {
+      const container = document.getElementById('yearButtons');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      years.forEach(year => {
+        const btn = document.createElement('button');
+        btn.textContent = year;
+        btn.style.cssText = `
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: 1px solid #3b82f6;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        `;
+        
+        if (year === selectedYear) {
+          btn.style.backgroundColor = '#3b82f6';
+          btn.style.color = 'white';
+        } else {
+          btn.style.backgroundColor = 'white';
+          btn.style.color = '#3b82f6';
+        }
+        
+        btn.addEventListener('click', () => {
+          selectedYear = year;
+          renderYearButtons(years);
+          renderCards();
+          closeTable();
+        });
+        
+        container.appendChild(btn);
+      });
+    }
+
     // Render cards for each month
     function renderCards() {
       const cardsGrid = document.getElementById('rincianCardsGrid');
       cardsGrid.innerHTML = '';
       
-      // Group data by month
+      // Group data by month for the selected year
       const monthData = {};
-      const currentYear = new Date().getFullYear();
       
-      // Initialize all 12 months
+      // Initialize all 12 months for the selected year
       for (let i = 0; i < 12; i++) {
-        const monthKey = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
+        const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
         monthData[monthKey] = {
           month: i + 1,
           monthName: monthNames[i],
-          year: currentYear,
+          year: selectedYear,
           data: [],
-          count: 0
+          count: 0,
+          totalNominal: 0
         };
       }
       
       // Group existing data by month
       allRows.forEach(item => {
-        if (item.tanggal) {
-          const date = new Date(item.tanggal);
+        // Prioritas tanggal: tanggal_serah (lsb.updated_at), then b.updated_at, then b.created_at
+        const dateStr = item.tanggal_serah || item.updated_at || item.created_at;
+        if (dateStr) {
+          const date = new Date(dateStr);
           const year = date.getFullYear();
           const month = date.getMonth() + 1;
           const monthKey = `${year}-${String(month).padStart(2, '0')}`;
           
-          if (!monthData[monthKey]) {
-            monthData[monthKey] = {
-              month: month,
-              monthName: monthNames[month - 1],
-              year: year,
-              data: [],
-              count: 0
-            };
+          if (year === selectedYear) {
+            if (monthData[monthKey]) {
+              monthData[monthKey].data.push(item);
+              monthData[monthKey].count++;
+              monthData[monthKey].totalNominal += parseFloat(item.bphtb_yangtelah_dibayar || 0);
+            }
           }
-          monthData[monthKey].data.push(item);
-          monthData[monthKey].count++;
         }
       });
       
-      // Render cards for current year first, then other years
-      const sortedMonths = Object.keys(monthData).sort((a, b) => {
-        if (a.startsWith(currentYear) && !b.startsWith(currentYear)) return -1;
-        if (!a.startsWith(currentYear) && b.startsWith(currentYear)) return 1;
-        return b.localeCompare(a);
-      });
+      // Sort months (usually already sorted since we initialized them in order)
+      const sortedMonths = Object.keys(monthData).sort((a, b) => a.localeCompare(b));
       
       sortedMonths.forEach(monthKey => {
         const monthInfo = monthData[monthKey];
@@ -820,26 +908,39 @@
         card.className = 'rincian-card';
         card.dataset.monthKey = monthKey;
         
+        // Use different icon colors if there's data
+        const iconStyle = monthInfo.count > 0 ? 
+          'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);' : 
+          'background: #d1d5db;';
+        
         card.innerHTML = `
           <div class="card-header">
             <div class="card-month">${monthInfo.monthName} ${monthInfo.year}</div>
-            <div class="card-icon">
-              <i class="fa fa-calendar"></i>
+            <div class="card-icon" style="${iconStyle}">
+              <i class="fa fa-calendar-check"></i>
             </div>
           </div>
           <div class="card-body">
-            <div class="card-count">${monthInfo.count}</div>
+            <div class="card-count" style="${monthInfo.count > 0 ? '' : 'color: #9ca3af;'}">${monthInfo.count}</div>
             <div class="card-label">Berkas Diserahkan</div>
+            <div style="margin-top: 10px; font-size: 14px; font-weight: 600; color: #10b981;">
+              ${monthInfo.count > 0 ? 'Rp ' + monthInfo.totalNominal.toLocaleString('id-ID') : ''}
+            </div>
           </div>
           <div class="card-footer">
-            <span class="card-badge">${monthInfo.count} item</span>
+            <span class="card-badge" style="${monthInfo.count > 0 ? '' : 'background: #f3f4f6; color: #9ca3af;'}">${monthInfo.count} item</span>
             <span class="card-arrow">→</span>
           </div>
         `;
         
-        card.addEventListener('click', () => {
-          openMonthTable(monthInfo, monthKey);
-        });
+        if (monthInfo.count > 0) {
+          card.addEventListener('click', () => {
+            openMonthTable(monthInfo, monthKey);
+          });
+        } else {
+          card.style.opacity = '0.7';
+          card.style.cursor = 'default';
+        }
         
         cardsGrid.appendChild(card);
       });

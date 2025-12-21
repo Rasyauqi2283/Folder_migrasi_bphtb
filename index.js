@@ -4966,9 +4966,15 @@ app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
         const search = req.query.q || '';
         const offset = (page - 1) * limit;
 
-        console.log(`🔍 [PPAT] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}"`);
+        // Check for session to filter by userid if it's a PPAT
+        const sessionUser = req.session.user;
+        const isPPAT = sessionUser && (sessionUser.divisi === 'PPAT' || sessionUser.userid.startsWith('PAT'));
+
+        console.log(`🔍 [PPAT] Fetching rekap diserahkan data, page: ${page}, limit: ${limit}, search: "${search}", isPPAT: ${isPPAT}`);
 
         // Base query untuk mendapatkan data yang sudah diserahkan
+        // Menambahkan join dengan pat_2_bphtb_perhitungan untuk bphtb_yangtelah_dibayar
+        // Menambahkan join dengan lsb_1_serah_berkas untuk updated_at (tanggal_serah)
         let query = `
             SELECT 
                 b.nobooking,
@@ -4985,14 +4991,26 @@ app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
                 b.pdf_dokumen_path,
                 b.nomor_validasi,
                 vu.nama as user_nama,
-                vu.divisi
+                vu.divisi,
+                bp.bphtb_yangtelah_dibayar,
+                lsb.updated_at as tanggal_serah,
+                lsb.keterangan as keterangan_serah
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
+            LEFT JOIN lsb_1_serah_berkas lsb ON b.nobooking = lsb.nobooking
             WHERE b.trackstatus = 'Diserahkan'
         `;
 
         const queryParams = [];
         let paramCount = 0;
+
+        // Filter by userid if it's a PPAT
+        if (isPPAT) {
+            paramCount++;
+            query += ` AND b.userid = $${paramCount}`;
+            queryParams.push(sessionUser.userid);
+        }
 
         // Add search filter if provided
         if (search.trim()) {
@@ -5009,46 +5027,60 @@ app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
         }
 
         // Add ordering and pagination
-        query += ` ORDER BY b.created_at DESC`;
+        query += ` ORDER BY lsb.updated_at DESC NULLS LAST, b.created_at DESC`;
         
-        paramCount++;
-        query += ` LIMIT $${paramCount}`;
-        queryParams.push(limit);
+        const dataQueryParams = [...queryParams];
+        let dataParamCount = paramCount;
+
+        dataParamCount++;
+        query += ` LIMIT $${dataParamCount}`;
+        dataQueryParams.push(limit);
         
-        paramCount++;
-        query += ` OFFSET $${paramCount}`;
-        queryParams.push(offset);
+        dataParamCount++;
+        query += ` OFFSET $${dataParamCount}`;
+        dataQueryParams.push(offset);
 
         console.log('🔍 [PPAT] Executing rekap query:', query);
-        console.log('🔍 [PPAT] Query params:', queryParams);
 
-        const result = await pool.query(query, queryParams);
-        console.log('🔍 [PPAT] Rekap query result rows:', result.rows.length);
+        const result = await pool.query(query, dataQueryParams);
         const bookings = result.rows;
 
-        // Get total count for pagination
+        // Get total count and total nominal for pagination and recap
         let countQuery = `
-            SELECT COUNT(b.nobooking) as total
+            SELECT 
+                COUNT(b.nobooking) as total,
+                SUM(COALESCE(bp.bphtb_yangtelah_dibayar, 0)) as total_nominal
             FROM pat_1_bookingsspd b
             LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+            LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
             WHERE b.trackstatus = 'Diserahkan'
         `;
 
         const countParams = [];
+        let countParamCount = 0;
+
+        if (isPPAT) {
+            countParamCount++;
+            countQuery += ` AND b.userid = $${countParamCount}`;
+            countParams.push(sessionUser.userid);
+        }
+
         if (search.trim()) {
-            countParams.push(`%${search}%`);
+            countParamCount++;
             countQuery += ` AND (
-                b.nobooking ILIKE $1 OR 
-                b.noppbb ILIKE $1 OR 
-                b.namawajibpajak ILIKE $1 OR
-                b.namapemilikobjekpajak ILIKE $1 OR
-                b.npwpwp ILIKE $1 OR
-                vu.nama ILIKE $1
+                b.nobooking ILIKE $${countParamCount} OR 
+                b.noppbb ILIKE $${countParamCount} OR 
+                b.namawajibpajak ILIKE $${countParamCount} OR
+                b.namapemilikobjekpajak ILIKE $${countParamCount} OR
+                b.npwpwp ILIKE $${countParamCount} OR
+                vu.nama ILIKE $${countParamCount}
             )`;
+            countParams.push(`%${search}%`);
         }
 
         const countResult = await pool.query(countQuery, countParams);
         const total = parseInt(countResult.rows[0].total);
+        const totalNominal = parseFloat(countResult.rows[0].total_nominal || 0);
 
         // Format response data
         const formattedBookings = bookings.map(booking => ({
@@ -5062,22 +5094,25 @@ app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
             trackstatus: booking.trackstatus || '-',
             created_at: booking.created_at,
             updated_at: booking.updated_at,
+            tanggal_serah: booking.tanggal_serah,
+            keterangan_serah: booking.keterangan_serah,
+            bphtb_yangtelah_dibayar: booking.bphtb_yangtelah_dibayar,
             file_withstempel_path: booking.file_withstempel_path,
             pdf_dokumen_path: booking.pdf_dokumen_path,
             nomor_validasi: booking.nomor_validasi,
             user_nama: booking.user_nama || '-',
             divisi: booking.divisi || '-',
-            // Formatted values for display
-            tanggal_formatted: booking.updated_at ? 
-                new Date(booking.updated_at).toLocaleDateString('id-ID') : 
-                (booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '-')
+            // Gunakan tanggal_serah (lsb.updated_at) sebagai prioritas utama untuk tampilan
+            tanggal_formatted: booking.tanggal_serah ? 
+                new Date(booking.tanggal_serah).toLocaleDateString('id-ID') : 
+                (booking.updated_at ? new Date(booking.updated_at).toLocaleDateString('id-ID') : 
+                (booking.created_at ? new Date(booking.created_at).toLocaleDateString('id-ID') : '-'))
         }));
-
-        console.log(`✅ [PPAT] Found ${formattedBookings.length} rekap diserahkan bookings (total: ${total})`);
 
         res.json({
             success: true,
             rows: formattedBookings,
+            totalNominal: totalNominal,
             pagination: {
                 page,
                 limit,
@@ -5089,12 +5124,9 @@ app.get('/api/ppat/rekap/diserahkan', async (req, res) => {
 
     } catch (error) {
         console.error('❌ [PPAT] Error fetching rekap diserahkan data:', error);
-        console.error('❌ [PPAT] Error stack:', error.stack);
         res.status(500).json({
             success: false,
-            message: 'Gagal mengambil data rekap diserahkan',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            message: 'Gagal mengambil data rekap diserahkan'
         });
     }
 });
