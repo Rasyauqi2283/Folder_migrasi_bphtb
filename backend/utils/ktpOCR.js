@@ -292,13 +292,30 @@ class KTPOCR {
           .replace(/\s+/g, ' ') // Normalize spaces
           .trim();
         
+        // Remove prefix yang bukan bagian nama (seperti "N" dari "NIK" atau "Nama")
+        nama = nama.replace(/^N\s+(?=[A-Z])/, ''); // Remove "N " di awal jika diikuti huruf besar
+        
+        // Remove suffix yang bukan bagian nama (seperti "T T L", "TTL", "TEMPAT", dll)
+        nama = nama.replace(/\s+(T\s*T\s*L|TTL|TEMPAT|LAHIR|TGL|TANGGAL).*$/i, '');
+        nama = nama.replace(/\s+(JENIS|KELAMIN|JK|ALAMAT|RT|RW|KEL|DESA|KECAMATAN|AGAMA|STATUS|PERKAWINAN|PEKERJAAN|KEWARGANEGARAAN|BERLAKU|HINGGA).*$/i, '');
+        
         // Fix common OCR errors: Q -> O (ABDURQHIM -> ABDUROHIM)
         nama = nama.replace(/Q/g, 'O');
         
+        // Remove single letter di awal atau akhir yang mungkin error OCR
+        nama = nama.replace(/^[A-Z]\s+(?=[A-Z]{2,})/, ''); // Remove single letter di awal
+        nama = nama.replace(/\s+[A-Z]$/, ''); // Remove single letter di akhir
+        
+        // Final trim
+        nama = nama.trim();
+        
         // Validation: should be 5-50 chars, mostly letters, no numbers
+        // Nama harus minimal 2 kata (first name + last name)
+        const wordCount = nama.split(/\s+/).filter(w => w.length > 0).length;
         if (nama.length >= 5 && nama.length <= 50 && 
             /^[A-Z\s]+$/.test(nama) && 
-            !/\d/.test(nama)) {
+            !/\d/.test(nama) &&
+            wordCount >= 2) { // Minimal 2 kata
           return nama;
         }
       }
@@ -319,10 +336,21 @@ class KTPOCR {
       
       // After NIK, look for name
       if (foundNIK) {
-        const trimmed = line.trim()
+        let trimmed = line.trim()
           .replace(/[^A-Z\s]/g, '')
           .replace(/\s+/g, ' ')
           .trim();
+        
+        // Remove prefix yang bukan nama
+        trimmed = trimmed.replace(/^N\s+(?=[A-Z])/, '');
+        
+        // Remove suffix yang bukan nama
+        trimmed = trimmed.replace(/\s+(T\s*T\s*L|TTL|TEMPAT|LAHIR|TGL|TANGGAL|JENIS|KELAMIN|JK|ALAMAT|RT|RW|KEL|DESA|KECAMATAN|AGAMA|STATUS|PERKAWINAN|PEKERJAAN|KEWARGANEGARAAN|BERLAKU|HINGGA).*$/i, '');
+        
+        // Remove single letter di awal/akhir
+        trimmed = trimmed.replace(/^[A-Z]\s+(?=[A-Z]{2,})/, '').replace(/\s+[A-Z]$/, '').trim();
+        
+        const wordCount = trimmed.split(/\s+/).filter(w => w.length > 0).length;
           
         if (
           trimmed.length > longestLength &&
@@ -336,6 +364,7 @@ class KTPOCR {
           !trimmed.includes('KECAMATAN') &&
           !trimmed.includes('KELURAHAN') &&
           !trimmed.includes('RT/RW') &&
+          wordCount >= 2 && // Minimal 2 kata
           /[A-Z]/.test(trimmed)
         ) {
           bestMatch = trimmed;
@@ -347,22 +376,35 @@ class KTPOCR {
     return bestMatch;
   }
 
-  // Ekstrak TTL (Tanggal Lahir)
+  // Ekstrak TTL (Tanggal Lahir) - Enhanced untuk handle format dengan spasi
   extractTTL(text) {
     const patterns = [
-      /TEMPAT\s+LAHIR\s*[:\.]?\s*([^,]+),\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i,
+      /TEMPAT\s+LAHIR\s*[:\.]?\s*([^,]+),\s*(\d{1,2}[-\/\s]\d{1,2}[-\/\s]\d{4})/i,
       /TEMPAT\s+LAHIR\s*[:\.]?\s*([^,]+),\s*(\d{1,2}\s+\w+\s+\d{4})/i,
-      /TTL\s*[:\.]?\s*([^,]+),\s*(\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i,
-      /TTL\s*[:\.]?\s*([^,]+),\s*(\d{1,2}\s+\w+\s+\d{4})/i
+      /TTL\s*[:\.]?\s*([^,]+),\s*(\d{1,2}[-\/\s]\d{1,2}[-\/\s]\d{4})/i,
+      /TTL\s*[:\.]?\s*([^,]+),\s*(\d{1,2}\s+\w+\s+\d{4})/i,
+      // Handle format: "GARUT, 10 - 07 - 1992" (dengan spasi di tanggal)
+      /([A-Z\s]{3,}),\s*(\d{1,2}\s*-\s*\d{1,2}\s*-\s*\d{4})/i
     ];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match && match[1] && match[2]) {
-        return {
-          tempat: match[1].trim(),
-          tanggal: match[2].trim()
-        };
+        let tempat = match[1].trim();
+        let tanggal = match[2].trim();
+        
+        // Clean tempat: remove extra spaces
+        tempat = tempat.replace(/\s+/g, ' ').trim();
+        
+        // Clean tanggal: normalize format (remove spaces, keep dashes)
+        tanggal = tanggal.replace(/\s+/g, '').replace(/-/g, '-');
+        // Ensure format: DD-MM-YYYY
+        if (tanggal.match(/^\d{1,2}-\d{1,2}-\d{4}$/)) {
+          return {
+            tempat: tempat,
+            tanggal: tanggal
+          };
+        }
       }
     }
 
