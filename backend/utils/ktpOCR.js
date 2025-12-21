@@ -17,10 +17,11 @@ class KTPOCR {
     
     try {
       this.worker = await Tesseract.createWorker('eng+ind');
+      // Set parameters before any recognition
       await this.worker.setParameters({
-        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .:-',
-        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO, // AUTO mode works better for KTP
+        tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ .:-/',
+        // Don't set tessedit_ocr_engine_mode here (causes error)
       });
       this.initialized = true;
       console.log('✅ KTP OCR initialized successfully');
@@ -96,10 +97,20 @@ class KTPOCR {
           const text = data.text;
           const confidence = data.confidence || 0;
 
+          // Log raw OCR text for debugging (first 500 chars)
+          if (i === 0) {
+            console.log(`📝 [KTP OCR] Raw text (first 500 chars): ${text.substring(0, 500)}`);
+          }
+
           // Extract fields
           const extracted = this.extractAllFields(text);
           extracted.confidence = confidence;
           extracted.method = i === preprocessingMethods.length - 1 ? 'direct' : ['adaptive', 'otsu', 'gaussian'][i] || 'unknown';
+          
+          // Log extracted data for debugging
+          if (i === 0) {
+            console.log(`🔍 [KTP OCR] Extracted NIK: ${extracted.nik}, Nama: ${extracted.nama}, Status: ${extracted.statusPerkawinan}`);
+          }
 
           // Score based on confidence and completeness
           const score = this.calculateScore(extracted, confidence);
@@ -241,47 +252,82 @@ class KTPOCR {
     return null;
   }
 
-  // Ekstrak Nama - Enhanced
+  // Ekstrak Nama - Enhanced (untuk KTP Ohim)
   extractNama(text) {
+    // Clean text first - remove common OCR errors
+    const cleanedText = text
+      .replace(/[^\w\s:\.\-]/g, ' ') // Remove special chars except : . -
+      .replace(/\s+/g, ' ') // Normalize spaces
+      .replace(/[:\.]\s*/g, ' '); // Replace : and . with space
+    
     const patterns = [
-      /NAMA\s*[:\.]?\s*([A-Z\s]{5,})/i,
-      /Nama\s*[:\.]?\s*([A-Z\s]{5,})/i,
-      /NAMA\s+([A-Z\s]{5,})/i
+      // Pattern untuk "NAMA: MUCHAMMAD ABDUROHIM"
+      /NAMA\s*[:\.]?\s*([A-Z][A-Z\s]{4,30})/i,
+      // Pattern untuk "Nama: MUCHAMMAD ABDUROHIM"
+      /Nama\s*[:\.]?\s*([A-Z][A-Z\s]{4,30})/i,
+      // Pattern tanpa label, setelah NIK
+      /(\d{16})\s+([A-Z][A-Z\s]{4,30})/i,
+      // Pattern umum
+      /NAMA\s+([A-Z][A-Z\s]{4,30})/i
     ];
 
     for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        const nama = match[1].trim().replace(/\s+/g, ' ');
-        // Basic validation: should be at least 3 characters and contain letters
-        if (nama.length >= 3 && /[A-Z]/.test(nama)) {
+      const match = cleanedText.match(pattern);
+      if (match) {
+        let nama = (match[1] || match[2] || '').trim();
+        
+        // Clean nama: remove invalid characters
+        nama = nama
+          .replace(/[^A-Z\s]/g, '') // Only keep letters and spaces
+          .replace(/\s+/g, ' ') // Normalize spaces
+          .trim();
+        
+        // Validation: should be 5-50 chars, mostly letters, no numbers
+        if (nama.length >= 5 && nama.length <= 50 && 
+            /^[A-Z\s]+$/.test(nama) && 
+            !/\d/.test(nama)) {
           return nama;
         }
       }
     }
 
-    // Fallback: find longest uppercase line without numbers
-    const lines = text.split('\n');
+    // Fallback: find longest uppercase line without numbers (after NIK line)
+    const lines = cleanedText.split('\n');
     let bestMatch = null;
     let longestLength = 0;
+    let foundNIK = false;
 
     for (const line of lines) {
-      const trimmed = line.trim();
-      if (
-        trimmed.length > longestLength &&
-        trimmed.length >= 3 &&
-        trimmed === trimmed.toUpperCase() &&
-        !trimmed.match(/\d/) &&
-        !trimmed.includes('PROVINSI') &&
-        !trimmed.includes('KOTA') &&
-        !trimmed.includes('KABUPATEN') &&
-        !trimmed.includes('KECAMATAN') &&
-        !trimmed.includes('KELURAHAN') &&
-        !trimmed.includes('RT/RW') &&
-        /[A-Z]/.test(trimmed)
-      ) {
-        bestMatch = trimmed;
-        longestLength = trimmed.length;
+      // Check if this line contains NIK
+      if (/\d{16}/.test(line)) {
+        foundNIK = true;
+        continue;
+      }
+      
+      // After NIK, look for name
+      if (foundNIK) {
+        const trimmed = line.trim()
+          .replace(/[^A-Z\s]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+          
+        if (
+          trimmed.length > longestLength &&
+          trimmed.length >= 5 &&
+          trimmed.length <= 50 &&
+          trimmed === trimmed.toUpperCase() &&
+          !trimmed.match(/\d/) &&
+          !trimmed.includes('PROVINSI') &&
+          !trimmed.includes('KOTA') &&
+          !trimmed.includes('KABUPATEN') &&
+          !trimmed.includes('KECAMATAN') &&
+          !trimmed.includes('KELURAHAN') &&
+          !trimmed.includes('RT/RW') &&
+          /[A-Z]/.test(trimmed)
+        ) {
+          bestMatch = trimmed;
+          longestLength = trimmed.length;
+        }
       }
     }
 
@@ -694,37 +740,69 @@ class KTPOCR {
     }
   }
 
-  // Preprocess dengan Sharp (fallback ketika OpenCV tidak tersedia)
+  // Preprocess dengan Sharp (fallback ketika OpenCV tidak tersedia) - ENHANCED
   async preprocessWithSharp(imagePath, method = 'otsu') {
     try {
       let pipeline = sharp(imagePath);
 
       switch (method) {
         case 'otsu':
+          // Aggressive preprocessing for better OCR
+          pipeline = pipeline
+            .greyscale()
+            .normalize() // Normalize brightness
+            .linear(1.5, -(128 * 0.3)) // High contrast
+            .modulate({ brightness: 1.1, saturation: 0 }) // Slightly brighter
+            .sharpen({ sigma: 1.5, flat: 1, jagged: 2 }) // Aggressive sharpening
+            .threshold(128, { grayscale: true }); // Binary threshold
+          break;
+
         case 'gaussian':
-          // Grayscale + enhance contrast
+          // Gaussian-like preprocessing
           pipeline = pipeline
             .greyscale()
             .normalize()
-            .sharpen();
+            .linear(1.3, -(128 * 0.25)) // Medium-high contrast
+            .modulate({ brightness: 1.05 })
+            .sharpen({ sigma: 1.2, flat: 1, jagged: 1.5 })
+            .threshold(140, { grayscale: true });
           break;
 
         case 'adaptive':
-          // Grayscale + enhance contrast + threshold-like effect
+          // Adaptive-like preprocessing
           pipeline = pipeline
             .greyscale()
             .normalize()
-            .linear(1.2, -(128 * 0.2)) // Increase contrast
-            .sharpen();
+            .linear(1.4, -(128 * 0.28)) // High contrast
+            .modulate({ brightness: 1.08 })
+            .sharpen({ sigma: 1.8, flat: 1.2, jagged: 2.2 })
+            .threshold(135, { grayscale: true });
           break;
 
         default:
-          // Simple grayscale
-          pipeline = pipeline.greyscale();
+          // Enhanced default
+          pipeline = pipeline
+            .greyscale()
+            .normalize()
+            .linear(1.2, -(128 * 0.2))
+            .sharpen();
+      }
+
+      // Resize if too large (max 2000px width) for better OCR performance
+      const metadata = await sharp(imagePath).metadata();
+      if (metadata.width > 2000) {
+        pipeline = pipeline.resize(2000, null, {
+          withoutEnlargement: true,
+          kernel: sharp.kernel.lanczos3
+        });
       }
 
       // Convert to PNG buffer for Tesseract
-      const buffer = await pipeline.png().toBuffer();
+      const buffer = await pipeline.png({ 
+        compressionLevel: 9,
+        quality: 100 
+      }).toBuffer();
+      
       return buffer;
 
     } catch (error) {
