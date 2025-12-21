@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import Tesseract from 'tesseract.js';
 import cv from '@techstark/opencv-js';
+import sharp from 'sharp';
 
 class KTPOCR {
   constructor() {
@@ -71,13 +72,16 @@ class KTPOCR {
       const preprocessingMethods = [
         () => this.preprocessImage(imagePath, 'adaptive'),
         () => this.preprocessImage(imagePath, 'otsu'),
-        () => this.preprocessImage(imagePath, 'gaussian')
+        () => this.preprocessImage(imagePath, 'gaussian'),
+        // Fallback: Direct OCR without preprocessing
+        () => Promise.resolve(fs.readFileSync(imagePath))
       ];
 
       let bestResult = null;
       let bestScore = 0;
 
-      for (const preprocessMethod of preprocessingMethods) {
+      for (let i = 0; i < preprocessingMethods.length; i++) {
+        const preprocessMethod = preprocessingMethods[i];
         try {
           const processedImage = await preprocessMethod();
           
@@ -95,7 +99,7 @@ class KTPOCR {
           // Extract fields
           const extracted = this.extractAllFields(text);
           extracted.confidence = confidence;
-          extracted.method = preprocessMethod.name || 'unknown';
+          extracted.method = i === preprocessingMethods.length - 1 ? 'direct' : ['adaptive', 'otsu', 'gaussian'][i] || 'unknown';
 
           // Score based on confidence and completeness
           const score = this.calculateScore(extracted, confidence);
@@ -114,7 +118,19 @@ class KTPOCR {
       }
 
       if (!bestResult) {
-        throw new Error('Semua metode preprocessing gagal');
+        // Last resort: Try direct OCR on original file
+        console.log('🔄 [KTP OCR] Trying direct OCR as last resort...');
+        try {
+          const originalBuffer = fs.readFileSync(imagePath);
+          const { data } = await this.worker.recognize(originalBuffer);
+          const extracted = this.extractAllFields(data.text);
+          extracted.confidence = data.confidence || 0;
+          extracted.method = 'direct_fallback';
+          bestResult = extracted;
+          bestScore = this.calculateScore(extracted, extracted.confidence);
+        } catch (fallbackError) {
+          throw new Error(`Semua metode preprocessing gagal: ${fallbackError.message}`);
+        }
       }
 
       const processingTime = Date.now() - startTime;
@@ -557,11 +573,58 @@ class KTPOCR {
 
   // Preprocess gambar dengan multiple methods
   async preprocessImage(imagePath, method = 'otsu') {
-    const imageData = fs.readFileSync(imagePath);
-    const image = cv.imdecode(imageData);
+    // Try OpenCV first, fallback to Sharp if OpenCV fails
+    let image;
+    let useOpenCV = false;
+    
+    try {
+      // Method 1: Try cv.imread (for Node.js OpenCV)
+      if (typeof cv.imread === 'function') {
+        try {
+          image = cv.imread(imagePath);
+          if (image && typeof image.empty === 'function' && !image.empty()) {
+            useOpenCV = true;
+          } else {
+            throw new Error('cv.imread returned empty or invalid image');
+          }
+        } catch (imreadError) {
+          throw new Error(`cv.imread failed: ${imreadError.message}`);
+        }
+      } 
+      // Method 2: Try cv.imdecode (alternative method)
+      else if (typeof cv.imdecode === 'function') {
+        try {
+          const imageData = fs.readFileSync(imagePath);
+          image = cv.imdecode(imageData);
+          if (image && typeof image.empty === 'function' && !image.empty()) {
+            useOpenCV = true;
+          } else {
+            throw new Error('cv.imdecode returned empty or invalid image');
+          }
+        } catch (imdecodeError) {
+          throw new Error(`cv.imdecode failed: ${imdecodeError.message}`);
+        }
+      } 
+      // Method 3: Use Sharp for simple preprocessing (no OpenCV)
+      else {
+        console.warn('⚠️ [KTP OCR] OpenCV functions not available, using Sharp preprocessing');
+        return await this.preprocessWithSharp(imagePath, method);
+      }
+    } catch (cvError) {
+      console.warn(`⚠️ [KTP OCR] OpenCV error: ${cvError.message}, using Sharp fallback`);
+      // Fallback to Sharp preprocessing
+      return await this.preprocessWithSharp(imagePath, method);
+    }
 
-    if (image.empty()) {
-      throw new Error('Failed to decode image');
+    // If we reach here, OpenCV is working
+    if (!useOpenCV || !image) {
+      return await this.preprocessWithSharp(imagePath, method);
+    }
+
+    // Final check: if image is not a cv.Mat, use Sharp
+    if (!image || typeof image.empty !== 'function') {
+      console.warn('⚠️ [KTP OCR] Invalid OpenCV image object, using Sharp fallback');
+      return await this.preprocessWithSharp(imagePath, method);
     }
 
     let processed = new cv.Mat();
@@ -569,6 +632,12 @@ class KTPOCR {
     try {
       // Convert to grayscale
       const gray = new cv.Mat();
+      
+      // Check if cv.cvtColor is available
+      if (typeof cv.cvtColor !== 'function') {
+        throw new Error('cv.cvtColor is not a function');
+      }
+      
       cv.cvtColor(image, gray, cv.COLOR_RGBA2GRAY);
 
       switch (method) {
@@ -613,11 +682,55 @@ class KTPOCR {
 
     } catch (error) {
       // Clean up on error
-      image.delete();
-      if (processed && !processed.empty()) {
+      if (image && typeof image.delete === 'function') {
+        image.delete();
+      }
+      if (processed && typeof processed.empty === 'function' && !processed.empty()) {
         processed.delete();
       }
-      throw new Error(`Preprocessing failed (${method}): ${error.message}`);
+      // Fallback to Sharp if OpenCV processing fails
+      console.warn(`⚠️ [KTP OCR] OpenCV processing failed, using Sharp fallback: ${error.message}`);
+      return await this.preprocessWithSharp(imagePath, method);
+    }
+  }
+
+  // Preprocess dengan Sharp (fallback ketika OpenCV tidak tersedia)
+  async preprocessWithSharp(imagePath, method = 'otsu') {
+    try {
+      let pipeline = sharp(imagePath);
+
+      switch (method) {
+        case 'otsu':
+        case 'gaussian':
+          // Grayscale + enhance contrast
+          pipeline = pipeline
+            .greyscale()
+            .normalize()
+            .sharpen();
+          break;
+
+        case 'adaptive':
+          // Grayscale + enhance contrast + threshold-like effect
+          pipeline = pipeline
+            .greyscale()
+            .normalize()
+            .linear(1.2, -(128 * 0.2)) // Increase contrast
+            .sharpen();
+          break;
+
+        default:
+          // Simple grayscale
+          pipeline = pipeline.greyscale();
+      }
+
+      // Convert to PNG buffer for Tesseract
+      const buffer = await pipeline.png().toBuffer();
+      return buffer;
+
+    } catch (error) {
+      console.warn(`⚠️ [KTP OCR] Sharp preprocessing failed: ${error.message}, using original image`);
+      // Last resort: return original file
+      return fs.readFileSync(imagePath);
     }
   }
 
