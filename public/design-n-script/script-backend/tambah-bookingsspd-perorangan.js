@@ -133,7 +133,8 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
     const letaktanahdanbangunan = document.getElementById('letaktanahdanbangunan').value;
 
     //kolom tabel pat_4_objek_pajak (jenis_perolehan)
-     const jenisPerolehan = document.getElementById('jenisperolehan').value;
+     const jenisPerolehanEl = document.getElementById('jenisperolehan');
+     const jenisPerolehan = jenisPerolehanEl ? jenisPerolehanEl.value : '';
      //kolom tabel pat_2_bphtb_perhitungan (npoptkpMap/nilaiPerolehanObjekPajakTidakKenaPajak)
     const npoptkpMap = {
         '03': 300000000,

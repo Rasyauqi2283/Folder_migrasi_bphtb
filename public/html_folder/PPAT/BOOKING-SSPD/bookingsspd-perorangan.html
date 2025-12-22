@@ -725,28 +725,30 @@ document.querySelectorAll('.nop-pbb-inputs input[type="number"]').forEach(input 
     }
     // Auto-focus (skip jika readonly)
     if (!this.readOnly && this.value.length >= maxDigits) {
-      focusNextInput(this);
+      focusNextInputNOP(this);
     }
   });
   // Handle backspace
   input.addEventListener('keydown', function(e) {
     if (e.key === 'Backspace' && this.value.length === 0) {
-      focusPrevInput(this);
+      focusPrevInputNOP(this);
       e.preventDefault(); // Hindari perilaku default
     }
   });
 });
-// Fungsi bantu untuk navigasi
-function focusNextInput(currentInput) {
+// Fungsi bantu untuk navigasi NOP PBB
+function focusNextInputNOP(currentInput) {
   const container = currentInput.closest('.nop-pbb-inputs');
+  if (!container) return;
   const inputs = Array.from(container.querySelectorAll('input[type="number"]'));
   const currentIndex = inputs.indexOf(currentInput);
   if (currentIndex < inputs.length - 1) {
     inputs[currentIndex + 1].focus();
   }
 }
-function focusPrevInput(currentInput) {
+function focusPrevInputNOP(currentInput) {
   const container = currentInput.closest('.nop-pbb-inputs');
+  if (!container) return;
   const inputs = Array.from(container.querySelectorAll('input[type="number"]'));
   const currentIndex = inputs.indexOf(currentInput); 
   if (currentIndex > 0) {
@@ -766,28 +768,30 @@ document.querySelectorAll('.npwp-inputs input[type="number"]').forEach(input => 
     }
     // Auto-focus (skip jika readonly)
     if (!this.readOnly && this.value.length >= maxDigits) {
-      focusNextInput(this);
+      focusNextInputNPWP(this);
     }
   });
   // Handle backspace
   input.addEventListener('keydown', function(e) {
     if (e.key === 'Backspace' && this.value.length === 0) {
-      focusPrevInput(this);
+      focusPrevInputNPWP(this);
       e.preventDefault(); // Hindari perilaku default
     }
   });
 });
-// Fungsi bantu untuk navigasi
-function focusNextInput(currentInput) {
+// Fungsi bantu untuk navigasi NPWP
+function focusNextInputNPWP(currentInput) {
   const container = currentInput.closest('.npwp-inputs');
+  if (!container) return;
   const inputs = Array.from(container.querySelectorAll('input[type="number"]'));
   const currentIndex = inputs.indexOf(currentInput);
   if (currentIndex < inputs.length - 1) {
     inputs[currentIndex + 1].focus();
   }
 }
-function focusPrevInput(currentInput) {
+function focusPrevInputNPWP(currentInput) {
   const container = currentInput.closest('.npwp-inputs');
+  if (!container) return;
   const inputs = Array.from(container.querySelectorAll('input[type="number"]'));
   const currentIndex = inputs.indexOf(currentInput); 
   if (currentIndex > 0) {
