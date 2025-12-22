@@ -632,19 +632,55 @@ export const sendResetEmail = async (to, link) => {
     }
 };
 
+// Helper function untuk menentukan userTypeFormal berdasarkan pejabat_umum
+// Menggunakan kolom pejabat_umum dari database untuk identifikasi yang lebih akurat
+// karena userid PAT/PATS bisa digunakan untuk PPAT, PPATS, atau Notaris
+// Contoh: userid PAT06 dengan pejabat_umum='Notaris' akan diidentifikasi sebagai 'Notaris', bukan 'PPAT'
+const getUserTypeFormal = (pejabatUmum, fallbackUserType = 'PPAT') => {
+    if (!pejabatUmum) {
+        // Fallback ke parameter jika pejabat_umum tidak ada
+        return fallbackUserType === 'PPATS' 
+            ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' 
+            : 'PPAT (Pejabat Pembuat Akta Tanah)';
+    }
+    
+    // Gunakan pejabat_umum dari database untuk identifikasi yang lebih spesifik
+    const pejabatUmumLower = pejabatUmum.toLowerCase().trim();
+    
+    if (pejabatUmumLower === 'notaris') {
+        return 'Notaris';
+    } else if (pejabatUmumLower === 'ppats' || pejabatUmumLower === 'ppats (pejabat pembuat akta tanah sementara)') {
+        return 'PPATS (Pejabat Pembuat Akta Tanah Sementara)';
+    } else if (pejabatUmumLower === 'ppat' || pejabatUmumLower === 'ppat (pejabat pembuat akta tanah)') {
+        return 'PPAT (Pejabat Pembuat Akta Tanah)';
+    } else {
+        // Jika format tidak dikenal, gunakan nilai asli atau fallback
+        return pejabatUmum || (fallbackUserType === 'PPATS' 
+            ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' 
+            : 'PPAT (Pejabat Pembuat Akta Tanah)');
+    }
+};
+
 // Mengirim notifikasi email pengiriman dokumen (Draft → Diolah)
 export const sendDocumentSubmissionEmail = async (email, nobooking, noRegistrasi, userType = 'PPAT') => {
     try {
         console.log(`📧 Sending document submission email to ${email} for nobooking: ${nobooking}`);
         
-        // Ambil data user dari database untuk personalisasi
+        // Ambil data user dari database untuk personalisasi dan identifikasi role sebenarnya
+        // Query pejabat_umum untuk identifikasi yang lebih spesifik (PPAT/PPATS/Notaris)
         const userQuery = await pool.query(
-            'SELECT nama FROM a_2_verified_users WHERE email = $1', 
+            'SELECT nama, pejabat_umum FROM a_2_verified_users WHERE email = $1', 
             [email]
         );
         
         const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
-        const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
+        const pejabatUmum = userQuery.rows.length > 0 ? userQuery.rows[0].pejabat_umum : null;
+        
+        // Gunakan pejabat_umum dari database untuk identifikasi yang lebih spesifik
+        // Ini penting karena userid PAT bisa untuk PPAT atau Notaris, PATS untuk PPATS
+        const userTypeFormal = getUserTypeFormal(pejabatUmum, userType);
+        
+        console.log(`📋 User role identified: ${userTypeFormal} (pejabat_umum: ${pejabatUmum || 'null'}, fallback: ${userType})`);
         
         const mailOptions = {
             from: process.env.EMAIL_USER || 'noreply@bappenda.com',
@@ -726,14 +762,21 @@ export const sendDocumentCompletionEmail = async (email, nobooking, noRegistrasi
         console.log(`📧 Sending document completion email to ${email} for nobooking: ${nobooking}`);
     const { attachments = [], publicDownloadUrl = null } = options || {};
         
-        // Ambil data user dari database untuk personalisasi
+        // Ambil data user dari database untuk personalisasi dan identifikasi role sebenarnya
+        // Query pejabat_umum untuk identifikasi yang lebih spesifik (PPAT/PPATS/Notaris)
         const userQuery = await pool.query(
-            'SELECT nama FROM a_2_verified_users WHERE email = $1', 
+            'SELECT nama, pejabat_umum FROM a_2_verified_users WHERE email = $1', 
             [email]
         );
         
         const userName = userQuery.rows.length > 0 ? userQuery.rows[0].nama : 'Bapak/Ibu';
-        const userTypeFormal = userType === 'PPATS' ? 'PPATS (Pejabat Pembuat Akta Tanah Sementara)' : 'PPAT (Pejabat Pembuat Akta Tanah)';
+        const pejabatUmum = userQuery.rows.length > 0 ? userQuery.rows[0].pejabat_umum : null;
+        
+        // Gunakan pejabat_umum dari database untuk identifikasi yang lebih spesifik
+        // Ini penting karena userid PAT bisa untuk PPAT atau Notaris, PATS untuk PPATS
+        const userTypeFormal = getUserTypeFormal(pejabatUmum, userType);
+        
+        console.log(`📋 User role identified: ${userTypeFormal} (pejabat_umum: ${pejabatUmum || 'null'}, fallback: ${userType})`);
         
         const mailOptions = {
             from: process.env.EMAIL_USER || 'noreply@bappenda.com',
