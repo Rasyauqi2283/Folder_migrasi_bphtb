@@ -208,41 +208,76 @@
         }
         
         /* Ensure admin dashboard main-content is responsive to sidebar expansion */
-        /* Base state - sidebar collapsed (60px) */
-        /* Note: Base styles are inherited from table-utama.css */
+        /* Base state - sidebar collapsed (60px) - Match PPAT dashboard exactly */
+        /* Note: Base styles are inherited from table-utama.css, but we ensure consistency */
         .admin-dashboard .main-content {
-            /* These values match the base .main-content from table-utama.css */
+            /* These values match the base .main-content from table-utama.css exactly */
             margin-left: 70px; /* 60px sidebar + 10px gutter */
+            margin-right: 15px; /* Fixed 15px from viewport edge - CRITICAL for viewport containment */
             margin-top: 80px;
-            width: calc(100vw - 70px - 15px);
+            width: calc(100vw - 70px - 15px); /* 100vw - left margin - right margin */
             max-width: calc(100vw - 70px - 15px);
             transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
                         width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-sizing: border-box;
             overflow-x: hidden;
+            overflow-y: auto;
+            /* CRITICAL: Override any position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
         }
         
-        /* When sidebar is expanded (shifted state) - match PPAT dashboard behavior */
-        /* Sidebar expands to 250px, so we need 250px + 10px gutter = 260px margin */
+        /* When sidebar is expanded (shifted state) - Match PPAT dashboard exactly */
+        /* Sidebar expands to 250px, so we need 250px + 10px gutter = 260px margin-left */
+        /* CRITICAL: margin-right: 15px must always be present to prevent viewport overflow */
+        /* CRITICAL: Override position: fixed from table-utama.css to use margin-based approach */
         /* Handle both cases: class shifted on main-content itself, or on main element */
         .admin-dashboard .main-content.shifted,
         main.shifted .admin-dashboard .main-content {
+            /* Override position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+            
+            /* Use margin-based approach like PPAT dashboard */
             margin-left: 260px !important; /* 250px sidebar + 10px gutter */
-            width: calc(100vw - 260px - 15px) !important;
+            margin-right: 15px !important; /* CRITICAL: Always maintain right margin */
+            margin-top: 80px !important;
+            width: calc(100vw - 260px - 15px) !important; /* 100vw - left margin - right margin */
             max-width: calc(100vw - 260px - 15px) !important;
+            height: calc(100vh - 80px - 40px) !important; /* minus header and footer */
             transform: none !important; /* Override any transform from generic .shifted */
             transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
                         width 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
         
         /* Also handle body.shifted for compatibility (if JavaScript adds shifted to body) */
         body.shifted .admin-dashboard .main-content {
+            /* Override position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+            
+            /* Use margin-based approach like PPAT dashboard */
             margin-left: 260px !important;
+            margin-right: 15px !important; /* CRITICAL: Always maintain right margin */
+            margin-top: 80px !important;
             width: calc(100vw - 260px - 15px) !important;
             max-width: calc(100vw - 260px - 15px) !important;
+            height: calc(100vh - 80px - 40px) !important;
             transform: none !important;
             transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
                         width 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
         }
         
         /* Ensure all child elements respect the container width when shifted */
