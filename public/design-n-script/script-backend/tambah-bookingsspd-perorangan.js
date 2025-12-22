@@ -148,21 +148,38 @@ document.getElementById('formBadanUsaha_Bphtb').addEventListener('submit', async
     };
     const nilaiPerolehanObjekPajakTidakKenaPajak = npoptkpMap[jenisPerolehan] ?? 80000000;
     //kolom tabel pat_4_objek_pajak (rt_rwobjekpajak, kelurahandesalp, kecamatanlp)
-    const rt_rwobjekpajak = document.getElementById('rt_rwobjekpajak').value;
-    const kelurahandesalp = document.getElementById('kelurahandesalp').value;
-    const kecamatanlp = document.getElementById('kecamatanlp').value;
+    const rt_rwobjekpajakEl = document.getElementById('rt_rwobjekpajak');
+    const rt_rwobjekpajak = rt_rwobjekpajakEl ? rt_rwobjekpajakEl.value : '';
+    const kelurahandesalpEl = document.getElementById('kelurahandesalp');
+    const kelurahandesalp = kelurahandesalpEl ? kelurahandesalpEl.value : '';
+    const kecamatanlpEl = document.getElementById('kecamatanlp');
+    const kecamatanlp = kecamatanlpEl ? kecamatanlpEl.value : '';
     // Ambil nilai dari dropdown status kepemilikan, jika tidak ada pilihannya, set default 'Milik Pribadi'
     //kolom tabel pat_4_objek_pajak (status_kepemilikan)
-    const status_kepemilikan = document.getElementById('status_kepemilikan').value || 'Milik Pribadi';
+    const status_kepemilikanEl = document.getElementById('status_kepemilikan');
+    const status_kepemilikan = status_kepemilikanEl ? (status_kepemilikanEl.value || 'Milik Pribadi') : 'Milik Pribadi';
     //kolom tabel pat_4_objek_pajak (keterangan)
-    const keterangan = document.getElementById('keterangan').value;
+    const keteranganEl = document.getElementById('keterangan');
+    const keterangan = keteranganEl ? keteranganEl.value : '';
     //kolom tabel pat_4_objek_pajak (nomor_sertifikat)
-    const nomor_sertifikat = document.getElementById('nomor_sertifikat').value;
+    const nomor_sertifikatEl = document.getElementById('nomor_sertifikat');
+    const nomor_sertifikat = nomor_sertifikatEl ? nomor_sertifikatEl.value : '';
     //kolom tabel pat_4_objek_pajak (tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran)
-    const formattedPerolehan = `${document.getElementById('tanggaloleh').value.padStart(2, '0')}-${document.getElementById('bulanoleh').value.padStart(2, '0')}-${document.getElementById('tahunoleh').value}`;
-    const formattedPembayaran = `${document.getElementById('tanggalbayar').value.padStart(2, '0')}-${document.getElementById('bulanbayar').value.padStart(2, '0')}-${document.getElementById('tahunbayar').value}`;
+    const tanggalolehEl = document.getElementById('tanggaloleh');
+    const bulanolehEl = document.getElementById('bulanoleh');
+    const tahunolehEl = document.getElementById('tahunoleh');
+    const tanggalbayarEl = document.getElementById('tanggalbayar');
+    const bulanbayarEl = document.getElementById('bulanbayar');
+    const tahunbayarEl = document.getElementById('tahunbayar');
+    const formattedPerolehan = (tanggalolehEl && bulanolehEl && tahunolehEl) 
+        ? `${tanggalolehEl.value.padStart(2, '0')}-${bulanolehEl.value.padStart(2, '0')}-${tahunolehEl.value}` 
+        : '';
+    const formattedPembayaran = (tanggalbayarEl && bulanbayarEl && tahunbayarEl)
+        ? `${tanggalbayarEl.value.padStart(2, '0')}-${bulanbayarEl.value.padStart(2, '0')}-${tahunbayarEl.value}`
+        : '';
     //kolom tabel pat_4_objek_pajak (nomor_bukti_pembayaran)
-    const nomor_bukti_pembayaran = document.getElementById('nomor_bukti_pembayaran').value;
+    const nomor_bukti_pembayaranEl = document.getElementById('nomor_bukti_pembayaran');
+    const nomor_bukti_pembayaran = nomor_bukti_pembayaranEl ? nomor_bukti_pembayaranEl.value : '';
 
     // Mengambil userID dari sessionStorage atau localStorage
     const userid = sessionStorage.getItem('userid') || localStorage.getItem('userid');
