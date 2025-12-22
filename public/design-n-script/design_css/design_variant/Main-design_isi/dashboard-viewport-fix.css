@@ -4,22 +4,39 @@
 /* TEMBOK: Force main content to stay within viewport boundaries */
 body.dashboard-responsive .main-content {
     /* Normal state: sidebar collapsed (60px) */
-    width: calc(100vw - 60px - 15px) !important;
-    max-width: calc(100vw - 60px - 15px) !important;
-    min-width: calc(100vw - 60px - 15px) !important;
-    margin-left: 60px !important;
+    /* IMPORTANT:
+       Avoid 100vw here because it includes the scrollbar width and can cause
+       horizontal overflow when combined with translateX(.shifted).
+       Use margin-based layout like other dashboards (table-utama.css). */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 70px !important; /* 60px sidebar + 10px gutter */
     margin-right: 15px !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
     position: relative !important;
 }
 
-/* TEMBOK: When sidebar expanded, force content to shrink */
+/* TEMBOK: When sidebar expanded, force content to shrink (JS adds .shifted to .main-content) */
+body.dashboard-responsive .main-content.shifted {
+    /* Override generic .shifted transform from design_sidebar.css */
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important; /* 250px sidebar + 10px gutter */
+    margin-right: 15px !important;
+    position: relative !important;
+}
+
+/* Compatibility: if some pages use main.shifted wrapper */
 body.dashboard-responsive main.shifted .main-content {
-    width: calc(100vw - 250px - 15px) !important;
-    max-width: calc(100vw - 250px - 15px) !important;
-    min-width: calc(100vw - 250px - 15px) !important;
-    margin-left: 250px !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important;
     margin-right: 15px !important;
 }
 
@@ -56,32 +73,38 @@ body.dashboard-responsive .welcome-banner {
 /* TEMBOK: Responsive breakpoints */
 @media (max-width: 1199px) {
     body.dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     body.dashboard-responsive main.shifted .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 }
 
 @media (max-width: 767px) {
     body.dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     body.dashboard-responsive main.shifted .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 }

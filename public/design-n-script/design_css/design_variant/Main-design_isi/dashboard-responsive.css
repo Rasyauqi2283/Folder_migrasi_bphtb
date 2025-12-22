@@ -40,21 +40,37 @@
 
 /* TEMBOK: Ultra-strict constraints to prevent overflow */
 body.dashboard-responsive .main-content {
-    width: calc(100vw - 60px - 15px) !important;
-    max-width: calc(100vw - 60px - 15px) !important;
-    min-width: calc(100vw - 60px - 15px) !important;
-    margin-left: 60px !important;
+    /* IMPORTANT:
+       Do not use 100vw here (includes scrollbar width) and do not force min-width,
+       because Admin dashboard also uses `.main-content.shifted` and the generic
+       `.shifted { transform: ... }` would otherwise push content outside viewport.
+       Use margin-based layout like other dashboards. */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 70px !important; /* 60px sidebar + 10px gutter */
     margin-right: 15px !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
 }
 
-/* TEMBOK: When sidebar expanded, force content to shrink */
+/* TEMBOK: When sidebar expanded (JS adds .shifted to .main-content) */
+body.dashboard-responsive .main-content.shifted {
+    transform: none !important; /* override design_sidebar.css `.shifted` translate */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important; /* 250px sidebar + 10px gutter */
+    margin-right: 15px !important;
+}
+
+/* Compatibility: if some pages use main.shifted wrapper */
 body.dashboard-responsive main.shifted .main-content {
-    width: calc(100vw - 250px - 15px) !important;
-    max-width: calc(100vw - 250px - 15px) !important;
-    min-width: calc(100vw - 250px - 15px) !important;
-    margin-left: 250px !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important;
     margin-right: 15px !important;
 }
 
@@ -104,20 +120,23 @@ body.dashboard-responsive main.shifted .main-content {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, margin-left, width;
     box-sizing: border-box;
-    /* TEMBOK: Strict constraints for normal state */
-    width: calc(100vw - 60px - 15px) !important;
-    max-width: calc(100vw - 60px - 15px) !important;
-    margin-left: 60px !important;
+    /* TEMBOK: Strict constraints for normal state (margin-based) */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 70px !important;
     margin-right: 15px !important;
     overflow-x: hidden;
 }
 
 /* When sidebar is expanded, force content to shrink */
 main.shifted .dashboard-responsive .main-content {
-    /* TEMBOK: Strict constraints for expanded state */
-    width: calc(100vw - 250px - 15px) !important;
-    max-width: calc(100vw - 250px - 15px) !important;
-    margin-left: 250px !important;
+    /* TEMBOK: Strict constraints for expanded state (margin-based) */
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important;
     margin-right: 15px !important;
 }
 
@@ -457,18 +476,19 @@ main.shifted .dashboard-responsive .main-content {
 @media (min-width: 1400px) {
     /* Tembok: Ultra-strict constraints for large desktop */
     body.dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        min-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     body.dashboard-responsive main.shifted .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        min-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 
@@ -483,16 +503,19 @@ main.shifted .dashboard-responsive .main-content {
 @media (min-width: 1200px) and (max-width: 1399px) {
     /* Tembok: Strict constraints for desktop */
     .dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     main.shifted .dashboard-responsive .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 
@@ -507,16 +530,19 @@ main.shifted .dashboard-responsive .main-content {
 @media (max-width: 1199px) {
     /* Tembok: Strict constraints for tablet */
     .dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     main.shifted .dashboard-responsive .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 
@@ -566,16 +592,19 @@ main.shifted .dashboard-responsive .main-content {
 @media (max-width: 767px) {
     /* Tembok: Strictest constraints for mobile */
     .dashboard-responsive .main-content {
-        width: calc(100vw - 60px - 15px) !important;
-        max-width: calc(100vw - 60px - 15px) !important;
-        margin-left: 60px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
         margin-right: 15px !important;
     }
     
     main.shifted .dashboard-responsive .main-content {
-        width: calc(100vw - 250px - 15px) !important;
-        max-width: calc(100vw - 250px - 15px) !important;
-        margin-left: 250px !important;
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
         margin-right: 15px !important;
     }
 
