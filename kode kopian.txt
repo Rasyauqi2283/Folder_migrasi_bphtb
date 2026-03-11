@@ -1,1 +1,0 @@
-bukan static link, karena hasilnya jika di level publik seperti yang saya jelaskan hanya berupa teks string seperti ini "502010892101/17/10/2025/Farras SI. TESTER//E-BPHTB BAPPENDA KAB BOGOR|8514TP61-I6V", sedangkan jika dilakukan di sistem website akan muncul seperti di gambar saya ini 

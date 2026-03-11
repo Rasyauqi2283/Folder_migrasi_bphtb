@@ -1,7 +1,0 @@
-Test getCompleteUsersHandler
-GET ${API_BASE_URL}/api/users/complete
-Content-Type: application/json
-
-Test getPendingUsersHandler
-GET ${API_BASE_URL}/api/users/pending
-Content-Type: application/json
