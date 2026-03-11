@@ -1,0 +1,1686 @@
+package handler
+
+import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	mathrand "math/rand"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+	"sync"
+
+	"ebphtb/backend/internal/config"
+	"ebphtb/backend/internal/idgen"
+	"ebphtb/backend/internal/ktpocr"
+	"ebphtb/backend/internal/repository"
+
+	mail "ebphtb/backend/internal/email"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
+)
+
+const maxUploadSize = 5 * 1024 * 1024
+const allowedMimes = "image/jpeg,image/jpg,image/png"
+
+var allowedExtensions = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+
+const pendingOTPTTL = 10 * time.Minute
+
+type pendingOTPEntry struct {
+	OTP       string
+	ExpiresAt time.Time
+}
+
+var (
+	pendingOTPMu sync.Mutex
+	pendingOTP   = map[string]pendingOTPEntry{}
+)
+
+// sanitizeNIKForFilename mengembalikan hanya digit dari NIK untuk nama file (aman, unik per KTP).
+func sanitizeNIKForFilename(nik string) string {
+	var b strings.Builder
+	for _, r := range nik {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// removeKTPTempFiles menghapus file JSON KTP di temp_uploads (uploadId = nama file tanpa .json).
+func removeKTPTempFiles(dir, uploadId string) {
+	if dir == "" || uploadId == "" {
+		return
+	}
+	p := filepath.Join(dir, uploadId+".json")
+	if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		log.Printf("[REGISTER] cleanup KTP json %s: %v", p, err)
+	}
+}
+
+func setPendingOTP(email, otp string) {
+	pendingOTPMu.Lock()
+	defer pendingOTPMu.Unlock()
+	pendingOTP[email] = pendingOTPEntry{OTP: otp, ExpiresAt: time.Now().Add(pendingOTPTTL)}
+}
+
+func getPendingOTP(email string) (pendingOTPEntry, bool) {
+	pendingOTPMu.Lock()
+	defer pendingOTPMu.Unlock()
+	entry, ok := pendingOTP[email]
+	if !ok {
+		return pendingOTPEntry{}, false
+	}
+	if time.Now().After(entry.ExpiresAt) {
+		delete(pendingOTP, email)
+		return pendingOTPEntry{}, false
+	}
+	return entry, true
+}
+
+func deletePendingOTP(email string) {
+	pendingOTPMu.Lock()
+	defer pendingOTPMu.Unlock()
+	delete(pendingOTP, email)
+}
+
+// --- Reset password (in-memory only, TTL 10 menit) ---
+const resetPasswordOTPTTL = 10 * time.Minute
+
+type resetOTPEntry struct {
+	OTP       string
+	NIK       string
+	ExpiresAt time.Time
+}
+
+type resetTokenEntry struct {
+	Email     string
+	ExpiresAt time.Time
+}
+
+var (
+	resetOTPMu   sync.Mutex
+	resetOTPMap  = map[string]resetOTPEntry{}   // key = email
+	resetTokenMu sync.Mutex
+	resetTokenMap = map[string]resetTokenEntry{} // key = token
+)
+
+func setResetOTP(email, nik, otp string) {
+	resetOTPMu.Lock()
+	defer resetOTPMu.Unlock()
+	resetOTPMap[email] = resetOTPEntry{OTP: otp, NIK: nik, ExpiresAt: time.Now().Add(resetPasswordOTPTTL)}
+}
+
+func getAndConsumeResetOTP(email, otp string) (ok bool) {
+	resetOTPMu.Lock()
+	defer resetOTPMu.Unlock()
+	entry, ok := resetOTPMap[email]
+	if !ok || time.Now().After(entry.ExpiresAt) {
+		return false
+	}
+	if entry.OTP != otp {
+		return false
+	}
+	delete(resetOTPMap, email)
+	return true
+}
+
+func setResetToken(token, email string) {
+	resetTokenMu.Lock()
+	defer resetTokenMu.Unlock()
+	resetTokenMap[token] = resetTokenEntry{Email: email, ExpiresAt: time.Now().Add(resetPasswordOTPTTL)}
+}
+
+func getAndConsumeResetToken(token string) (email string, ok bool) {
+	resetTokenMu.Lock()
+	defer resetTokenMu.Unlock()
+	entry, ok := resetTokenMap[token]
+	if !ok || time.Now().After(entry.ExpiresAt) {
+		return "", false
+	}
+	delete(resetTokenMap, token)
+	return entry.Email, true
+}
+
+func getResetTokenEmail(token string) (email string, ok bool) {
+	resetTokenMu.Lock()
+	defer resetTokenMu.Unlock()
+	entry, ok := resetTokenMap[token]
+	if !ok || time.Now().After(entry.ExpiresAt) {
+		return "", false
+	}
+	return entry.Email, true
+}
+
+func newResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func sha256Hex(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
+	var tempatLahir, tanggalLahir *string
+	if result.TTL != nil {
+		t, u := result.TTL.Tempat, result.TTL.Tanggal
+		tempatLahir, tanggalLahir = &t, &u
+	}
+	payload := ktpExtractJSON{
+		NIK: result.NIK, Nama: result.Nama,
+		TempatLahir: tempatLahir, TanggalLahir: tanggalLahir,
+		Provinsi: result.Provinsi, KabupatenKota: result.KabupatenKota,
+		Alamat: result.Alamat, RtRw: result.RtRw,
+		Kelurahan: result.Kelurahan, Kecamatan: result.Kecamatan,
+		JenisKelamin: result.JenisKelamin, GolonganDarah: result.GolonganDarah,
+		Agama: result.Agama, StatusPerkawinan: result.StatusPerkawinan,
+		Pekerjaan: result.Pekerjaan, Kewarganegaraan: result.Kewarganegaraan,
+		BerlakuHingga: result.BerlakuHingga,
+		CreatedAt: createdAt,
+	}
+	rawForDB := result.RawText
+	if len(rawForDB) > 2000 {
+		rawForDB = rawForDB[:2000]
+	}
+	ktpOcrBytes, _ := json.Marshal(map[string]interface{}{
+		"nik": result.NIK, "nama": result.Nama, "rawText": rawForDB,
+		"provinsi": result.Provinsi, "kabupatenKota": result.KabupatenKota,
+		"alamat": result.Alamat, "rtRw": result.RtRw,
+		"kelurahan": result.Kelurahan, "kecamatan": result.Kecamatan,
+		"jenisKelamin": result.JenisKelamin, "golonganDarah": result.GolonganDarah,
+		"agama": result.Agama, "statusPerkawinan": result.StatusPerkawinan,
+		"pekerjaan": result.Pekerjaan, "kewarganegaraan": result.Kewarganegaraan,
+		"berlakuHingga": result.BerlakuHingga,
+		"tempatLahir": tempatLahir, "tanggalLahir": tanggalLahir,
+	})
+	payload.KtpOcrJson = string(ktpOcrBytes)
+	return payload, payload.KtpOcrJson
+}
+
+// AuthHandler handles auth-related HTTP handlers.
+type AuthHandler struct {
+	cfg  *config.Config
+	repo *repository.UserRepo
+}
+
+// NewAuthHandler creates AuthHandler.
+func NewAuthHandler(cfg *config.Config, pool *pgxpool.Pool) *AuthHandler {
+	return &AuthHandler{cfg: cfg, repo: repository.NewUserRepo(pool)}
+}
+
+// ktpExtractJSON is the structure saved in temp_uploads (hanya data JSON, bukan gambar).
+type ktpExtractJSON struct {
+	NIK              *string  `json:"nik"`
+	Nama             *string  `json:"nama"`
+	TempatLahir      *string  `json:"tempatLahir"`
+	TanggalLahir     *string  `json:"tanggalLahir"`
+	Provinsi         *string  `json:"provinsi"`
+	KabupatenKota    *string  `json:"kabupatenKota"`
+	Alamat           *string  `json:"alamat"`
+	RtRw             *string  `json:"rtRw"`
+	Kelurahan        *string  `json:"kelurahan"`
+	Kecamatan        *string  `json:"kecamatan"`
+	JenisKelamin     *string  `json:"jenisKelamin"`
+	GolonganDarah    *string  `json:"golonganDarah"`
+	Agama            *string  `json:"agama"`
+	StatusPerkawinan *string  `json:"statusPerkawinan"`
+	Pekerjaan        *string  `json:"pekerjaan"`
+	Kewarganegaraan  *string  `json:"kewarganegaraan"`
+	BerlakuHingga    *string  `json:"berlakuHingga"`
+	KtpOcrJson       string   `json:"ktpOcrJson"` // stringified untuk kolom DB
+	CreatedAt        int64    `json:"createdAt"`
+}
+
+// UploadKTP handles POST /api/v1/auth/upload-ktp.
+// Tidak menulis file ke temp_uploads sebelum OTP; hanya return OCR JSON. Client kirim ktpOcrJson di register/verify-otp-finalize.
+func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		jsonError(w, http.StatusBadRequest, "File KTP tidak terdeteksi. Pastikan file dipilih dan formatnya JPEG/PNG.")
+		return
+	}
+	file, header, err := r.FormFile("fotoktp")
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "File KTP tidak terdeteksi. Pastikan file dipilih dan formatnya JPEG/PNG.")
+		return
+	}
+	defer file.Close()
+
+	mime := header.Header.Get("Content-Type")
+	if mime != "image/jpeg" && mime != "image/jpg" && mime != "image/png" {
+		jsonError(w, http.StatusBadRequest, "Format tidak didukung. Gunakan JPG atau PNG.")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !allowedExtensions[ext] {
+		ext = ".jpg"
+	}
+	if header.Size > maxUploadSize {
+		jsonError(w, http.StatusBadRequest, "File terlalu besar (maks 5MB).")
+		return
+	}
+
+	tmpFile, err := os.CreateTemp("", "ktp_upload_*"+ext)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses file")
+		return
+	}
+	tmpPath := tmpFile.Name()
+	_, err = io.Copy(tmpFile, file)
+	tmpFile.Close()
+	if err != nil {
+		os.Remove(tmpPath)
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses file")
+		return
+	}
+	defer os.Remove(tmpPath)
+
+	easyTimeout := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
+	result, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTimeout)
+	if err != nil {
+		log.Printf("[UPLOAD_KTP] OCR error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "OCR gagal: "+err.Error())
+		return
+	}
+	if result == nil {
+		jsonError(w, http.StatusBadRequest, "Tidak dapat membaca teks dari gambar KTP")
+		return
+	}
+	if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
+		jsonError(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.")
+		return
+	}
+
+	createdAt := time.Now().UnixMilli()
+	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
+	uploadId := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(*result.NIK), createdAt)
+
+	responseData := map[string]interface{}{
+		"nik":              payload.NIK,
+		"nama":             payload.Nama,
+		"tempatLahir":      payload.TempatLahir,
+		"tanggalLahir":     payload.TanggalLahir,
+		"provinsi":         payload.Provinsi,
+		"kabupatenKota":    payload.KabupatenKota,
+		"alamat":           payload.Alamat,
+		"rtRw":             payload.RtRw,
+		"kelurahan":        payload.Kelurahan,
+		"kecamatan":       payload.Kecamatan,
+		"jenisKelamin":     payload.JenisKelamin,
+		"golonganDarah":    payload.GolonganDarah,
+		"agama":            payload.Agama,
+		"statusPerkawinan": payload.StatusPerkawinan,
+		"pekerjaan":        payload.Pekerjaan,
+		"kewarganegaraan":  payload.Kewarganegaraan,
+		"berlakuHingga":    payload.BerlakuHingga,
+	}
+
+	decision := "success"
+	if result.Stats != nil {
+		if !result.Stats.IsValidNIK || result.Stats.Accuracy < 50 || result.Stats.ExtractedFields < 5 {
+			decision = "needs_review"
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"message":    "Data KTP berhasil dipindai.",
+		"decision":   decision,
+		"uploadId":   uploadId,
+		"timestamp":  createdAt,
+		"ktpOcrJson": ktpOcrJsonStr,
+		"data":       responseData,
+		"stats":      result.Stats,
+	})
+}
+
+// RealKTPVerification handles POST /api/v1/auth/real-ktp-verification.
+func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		jsonError(w, http.StatusBadRequest, "File KTP tidak ditemukan")
+		return
+	}
+	file, header, err := r.FormFile("fotoktp")
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "File KTP tidak ditemukan")
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !allowedExtensions[ext] {
+		ext = ".jpg"
+	}
+	tmpFile, err := os.CreateTemp("", "ktp_ocr_*"+ext)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses file")
+		return
+	}
+	tmpPath := tmpFile.Name()
+	_, err = io.Copy(tmpFile, file)
+	tmpFile.Close()
+	file.Close()
+	if err != nil {
+		os.Remove(tmpPath)
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses file")
+		return
+	}
+	defer os.Remove(tmpPath)
+
+	easyTimeout := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
+	result, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTimeout)
+	if err != nil {
+		log.Printf("[OCR REAL] Extract error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "OCR gagal: "+err.Error())
+		return
+	}
+	if result == nil {
+		jsonError(w, http.StatusBadRequest, "Tidak dapat membaca teks dari gambar KTP")
+		return
+	}
+
+	rawText := result.RawText
+	if len(rawText) > 500 {
+		rawText = rawText[:500]
+	}
+
+	data := map[string]interface{}{
+		"nik":              result.NIK,
+		"nama":             result.Nama,
+		"tempatLahir":      nil,
+		"tanggalLahir":     nil,
+		"provinsi":         result.Provinsi,
+		"kabupatenKota":    result.KabupatenKota,
+		"alamat":           result.Alamat,
+		"rtRw":             result.RtRw,
+		"kelurahan":        result.Kelurahan,
+		"kecamatan":        result.Kecamatan,
+		"jenisKelamin":     result.JenisKelamin,
+		"golonganDarah":    result.GolonganDarah,
+		"agama":            result.Agama,
+		"statusPerkawinan": result.StatusPerkawinan,
+		"pekerjaan":        result.Pekerjaan,
+		"kewarganegaraan":  result.Kewarganegaraan,
+		"berlakuHingga":    result.BerlakuHingga,
+		"status":           "VERIFIED_BY_OCR",
+	}
+	if result.TTL != nil {
+		data["tempatLahir"] = result.TTL.Tempat
+		data["tanggalLahir"] = result.TTL.Tanggal
+	}
+
+	// Decision policy OCR: success / needs_review / reject.
+	// Disesuaikan agar ktp3/ktp4 dan gambar sulit tetap lolos (prefer needs_review daripada reject).
+	const (
+		ocrMinAccuracy       = 50
+		ocrRejectMinAccuracy = 20
+	)
+	extractedFields := 0
+	isValidNIK := false
+	accuracy := 0.0
+	if result.Stats != nil {
+		extractedFields = result.Stats.ExtractedFields
+		isValidNIK = result.Stats.IsValidNIK
+		accuracy = result.Stats.Accuracy
+	}
+	// Jangan pernah reject jika NIK valid (user bisa koreksi field lain manual).
+	isHardReject := !isValidNIK && (accuracy < ocrRejectMinAccuracy || extractedFields < 3)
+	needsReview := accuracy < ocrMinAccuracy || !isValidNIK || extractedFields < 5
+
+	if isHardReject {
+		log.Printf("[OCR REAL] reject acc=%.1f isValidNIK=%t fields=%d", accuracy, isValidNIK, extractedFields)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":  false,
+			"decision": "reject",
+			"message":  "OCR gagal membaca field penting. Coba foto ulang dengan pencahayaan cukup, posisi tegak lurus, dan fokus tajam.",
+			"data":     data,
+			"stats":    result.Stats,
+			"rawText":  rawText,
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	decision := "success"
+	message := "KTP berhasil dipindai secara otomatis"
+	if needsReview {
+		decision = "needs_review"
+		message = "OCR berhasil diproses, namun beberapa field perlu Anda cek dan koreksi manual."
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"decision": decision,
+		"message":  message,
+		"data":     data,
+		"stats":    result.Stats,
+		"rawText":  rawText,
+	})
+}
+
+// Register handles POST /api/v1/auth/register.
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		log.Printf("[REGISTER] ParseForm err: %v, Content-Type: %s", err, r.Header.Get("Content-Type"))
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			log.Printf("[REGISTER] ParseMultipartForm err: %v", err)
+			jsonError(w, http.StatusBadRequest, "Gagal memproses data form")
+			return
+		}
+	}
+
+	nama := strings.TrimSpace(r.FormValue("nama"))
+	nik := strings.TrimSpace(r.FormValue("nik"))
+	telepon := strings.TrimSpace(r.FormValue("telepon"))
+	email := strings.TrimSpace(r.FormValue("email"))
+	password := r.FormValue("password")
+	gender := strings.TrimSpace(r.FormValue("gender"))
+	ktpUploadId := strings.TrimSpace(r.FormValue("ktpUploadId"))
+	ktpOcrJson := strings.TrimSpace(r.FormValue("ktpOcrJson"))
+	verse := strings.TrimSpace(r.FormValue("verse"))
+	nip := strings.TrimSpace(r.FormValue("nip"))
+	specialField := strings.TrimSpace(r.FormValue("special_field"))
+	pejabatUmum := strings.TrimSpace(r.FormValue("pejabat_umum"))
+	divisi := strings.TrimSpace(r.FormValue("divisi"))
+
+	if verse == "" {
+		verse = "WP"
+	}
+	verseValue := "WP"
+	if verse == "pu" || verse == "PU" {
+		verseValue = "PU"
+	} else if verse == "karyawan" || verse == "Karyawan" {
+		verseValue = "Karyawan"
+	}
+
+	// Log received values (mask password) for debug
+	emptyFields := []string{}
+	if nama == "" {
+		emptyFields = append(emptyFields, "nama")
+	}
+	if nik == "" {
+		emptyFields = append(emptyFields, "nik")
+	}
+	if telepon == "" {
+		emptyFields = append(emptyFields, "telepon")
+	}
+	if email == "" {
+		emptyFields = append(emptyFields, "email")
+	}
+	if password == "" {
+		emptyFields = append(emptyFields, "password")
+	}
+	if gender == "" {
+		emptyFields = append(emptyFields, "gender")
+	}
+	if ktpUploadId == "" {
+		emptyFields = append(emptyFields, "ktpUploadId")
+	}
+	if len(emptyFields) > 0 {
+		log.Printf("[REGISTER] Field kosong diterima: %v | nama=%q nik=%q telepon=%q email=%q gender=%q ktpUploadId=%q passwordLen=%d",
+			emptyFields, nama, nik, telepon, email, gender, ktpUploadId, len(password))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Semua field wajib diisi dan KTP harus diupload",
+			"debug":   "Field kosong: " + strings.Join(emptyFields, ", "),
+		})
+		return
+	}
+	if len(nama) < 2 {
+		jsonError(w, http.StatusBadRequest, "Nama minimal 2 karakter")
+		return
+	}
+	if len(nik) != 16 || !isDigits(nik) {
+		jsonError(w, http.StatusBadRequest, "NIK harus 16 digit")
+		return
+	}
+	if !strings.HasPrefix(telepon, "08") || len(telepon) < 11 || len(telepon) > 13 {
+		jsonError(w, http.StatusBadRequest, "Nomor telepon harus dimulai 08, 11–13 digit")
+		return
+	}
+	if !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		jsonError(w, http.StatusBadRequest, "Format email tidak valid")
+		return
+	}
+	if len(password) < 6 {
+		jsonError(w, http.StatusBadRequest, "Password minimal 6 karakter")
+		return
+	}
+	if gender != "Perempuan" && gender != "Laki-laki" {
+		jsonError(w, http.StatusBadRequest, "Pilih jenis kelamin")
+		return
+	}
+	if verseValue == "Karyawan" && nip == "" {
+		jsonError(w, http.StatusBadRequest, "NIP wajib untuk pendaftaran Karyawan")
+		return
+	}
+	if verseValue == "PU" {
+		if specialField == "" {
+			log.Printf("[REGISTER] PU: special_field kosong | special_field=%q pejabat_umum=%q divisi=%q", specialField, pejabatUmum, divisi)
+			jsonError(w, http.StatusBadRequest, "Nama PPAT/Gelar wajib untuk pendaftaran PPAT/PPATS")
+			return
+		}
+		if pejabatUmum == "" {
+			log.Printf("[REGISTER] PU: pejabat_umum kosong | special_field=%q pejabat_umum=%q divisi=%q", specialField, pejabatUmum, divisi)
+			jsonError(w, http.StatusBadRequest, "Pejabat Umum wajib untuk pendaftaran PPAT/PPATS")
+			return
+		}
+		divUpper := strings.ToUpper(divisi)
+		if divUpper != "PPAT" && divUpper != "PPATS" {
+			log.Printf("[REGISTER] PU: divisi invalid | special_field=%q pejabat_umum=%q divisi=%q", specialField, pejabatUmum, divisi)
+			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT atau PPATS")
+			return
+		}
+	}
+
+	// Data KTP: dari form (ktpOcrJson) atau dari file temp (backward compat). Upload KTP tidak lagi menulis file; client kirim ktpOcrJson dari response upload-ktp.
+	if ktpOcrJson == "" && !strings.HasPrefix(ktpUploadId, "SIMULATION_ID_") {
+		jsonPath := filepath.Join(h.cfg.TempUploadsDir, ktpUploadId+".json")
+		if _, err := os.Stat(jsonPath); err != nil {
+			if os.IsNotExist(err) {
+				jsonError(w, http.StatusBadRequest, "Data KTP tidak ditemukan. Kirim ktpOcrJson dari hasil upload KTP atau upload ulang KTP.")
+			} else {
+				log.Printf("[REGISTER] temp json read error: %v", err)
+				jsonError(w, http.StatusInternalServerError, "Data KTP tidak ditemukan. Silakan upload ulang KTP.")
+			}
+			return
+		}
+		body, err := os.ReadFile(jsonPath)
+		if err == nil {
+			var extracted ktpExtractJSON
+			if json.Unmarshal(body, &extracted) == nil && extracted.KtpOcrJson != "" {
+				ktpOcrJson = extracted.KtpOcrJson
+			}
+		}
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+		return
+	}
+
+	otp := generateOTP()
+
+	args := &repository.InsertUnverifiedArgs{
+		Nama:     nama,
+		NIK:      nik,
+		Telepon:  telepon,
+		Email:    email,
+		Password: string(hashedPassword),
+		Foto:     ktpUploadId,
+		OTP:      otp,
+		Gender:   gender,
+		Verse:    verseValue,
+	}
+	if ktpOcrJson != "" {
+		args.KtpOcrJson = &ktpOcrJson
+	}
+	if verseValue == "Karyawan" {
+		args.NIP = &nip
+	}
+	if verseValue == "PU" {
+		args.SpecialField = &specialField
+		args.PejabatUmum = &pejabatUmum
+		du := strings.ToUpper(divisi)
+		args.Divisi = &du
+	}
+
+	if h.repo == nil || h.repo.Pool() == nil {
+		log.Printf("[REGISTER] DB not available")
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	ctx := r.Context()
+	// Invariant sistem satu pintu: hapus baris a_1 jika email ini sudah ada di a_2 (verified_pending/complete), agar tidak ada data ganda.
+	_ = h.repo.DeleteUnverifiedWhereEmailInVerified(ctx, email)
+
+	// Blokir hanya jika email/NIK sudah di a_2 (verified_pending atau complete). 'unverified' di a_1 = ruang lobi tunggu, boleh overwrite/daftar ulang.
+	existsVerified, err := h.repo.GetByEmailVerified(ctx, email)
+	if err != nil {
+		log.Printf("[REGISTER] GetByEmailVerified error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+		return
+	}
+	if existsVerified {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Email sudah ada dan digunakan pengguna di layanan ini. Gunakan email lain atau silahkan masuk untuk memulai.",
+			"code":    "EMAIL_ALREADY_REGISTERED",
+		})
+		return
+	}
+
+	// Blokir jika NIK sudah di a_2 (verified_pending atau complete) — tidak boleh daftar ulang.
+	nikInA2, err := h.repo.NIKExistsInA2Verified(ctx, nik)
+	if err != nil {
+		log.Printf("[REGISTER] NIKExistsInA2Verified error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+		return
+	}
+	if nikInA2 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "NIK sudah ada dan terpakai. Silahkan masuk untuk memulai.",
+			"code":    "NIK_ALREADY_USED",
+		})
+		return
+	}
+
+	// Email/NIK di a_1 (unverified) = lobi tunggu, boleh update (overwrite). Insert atau Update.
+	existsUnverified, err := h.repo.GetByEmailUnverified(ctx, email)
+	if err != nil {
+		log.Printf("[REGISTER] GetByEmailUnverified error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+		return
+	}
+	if existsUnverified {
+		if err := h.repo.UpdateUnverified(ctx, args, email); err != nil {
+			log.Printf("[REGISTER] UpdateUnverified error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+			return
+		}
+	} else {
+		if err := h.repo.InsertUnverified(ctx, args); err != nil {
+			log.Printf("[REGISTER] InsertUnverified error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Gagal melakukan registrasi.")
+			return
+		}
+	}
+
+	// Hapus file KTP dari temp_uploads setelah data (hanya JSON) tersimpan di DB; gambar tidak boleh persisten.
+	if !strings.HasPrefix(ktpUploadId, "SIMULATION_ID_") {
+		removeKTPTempFiles(h.cfg.TempUploadsDir, ktpUploadId)
+	}
+
+	if err := mail.SendOTP(email, otp); err != nil {
+		log.Printf("[REGISTER] Email gagal ke %s: %v. OTP: %s (cek log untuk verifikasi manual)", email, err, otp)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":    true,
+			"message":    "Registrasi berhasil, tetapi pengiriman OTP ke email gagal: " + err.Error() + ". Silakan gunakan fitur Kirim Ulang OTP atau cek log server untuk OTP.",
+			"redirectTo": "/verifikasi-otp",
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"message":    "Registrasi berhasil! Silakan cek email Anda untuk kode OTP dan masukkan di halaman verifikasi.",
+		"redirectTo": "/verifikasi-otp",
+	})
+}
+
+// loginReq is the JSON body for login.
+type loginReq struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
+// Login handles POST /api/v1/auth/login.
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req loginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data login tidak valid.")
+		return
+	}
+	identifier := strings.TrimSpace(req.Identifier)
+	password := req.Password
+	if identifier == "" || password == "" {
+		jsonError(w, http.StatusBadRequest, "UserID/Username dan kata sandi wajib diisi.")
+		return
+	}
+
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+
+	ctx := r.Context()
+	user, err := h.repo.GetByIdentifierForLogin(ctx, identifier)
+	if err != nil {
+		log.Printf("[LOGIN] GetByIdentifierForLogin error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan server.")
+		return
+	}
+	if user == nil {
+		jsonError(w, http.StatusUnauthorized, "UserID/Username tidak ditemukan atau belum terverifikasi.")
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		jsonError(w, http.StatusUnauthorized, "Password salah.")
+		return
+	}
+
+	// Compute is_profile_complete (same logic as Node)
+	var isProfileComplete bool
+	switch user.Divisi {
+	case "Wajib Pajak":
+		isProfileComplete = user.Username != nil && *user.Username != ""
+	case "PPAT", "PPATS":
+		isProfileComplete = user.Username != nil && *user.Username != "" &&
+			user.SpecialField != nil && *user.SpecialField != "" &&
+			user.PejabatUmum != nil && *user.PejabatUmum != ""
+	case "Peneliti Validasi":
+		isProfileComplete = user.Username != nil && *user.Username != "" &&
+			user.NIP != nil && *user.NIP != "" &&
+			user.SpecialParafv != nil && *user.SpecialParafv != ""
+	default:
+		isProfileComplete = user.NIP != nil && *user.NIP != "" &&
+			user.Username != nil && *user.Username != ""
+	}
+
+	if err := h.repo.UpdateLoginStatus(ctx, user.Userid); err != nil {
+		log.Printf("[LOGIN] UpdateLoginStatus error: %v", err)
+	}
+
+	foto := user.Fotoprofil
+	if foto == "" {
+		foto = ""
+	}
+	username := ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+	nip := ""
+	if user.NIP != nil {
+		nip = *user.NIP
+	}
+	specialField := ""
+	if user.SpecialField != nil {
+		specialField = *user.SpecialField
+	}
+	specialParafv := ""
+	if user.SpecialParafv != nil {
+		specialParafv = *user.SpecialParafv
+	}
+	pejabatUmum := ""
+	if user.PejabatUmum != nil {
+		pejabatUmum = *user.PejabatUmum
+	}
+	telepon := ""
+	if user.Telepon != nil {
+		telepon = *user.Telepon
+	}
+	gender := ""
+	if user.Gender != nil {
+		gender = *user.Gender
+	}
+	tandaTanganMime := ""
+	if user.TandaTanganMime != nil {
+		tandaTanganMime = *user.TandaTanganMime
+	}
+	tandaTanganPath := ""
+	if user.TandaTanganPath != nil {
+		tandaTanganPath = *user.TandaTanganPath
+	}
+
+	msg := "Login berhasil"
+	if username != "" {
+		msg = "Login berhasil, " + username + "!"
+	} else {
+		msg = "Login berhasil, " + user.Userid + "!"
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":             true,
+		"message":             msg,
+		"userid":              user.Userid,
+		"divisi":              user.Divisi,
+		"nama":                user.Nama,
+		"email":               user.Email,
+		"telepon":             telepon,
+		"foto":                foto,
+		"username":            username,
+		"nip":                 nip,
+		"special_field":       specialField,
+		"special_parafv":      specialParafv,
+		"pejabat_umum":        pejabatUmum,
+		"is_profile_complete": isProfileComplete,
+		"statuspengguna":      "online",
+		"tanda_tangan_mime":   tandaTanganMime,
+		"tanda_tangan_path":   tandaTanganPath,
+		"gender":              gender,
+	})
+}
+
+type requestOTPReq struct {
+	Email string `json:"email"`
+}
+
+type verifyOTPFinalizeReq struct {
+	Email               string                 `json:"email"`
+	OTP                 string                 `json:"otp"`
+	PendingRegistration map[string]interface{} `json:"pendingRegistration"`
+}
+
+func getStringField(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok && v != nil {
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		return s
+	}
+	return ""
+}
+
+// RequestOTP handles POST /api/v1/auth/request-otp.
+// OTP berbasis memory map + TTL (pendingOTPTTL); tidak ada write DB.
+func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req requestOTPReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	if email == "" {
+		jsonError(w, http.StatusBadRequest, "Email harus diisi.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+
+	existsVerified, err := h.repo.GetByEmailVerified(r.Context(), email)
+	if err != nil {
+		log.Printf("[REQUEST_OTP] GetByEmailVerified error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses OTP.")
+		return
+	}
+	if existsVerified {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Email yang Anda input sudah terdaftar. Jika ini akun Anda, silakan masuk.",
+			"code":    "EMAIL_ALREADY_REGISTERED",
+		})
+		return
+	}
+
+	otp := generateOTP()
+	setPendingOTP(email, otp)
+	if err := mail.SendOTP(email, otp); err != nil {
+		log.Printf("[REQUEST_OTP] Email gagal ke %s: %v. OTP: %s", email, err, otp)
+		jsonError(w, http.StatusInternalServerError, "Gagal mengirim OTP ke email.")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "OTP berhasil dikirim ke email Anda.",
+	})
+}
+
+// VerifyOTPFinalize handles POST /api/v1/auth/verify-otp-finalize.
+// Insert DB + simpan JSON temp_uploads dilakukan hanya setelah OTP valid.
+func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req verifyOTPFinalizeReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data verifikasi tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	otp := strings.TrimSpace(req.OTP)
+	if email == "" || otp == "" {
+		jsonError(w, http.StatusBadRequest, "Email dan OTP harus diisi.")
+		return
+	}
+	entry, ok := getPendingOTP(email)
+	if !ok {
+		jsonError(w, http.StatusBadRequest, "OTP tidak ditemukan atau sudah kedaluwarsa.")
+		return
+	}
+	if entry.OTP != otp {
+		jsonError(w, http.StatusBadRequest, "Kode OTP salah.")
+		return
+	}
+
+	p := req.PendingRegistration
+	if p == nil {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak ditemukan.")
+		return
+	}
+
+	nama := getStringField(p, "nama")
+	nik := getStringField(p, "nik")
+	telepon := getStringField(p, "telepon")
+	password := getStringField(p, "password")
+	gender := getStringField(p, "gender")
+	verseValue := getStringField(p, "verse")
+	ktpUploadID := getStringField(p, "ktpUploadId")
+	ktpOcrJson := getStringField(p, "ktpOcrJson")
+	nip := getStringField(p, "nip")
+	specialField := getStringField(p, "special_field")
+	pejabatUmum := getStringField(p, "pejabat_umum")
+	divisi := strings.ToUpper(getStringField(p, "divisi"))
+
+	if nama == "" || nik == "" || telepon == "" || password == "" || gender == "" || ktpOcrJson == "" {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap.")
+		return
+	}
+	if len(nik) != 16 || !isDigits(nik) || !ktpocr.ValidNIK(nik) {
+		jsonError(w, http.StatusBadRequest, "NIK tidak valid.")
+		return
+	}
+	if verseValue == "" {
+		verseValue = "WP"
+	}
+	if verseValue == "Karyawan" && nip == "" {
+		jsonError(w, http.StatusBadRequest, "NIP wajib untuk Karyawan.")
+		return
+	}
+	if verseValue == "PU" {
+		if divisi != "PPAT" && divisi != "PPATS" {
+			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT atau PPATS")
+			return
+		}
+		if specialField == "" || pejabatUmum == "" {
+			jsonError(w, http.StatusBadRequest, "Data PPAT/PPATS belum lengkap.")
+			return
+		}
+	}
+
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+
+	existsVerified, err := h.repo.GetByEmailVerified(r.Context(), email)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	if existsVerified {
+		jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses registrasi.")
+		return
+	}
+
+	verseOut := "WP"
+	if verseValue == "PU" || verseValue == "Karyawan" {
+		verseOut = verseValue
+	}
+	divisiOut := "Wajib Pajak"
+	useridOut := ""
+	ppatKhususOut := ""
+	verifiedStatus := "verified_pending"
+	if verseOut == "WP" {
+		verifiedStatus = "complete"
+	}
+
+	pool := h.repo.Pool()
+	tx, err := pool.Begin(r.Context())
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	if verseOut == "WP" {
+		useridOut, err = idgen.GenerateUserID(r.Context(), tx, "Wajib Pajak")
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+			return
+		}
+	} else if verseOut == "PU" {
+		divisiOut = divisi
+		useridOut, err = idgen.GenerateUserID(r.Context(), tx, divisiOut)
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+			return
+		}
+	} else {
+		divisiOut = ""
+	}
+
+	var nipPtr, specialFieldPtr, pejabatUmumPtr *string
+	if nip != "" {
+		nipPtr = &nip
+	}
+	if specialField != "" {
+		specialFieldPtr = &specialField
+	}
+	if pejabatUmum != "" {
+		pejabatUmumPtr = &pejabatUmum
+	}
+	genderPtr := &gender
+
+	_, err = tx.Exec(r.Context(),
+		`INSERT INTO a_2_verified_users (
+			nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, userid, divisi,
+			statuspengguna, ppat_khusus, gender, verse, nip, special_field, pejabat_umum
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $16, '', $8, $9, 'offline', $10, $11, $12, $13, $14, $15)`,
+		nama, nik, telepon, email, string(hashedPassword), ktpUploadID, otp,
+		useridOut, divisiOut, ppatKhususOut, genderPtr, verseOut,
+		nipPtr, specialFieldPtr, pejabatUmumPtr, verifiedStatus,
+	)
+	if err != nil {
+		if isDuplicateKey(err) {
+			jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+			return
+		}
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+
+	// Simpan ktp_ocr_json ke cek_ktp_ocr (terikat NIK) untuk preview admin
+	if h.repo != nil && ktpOcrJson != "" && nik != "" {
+		if insErr := h.repo.InsertCekKtpOcr(r.Context(), nik, ktpOcrJson); insErr != nil {
+			log.Printf("[VERIFY_OTP_FINALIZE] InsertCekKtpOcr error: %v", insErr)
+		}
+	}
+
+	createdAt := time.Now().UnixMilli()
+	jsonBaseName := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(nik), createdAt)
+	if err := os.MkdirAll(h.cfg.TempUploadsDir, 0755); err == nil {
+		payload := ktpExtractJSON{NIK: &nik, Nama: &nama, CreatedAt: createdAt, KtpOcrJson: ktpOcrJson}
+		if body, err := json.Marshal(payload); err == nil {
+			_ = os.WriteFile(filepath.Join(h.cfg.TempUploadsDir, jsonBaseName+".json"), body, 0644)
+		}
+	}
+
+	deletePendingOTP(email)
+
+	if verseOut == "WP" {
+		if err := mail.SendUserIDNotification(email, nama, useridOut); err != nil {
+			log.Printf("[VERIFY_OTP_FINALIZE] SendUserIDNotification error: %v", err)
+		}
+	}
+
+	msg := "Verifikasi berhasil! Akun Anda sedang diproses."
+	if verseOut == "WP" {
+		msg = "Verifikasi berhasil! Silakan periksa email untuk User ID, lalu masuk ke dashboard."
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": msg,
+		"data": map[string]interface{}{
+			"email":  email,
+			"status": verifiedStatus,
+			"userid": useridOut,
+			"divisi": divisiOut,
+		},
+	})
+}
+// verifyOtpReq is the JSON body for verify-otp.
+type verifyOtpReq struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+// VerifyOTP handles POST /api/v1/auth/verify-otp.
+func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req verifyOtpReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data verifikasi tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	otp := strings.TrimSpace(req.OTP)
+	if email == "" || otp == "" {
+		jsonError(w, http.StatusBadRequest, "Email dan OTP harus diisi.")
+		return
+	}
+
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+
+	ctx := r.Context()
+	user, err := h.repo.GetUnverifiedByEmail(ctx, email)
+	if err != nil {
+		log.Printf("[VERIFY_OTP] GetUnverifiedByEmail error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	if user == nil {
+		jsonError(w, http.StatusNotFound, "Email tidak ditemukan.")
+		return
+	}
+	if user.OTP != otp {
+		jsonError(w, http.StatusBadRequest, "Kode OTP salah.")
+		return
+	}
+
+	existsVerified, err := h.repo.GetByEmailVerified(ctx, email)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	if existsVerified {
+		jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+		return
+	}
+
+	verseOut := "WP"
+	if user.Verse != nil && *user.Verse != "" {
+		v := *user.Verse
+		if v == "PU" || v == "Karyawan" {
+			verseOut = v
+		}
+	}
+	divisiOut := "Wajib Pajak"
+	useridOut := ""
+	ppatKhususOut := ""
+
+	pool := h.repo.Pool()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		log.Printf("[VERIFY_OTP] Begin error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	if verseOut == "WP" {
+		divisiOut = "Wajib Pajak"
+		useridOut, err = idgen.GenerateUserID(ctx, tx, "Wajib Pajak")
+		if err != nil {
+			log.Printf("[VERIFY_OTP] GenerateUserID error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+			return
+		}
+	} else if verseOut == "PU" {
+		divisiVal := "PPAT"
+		if user.Divisi != nil && *user.Divisi == "PPATS" {
+			divisiVal = "PPATS"
+		}
+		divisiOut = divisiVal
+		useridOut, err = idgen.GenerateUserID(ctx, tx, divisiVal)
+		if err != nil {
+			log.Printf("[VERIFY_OTP] GenerateUserID error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+			return
+		}
+		// ppat_khusus diisi admin saat validasi, bukan saat verify-otp
+		ppatKhususOut = ""
+	}
+	// Karyawan: useridOut and divisiOut stay empty, admin will assign later
+
+	nip := (*string)(nil)
+	specialField := (*string)(nil)
+	pejabatUmum := (*string)(nil)
+	if user.NIP != nil {
+		nip = user.NIP
+	}
+	if user.SpecialField != nil {
+		specialField = user.SpecialField
+	}
+	if user.PejabatUmum != nil {
+		pejabatUmum = user.PejabatUmum
+	}
+
+	insertArgs := &repository.InsertVerifiedArgs{
+		Nama:         user.Nama,
+		NIK:          user.NIK,
+		Telepon:      user.Telepon,
+		Email:        user.Email,
+		Password:     user.Password,
+		Foto:         user.Foto,
+		OTP:          otp,
+		Userid:       useridOut,
+		Divisi:       divisiOut,
+		PpatKhusus:   ppatKhususOut,
+		Verse:        verseOut,
+		NIP:          nip,
+		SpecialField: specialField,
+		PejabatUmum:  pejabatUmum,
+	}
+	if user.Gender != nil {
+		insertArgs.Gender = user.Gender
+	}
+
+	// Single atomic transaction: GenerateUserID (tx) + INSERT a_2 + DELETE a_1. No pool insert.
+	verifiedStatus := "verified_pending"
+	if verseOut == "WP" {
+		verifiedStatus = "complete"
+	}
+	_, err = tx.Exec(ctx,
+		`INSERT INTO a_2_verified_users (
+			nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, userid, divisi,
+			statuspengguna, ppat_khusus, gender, verse, nip, special_field, pejabat_umum
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $16, '', $8, $9, 'offline', $10, $11, $12, $13, $14, $15)`,
+		insertArgs.Nama, insertArgs.NIK, insertArgs.Telepon, insertArgs.Email, insertArgs.Password, insertArgs.Foto, insertArgs.OTP,
+		insertArgs.Userid, insertArgs.Divisi, insertArgs.PpatKhusus, insertArgs.Gender, insertArgs.Verse,
+		insertArgs.NIP, insertArgs.SpecialField, insertArgs.PejabatUmum, verifiedStatus,
+	)
+	if err != nil {
+		if isDuplicateKey(err) {
+			// Race: email sudah di-verify oleh request lain (klik ganda / submit bersamaan)
+			_, _ = tx.Exec(ctx, `DELETE FROM a_1_unverified_users WHERE email = $1`, email)
+			tx.Commit(ctx)
+			log.Printf("[VERIFY_OTP] Duplicate key (race) for %s - akun sudah terverifikasi", email)
+			jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+			return
+		}
+		log.Printf("[VERIFY_OTP] Insert error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	_, err = tx.Exec(ctx, `DELETE FROM a_1_unverified_users WHERE email = $1`, email)
+	if err != nil {
+		log.Printf("[VERIFY_OTP] Delete error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("[VERIFY_OTP] Commit error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+
+	// Simpan ktp_ocr_json ke cek_ktp_ocr (terikat NIK) untuk preview admin
+	if user.KtpOcrJson != nil && *user.KtpOcrJson != "" && user.NIK != "" {
+		if insErr := h.repo.InsertCekKtpOcr(ctx, user.NIK, *user.KtpOcrJson); insErr != nil {
+			log.Printf("[VERIFY_OTP] InsertCekKtpOcr error: %v", insErr)
+		}
+	}
+
+	// WP: kirim email notifikasi userid agar user tahu dapat masuk
+	if verseOut == "WP" {
+		if err := mail.SendUserIDNotification(email, insertArgs.Nama, useridOut); err != nil {
+			log.Printf("[VERIFY_OTP] SendUserIDNotification error: %v", err)
+			// tetap sukses; user bisa lihat userid di response
+		}
+	}
+
+	log.Printf("[VERIFY_OTP] Success for %s (verse: %s, userid: %s, status: %s)", email, verseOut, useridOut, verifiedStatus)
+
+	w.Header().Set("Content-Type", "application/json")
+	msg := "Verifikasi berhasil! Akun Anda sedang diproses."
+	if verseOut == "WP" {
+		msg = "Verifikasi berhasil! Silakan periksa email untuk User ID, lalu masuk ke dashboard."
+	}
+	resp := map[string]interface{}{
+		"success": true,
+		"message": msg,
+		"data": map[string]interface{}{
+			"email":  email,
+			"status": verifiedStatus,
+			"userid": useridOut,
+			"divisi": divisiOut,
+		},
+	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+// resendOtpReq is the JSON body for resend-otp.
+type resendOtpReq struct {
+	Email string `json:"email"`
+}
+
+// --- Reset password (in-memory OTP + token) ---
+type resetPasswordRequestReq struct {
+	Email string `json:"email"`
+	NIK   string `json:"nik"`
+}
+
+type verifyResetOtpReq struct {
+	Email string `json:"email"`
+	OTP   string `json:"otp"`
+}
+
+type verifyResetTokenReq struct {
+	Token string `json:"token"`
+}
+
+type resetPasswordReq struct {
+	Token    string `json:"token"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// ResetPasswordRequest handles POST /api/v1/auth/reset-password-request
+// Body: email, nik. Cek user di a_2, kirim OTP ke email (in-memory, TTL 10 menit).
+func (h *AuthHandler) ResetPasswordRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req resetPasswordRequestReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	nik := strings.TrimSpace(req.NIK)
+	if email == "" || !strings.Contains(email, "@") || nik == "" {
+		jsonError(w, http.StatusBadRequest, "Email dan NIK wajib diisi.")
+		return
+	}
+	if len(nik) != 16 || !isDigits(nik) || !ktpocr.ValidNIK(nik) {
+		jsonError(w, http.StatusBadRequest, "NIK tidak valid.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	exists, err := h.repo.VerifiedEmailNikExists(r.Context(), email, nik)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan.")
+		return
+	}
+	if !exists {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Jika data cocok, OTP telah dikirim ke email Anda.",
+		})
+		return
+	}
+	otp := generateOTP()
+	setResetOTP(email, nik, otp)
+	go func() {
+		if sendErr := mail.SendPasswordResetOTP(email, otp); sendErr != nil {
+			log.Printf("[RESET_PASSWORD_REQUEST] SendPasswordResetOTP to %s: %v", email, sendErr)
+		}
+	}()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Jika data cocok, OTP telah dikirim ke email Anda.",
+	})
+}
+
+// VerifyResetOTP handles POST /api/v1/auth/verify-reset-otp
+// Body: email, otp. Returns token untuk halaman ubah kata sandi (in-memory, TTL 10 menit).
+func (h *AuthHandler) VerifyResetOTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req verifyResetOtpReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	otp := strings.TrimSpace(req.OTP)
+	if email == "" || otp == "" {
+		jsonError(w, http.StatusBadRequest, "Email dan OTP wajib diisi.")
+		return
+	}
+	if !getAndConsumeResetOTP(email, otp) {
+		jsonError(w, http.StatusBadRequest, "OTP tidak valid atau sudah kadaluarsa.")
+		return
+	}
+	token, err := newResetToken()
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan.")
+		return
+	}
+	setResetToken(token, email)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"token":   token,
+		"message": "OTP valid.",
+	})
+}
+
+// VerifyResetToken handles POST /api/v1/auth/verify-reset-token
+// Body: token. Returns email untuk tampil di halaman ubah kata sandi (token tidak dikonsumsi).
+func (h *AuthHandler) VerifyResetToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req verifyResetTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	token := strings.TrimSpace(req.Token)
+	if token == "" {
+		jsonError(w, http.StatusBadRequest, "Token tidak valid.")
+		return
+	}
+	email, ok := getResetTokenEmail(token)
+	if !ok {
+		jsonError(w, http.StatusBadRequest, "Token tidak valid atau kadaluarsa.")
+		return
+	}
+	user, err := h.repo.GetResetUserByEmail(r.Context(), email)
+	if err != nil || user == nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memuat data akun.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"email":   user.Email,
+		"nama":    user.Nama,
+		"divisi":  user.Divisi,
+		"userid":  user.Userid,
+	})
+}
+
+// ResetPassword handles POST /api/v1/auth/reset-password
+// Body: token, email, password. Update password di a_2, token sekali pakai (dikonsumsi).
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req resetPasswordReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	token := strings.TrimSpace(req.Token)
+	emailIn := strings.TrimSpace(req.Email)
+	password := strings.TrimSpace(req.Password)
+	if token == "" || emailIn == "" || password == "" {
+		jsonError(w, http.StatusBadRequest, "Data tidak lengkap.")
+		return
+	}
+	if len(password) < 8 {
+		jsonError(w, http.StatusBadRequest, "Password minimal 8 karakter.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	email, ok := getAndConsumeResetToken(token)
+	if !ok || !strings.EqualFold(email, emailIn) {
+		jsonError(w, http.StatusBadRequest, "Token tidak valid atau kadaluarsa.")
+		return
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan.")
+		return
+	}
+	_, err = h.repo.Pool().Exec(r.Context(),
+		`UPDATE a_2_verified_users SET password = $1 WHERE email = $2`,
+		string(hashedPassword), email)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan password.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Password berhasil direset.",
+	})
+}
+
+// ResendOTP handles POST /api/v1/auth/resend-otp.
+// Mendukung: (1) sesi in-memory (request-otp flow), (2) sesi DB (setelah register, OTP di a_1).
+func (h *AuthHandler) ResendOTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req resendOtpReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	email := strings.TrimSpace(req.Email)
+	if email == "" {
+		jsonError(w, http.StatusBadRequest, "Email harus diisi.")
+		return
+	}
+
+	otp := generateOTP()
+	ctx := r.Context()
+
+	// 1) Sesi in-memory (request-otp): cukup perbarui memory dan kirim email
+	entry, ok := getPendingOTP(email)
+	if ok && entry.OTP != "" {
+		setPendingOTP(email, otp)
+		if err := mail.SendOTP(email, otp); err != nil {
+			log.Printf("[RESEND_OTP] Email gagal ke %s: %v. OTP: %s", email, err, otp)
+			jsonError(w, http.StatusInternalServerError, "Gagal mengirim OTP ke email: "+err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "OTP baru telah dikirim ke email Anda.",
+		})
+		return
+	}
+
+	// 2) Sesi DB: setelah register, OTP ada di a_1_unverified_users
+	if h.repo != nil && h.repo.Pool() != nil {
+		existsVerified, err := h.repo.GetByEmailVerified(ctx, email)
+		if err != nil {
+			log.Printf("[RESEND_OTP] GetByEmailVerified error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Gagal memproses.")
+			return
+		}
+		if existsVerified {
+			jsonError(w, http.StatusBadRequest, "Email sudah terdaftar. Silakan masuk.")
+			return
+		}
+		existsUnverified, err := h.repo.GetByEmailUnverified(ctx, email)
+		if err != nil || !existsUnverified {
+			jsonError(w, http.StatusNotFound, "Sesi OTP tidak ditemukan. Silakan daftar ulang.")
+			return
+		}
+		if err := h.repo.UpdateOTPByEmail(ctx, email, otp); err != nil {
+			log.Printf("[RESEND_OTP] UpdateOTPByEmail %s: %v", email, err)
+			jsonError(w, http.StatusInternalServerError, "Gagal memperbarui OTP.")
+			return
+		}
+		if err := mail.SendOTP(email, otp); err != nil {
+			log.Printf("[RESEND_OTP] Email gagal ke %s: %v. OTP: %s", email, err, otp)
+			jsonError(w, http.StatusInternalServerError, "Gagal mengirim OTP ke email: "+err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "OTP baru telah dikirim ke email Anda.",
+		})
+		return
+	}
+
+	jsonError(w, http.StatusNotFound, "Sesi OTP tidak ditemukan. Silakan daftar ulang.")
+}
+
+func jsonError(w http.ResponseWriter, code int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": msg})
+}
+
+func generateOTP() string {
+	return fmt.Sprintf("%06d", mathrand.Intn(1000000))
+}
+
+// isDuplicateKey returns true if err is PostgreSQL unique_violation (23505)
+func isDuplicateKey(err error) bool {
+	if err == nil {
+		return false
+	}
+	// pgx v5: use pgconn.PgError
+	if e, ok := err.(interface{ SQLState() string }); ok {
+		return e.SQLState() == "23505"
+	}
+	return strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "duplicate key")
+}
+
+func isDigits(s string) bool {
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+
+
+
+
+
+
+
+
+

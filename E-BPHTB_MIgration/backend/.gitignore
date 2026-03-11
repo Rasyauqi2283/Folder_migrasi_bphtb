@@ -1,0 +1,3 @@
+# temp_uploads hanya berisi JSON hasil ekstraksi KTP (nik_tanggal.json), bukan gambar. Tetap di-ignore agar tidak masuk repo.
+# File JSON dihapus otomatis setelah registrasi berhasil.
+temp_uploads/

@@ -1,0 +1,623 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Suspense, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
+import { getBackendBaseUrl, getLegacyBaseUrl } from "../../lib/api";
+
+type Verse = "wp" | "karyawan" | "pu";
+
+const PENDING_REGISTRATION_KEY = "pending_registration_v1";
+
+/** Data hasil OCR KTP dari real-ktp-verification */
+interface KTPOcrData {
+  nik?: string;
+  nama?: string;
+  provinsi?: string;
+  kabupatenKota?: string;
+  jenisKelamin?: string;
+  alamat?: string;
+  tempatLahir?: string;
+  tanggalLahir?: string;
+  rtRw?: string;
+  kelurahan?: string;
+  kecamatan?: string;
+  golonganDarah?: string;
+  agama?: string;
+  statusPerkawinan?: string;
+  pekerjaan?: string;
+  kewarganegaraan?: string;
+  berlakuHingga?: string;
+}
+
+function verseToBackend(v: string): "WP" | "Karyawan" | "PU" {
+  const s = (v || "wp").toLowerCase();
+  if (s === "pu") return "PU";
+  if (s === "karyawan") return "Karyawan";
+  return "WP";
+}
+
+function DaftarContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const legacyBase = getLegacyBaseUrl();
+  const apiBase = getBackendBaseUrl();
+
+  const verseParam = (searchParams.get("verse") || "wp").toLowerCase();
+  const verse: Verse = verseParam === "pu" || verseParam === "karyawan" ? verseParam : "wp";
+
+  const [nama, setNama] = useState("");
+  const [nik, setNik] = useState("");
+  const [telepon, setTelepon] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+  const [gender, setGender] = useState("");
+  const [nip, setNip] = useState("");
+  const [divisiPu, setDivisiPu] = useState("");
+  const [specialField, setSpecialField] = useState("");
+  const [pejabatUmum, setPejabatUmum] = useState("");
+
+  const [ktpFile, setKtpFile] = useState<File | null>(null);
+  const [ktpUploadId, setKtpUploadId] = useState<string | null>(null);
+  const [ktpStatus, setKtpStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [ktpMessage, setKtpMessage] = useState("");
+  const [ocrData, setOcrData] = useState<KTPOcrData | null>(null);
+
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "email_already" | "">("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const verseLabel =
+    verse === "wp"
+      ? "Pendaftaran sebagai Wajib Pajak (WP)."
+      : verse === "karyawan"
+        ? "Pendaftaran Karyawan (LTB, LSB, Peneliti, Peneliti Validasi, Bank) — isi NIP."
+        : "Pendaftaran PPAT/PPATS — isi data pejabat pembuat akta.";
+
+  const uploadKtp = useCallback(async (file: File) => {
+    setKtpStatus("loading");
+    setKtpMessage("Memproses OCR KTP...");
+    setKtpUploadId(null);
+    setOcrData(null);
+    const base = apiBase || legacyBase;
+    try {
+      const formData = new FormData();
+      formData.append("fotoktp", file);
+      const res = await fetch(`${base}/api/v1/auth/upload-ktp`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      let result: { success?: boolean; data?: KTPOcrData; message?: string; decision?: string; uploadId?: string } = {};
+      try {
+        result = await res.json();
+      } catch {
+        result = {};
+      }
+      if (!res.ok || !result.success || !result.uploadId || !result.data) {
+        setKtpStatus("error");
+        setKtpMessage(
+          result?.message ||
+            (res.status === 502
+              ? "Backend tidak menjawab. Pastikan Go (port 3005) sudah jalan."
+              : "OCR KTP gagal. Gunakan foto lebih jelas.")
+        );
+        return;
+      }
+      const d = result.data;
+      setKtpUploadId(result.uploadId);
+      setOcrData(d);
+      setKtpStatus("success");
+      setKtpMessage(
+        result.decision === "needs_review"
+          ? "OCR diproses, tetapi beberapa field perlu Anda cek manual."
+          : "KTP berhasil dipindai."
+      );
+      if (d.nama) setNama(d.nama);
+      if (d.nik) setNik(d.nik);
+      if (d.jenisKelamin && ["Laki-laki", "Perempuan"].includes(d.jenisKelamin)) {
+        setGender(d.jenisKelamin);
+      }
+    } catch (e) {
+      setKtpStatus("error");
+      const errMsg = e instanceof Error ? e.message : "";
+      setKtpMessage(
+        errMsg.includes("fetch") || errMsg.includes("network")
+          ? "Tidak bisa terhubung. Pastikan Next.js (port 3000) dan backend Go (port 3005) sudah jalan."
+          : "Tidak bisa terhubung ke server. Cek koneksi dan pastikan kedua server berjalan."
+      );
+    }
+  }, [apiBase, legacyBase]);
+
+  const onKtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setKtpFile(file || null);
+    setKtpUploadId(null);
+    setOcrData(null);
+    setKtpStatus("idle");
+    setKtpMessage("");
+    if (file) {
+      const allowed = ["image/jpeg", "image/jpg", "image/png"];
+      if (!allowed.includes(file.type)) {
+        setKtpStatus("error");
+        setKtpMessage("Format tidak didukung. Gunakan JPG atau PNG.");
+        return;
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        setKtpStatus("error");
+        setKtpMessage("Ukuran maksimal 3MB.");
+        return;
+      }
+      uploadKtp(file);
+    }
+  };
+
+  const validate = (): boolean => {
+    if (!nama.trim() || nama.trim().length < 2) {
+      setMessage("Nama lengkap minimal 2 karakter.");
+      setMessageType("error");
+      return false;
+    }
+    if (!/^\d{16}$/.test(nik)) {
+      setMessage("NIK harus 16 digit.");
+      setMessageType("error");
+      return false;
+    }
+    if (!/^08\d{9,11}$/.test(telepon)) {
+      setMessage("Nomor telepon harus dimulai 08, 11–13 digit.");
+      setMessageType("error");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setMessage("Format email tidak valid.");
+      setMessageType("error");
+      return false;
+    }
+    if (password.length < 6) {
+      setMessage("Password minimal 6 karakter.");
+      setMessageType("error");
+      return false;
+    }
+    if (password !== repeatPassword) {
+      setMessage("Konfirmasi password tidak cocok.");
+      setMessageType("error");
+      return false;
+    }
+    if (!gender || !["Perempuan", "Laki-laki"].includes(gender)) {
+      setMessage("Pilih jenis kelamin.");
+      setMessageType("error");
+      return false;
+    }
+    if (!ktpUploadId) {
+      setMessage("Upload foto KTP terlebih dahulu.");
+      setMessageType("error");
+      return false;
+    }
+    if (verse === "karyawan" && !nip.trim()) {
+      setMessage("NIP wajib untuk pendaftaran Karyawan.");
+      setMessageType("error");
+      return false;
+    }
+    if (verse === "pu") {
+      if (divisiPu !== "PPAT" && divisiPu !== "PPATS") {
+        setMessage("Pilih jenis akun PPAT atau PPATS.");
+        setMessageType("error");
+        return false;
+      }
+      if (!specialField.trim()) {
+        setMessage("Nama PPAT/Gelar wajib diisi.");
+        setMessageType("error");
+        return false;
+      }
+      if (!pejabatUmum.trim()) {
+        setMessage("Pejabat Umum wajib diisi.");
+        setMessageType("error");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage("");
+    setMessageType("");
+    if (!validate()) return;
+    if (!ktpUploadId) {
+      setMessage("KTP harus diupload terlebih dahulu.");
+      setMessageType("error");
+      return;
+    }
+    if (!ocrData) {
+      setMessage("Data OCR KTP belum tersedia. Upload ulang KTP.");
+      setMessageType("error");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const pwdEl = document.getElementById("password") as HTMLInputElement | null;
+      const pwdVal = (pwdEl?.value || password || "").trim();
+      const specialEl = document.getElementById("special_field") as HTMLInputElement | null;
+      const pejabatEl = document.getElementById("pejabat_umum") as HTMLInputElement | null;
+      const divEl = document.getElementById("divisi_pu") as HTMLSelectElement | null;
+
+      const pendingPayload: Record<string, unknown> = {
+        nama: nama.trim(),
+        nik,
+        telepon,
+        email,
+        password: pwdVal || password,
+        gender,
+        verse: verseToBackend(verse),
+        ktpUploadId,
+        ktpOcrJson: JSON.stringify(ocrData),
+      };
+
+      if (verse === "karyawan") pendingPayload.nip = nip.trim();
+      if (verse === "pu") {
+        pendingPayload.divisi = divEl?.value || divisiPu;
+        pendingPayload.special_field = ((specialEl?.value ?? specialField) || "").trim();
+        pendingPayload.pejabat_umum = ((pejabatEl?.value ?? pejabatUmum) || "").trim();
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(PENDING_REGISTRATION_KEY, JSON.stringify(pendingPayload));
+        localStorage.setItem("email", email);
+      }
+
+      const base = apiBase || legacyBase;
+      const requestOtpUrl = `${base}/api/v1/auth/request-otp`;
+      const res = await fetch(requestOtpUrl, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      let data: { success?: boolean; message?: string; code?: string } = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = { message: "Respons server tidak valid." };
+      }
+
+      if (res.ok && data.success) {
+        setMessage(data.message || "OTP telah dikirim. Lanjutkan verifikasi OTP.");
+        setMessageType("success");
+        setTimeout(() => {
+          router.push("/verifikasi-otp");
+        }, 1000);
+      } else {
+        const errMsg = data?.message || `Request OTP gagal (${res.status})`;
+        const isEmailAlready = data?.code === "EMAIL_ALREADY_REGISTERED" || /sudah terdaftar/i.test(errMsg);
+        setMessage(errMsg);
+        setMessageType(isEmailAlready ? "email_already" : "error");
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
+        }
+      }
+    } catch {
+      setMessage("Gagal terhubung ke server. Pastikan backend Go (port 3005) jalan.");
+      setMessageType("error");
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="daftar-page">
+      <div className="daftar-container">
+        <h1 className="daftar-title">Pendaftaran Akun BPHTB Online</h1>
+        <p className="daftar-verse-label">{verseLabel}</p>
+
+        <div className={`daftar-ktp-zone ${ktpFile ? "has-file" : ""}`}>
+          <div className="daftar-field">
+            <label htmlFor="fotoktp">Foto KTP (wajib)</label>
+            <input
+              type="file"
+              id="fotoktp"
+              accept="image/png,image/jpeg,image/jpg"
+              onChange={onKtpChange}
+            />
+          </div>
+          {ktpStatus !== "idle" && (
+            <div className={`daftar-ktp-status ${ktpStatus}`}>{ktpMessage}</div>
+          )}
+          {ocrData && (
+            <div className="daftar-ktp-lampiran">
+              <h4 className="daftar-ktp-lampiran-title">
+                Data lampiran (hasil scan KTP)
+              </h4>
+
+              <div className="daftar-ktp-lampiran-section">
+                <h5 className="daftar-ktp-lampiran-section-title">Data Diri</h5>
+                <div className="daftar-ktp-lampiran-grid">
+                  {ocrData.nik && (
+                    <p><strong>NIK:</strong> <span>{ocrData.nik}</span></p>
+                  )}
+                  {ocrData.nama && (
+                    <p><strong>Nama:</strong> <span>{ocrData.nama}</span></p>
+                  )}
+                  {(ocrData.tempatLahir || ocrData.tanggalLahir) && (
+                    <p>
+                      <strong>TTL:</strong>{" "}
+                      <span>
+                        {[ocrData.tempatLahir, ocrData.tanggalLahir]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </span>
+                    </p>
+                  )}
+                  {ocrData.jenisKelamin && (
+                    <p><strong>Jenis Kelamin:</strong> <span>{ocrData.jenisKelamin}</span></p>
+                  )}
+                  {ocrData.golonganDarah && (
+                    <p><strong>Gol. Darah:</strong> <span>{ocrData.golonganDarah}</span></p>
+                  )}
+                </div>
+              </div>
+
+              <div className="daftar-ktp-lampiran-section">
+                <h5 className="daftar-ktp-lampiran-section-title">Alamat</h5>
+                <div className="daftar-ktp-lampiran-grid">
+                  {ocrData.provinsi && (
+                    <p><strong>Provinsi:</strong> <span>{ocrData.provinsi}</span></p>
+                  )}
+                  {ocrData.kabupatenKota && (
+                    <p><strong>Kab/Kota:</strong> <span>{ocrData.kabupatenKota}</span></p>
+                  )}
+                  {ocrData.alamat && (
+                    <p><strong>Alamat:</strong> <span>{ocrData.alamat}</span></p>
+                  )}
+                  {ocrData.rtRw && (
+                    <p><strong>RT/RW:</strong> <span>{ocrData.rtRw}</span></p>
+                  )}
+                  {ocrData.kelurahan && (
+                    <p><strong>Kel/Desa:</strong> <span>{ocrData.kelurahan}</span></p>
+                  )}
+                  {ocrData.kecamatan && (
+                    <p><strong>Kecamatan:</strong> <span>{ocrData.kecamatan}</span></p>
+                  )}
+                </div>
+              </div>
+
+              <div className="daftar-ktp-lampiran-section">
+                <h5 className="daftar-ktp-lampiran-section-title">Lain-lain</h5>
+                <div className="daftar-ktp-lampiran-grid">
+                  {ocrData.agama && (
+                    <p><strong>Agama:</strong> <span>{ocrData.agama}</span></p>
+                  )}
+                  {ocrData.statusPerkawinan && (
+                    <p><strong>Status Perkawinan:</strong> <span>{ocrData.statusPerkawinan}</span></p>
+                  )}
+                  {ocrData.pekerjaan && (
+                    <p><strong>Pekerjaan:</strong> <span>{ocrData.pekerjaan}</span></p>
+                  )}
+                  {ocrData.kewarganegaraan && (
+                    <p><strong>Kewarganegaraan:</strong> <span>{ocrData.kewarganegaraan}</span></p>
+                  )}
+                  {ocrData.berlakuHingga && (
+                    <p><strong>Berlaku Hingga:</strong> <span>{ocrData.berlakuHingga}</span></p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <form id="registration-form" onSubmit={handleSubmit}>
+          <div className="daftar-form-row">
+            <div>
+              <div className="daftar-field">
+                <label htmlFor="nama">Nama Lengkap</label>
+                <input
+                  type="text"
+                  id="nama"
+                  value={nama}
+                  onChange={(e) => setNama(e.target.value)}
+                  placeholder="Nama Lengkap"
+                  required
+                />
+                <div className="daftar-validation-zone" aria-live="polite" />
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="nik">NIK (16 digit)</label>
+                <input
+                  type="text"
+                  id="nik"
+                  value={nik}
+                  onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
+                  placeholder="NIK sesuai KTP"
+                  maxLength={16}
+                  required
+                />
+                <div className="daftar-validation-zone daftar-validation-zone-double" aria-live="polite">
+                  <small className="daftar-nik-counter">{nik.length}/16 digit</small>
+                </div>
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="telepon">Telepon</label>
+                <input
+                  type="text"
+                  id="telepon"
+                  value={telepon}
+                  onChange={(e) => setTelepon(e.target.value.replace(/\D/g, "").slice(0, 13))}
+                  placeholder="08xxxxxxxxxx"
+                  maxLength={13}
+                  required
+                />
+                <div className="daftar-validation-zone daftar-validation-zone-double" aria-live="polite">
+                  <small className="daftar-telepon-info">Contoh: 08123456789</small>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="daftar-field">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                />
+                <div className="daftar-validation-zone" aria-live="polite" />
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="password">Kata Sandi</label>
+                <p className="daftar-password-helper">
+                  Buat kata sandi mu disini, penting: buat berbeda dengan sandi pada email anda
+                </p>
+                <input
+                  type="password"
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min. 6 karakter"
+                  required
+                />
+                <div className="daftar-validation-zone" aria-live="polite" />
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="repeatpassword">Ulangi Kata Sandi</label>
+                <input
+                  type="password"
+                  id="repeatpassword"
+                  value={repeatPassword}
+                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  placeholder="Ulangi Kata Sandi"
+                  required
+                />
+                <div className="daftar-validation-zone" aria-live="polite" />
+              </div>
+            </div>
+          </div>
+
+          {verse === "karyawan" && (
+            <div className="daftar-field">
+              <label htmlFor="nip">NIP (wajib untuk Karyawan)</label>
+              <input
+                type="text"
+                id="nip"
+                value={nip}
+                onChange={(e) => setNip(e.target.value)}
+                placeholder="NIP"
+                maxLength={20}
+              />
+            </div>
+          )}
+
+          {verse === "pu" && (
+            <>
+              <div className="daftar-field">
+                <label htmlFor="divisi_pu">Jenis akun</label>
+                <select
+                  id="divisi_pu"
+                  value={divisiPu}
+                  onChange={(e) => setDivisiPu(e.target.value)}
+                >
+                  <option value="">Pilih...</option>
+                  <option value="PPAT">PPAT</option>
+                  <option value="PPATS">PPATS</option>
+                </select>
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="special_field">Nama PPAT / Gelar</label>
+                <input
+                  type="text"
+                  id="special_field"
+                  value={specialField}
+                  onChange={(e) => setSpecialField(e.target.value)}
+                  placeholder="Contoh: Dr. Ahmad, S.H."
+                  maxLength={255}
+                />
+              </div>
+              <div className="daftar-field">
+                <label htmlFor="pejabat_umum">Pejabat Umum (PPAT / Notaris)</label>
+                <input
+                  type="text"
+                  id="pejabat_umum"
+                  value={pejabatUmum}
+                  onChange={(e) => setPejabatUmum(e.target.value)}
+                  placeholder="Pejabat Umum"
+                  maxLength={50}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="daftar-field">
+            <label htmlFor="gender">Jenis Kelamin</label>
+            <select
+              id="gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              required
+            >
+              <option value="">Pilih...</option>
+              <option value="Perempuan">Perempuan</option>
+              <option value="Laki-laki">Laki-laki</option>
+            </select>
+          </div>
+
+          <div className="daftar-actions">
+            <button
+              type="button"
+              className="daftar-btn daftar-btn-cancel"
+              onClick={() => router.back()}
+            >
+              Kembali
+            </button>
+            <button
+              type="submit"
+              className="daftar-btn daftar-btn-submit"
+              id="submitBtn"
+              disabled={submitting}
+            >
+              {submitting ? "Mengirim..." : "Daftar"}
+            </button>
+          </div>
+
+          {message && (
+            <div className={`daftar-message ${messageType}`}>
+              {message}
+              {messageType === "email_already" && (
+                <div style={{ marginTop: 12 }}>
+                  <Link href="/login" className="daftar-btn daftar-btn-submit" style={{ display: "inline-block", textDecoration: "none" }}>
+                    Masuk
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+
+        <Link href="/" className="daftar-link">
+          ← Kembali ke beranda
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function DaftarPage() {
+  return (
+    <main className="container">
+      <Suspense fallback={<div className="daftar-page" style={{ padding: 48, textAlign: "center" }}>Memuat...</div>}>
+        <DaftarContent />
+      </Suspense>
+    </main>
+  );
+}
+
+
+
+
+

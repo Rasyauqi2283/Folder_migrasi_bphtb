@@ -1,0 +1,86 @@
+package config
+
+import (
+	"os"
+	"strconv"
+)
+
+type Config struct {
+	Port           int
+	Env            string
+	APIURL         string
+	DBURL          string
+	LegacyNodeURL  string // Backend Node (verify-otp, resend-otp, login); proxy ke sini
+	TempUploadsDir string // Direktori temp untuk KTP upload
+	EasyOCRURL     string // URL service EasyOCR (endpoint /ocr)
+	EasyOCREnabled bool   // Aktifkan EasyOCR sebagai OCR utama
+	EasyOCRTimeout int    // Timeout request EasyOCR dalam milidetik
+}
+
+func Load() *Config {
+	port := 3005
+	if p := os.Getenv("GO_PORT"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil {
+			port = v
+		}
+	}
+	if p := os.Getenv("BACKEND_GO_PORT"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil {
+			port = v
+		}
+	}
+	env := os.Getenv("NODE_ENV")
+	if env == "" {
+		env = "development"
+	}
+	apiURL := os.Getenv("API_URL")
+	if apiURL == "" {
+		apiURL = "http://localhost:" + strconv.Itoa(port)
+	}
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		dbURL = "postgres://postgres:postgres@localhost:5432/bappenda?sslmode=disable"
+	}
+	legacyNodeURL := os.Getenv("LEGACY_NODE_URL")
+	if legacyNodeURL == "" {
+		legacyNodeURL = "http://localhost:3001"
+	}
+	tempUploadsDir := os.Getenv("TEMP_UPLOADS_DIR")
+	if tempUploadsDir == "" {
+		tempUploadsDir = "./temp_uploads"
+	}
+	easyOCRURL := os.Getenv("EASYOCR_URL")
+	if easyOCRURL == "" {
+		easyOCRURL = "http://localhost:8010/ocr"
+	}
+	easyOCREnabled := parseBoolEnv(os.Getenv("EASYOCR_ENABLED"), true)
+	// Default 120s: cold start EasyOCR (model load) bisa 30–120s; setelah warmup cukup ~5–15s
+	easyOCRTimeout := 120000
+	if p := os.Getenv("EASYOCR_TIMEOUT_MS"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil && v > 0 {
+			easyOCRTimeout = v
+		}
+	}
+	return &Config{
+		Port:           port,
+		Env:            env,
+		APIURL:         apiURL,
+		DBURL:          dbURL,
+		LegacyNodeURL:  legacyNodeURL,
+		TempUploadsDir: tempUploadsDir,
+		EasyOCRURL:     easyOCRURL,
+		EasyOCREnabled: easyOCREnabled,
+		EasyOCRTimeout: easyOCRTimeout,
+	}
+}
+
+func parseBoolEnv(v string, fallback bool) bool {
+	switch v {
+	case "1", "true", "TRUE", "yes", "YES", "on", "ON":
+		return true
+	case "0", "false", "FALSE", "no", "NO", "off", "OFF":
+		return false
+	default:
+		return fallback
+	}
+}

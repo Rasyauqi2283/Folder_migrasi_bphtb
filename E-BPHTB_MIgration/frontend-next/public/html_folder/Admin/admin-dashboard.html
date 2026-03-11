@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard|BAPPENDA</title>
+
+  <link rel="icon" href="../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/dashboard-responsive.css"> <!-- Dashboard responsive design -->
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_variant/Main-design_isi/dashboard-viewport-fix.css"> <!-- Dashboard viewport fix -->
+    <!---->
+    <link rel="stylesheet" href="../../design-n-script/design_css/admin_design.css">
+    <!---->
+    <link rel="stylesheet" href="../../design-n-script/design_css/design_text/design_text.css">
+    <style>
+        /* Summary Cards Styles */
+        .summary-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 24px auto;
+            max-width: 1400px;
+            padding: 0 20px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+            border: 1px solid rgba(65, 90, 119, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 5px 15px rgba(65, 90, 119, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+        }
+        /* Gold accent for tax summary card */
+        .summary-card:has(.summary-card-icon.gold)::before {
+            background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(65, 90, 119, 0.4);
+        }
+        .summary-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .summary-card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .summary-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+        .summary-card-icon.blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .summary-card-icon.green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .summary-card-icon.purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        .summary-card-icon.orange {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .summary-card-icon.gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        /* Mini stats inside a summary card (used for PPAT tax summary) */
+        .summary-mini-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+        .summary-mini-stats .mini-stat {
+            background: rgba(27, 38, 59, 0.5);
+            border: 1px solid rgba(65, 90, 119, 0.3);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .summary-mini-stats .mini-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .summary-mini-stats .mini-value {
+            margin-top: 4px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .summary-card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 8px 0;
+        }
+        .summary-card-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+        }
+        .summary-card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(65, 90, 119, 0.3);
+        }
+        .summary-card-link {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .summary-card-link:hover {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: underline;
+            transform: translateX(2px);
+        }
+        @media (max-width: 768px) {
+            .summary-cards-container {
+                grid-template-columns: 1fr;
+                padding: 0 16px;
+            }
+        }
+        
+        /* Chart Legend Styles */
+        .chart-legend {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .chart-legend li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(27, 38, 59, 0.5);
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .chart-legend li span.legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .chart-legend li .legend-label {
+            flex: 1;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .chart-legend li .legend-count {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .chart-legend li .legend-percentage {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-section > .card.chart-card > div {
+                grid-template-columns: 1fr !important;
+            }
+            #validationPieChart {
+                height: 200px !important;
+            }
+        }
+        
+        /* Ensure admin dashboard main-content is responsive to sidebar expansion */
+        /* Base state - sidebar collapsed (60px) - Match PPAT dashboard exactly */
+        /* Note: Base styles are inherited from table-utama.css, but we ensure consistency */
+        .admin-dashboard .main-content {
+            /* These values match the base .main-content from table-utama.css exactly */
+            margin-left: 70px; /* 60px sidebar + 10px gutter */
+            margin-right: 15px; /* Fixed 15px from viewport edge - CRITICAL for viewport containment */
+            margin-top: 80px;
+            width: calc(100vw - 70px - 15px); /* 100vw - left margin - right margin */
+            max-width: calc(100vw - 70px - 15px);
+            transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: auto;
+            /* CRITICAL: Override any position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+        }
+        
+        /* When sidebar is expanded (shifted state) - Match PPAT dashboard exactly */
+        /* Sidebar expands to 250px, so we need 250px + 10px gutter = 260px margin-left */
+        /* CRITICAL: margin-right: 15px must always be present to prevent viewport overflow */
+        /* CRITICAL: Override position: fixed from table-utama.css to use margin-based approach */
+        /* Handle both cases: class shifted on main-content itself, or on main element */
+        .admin-dashboard .main-content.shifted,
+        main.shifted .admin-dashboard .main-content {
+            /* Override position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+            
+            /* Use margin-based approach like PPAT dashboard */
+            margin-left: 260px !important; /* 250px sidebar + 10px gutter */
+            margin-right: 15px !important; /* CRITICAL: Always maintain right margin */
+            margin-top: 80px !important;
+            width: calc(100vw - 260px - 15px) !important; /* 100vw - left margin - right margin */
+            max-width: calc(100vw - 260px - 15px) !important;
+            height: calc(100vh - 80px - 40px) !important; /* minus header and footer */
+            transform: none !important; /* Override any transform from generic .shifted */
+            transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        width 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+        
+        /* Also handle body.shifted for compatibility (if JavaScript adds shifted to body) */
+        body.shifted .admin-dashboard .main-content {
+            /* Override position: fixed from table-utama.css harmonika approach */
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
+            
+            /* Use margin-based approach like PPAT dashboard */
+            margin-left: 260px !important;
+            margin-right: 15px !important; /* CRITICAL: Always maintain right margin */
+            margin-top: 80px !important;
+            width: calc(100vw - 260px - 15px) !important;
+            max-width: calc(100vw - 260px - 15px) !important;
+            height: calc(100vh - 80px - 40px) !important;
+            transform: none !important;
+            transition: margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
+                        width 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+        }
+        
+        /* Ensure all child elements respect the container width when shifted */
+        main.shifted .admin-dashboard .main-content *,
+        body.shifted .admin-dashboard .main-content * {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+
+    <script>
+        //script khusus admin
+        function toggleContainer() {
+            const container = document.getElementById("side-container");
+            container.classList.toggle("hidden");
+            container.classList.toggle("shown");
+            }
+        //
+    </script>
+</head>
+<body class="admin-dashboard dashboard-responsive">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Dashboard</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+  <!-- Item Dashboard dengan hyperlink -->
+  <div class="box">
+      <div class="menu-item" id="dashboard_page">
+          <a href="admin-dashboard.html" class="icon-text-wrapper">
+              <i class="fa fa-home sidebar-icon"></i>
+              <span class="sidebar-text">Dashboard</span>
+          </a>
+      </div>
+  </div>
+<!-- Admin Section -->
+  <!-- Admin Section Start-->
+      <div class="box">
+      <div class="menu-item" id="aplikasi_page">
+          <a href="Aplikasi/aplikasi-admin.html" class="icon-text-wrapper">
+              <i class="fa fa-window-maximize sidebar-icon"></i>
+              <span class="sidebar-text">Aplikasi</span>
+          </a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item" id="PO_page">
+          <a href="" class="icon-text-wrapper">
+              <i class="fa fa-envelope sidebar-icon"></i>
+              <span class="sidebar-text">Permohonan Validasi</span>
+          </a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item dropdown" data-dropdown="true" id="referensi_user">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-share-alt sidebar-icon"></i>
+              <span class="sidebar-text">Referensi User</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+          <a href="referensi_user/admin-pemutakhiranppat.html" id="PD_PPAT">Pemutakhiran Data PPAT</a>
+          <a href="referensi_user/admin-status-ppat.html" id="Status_PPAT"> Status PPAT</a>
+          <a href="referensi_user/admin-validasi-qr.html" id="Validasi_QR"> Validasi QR</a>
+      </div>
+  </div>
+  <div class="box">
+    <div class="menu-item dropdown" data-dropdown="true" id="referensi_user">
+        <div class="icon-text-wrapper dropdown-toggle">
+            <i class="fa fa-id-badge sidebar-icon"></i>
+            <span class="sidebar-text">User Data</span>
+        </div>
+    </div>
+    <div class="dropdown-content">
+        <a href="Data_user/admin-datauser-pending.html">verifikasi Data User</a>
+        <a href="Data_user/admin-datauser-complete.html"> Data User</a>
+    </div>
+</div>
+
+  <div class="box">
+      <div class="menu-item" id="UG_page">
+          <a href="#" class="icon-text-wrapper">
+              <i class="fa fa-id-card sidebar-icon"></i>
+              <span class="sidebar-text">Users Group</span>
+          </a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item" id="GU_page">
+          <a href="#" class="icon-text-wrapper">
+              <i class="fa fa-users sidebar-icon"></i>
+              <span class="sidebar-text">Group Users</span>
+          </a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item" id="GP_page">
+          <a href="#" class="icon-text-wrapper">
+              <i class="fa fa-filter sidebar-icon"></i>
+              <span class="sidebar-text">Group Privilege</span>
+          </a>
+      </div>
+  </div>
+<!-- Admin End Section -->
+  <!---->
+<div class="toggle-btn" onclick="toggleContainer()">Menu Lain</div>
+  <!-- PPAT SECTION -->
+<div id="side-container" class="container hidden">
+  <div class="tier-box">PPAT</div>
+  <div class="box">
+      <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-address-book sidebar-icon"></i>
+              <span class="sidebar-text">Booking SSPD</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+                <a href="../PPAT/BOOKING-SSPD/bookingsspd-badan.html">Booking SSPD Badan</a>
+                <a href="../PPAT/BOOKING-SSPD/bookingsspd-perorangan.html">Booking SSPD Perorangan</a>
+      </div>
+  </div>
+  <div class="box">
+      <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+          <div class="icon-text-wrapper dropdown-toggle">
+              <i class="fa fa-folder-open sidebar-icon"></i>
+              <span class="sidebar-text">Laporan Bulanan PPAT</span>
+          </div>
+      </div>
+      <div class="dropdown-content">
+                <a href="../PPAT/LAPORAN-BULANAN-PPAT/Laporan-rekap_ppat.html">Laporan Rekap PPAT</a>
+                <a href="../PPAT/LAPORAN-BULANAN-PPAT/monitoring-keterlambatan.html">Monitoring Keterlambatan</a>
+                <a href="../PPAT/LAPORAN-BULANAN-PPAT/rincian-laporan-bulanan-ppat.html">Rincian Laporan Bulanan PPAT</a>
+      </div>
+  </div>
+<!-- PPAT End SECTION -->
+  <!---->
+<!-- LTB Section -->
+<div class="tier-box">Loket Terima Berkas</div> 
+  <!-- LTB -->
+  <div class="box">
+  <div class="menu-item dropdown" data-dropdown="true">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-folder sidebar-icon"></i>
+          <span class="sidebar-text">Terima Berkas SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../LTB/TerimaBerkas-SSPD/terima-berkas-sspd.html">Permohonan Validasi SSPD</a>
+  </div>
+  </div>
+<!-- LTB End Section -->
+  <!---->
+<!-- LSB Section -->
+<div class="tier-box">Loket Serah Berkas</div>
+<!-- LSB SECTION -->
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-paper-plane sidebar-icon"></i>
+          <span class="sidebar-text">Pelayanan Penyerahan SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../LSB/Pelayanan_Penyerahan-SSPD/pelayanan-penyerahan-sspd.html">Pelayanan Penyerahan SSPD </a>
+      <a href="#">Monitoring Penyerahan SSPD</a>
+  </div>
+</div>
+<!-- LSB End Section -->
+  <!---->
+<!-- Peneliti Section -->
+<div class="tier-box">Peneliti</div>
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-gavel sidebar-icon"></i>
+          <span class="sidebar-text">Verifikasi SSPD</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../Peneliti/Verifikasi_sspd/verifikasi-data.html">Verifikasi SSPD</a>
+      <a href="#">Verifikasi SSPD Offline</a>
+      <a href="../Peneliti/ParafKasie-sspd/paraf-kasie.html">Kasie Verifikasi SSPD</a>
+      <a href="#">Kasie Verifikasi SSPD Offline</a>
+      <a href="#">Proses SKPD Kurang Bayar</a>
+      <a href="#">Proses SKPD Kurang Bayar Offline</a>
+  </div>
+</div>
+<!-- Peneliti End Section -->
+<!---->
+<!--BANK Section-->
+<div class="tier-box">BANK</div>
+<div class="box">
+  <div class="menu-item dropdown" data-dropdown="true">
+      <div class="icon-text-wrapper dropdown-toggle">
+          <i class="fa fa-usd sidebar-icon"></i>
+          <span class="sidebar-text">Transaksi Bank</span>
+      </div>
+  </div>
+  <div class="dropdown-content">
+      <a href="../Bank/Hasil_Transaksi/hasil_transaksi.html">Hasil transaksi</a>
+  </div>
+</div>
+</div>
+<!--BANK End Section-->
+<!---->
+<!-- Pejabat Section -->
+<!---->
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div onclick="logout()" class="icon-text-wrapper" style="cursor: pointer;">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <section class="welcome-section">
+        <div class="welcome-banner">
+            <div class="welcome-text">
+                <h2>Selamat Datang, <span class="Username">Loading...</span> dilaman <span class="Divisi">Load</span>.</h2>
+                <h5>Ringkasan aktivitas dan statistik administrasi Anda</h5>
+            </div>
+            <div class="illustration-container">
+                <!-- Placeholder for the illustration image -->
+                <img src="../../asset/men_dashboard-removebg-preview.png" alt="Illustration" class="illustration-image">
+            </div>
+            <div class="calendar-container">
+                <p id="calendar-month" class="calendar-month"></p>
+                <div class="month-dropdown" id="monthDropdown">
+                    <div class="month-option">January</div>
+                    <div class="month-option">February</div>
+                    <div class="month-option">March</div>
+                    <div class="month-option">April</div>
+                    <div class="month-option">May</div>
+                    <div class="month-option">June</div>
+                    <div class="month-option">July</div>
+                    <div class="month-option">August</div>
+                    <div class="month-option">September</div>
+                    <div class="month-option">October</div>
+                    <div class="month-option">November</div>
+                    <div class="month-option">December</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid">
+                    <div class="day">Mo</div>
+                    <div class="day">Tu</div>
+                    <div class="day">We</div>
+                    <div class="day">Th</div>
+                    <div class="day">Fr</div>
+                    <div class="day weekend">Sa</div>
+                    <div class="day weekend">Su</div>
+                    <!-- Dates will be generated dynamically -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards-container" id="summaryCardsContainer">
+        <!-- Cards will be populated by JavaScript -->
+    </div>
+
+    <!-- Summary Card for Pemutakhiran PPAT -->
+    <div class="summary-cards-container" id="ppatTaxSummaryContainer" style="max-width: 1400px; margin: 24px auto; padding: 0 20px;">
+        <!-- Card will be populated by JavaScript -->
+    </div>
+
+    <!-- Validation Statistics Chart -->
+    <div class="chart-section" style="max-width: 1400px; margin: 24px auto; padding: 0 20px;">
+        <div class="card chart-card" style="background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%); border: 1px solid rgba(65, 90, 119, 0.3); border-radius: 12px; padding: 24px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 5px 15px rgba(65, 90, 119, 0.3);">
+            <h3 style="margin-top: 0; margin-bottom: 20px; color: #ffffff; font-size: 20px; font-weight: 700; border-bottom: 2px solid rgba(65, 90, 119, 0.3); padding-bottom: 12px;">
+                Statistik Total Permohonan Validasi
+            </h3>
+            <div style="display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start;">
+                <div style="display: flex; justify-content: center; align-items: center;">
+                    <canvas id="validationPieChart" style="max-width: 100%; height: 200px !important;"></canvas>
+                </div>
+                <div>
+                    <ul class="chart-legend" id="chartLegend" style="list-style: none; padding: 0; margin: 0;">
+                        <!-- Will be populated by JavaScript -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>
+<div id="admin-notifications">
+    <span id="notification-badge" class="badge hidden">New Processed Data!</span>
+</div>
+
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script case admin-->
+<script src="../../design-n-script/script-backend/admin-access-backend.js"></script>
+<!---->
+<!--script front-->
+<script src="../../design-n-script/script_frontback_java/dashboard.js"></script>
+<script src="../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../design-n-script/script-backend/header-backend.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Load Summary Cards for Admin Dashboard
+    (async function loadSummaryCards() {
+      try {
+        const container = document.getElementById('summaryCardsContainer');
+        if (!container) return;
+
+        // Fetch data from admin endpoints
+        const [pendingRes, completeRes, ppatStatsRes, qrRes] = await Promise.all([
+          fetch('/api/users/pending', { credentials: 'include' }).catch(() => null),
+          fetch('/api/users/complete', { credentials: 'include' }).catch(() => null),
+          fetch('/api/admin/notification-warehouse/ppat-users-stats', { credentials: 'include' }).catch(() => null),
+          fetch('/api/admin/validate-qr-search?page=1&limit=1', { credentials: 'include' }).catch(() => null)
+        ]);
+
+        // Process User Pending (Verifikasi Data User)
+        let pendingCount = 0;
+        if (pendingRes && pendingRes.ok) {
+          const pendingData = await pendingRes.json().catch(() => []);
+          pendingCount = Array.isArray(pendingData) ? pendingData.length : 0;
+        }
+
+        // Process User Complete (Data User)
+        let completeCount = 0;
+        if (completeRes && completeRes.ok) {
+          const completeData = await completeRes.json().catch(() => []);
+          completeCount = Array.isArray(completeData) ? completeData.length : 0;
+        }
+
+        // Process PPAT Status (Status PPAT)
+        let ppatTotal = 0;
+        if (ppatStatsRes && ppatStatsRes.ok) {
+          const ppatStats = await ppatStatsRes.json().catch(() => ({ success: false }));
+          if (ppatStats.success && ppatStats.data) {
+            ppatTotal = ppatStats.data.total || 0;
+          }
+        }
+
+        // Process Validasi QR
+        let qrTotal = 0;
+        if (qrRes && qrRes.ok) {
+          const qrData = await qrRes.json().catch(() => ({ success: false }));
+          if (qrData.success && qrData.pagination) {
+            qrTotal = qrData.pagination.total || 0;
+          }
+        }
+
+        // Define cards
+        const cards = [
+          {
+            title: 'Verifikasi Data User',
+            icon: '👤',
+            iconClass: 'orange',
+            value: pendingCount,
+            label: 'User menunggu verifikasi',
+            link: 'Data_user/admin-datauser-pending.html',
+            linkText: 'Lihat Data'
+          },
+          {
+            title: 'Data User',
+            icon: '👥',
+            iconClass: 'green',
+            value: completeCount,
+            label: 'Total user terverifikasi',
+            link: 'Data_user/admin-datauser-complete.html',
+            linkText: 'Lihat Data'
+          },
+          {
+            title: 'Status PPAT',
+            icon: '📋',
+            iconClass: 'blue',
+            value: ppatTotal,
+            label: 'Total PPAT/PPATS',
+            link: 'referensi_user/admin-status-ppat.html',
+            linkText: 'Lihat Status'
+          },
+          {
+            title: 'Validasi QR',
+            icon: '🔍',
+            iconClass: 'purple',
+            value: qrTotal,
+            label: 'Total validasi QR',
+            link: 'referensi_user/admin-validasi-qr.html',
+            linkText: 'Lihat Validasi'
+          }
+        ];
+
+        // Render cards
+        container.innerHTML = cards.map(card => `
+          <div class="summary-card" onclick="window.location.href='${card.link}'">
+            <div class="summary-card-header">
+              <div class="summary-card-title">
+                <div class="summary-card-icon ${card.iconClass}">${card.icon}</div>
+                ${card.title}
+              </div>
+            </div>
+            <div class="summary-card-value">${card.value}</div>
+            <div class="summary-card-label">${card.label}</div>
+            <div class="summary-card-footer">
+              <a href="${card.link}" class="summary-card-link" onclick="event.stopPropagation();">
+                ${card.linkText} <i class="fa fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        `).join('');
+
+        console.log('✅ Summary cards loaded for admin dashboard');
+      } catch (error) {
+        console.error('❌ Error loading summary cards:', error);
+        const container = document.getElementById('summaryCardsContainer');
+        if (container) {
+          container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data summary</p>';
+        }
+      }
+    })();
+
+    // Load PPAT Tax Summary Card
+    (async function loadPPATTaxSummary() {
+      try {
+        const container = document.getElementById('ppatTaxSummaryContainer');
+        if (!container) return;
+
+        container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 20px;">Memuat ringkasan Pemutakhiran PPAT...</p>';
+
+        // Fetch summary from ppat-renewal endpoint with minimal params (only need summary)
+        const currentYear = new Date().getFullYear();
+        const response = await fetch(`/api/admin/notification-warehouse/ppat-renewal?page=1&limit=1&jangka_waktu=12&tahun=${currentYear}`, { 
+          credentials: 'include' 
+        }).catch(() => null);
+
+        let taxValueFormatted = 'Rp 0';
+        let totalTransaksi = 0;
+        const periodeLabel = `Periode 12 bulan • Tahun ${currentYear}`;
+
+        if (response && response.ok) {
+          const data = await response.json().catch(() => ({ success: false }));
+          if (data.success && data.summary) {
+            taxValueFormatted = data.summary.total_bphtb_formatted || 'Rp 0';
+            totalTransaksi = Number(data.summary.total_transaksi || 0);
+          }
+        }
+
+        // Render single card for total tax value
+        container.innerHTML = `
+          <div class="summary-card" onclick="window.location.href='referensi_user/admin-pemutakhiranppat.html'" style="max-width: 100%;">
+            <div class="summary-card-header">
+              <div class="summary-card-title">
+                <div class="summary-card-icon gold">
+                  <i class="fas fa-money-bill-wave" style="font-size: 24px;"></i>
+                </div>
+                Nilai Transaksi Pajak
+              </div>
+            </div>
+            <div class="summary-card-value" style="font-size: 32px; font-weight: 700; color: #059669;">${taxValueFormatted}</div>
+            <div class="summary-card-label">${periodeLabel}</div>
+            <div class="summary-mini-stats">
+              <div class="mini-stat">
+                <div class="mini-label">Total Transaksi</div>
+                <div class="mini-value">${totalTransaksi.toLocaleString('id-ID')}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-label">Keterangan</div>
+                <div class="mini-value" style="font-size: 14px; font-weight: 600; color: #ffffff;">Ringkasan dari Pemutakhiran PPAT</div>
+              </div>
+            </div>
+            <div class="summary-card-footer">
+              <a href="referensi_user/admin-pemutakhiranppat.html" class="summary-card-link" onclick="event.stopPropagation();">
+                Lihat Detail <i class="fa fa-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        `;
+
+        console.log('✅ PPAT Tax summary card loaded:', taxValueFormatted);
+      } catch (error) {
+        console.error('❌ Error loading PPAT tax summary card:', error);
+        const container = document.getElementById('ppatTaxSummaryContainer');
+        if (container) {
+          container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data nilai transaksi pajak</p>';
+        }
+      }
+    })();
+
+    // Load Validation Statistics Chart
+    (async function loadValidationChart() {
+      try {
+        const canvas = document.getElementById('validationPieChart');
+        const legendContainer = document.getElementById('chartLegend');
+        if (!canvas || !legendContainer) return;
+
+        // Fetch statistics from API
+        const response = await fetch('/api/admin/validation-statistics', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch validation statistics');
+        
+        const result = await response.json();
+        if (!result.success || !result.data) throw new Error('Invalid response data');
+
+        const stats = result.data;
+        
+        // Prepare chart data
+        const chartData = {
+          labels: [
+            stats.sudahValidasi.label,
+            stats.tinggalVerifikasi.label,
+            stats.belumTerurus.label
+          ],
+          datasets: [{
+            data: [
+              stats.sudahValidasi.count,
+              stats.tinggalVerifikasi.count,
+              stats.belumTerurus.count
+            ],
+            backgroundColor: [
+              '#10b981', // Green for Sudah di Validasi
+              '#3b82f6', // Blue for Tinggal Verifikasi
+              '#f59e0b'  // Orange for Belum Terurus
+            ],
+            borderColor: [
+              '#059669',
+              '#2563eb',
+              '#d97706'
+            ],
+            borderWidth: 2
+          }]
+        };
+
+        // Create pie chart
+        const ctx = canvas.getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'pie',
+          data: chartData,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            aspectRatio: 1,
+            plugins: {
+              legend: {
+                display: false // We'll use custom legend
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const total = stats.total || 1;
+                    const percentage = Math.round((value / total) * 100);
+                    return `${label}: ${value} (${percentage}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+        
+        // Set explicit height for canvas
+        canvas.style.height = '200px';
+
+        // Render custom legend
+        const legendItems = [
+          { 
+            label: stats.sudahValidasi.label, 
+            count: stats.sudahValidasi.count, 
+            percentage: stats.sudahValidasi.percentage,
+            color: '#10b981',
+            description: stats.sudahValidasi.description
+          },
+          { 
+            label: stats.tinggalVerifikasi.label, 
+            count: stats.tinggalVerifikasi.count, 
+            percentage: stats.tinggalVerifikasi.percentage,
+            color: '#3b82f6',
+            description: stats.tinggalVerifikasi.description
+          },
+          { 
+            label: stats.belumTerurus.label, 
+            count: stats.belumTerurus.count, 
+            percentage: stats.belumTerurus.percentage,
+            color: '#f59e0b',
+            description: stats.belumTerurus.description
+          }
+        ];
+
+        legendContainer.innerHTML = legendItems.map(item => `
+          <li style="border-left-color: ${item.color};">
+            <span class="legend-color" style="background-color: ${item.color};"></span>
+            <div style="flex: 1;">
+              <div class="legend-label">${item.label}</div>
+              <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">${item.description}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="legend-percentage">${item.percentage}%</div>
+              <div class="legend-count">${item.count} dokumen</div>
+            </div>
+          </li>
+        `).join('');
+
+        console.log('✅ Validation chart loaded successfully');
+      } catch (error) {
+        console.error('❌ Error loading validation chart:', error);
+        const canvas = document.getElementById('validationPieChart');
+        const legendContainer = document.getElementById('chartLegend');
+        if (canvas && canvas.parentElement) {
+          canvas.parentElement.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">Gagal memuat data chart</p>';
+        }
+        if (legendContainer) {
+          legendContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #6b7280;">Gagal memuat data statistik</li>';
+        }
+      }
+    })();
+  </script>
+  <!--notifikasi-->
+  <script type="module">
+    import { initNotifications } from '../../design-n-script/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+  
+  <!-- Logout function -->
+  <script>
+    function logout() {
+      if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+        // Clear session/localStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Redirect to login page
+        window.location.href = '../../login.html';
+      }
+    }
+  </script>
+</body>
+</html>

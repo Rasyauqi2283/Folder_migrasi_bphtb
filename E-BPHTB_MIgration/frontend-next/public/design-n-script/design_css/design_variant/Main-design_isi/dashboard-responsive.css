@@ -1,0 +1,800 @@
+/* ===== DASHBOARD RESPONSIVE DESIGN SYSTEM ===== */
+/* Universal dashboard layout fixes for sidebar integration */
+
+/* ===== GLOBAL CONSTRAINTS ===== */
+/* Tembok: Prevent all dashboard elements from overflowing viewport */
+.dashboard-responsive .main-content *,
+.dashboard-responsive .welcome-section *,
+.dashboard-responsive .content_admin *,
+.dashboard-responsive .card * {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Exception: Don't apply global constraints to header, sidebar, footer */
+.dashboard-responsive header,
+.dashboard-responsive aside,
+.dashboard-responsive footer,
+.dashboard-responsive header *,
+.dashboard-responsive aside *,
+.dashboard-responsive footer * {
+    max-width: none;
+}
+
+/* Ensure all containers respect the viewport boundaries */
+.dashboard-responsive .main-content,
+.dashboard-responsive .welcome-section,
+.dashboard-responsive .welcome-banner,
+.dashboard-responsive .content_admin,
+.dashboard-responsive .content-cards,
+.dashboard-responsive .card,
+.dashboard-responsive .chart-container {
+    overflow-x: hidden;
+}
+
+/* TEMBOK: Strict viewport constraints */
+.dashboard-responsive {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* TEMBOK: Ultra-strict constraints to prevent overflow */
+body.dashboard-responsive .main-content {
+    /* IMPORTANT:
+       Do not use 100vw here (includes scrollbar width) and do not force min-width,
+       because Admin dashboard also uses `.main-content.shifted` and the generic
+       `.shifted { transform: ... }` would otherwise push content outside viewport.
+       Use margin-based layout like other dashboards. */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 70px !important; /* 60px sidebar + 10px gutter */
+    margin-right: 15px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+/* TEMBOK: When sidebar expanded (JS adds .shifted to .main-content) */
+body.dashboard-responsive .main-content.shifted {
+    transform: none !important; /* override design_sidebar.css `.shifted` translate */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important; /* 250px sidebar + 10px gutter */
+    margin-right: 15px !important;
+}
+
+/* Compatibility: if some pages use main.shifted wrapper */
+body.dashboard-responsive main.shifted .main-content {
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important;
+    margin-right: 15px !important;
+}
+
+/* Exception: Header, sidebar, footer should not be constrained */
+.dashboard-responsive header,
+.dashboard-responsive aside,
+.dashboard-responsive footer {
+    max-width: none;
+    overflow-x: visible;
+}
+
+/* Ensure header elements maintain their original styling */
+.dashboard-responsive .header-left,
+.dashboard-responsive .logo-container,
+.dashboard-responsive .teks-container,
+.dashboard-responsive .header-title,
+.dashboard-responsive .header-right,
+.dashboard-responsive .profile-pic-container {
+    max-width: none;
+    box-sizing: border-box;
+}
+
+/* Ensure logo and decorative images are not constrained */
+.dashboard-responsive .logo,
+.dashboard-responsive .dekorasi-image,
+.dashboard-responsive .profile-pic {
+    max-width: none;
+}
+
+/* Ensure header text elements maintain their styling */
+.dashboard-responsive .large-text,
+.dashboard-responsive .small-text,
+.dashboard-responsive .header-title {
+    max-width: none;
+    white-space: nowrap;
+}
+
+/* Ensure main content never exceeds viewport */
+.dashboard-responsive .main-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== MAIN CONTENT CONTAINER ===== */
+/* Fix dashboard content overflow when sidebar expands */
+.dashboard-responsive .main-content {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, margin-left, width;
+    box-sizing: border-box;
+    /* TEMBOK: Strict constraints for normal state (margin-based) */
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 70px !important;
+    margin-right: 15px !important;
+    overflow-x: hidden;
+}
+
+/* When sidebar is expanded, force content to shrink */
+main.shifted .dashboard-responsive .main-content {
+    /* TEMBOK: Strict constraints for expanded state (margin-based) */
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 260px !important;
+    margin-right: 15px !important;
+}
+
+/* ===== WELCOME SECTION ===== */
+/* Dashboard welcome section adjustments */
+.dashboard-responsive .welcome-section {
+    padding: 20px 20px 0 20px;
+    box-sizing: border-box;
+    max-width: 100%; /* Tembok: prevent overflow */
+    overflow-x: hidden; /* Prevent horizontal overflow */
+}
+
+/* Dashboard welcome banner responsive */
+.dashboard-responsive .welcome-banner {
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+    width: 100%; /* Tembok: force full width within container */
+}
+
+/* Welcome text adjustments */
+.dashboard-responsive .welcome-text {
+    flex: 1;
+    min-width: 0; /* Allow text to shrink */
+}
+
+.dashboard-responsive .welcome-text h2 {
+    margin: 0 0 8px 0;
+    line-height: 1.3;
+    word-wrap: break-word;
+}
+
+.dashboard-responsive .welcome-text h5 {
+    margin: 0;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+/* ===== ILLUSTRATION CONTAINER ===== */
+.dashboard-responsive .illustration-container {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dashboard-responsive .illustration-image {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* ===== CALENDAR CONTAINER ===== */
+.dashboard-responsive .calendar-container {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.dashboard-responsive .calendar-month {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.dashboard-responsive .month-dropdown {
+    display: none; /* Hide by default, show on hover/click */
+    position: absolute;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.dashboard-responsive .calendar-container:hover .month-dropdown {
+    display: block;
+}
+
+.dashboard-responsive .month-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dashboard-responsive .month-option:hover {
+    background-color: #f3f4f6;
+}
+
+.dashboard-responsive .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    width: 100%;
+}
+
+.dashboard-responsive .day,
+.dashboard-responsive .date {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    font-weight: 500;
+}
+
+.dashboard-responsive .day {
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.dashboard-responsive .date {
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dashboard-responsive .date:hover {
+    background-color: #e5e7eb;
+    border-radius: 4px;
+}
+
+.dashboard-responsive .weekend {
+    color: #ef4444;
+}
+
+/* ===== CONTENT ADMIN SECTION ===== */
+/* Dashboard cards container adjustments */
+.dashboard-responsive .content_admin {
+    padding: 0 20px 20px 20px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    max-width: 100%; /* Tembok: prevent overflow */
+    width: 100%; /* Tembok: force full width within container */
+}
+
+.dashboard-responsive .content-cards {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, auto);
+    gap: 20px;
+    margin-bottom: 30px;
+    width: 100%; /* Tembok: force full width within container */
+}
+
+/* ===== CARD STYLES ===== */
+.dashboard-responsive .card {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.dashboard-responsive .card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.dashboard-responsive .card h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* ===== CHART CONTAINER ===== */
+/* Dashboard chart container adjustments */
+.dashboard-responsive .card.chart {
+    margin: 0 20px 20px 20px;
+    box-sizing: border-box;
+    max-width: calc(100% - 40px);
+    grid-column: 1 / -1; /* Span full width */
+    width: calc(100% - 40px); /* Tembok: force width within container */
+    overflow-x: hidden; /* Prevent horizontal overflow */
+}
+
+.dashboard-responsive .chart-container {
+    max-width: 100%;
+    overflow: hidden;
+    width: 100%; /* Tembok: force full width within container */
+}
+
+.dashboard-responsive .chart-legend {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.dashboard-responsive .chart-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+}
+
+.dashboard-responsive .chart-legend span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dashboard-responsive .chart-legend .green {
+    background-color: #10b981;
+}
+
+.dashboard-responsive .chart-legend .blue {
+    background-color: #3b82f6;
+}
+
+.dashboard-responsive .chart-legend .orange {
+    background-color: #f59e0b;
+}
+
+.dashboard-responsive .chart-legend .grey {
+    background-color: #6b7280;
+}
+
+/* ===== USER DROPDOWN ===== */
+.dashboard-responsive .user-dropdown {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dashboard-responsive .user-dropdown label {
+    font-size: 0.9em;
+    font-weight: 500;
+    color: #374151;
+}
+
+.dashboard-responsive .user-dropdown select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.dashboard-responsive .user-dropdown select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dashboard-responsive .slide-down {
+    margin: 8px 0 0 0;
+    padding: 8px 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}
+
+/* ===== VIEW ALL LINKS ===== */
+.dashboard-responsive .view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #3b82f6;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    margin-top: auto;
+}
+
+.dashboard-responsive .view-all:hover {
+    background: #2563eb;
+    text-decoration: none;
+}
+
+/* ===== SPECIAL ACCESS CARD ===== */
+.dashboard-responsive .card.special-access ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dashboard-responsive .card.special-access li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.dashboard-responsive .card.special-access li:last-child {
+    border-bottom: none;
+}
+
+.dashboard-responsive .card.special-access .user-icon {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dashboard-responsive .card.special-access .status {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+/* ===== ICONS ===== */
+.dashboard-responsive .icon {
+    font-size: 2em;
+    margin-bottom: 12px;
+}
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+
+/* Large Desktop (1400px+) */
+@media (min-width: 1400px) {
+    /* Tembok: Ultra-strict constraints for large desktop */
+    body.dashboard-responsive .main-content {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
+        margin-right: 15px !important;
+    }
+    
+    body.dashboard-responsive main.shifted .main-content {
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
+        margin-right: 15px !important;
+    }
+
+    .dashboard-responsive .content-cards {
+        grid-template-columns: 350px 450px 400px;
+        grid-template-rows: repeat(2, auto);
+        width: 100%;
+    }
+}
+
+/* Desktop (1200px - 1399px) */
+@media (min-width: 1200px) and (max-width: 1399px) {
+    /* Tembok: Strict constraints for desktop */
+    .dashboard-responsive .main-content {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
+        margin-right: 15px !important;
+    }
+    
+    main.shifted .dashboard-responsive .main-content {
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
+        margin-right: 15px !important;
+    }
+
+    .dashboard-responsive .content-cards {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, auto);
+        width: 100%;
+    }
+}
+
+/* Tablet (768px - 1199px) */
+@media (max-width: 1199px) {
+    /* Tembok: Strict constraints for tablet */
+    .dashboard-responsive .main-content {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
+        margin-right: 15px !important;
+    }
+    
+    main.shifted .dashboard-responsive .main-content {
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
+        margin-right: 15px !important;
+    }
+
+    .dashboard-responsive .welcome-banner {
+        flex-direction: column;
+        height: auto;
+        padding: 20px;
+        gap: 15px;
+        width: 100%;
+    }
+    
+    .dashboard-responsive .welcome-text {
+        text-align: center;
+        margin-top: 0;
+    }
+    
+    .dashboard-responsive .illustration-container {
+        order: -1;
+    }
+    
+    .dashboard-responsive .illustration-image {
+        width: 180px;
+        max-width: 100%;
+    }
+    
+    .dashboard-responsive .calendar-container {
+        margin-left: 0;
+        margin-top: 10px;
+        width: 160px;
+        max-width: 100%;
+    }
+
+    .dashboard-responsive .content-cards {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(3, auto);
+        gap: 16px;
+        width: 100%;
+    }
+
+    .dashboard-responsive .chart-legend {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+/* Mobile (up to 767px) */
+@media (max-width: 767px) {
+    /* Tembok: Strictest constraints for mobile */
+    .dashboard-responsive .main-content {
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 70px !important;
+        margin-right: 15px !important;
+    }
+    
+    main.shifted .dashboard-responsive .main-content {
+        transform: none !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin-left: 260px !important;
+        margin-right: 15px !important;
+    }
+
+    .dashboard-responsive .welcome-section {
+        padding: 16px;
+        width: 100%;
+    }
+    
+    .dashboard-responsive .welcome-banner {
+        width: calc(100% - 32px);
+        padding: 16px;
+        max-width: 100%;
+    }
+    
+    .dashboard-responsive .welcome-text h2 {
+        font-size: 1.2em;
+    }
+    
+    .dashboard-responsive .welcome-text h5 {
+        font-size: 0.65em;
+    }
+    
+    .dashboard-responsive .illustration-image {
+        width: 150px;
+        max-width: 100%;
+    }
+    
+    .dashboard-responsive .calendar-container {
+        width: 140px;
+        padding: 12px;
+        max-width: 100%;
+    }
+    
+    .dashboard-responsive .calendar-grid {
+        gap: 1px;
+    }
+    
+    .dashboard-responsive .day, 
+    .dashboard-responsive .date {
+        width: 18px;
+        height: 18px;
+        font-size: 0.65em;
+    }
+
+    .dashboard-responsive .content_admin {
+        padding: 0 16px 16px 16px;
+        width: 100%;
+    }
+
+    .dashboard-responsive .content-cards {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(5, auto);
+        gap: 16px;
+        width: 100%;
+    }
+
+    .dashboard-responsive .card.chart {
+        margin: 0 16px 16px 16px;
+        max-width: calc(100% - 32px);
+        width: calc(100% - 32px);
+    }
+
+    .dashboard-responsive .card {
+        padding: 16px;
+        width: 100%;
+    }
+
+    .dashboard-responsive .card h3 {
+        font-size: 1em;
+    }
+
+    .dashboard-responsive .chart-legend {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .dashboard-responsive .chart-legend li {
+        font-size: 0.8em;
+    }
+}
+
+/* ===== UTILITY CLASSES ===== */
+/* Text utilities */
+.dashboard-responsive .text-center {
+    text-align: center;
+}
+
+.dashboard-responsive .text-left {
+    text-align: left;
+}
+
+.dashboard-responsive .text-right {
+    text-align: right;
+}
+
+/* Spacing utilities */
+.dashboard-responsive .mb-0 { margin-bottom: 0; }
+.dashboard-responsive .mb-1 { margin-bottom: 0.25rem; }
+.dashboard-responsive .mb-2 { margin-bottom: 0.5rem; }
+.dashboard-responsive .mb-3 { margin-bottom: 0.75rem; }
+.dashboard-responsive .mb-4 { margin-bottom: 1rem; }
+
+.dashboard-responsive .mt-0 { margin-top: 0; }
+.dashboard-responsive .mt-1 { margin-top: 0.25rem; }
+.dashboard-responsive .mt-2 { margin-top: 0.5rem; }
+.dashboard-responsive .mt-3 { margin-top: 0.75rem; }
+.dashboard-responsive .mt-4 { margin-top: 1rem; }
+
+/* Flex utilities */
+.dashboard-responsive .flex {
+    display: flex;
+}
+
+.dashboard-responsive .flex-col {
+    flex-direction: column;
+}
+
+.dashboard-responsive .items-center {
+    align-items: center;
+}
+
+.dashboard-responsive .justify-center {
+    justify-content: center;
+}
+
+.dashboard-responsive .justify-between {
+    justify-content: space-between;
+}
+
+/* Grid utilities */
+.dashboard-responsive .grid {
+    display: grid;
+}
+
+.dashboard-responsive .grid-cols-1 {
+    grid-template-columns: repeat(1, 1fr);
+}
+
+.dashboard-responsive .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.dashboard-responsive .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.dashboard-responsive .gap-2 {
+    gap: 0.5rem;
+}
+
+.dashboard-responsive .gap-4 {
+    gap: 1rem;
+}
+
+.dashboard-responsive .gap-6 {
+    gap: 1.5rem;
+}
+
+/* ===== ACCESSIBILITY ===== */
+/* Focus styles for better accessibility */
+.dashboard-responsive .card:focus-within {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.dashboard-responsive .view-all:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-responsive .main-content,
+    .dashboard-responsive .card,
+    .dashboard-responsive .view-all {
+        transition: none;
+    }
+    
+    .dashboard-responsive .card:hover {
+        transform: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .dashboard-responsive .card {
+        border: 2px solid #000000;
+    }
+    
+    .dashboard-responsive .view-all {
+        border: 2px solid #ffffff;
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "/(protected)/admin/aplikasi/page": "app/(protected)/admin/aplikasi/page.js",
+  "/(protected)/admin/page": "app/(protected)/admin/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/login/page": "app/login/page.js",
+  "/lupa-katasandi/page": "app/lupa-katasandi/page.js",
+  "/page": "app/page.js"
+}

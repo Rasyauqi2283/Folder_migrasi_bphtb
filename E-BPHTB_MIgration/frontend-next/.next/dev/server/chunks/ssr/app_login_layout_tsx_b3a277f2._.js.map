@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/USER/Downloads/Folder-Farras_bappenda_TA/E-BPHTB_MIgration/frontend-next/app/login/layout.tsx"],"sourcesContent":["import type { Metadata } from \"next\";\r\n\r\nexport const metadata: Metadata = {\r\n  title: \"Login | BAPPENDA BPHTB\",\r\n  description: \"Masuk ke sistem E-BPHTB Kabupaten Bogor\",\r\n};\r\n\r\nexport default function LoginLayout({\r\n  children,\r\n}: {\r\n  children: React.ReactNode;\r\n}) {\r\n  return <>{children}</>;\r\n}\r\n"],"names":[],"mappings":";;;;;;;;AAEO,MAAM,WAAqB;IAChC,OAAO;IACP,aAAa;AACf;AAEe,SAAS,YAAY,EAClC,QAAQ,EAGT;IACC,qBAAO;kBAAG;;AACZ"}}]
+}
