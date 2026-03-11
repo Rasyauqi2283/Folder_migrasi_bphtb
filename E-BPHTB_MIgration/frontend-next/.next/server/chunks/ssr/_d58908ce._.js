@@ -1,3 +1,0 @@
-module.exports=[38783,(a,b,c)=>{"use strict";b.exports=a.r(42602).vendored["react-ssr"].ReactServerDOMTurbopackClient},53250,a=>{"use strict";let b=process.env.NEXT_PUBLIC_FRONTEND_BASE_URL||"http://localhost:3000";function c(){return"http://localhost:3005"}function d(){return b}async function e(){try{let a=c(),b=await fetch(`${a}/api/config`,{cache:"no-store"});if(!b.ok)return{ok:!1,status:b.status,data:null};let d=await b.json();return{ok:!0,status:b.status,data:d}}catch{return{ok:!1,status:0,data:null}}}a.s(["fetchBackendConfig",()=>e,"getBackendBaseUrl",()=>c,"getLegacyBaseUrl",()=>d])}];
-
-//# sourceMappingURL=_d58908ce._.js.map
