@@ -1,11 +1,39 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getBackendBaseUrl, getLegacyBaseUrl } from "../../../lib/api";
 
-const DEFAULT_PHOTO = "/penting_F_simpan/profile-photo/default-foto-profile.png";
+function dashboardPath(divisi: string, legacyBase: string): string {
+  switch (divisi) {
+    case "Administrator":
+      return "/admin";
+    case "Customer Service":
+      return `${legacyBase}/html_folder/CS/cs-dashboard.html`;
+    case "PPAT":
+    case "PPATS":
+    case "Notaris":
+      return `${legacyBase}/html_folder/PPAT/ppat-dashboard.html`;
+    case "LTB":
+      return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
+    case "LSB":
+      return `${legacyBase}/html_folder/LSB/lsb-dashboard.html`;
+    case "Peneliti":
+      return `${legacyBase}/html_folder/Peneliti/peneliti-dashboard.html`;
+    case "Peneliti Validasi":
+      return `${legacyBase}/html_folder/ParafP/penelitiValidasi-dashboard.html`;
+    case "BANK":
+      return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
+    case "Wajib Pajak":
+      return `${legacyBase}/html_folder/WP/wp-dashboard.html`;
+    default:
+      return "/dashboard";
+  }
+}
+
+/** Foto default saat user belum punya foto (dilayani dari public/asset, tidak 404). */
+const DEFAULT_PHOTO = "/asset/default-foto_when_doesnthavephoto.png";
 
 interface ProfileData {
   userid?: string;
@@ -46,6 +74,10 @@ function useProfile() {
       const url = base ? `${base}/api/v1/auth/profile` : "/api/v1/auth/profile";
       const res = await fetch(url, { credentials: "include", signal: abortRef.current.signal });
       const raw = await res.json();
+      if (res.status === 401) {
+        if (typeof window !== "undefined") window.location.href = "/login";
+        return;
+      }
       let profile: ProfileData =
         raw?.user ?? raw?.data?.user ?? raw?.data ?? raw;
       if (!profile || typeof profile !== "object") {
@@ -61,9 +93,6 @@ function useProfile() {
     } catch (e: unknown) {
       if ((e as { name?: string })?.name === "AbortError") return;
       setError((e as Error)?.message ?? "Gagal memuat profil");
-      if ((e as { response?: { status?: number } })?.response?.status === 401) {
-        window.location.href = "/login";
-      }
     } finally {
       setLoading(false);
     }
@@ -81,8 +110,16 @@ function useProfile() {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const legacyBase = getLegacyBaseUrl();
   const { data: profile, error: profileError, loading, reload } = useProfile();
+  const [pendingDashboard, setPendingDashboard] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem("profile_pending_dashboard") === "1") {
+      setPendingDashboard(true);
+    }
+  }, []);
+  const fromLengkapi = searchParams.get("from") === "lengkapi" || pendingDashboard;
 
   const [photoOverlay, setPhotoOverlay] = useState(false);
   const [passwordOverlay, setPasswordOverlay] = useState(false);
@@ -119,9 +156,10 @@ export default function ProfilePage() {
   const showPvLink = divisi === "Peneliti Validasi";
   const hideDivisiLabel = divisi === "PPAT" || divisi === "PPATS";
 
-  const photoUrl = profile?.fotoprofil
-    ? `${(profile.fotoprofil || "").replace(/\\/g, "/")}?t=${Date.now()}`
-    : DEFAULT_PHOTO;
+  const photoUrl =
+    profile?.fotoprofil && profile.fotoprofil.trim() !== ""
+      ? `${(profile.fotoprofil || "").replace(/\\/g, "/")}?t=${Date.now()}`
+      : DEFAULT_PHOTO;
 
   const closeOverlays = useCallback(() => {
     setPhotoOverlay(false);
@@ -177,6 +215,11 @@ export default function ProfilePage() {
       const res = await fetch(url, { method: "POST", body: form, credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.message ?? "Upload gagal");
+      const newFoto = (json?.foto ?? "").replace(/\\/g, "/");
+      if (typeof window !== "undefined" && newFoto) {
+        localStorage.setItem("foto", newFoto);
+        window.dispatchEvent(new Event("profile-foto-updated"));
+      }
       setPhotoSuccess("Foto profil berhasil diupdate");
       setTimeout(() => {
         closeOverlays();
@@ -263,6 +306,21 @@ export default function ProfilePage() {
     }
   };
 
+  const startEditMode = () => {
+    if (!profile) return;
+    setEditUsername(profile.username ?? profile.user_name ?? "");
+    setEditNip(profile.nip ?? "");
+    setEditEmail(profile.email ?? "");
+    setEditTelepon(profile.telepon ?? profile.phone ?? "");
+    setProfileSaveError("");
+    setEditMode(true);
+  };
+
+  const cancelEditMode = () => {
+    setEditMode(false);
+    setProfileSaveError("");
+  };
+
   const handleLogout = () => {
     closeOverlays();
     if (typeof window !== "undefined") {
@@ -284,6 +342,80 @@ export default function ProfilePage() {
   const [showOldPwd, setShowOldPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+
+  const [editMode, setEditMode] = useState(false);
+  const [editUsername, setEditUsername] = useState("");
+  const [editNip, setEditNip] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editTelepon, setEditTelepon] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState("");
+  const [redirectingToDashboard, setRedirectingToDashboard] = useState(false);
+
+  const handleSaveProfile = useCallback(async (): Promise<boolean> => {
+    if (!window.confirm("Anda yakin ingin menyimpan perubahan?")) return false;
+    setProfileSaving(true);
+    setProfileSaveError("");
+    try {
+      const base = getBackendBaseUrl();
+      const url = base ? `${base}/api/v1/auth/profile` : "/api/v1/auth/profile";
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: editUsername.trim(),
+          nip: editNip.trim(),
+          email: editEmail.trim(),
+          telepon: editTelepon.trim(),
+        }),
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.message ?? "Gagal menyimpan profil");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("email", (editEmail.trim() || localStorage.getItem("email")) ?? "");
+        localStorage.setItem("username", (editUsername.trim() || localStorage.getItem("username")) ?? "");
+        localStorage.setItem("nip", (editNip.trim() || localStorage.getItem("nip")) ?? "");
+        localStorage.setItem("telepon", (editTelepon.trim() || localStorage.getItem("telepon")) ?? "");
+      }
+      setEditMode(false);
+      reload();
+      return true;
+    } catch (e) {
+      setProfileSaveError((e as Error).message ?? "Gagal menyimpan profil");
+      return false;
+    } finally {
+      setProfileSaving(false);
+    }
+  }, [editUsername, editNip, editEmail, editTelepon, reload]);
+
+  const goToDashboard = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("profile_pending_dashboard");
+    }
+    const path = dashboardPath(divisi, legacyBase);
+    if (path.startsWith("/") && !path.startsWith("http")) {
+      router.replace(path);
+    } else {
+      window.location.href = path;
+    }
+  }, [divisi, legacyBase, router]);
+
+  const handleSimpanLanjut = useCallback(async () => {
+    if (redirectingToDashboard) return;
+    if (editMode) {
+      const ok = await handleSaveProfile();
+      if (!ok) return;
+    }
+    setRedirectingToDashboard(true);
+    goToDashboard();
+  }, [editMode, handleSaveProfile, goToDashboard, redirectingToDashboard]);
+
+  const handleLainKali = useCallback(() => {
+    if (redirectingToDashboard) return;
+    setRedirectingToDashboard(true);
+    goToDashboard();
+  }, [goToDashboard, redirectingToDashboard]);
 
   if (loading) {
     return (
@@ -318,9 +450,29 @@ export default function ProfilePage() {
             ←
           </button>
           <h2>Profile</h2>
-          {!hideDivisiLabel && (
+          {!hideDivisiLabel && !fromLengkapi && (
             <div className="profile-divisi">
               Divisi: <span>{u.divisi ?? "—"}</span>
+            </div>
+          )}
+          {fromLengkapi && (
+            <div className="profile-head-actions">
+              <button
+                type="button"
+                className="profile-btn-simpan-lanjut"
+                onClick={handleSimpanLanjut}
+                disabled={profileSaving || redirectingToDashboard}
+              >
+                {profileSaving ? "Menyimpan..." : redirectingToDashboard ? "Mengalihkan..." : "Simpan"}
+              </button>
+              <button
+                type="button"
+                className="profile-link-lain-kali"
+                onClick={handleLainKali}
+                disabled={redirectingToDashboard}
+              >
+                Lain kali →
+              </button>
             </div>
           )}
         </div>
@@ -358,6 +510,20 @@ export default function ProfilePage() {
                 Kelola TTE &amp; QR (PV)
               </Link>
             )}
+            {!editMode ? (
+              <button type="button" className="profile-btn-ubah-foto" onClick={startEditMode} style={{ marginTop: 12 }}>
+                Edit
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
+                <button type="button" className="profile-btn-ubah-foto" onClick={handleSaveProfile} disabled={profileSaving}>
+                  {profileSaving ? "Menyimpan..." : "Simpan"}
+                </button>
+                <button type="button" className="profile-btn-paraf" onClick={cancelEditMode} disabled={profileSaving}>
+                  Batal
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="profile-details">
@@ -368,12 +534,20 @@ export default function ProfilePage() {
               </div>
               <div className="profile-field">
                 <label htmlFor="username">Username</label>
-                <input id="username" type="text" readOnly value={u.username ?? u.user_name ?? "—"} />
+                {editMode ? (
+                  <input id="username" type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
+                ) : (
+                  <input id="username" type="text" readOnly value={u.username ?? u.user_name ?? "—"} />
+                )}
               </div>
               {showNip && (
                 <div className="profile-field">
                   <label htmlFor="nip">NIP</label>
-                  <input id="nip" type="text" readOnly value={u.nip ?? "—"} />
+                  {editMode ? (
+                    <input id="nip" type="text" value={editNip} onChange={(e) => setEditNip(e.target.value)} />
+                  ) : (
+                    <input id="nip" type="text" readOnly value={u.nip ?? "—"} />
+                  )}
                 </div>
               )}
               {showPejabat && (
@@ -402,11 +576,19 @@ export default function ProfilePage() {
               </div>
               <div className="profile-field">
                 <label htmlFor="email">Email</label>
-                <input id="email" type="text" readOnly value={u.email ?? "—"} />
+                {editMode ? (
+                  <input id="email" type="text" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                ) : (
+                  <input id="email" type="text" readOnly value={u.email ?? "—"} />
+                )}
               </div>
               <div className="profile-field">
                 <label htmlFor="telepon">Telepon</label>
-                <input id="telepon" type="text" readOnly value={u.telepon ?? u.phone ?? "—"} />
+                {editMode ? (
+                  <input id="telepon" type="text" value={editTelepon} onChange={(e) => setEditTelepon(e.target.value)} />
+                ) : (
+                  <input id="telepon" type="text" readOnly value={u.telepon ?? u.phone ?? "—"} />
+                )}
               </div>
               <div className="profile-field">
                 <label>Katasandi</label>
@@ -447,9 +629,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div id="profile-error-message" className={`profile-error-msg ${profileError ? "show" : ""}`}>
-          {profileError}
-        </div>
+        {(profileError || profileSaveError) && (
+          <div id="profile-error-message" className="profile-error-msg show" style={{ marginTop: 12 }}>
+            {profileSaveError || profileError}
+          </div>
+        )}
       </div>
 
       {/* Backdrop */}

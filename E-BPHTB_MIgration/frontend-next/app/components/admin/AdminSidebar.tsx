@@ -5,21 +5,30 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useSidebar } from "../../context/SidebarContext";
+import FeatherIcon from "../FeatherIcon";
+import styles from "./AdminSidebar.module.css";
 
 const transition = "0.5s cubic-bezier(0.4, 0, 0.2, 1)";
 const dropdownTransition = "0.3s ease";
 const HOVER_CLOSE_DELAY = 200;
+const PORTRAIT_MAX = 640;
 
-const DROPDOWN_SVG =
-  (gender: string | undefined) =>
-  gender === "Perempuan"
-    ? "/greeting_svg/design_verse_perempuan.svg"
-    : "/greeting_svg/design_verse_laki.svg";
+function useIsPortrait() {
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(() => {
+    const check = () => setIsPortrait(typeof window !== "undefined" && window.innerWidth <= PORTRAIT_MAX);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isPortrait;
+}
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { sidebarExpanded, toggleSidebar } = useSidebar();
+  const isPortrait = useIsPortrait();
   const [menuLainOpen, setMenuLainOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const hoverCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,11 +54,17 @@ export default function AdminSidebar() {
       clearTimeout(hoverCloseRef.current);
       hoverCloseRef.current = null;
     }
-    if (sidebarExpanded) setOpenDropdownId(id);
+    if (sidebarExpanded && !isPortrait) setOpenDropdownId(id);
   };
 
   const handleDropdownLeave = () => {
+    if (isPortrait) return;
     hoverCloseRef.current = setTimeout(() => setOpenDropdownId(null), HOVER_CLOSE_DELAY);
+  };
+
+  const handleBackdropClick = () => {
+    setOpenDropdownId(null);
+    if (isPortrait) toggleSidebar();
   };
 
   const baseAsideStyle: React.CSSProperties = {
@@ -72,21 +87,8 @@ export default function AdminSidebar() {
     transition: `width ${transition}`,
   };
 
-  const menuItemStyle = (active: boolean): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: sidebarExpanded ? "12px 20px" : "12px",
-    justifyContent: sidebarExpanded ? "flex-start" : "center",
-    color: active ? "var(--accent_hover)" : "var(--color_font_muted)",
-    textDecoration: "none",
-    borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
-    background: active ? "var(--surface_light)" : "transparent",
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    transition: "all 0.2s",
-    width: "100%",
-  });
+  const menuItemClasses = (active: boolean) =>
+    `${styles.menuItem} ${active ? styles.menuItemActive : ""} ${!sidebarExpanded ? styles.menuItemCollapsed : ""}`;
 
   /** Saat collapse hanya tampil bulat (radio); saat expand tampil icon + teks */
   const radioStyle = (active: boolean): React.CSSProperties => ({
@@ -98,10 +100,6 @@ export default function AdminSidebar() {
   });
 
   const iconStyle: React.CSSProperties = {
-    width: 20,
-    height: 20,
-    flexShrink: 0,
-    objectFit: "contain",
     opacity: sidebarExpanded ? 1 : 0,
     visibility: sidebarExpanded ? "visible" : "hidden",
     transition: `opacity ${dropdownTransition}, visibility ${dropdownTransition}`,
@@ -115,17 +113,8 @@ export default function AdminSidebar() {
     transition: `opacity ${dropdownTransition}`,
   };
 
-  const dropdownContentStyle = (isOpen: boolean): React.CSSProperties => ({
-    maxHeight: isOpen ? 280 : 0,
-    overflow: "hidden",
-    opacity: isOpen ? 1 : 0,
-    transition: `max-height ${dropdownTransition}, opacity ${dropdownTransition}`,
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    marginLeft: 20,
-    marginTop: 4,
-  });
+  const dropdownContentClasses = (isOpen: boolean) =>
+    `${styles.dropdownContent} ${isOpen ? styles.dropdownContentOpen : styles.dropdownContentClosed}`;
 
   /** Backdrop gelap + blur saat submenu terbuka (Discord-style) */
   const backdropStyle: React.CSSProperties = {
@@ -137,13 +126,8 @@ export default function AdminSidebar() {
     transition: `left ${transition}`,
   };
 
-  const dropdownLinkStyle = (active: boolean): React.CSSProperties => ({
-    padding: "8px 16px",
-    color: active ? "var(--accent_hover)" : "var(--color_font_dim)",
-    textDecoration: "none",
-    fontSize: 14,
-    borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
-  });
+  const dropdownLinkClasses = (active: boolean) =>
+    `${styles.dropdownLink} ${active ? styles.dropdownLinkActive : ""}`;
 
   const tierBoxStyle: React.CSSProperties = {
     background: "var(--surface_light)",
@@ -187,18 +171,24 @@ export default function AdminSidebar() {
         <div
           className="aside-dropdown-backdrop"
           style={backdropStyle}
+          onClick={handleBackdropClick}
+          onKeyDown={(e) => e.key === "Enter" && handleBackdropClick()}
+          role="button"
+          tabIndex={0}
           aria-hidden
         />
       )}
-      <aside style={baseAsideStyle}>
+      <aside
+        className={`${styles.asideBase} ${!sidebarExpanded ? styles.asideCollapsed : ""}`}
+        style={baseAsideStyle}
+      >
       <div style={{ overflowY: "auto", overflowX: "hidden", flex: 1 }}>
         {/* Dashboard - icon 10 */}
         <div style={{ padding: "2px", cursor: "pointer" }}>
-          <Link href="/admin" style={menuItemStyle(isActive("/admin") && pathname === "/admin")}>
+          <Link href="/admin" className={menuItemClasses(isActive("/admin") && pathname === "/admin")}>
             {sidebarExpanded ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/10.svg" alt="" style={iconStyle} />
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="layout" size={20} /></span>
                 <span style={textStyle}>Dashboard</span>
               </>
             ) : (
@@ -207,13 +197,12 @@ export default function AdminSidebar() {
           </Link>
         </div>
 
-        {/* Aplikasi - icon 11 */}
+        {/* Aplikasi */}
         <div style={{ padding: "2px", cursor: "pointer" }}>
-          <Link href="/admin/aplikasi" style={menuItemStyle(isActive("/admin/aplikasi"))}>
+          <Link href="/admin/aplikasi" className={menuItemClasses(isActive("/admin/aplikasi"))}>
             {sidebarExpanded ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/11.svg" alt="" style={iconStyle} />
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="package" size={20} /></span>
                 <span style={textStyle}>Aplikasi</span>
               </>
             ) : (
@@ -222,13 +211,12 @@ export default function AdminSidebar() {
           </Link>
         </div>
 
-        {/* Permohonan Validasi - icon 12 */}
+        {/* Permohonan Validasi */}
         <div style={{ padding: "2px", cursor: "pointer" }}>
-          <Link href="#" style={menuItemStyle(false)}>
+          <Link href="#" className={menuItemClasses(false)}>
             {sidebarExpanded ? (
               <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/12.svg" alt="" style={iconStyle} />
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="file-text" size={20} /></span>
                 <span style={textStyle}>Permohonan Validasi</span>
               </>
             ) : (
@@ -243,38 +231,30 @@ export default function AdminSidebar() {
           onMouseEnter={() => handleDropdownEnter("referensi")}
           onMouseLeave={handleDropdownLeave}
         >
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("referensi"); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("referensi"); } }}
-            style={{
-              ...menuItemStyle(isActive("/admin/referensi")),
-              cursor: "pointer",
-            }}
-          >
-            {sidebarExpanded ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/13.svg" alt="" style={iconStyle} />
-                <span style={textStyle}>Referensi User</span>
-              </>
-            ) : (
-              <span style={radioStyle(isActive("/admin/referensi"))} />
-            )}
-          </div>
-          <div style={dropdownContentStyle(openDropdownId === "referensi")}>
-            <div className="aside-dropdown-slide-svg" style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={DROPDOWN_SVG(user?.gender)} alt="" style={{ width: 72, height: "auto", objectFit: "contain" }} />
-            </div>
-            <Link href="/admin/referensi/pemutakhiran-ppat" style={dropdownLinkStyle(isActive("/admin/referensi/pemutakhiran-ppat"))}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("referensi"); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("referensi"); } }}
+          className={menuItemClasses(isActive("/admin/referensi"))}
+        >
+          {sidebarExpanded ? (
+            <>
+              <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="folder" size={20} /></span>
+              <span style={textStyle}>Referensi User</span>
+            </>
+          ) : (
+            <span style={radioStyle(isActive("/admin/referensi"))} />
+          )}
+        </div>
+          <div className={dropdownContentClasses(openDropdownId === "referensi")}>
+            <Link href="/admin/referensi/pemutakhiran-ppat" className={dropdownLinkClasses(isActive("/admin/referensi/pemutakhiran-ppat"))}>
               Pemutakhiran Data PPAT
             </Link>
-            <Link href="/admin/referensi/status-ppat" style={dropdownLinkStyle(isActive("/admin/referensi/status-ppat"))}>
+            <Link href="/admin/referensi/status-ppat" className={dropdownLinkClasses(isActive("/admin/referensi/status-ppat"))}>
               Status PPAT
             </Link>
-            <Link href="/admin/referensi/validasi-qr" style={dropdownLinkStyle(isActive("/admin/referensi/validasi-qr"))}>
+            <Link href="/admin/referensi/validasi-qr" className={dropdownLinkClasses(isActive("/admin/referensi/validasi-qr"))}>
               Validasi QR
             </Link>
           </div>
@@ -286,35 +266,27 @@ export default function AdminSidebar() {
           onMouseEnter={() => handleDropdownEnter("data-user")}
           onMouseLeave={handleDropdownLeave}
         >
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("data-user"); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("data-user"); } }}
-            style={{
-              ...menuItemStyle(isActive("/admin/data-user")),
-              cursor: "pointer",
-            }}
-          >
-            {sidebarExpanded ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/14.svg" alt="" style={iconStyle} />
-                <span style={textStyle}>User Data</span>
-              </>
-            ) : (
-              <span style={radioStyle(isActive("/admin/data-user"))} />
-            )}
-          </div>
-          <div style={dropdownContentStyle(openDropdownId === "data-user")}>
-            <div className="aside-dropdown-slide-svg" style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={DROPDOWN_SVG(user?.gender)} alt="" style={{ width: 72, height: "auto", objectFit: "contain" }} />
-            </div>
-            <Link href="/admin/data-user/pending" style={dropdownLinkStyle(pathname === "/admin/data-user/pending")}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("data-user"); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("data-user"); } }}
+          className={menuItemClasses(isActive("/admin/data-user"))}
+        >
+          {sidebarExpanded ? (
+            <>
+              <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="users" size={20} /></span>
+              <span style={textStyle}>User Data</span>
+            </>
+          ) : (
+            <span style={radioStyle(isActive("/admin/data-user"))} />
+          )}
+        </div>
+          <div className={dropdownContentClasses(openDropdownId === "data-user")}>
+            <Link href="/admin/data-user/pending" className={dropdownLinkClasses(pathname === "/admin/data-user/pending")}>
               Verifikasi Data User
             </Link>
-            <Link href="/admin/data-user/complete" style={dropdownLinkStyle(pathname === "/admin/data-user/complete")}>
+            <Link href="/admin/data-user/complete" className={dropdownLinkClasses(pathname === "/admin/data-user/complete")}>
               Data User
             </Link>
           </div>
@@ -326,41 +298,47 @@ export default function AdminSidebar() {
           onMouseEnter={() => handleDropdownEnter("group-user")}
           onMouseLeave={handleDropdownLeave}
         >
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("group-user"); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("group-user"); } }}
-            style={{
-              ...menuItemStyle(isActive("/admin/group-user")),
-              cursor: "pointer",
-            }}
-          >
-            {sidebarExpanded ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/design_aside/15.svg" alt="" style={iconStyle} />
-                <span style={textStyle}>Group User</span>
-              </>
-            ) : (
-              <span style={radioStyle(isActive("/admin/group-user"))} />
-            )}
-          </div>
-          <div style={dropdownContentStyle(openDropdownId === "group-user")}>
-            <div className="aside-dropdown-slide-svg" style={{ marginBottom: 8, display: "flex", justifyContent: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={DROPDOWN_SVG(user?.gender)} alt="" style={{ width: 72, height: "auto", objectFit: "contain" }} />
-            </div>
-            <Link href="/admin/group-user/users-group" style={dropdownLinkStyle(isActive("/admin/group-user/users-group"))}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDropdownToggle("group-user"); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleDropdownToggle("group-user"); } }}
+          className={menuItemClasses(isActive("/admin/group-user"))}
+        >
+          {sidebarExpanded ? (
+            <>
+              <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="users" size={20} /></span>
+              <span style={textStyle}>Group User</span>
+            </>
+          ) : (
+            <span style={radioStyle(isActive("/admin/group-user"))} />
+          )}
+        </div>
+          <div className={dropdownContentClasses(openDropdownId === "group-user")}>
+            <Link href="/admin/group-user/users-group" className={dropdownLinkClasses(isActive("/admin/group-user/users-group"))}>
               Users Group
             </Link>
-            <Link href="/admin/group-user/group-users" style={dropdownLinkStyle(isActive("/admin/group-user/group-users"))}>
+            <Link href="/admin/group-user/group-users" className={dropdownLinkClasses(isActive("/admin/group-user/group-users"))}>
               Group Users
             </Link>
-            <Link href="/admin/group-user/group-privilege" style={dropdownLinkStyle(isActive("/admin/group-user/group-privilege"))}>
+            <Link href="/admin/group-user/group-privilege" className={dropdownLinkClasses(isActive("/admin/group-user/group-privilege"))}>
               Group Privilege
             </Link>
           </div>
+        </div>
+
+        {/* Iklan (Banner) */}
+        <div style={{ padding: "2px", cursor: "pointer" }}>
+          <Link href="/admin/iklan" className={menuItemClasses(isActive("/admin/iklan"))}>
+            {sidebarExpanded ? (
+              <>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="image" size={20} /></span>
+                <span style={textStyle}>Iklan</span>
+              </>
+            ) : (
+              <span style={radioStyle(isActive("/admin/iklan"))} />
+            )}
+          </Link>
         </div>
 
         {/* Menu Lain */}
@@ -373,7 +351,7 @@ export default function AdminSidebar() {
         >
           {sidebarExpanded ? (
             <>
-              <span>{menuLainOpen ? "▼" : "▶"}</span>
+              <span className={styles.iconWrap}><FeatherIcon name={menuLainOpen ? "chevron-down" : "chevron-right"} size={16} /></span>
               <span style={textStyle}>Menu Lain</span>
             </>
           ) : (
@@ -385,46 +363,46 @@ export default function AdminSidebar() {
           <>
             <div style={tierBoxStyle}>PPAT</div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>📒</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="book" size={20} /></span>
                 <span style={textStyle}>Booking SSPD</span>
               </Link>
             </div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>📁</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="folder-plus" size={20} /></span>
                 <span style={textStyle}>Laporan Bulanan PPAT</span>
               </Link>
             </div>
 
             <div style={tierBoxStyle}>Loket Terima Berkas</div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>📂</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="folder" size={20} /></span>
                 <span style={textStyle}>Terima Berkas SSPD</span>
               </Link>
             </div>
 
             <div style={tierBoxStyle}>Loket Serah Berkas</div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>✈</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="send" size={20} /></span>
                 <span style={textStyle}>Pelayanan Penyerahan SSPD</span>
               </Link>
             </div>
 
             <div style={tierBoxStyle}>Peneliti</div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>⚖</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="scale" size={20} /></span>
                 <span style={textStyle}>Verifikasi SSPD</span>
               </Link>
             </div>
 
             <div style={tierBoxStyle}>BANK</div>
             <div style={{ padding: "2px", cursor: "pointer" }}>
-              <Link href="#" style={menuItemStyle(false)}>
-                <span style={iconStyle}>💰</span>
+              <Link href="#" className={menuItemClasses(false)}>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="dollar-sign" size={20} /></span>
                 <span style={textStyle}>Transaksi Bank</span>
               </Link>
             </div>
@@ -433,10 +411,10 @@ export default function AdminSidebar() {
 
         {/* FAQ */}
         <div style={{ padding: "2px", cursor: "pointer" }}>
-          <Link href="/faq" style={menuItemStyle(isActive("/faq"))}>
+          <Link href="/faq" className={menuItemClasses(isActive("/faq"))}>
             {sidebarExpanded ? (
               <>
-                <span style={iconStyle}>❓</span>
+                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="help-circle" size={20} /></span>
                 <span style={textStyle}>FAQ</span>
               </>
             ) : (
@@ -456,7 +434,7 @@ export default function AdminSidebar() {
       >
         {sidebarExpanded ? (
           <>
-            <span>🚪</span>
+            <span className={styles.iconWrap}><FeatherIcon name="log-out" size={20} /></span>
             <span style={textStyle}>Log Out</span>
           </>
         ) : (

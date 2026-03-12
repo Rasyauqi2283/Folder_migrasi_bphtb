@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useState, useEffect, useRef, useId } from "react";
+import styles from "./Header.module.css";
 
 interface HeaderProps {
   /** Judul di header (mis. "Dashboard", "Data User") */
@@ -16,6 +17,9 @@ interface DivisiMember {
   divisi: string;
   statuspengguna?: string;
 }
+
+/** Foto default saat user belum punya foto (dilayani dari public/asset, hindari 404). */
+const DEFAULT_PHOTO = "/asset/default-foto_when_doesnthavephoto.png";
 
 export default function Header({ title = "Dashboard" }: HeaderProps) {
   const { user, logout } = useAuth();
@@ -32,6 +36,12 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
   useEffect(() => {
     if (typeof window !== "undefined") setFoto(localStorage.getItem("foto"));
   }, [user]);
+
+  useEffect(() => {
+    const onFotoUpdate = () => setFoto(localStorage.getItem("foto"));
+    window.addEventListener("profile-foto-updated", onFotoUpdate);
+    return () => window.removeEventListener("profile-foto-updated", onFotoUpdate);
+  }, []);
 
   // Fetch members by divisi
   useEffect(() => {
@@ -61,8 +71,8 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
   const dropdownStyle: React.CSSProperties = {
     position: "absolute",
     top: "100%",
-    right: 0,
-    marginTop: 8,
+    right: -12,
+    marginTop: 20,
     background: "var(--base_dark)",
     border: "1px solid var(--border_light)",
     borderTopLeftRadius: 12,
@@ -102,9 +112,9 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
 
   return (
     <header
+      className={styles.headerMain}
       style={{
         background: "linear-gradient(105deg, var(--base_dark) 0%, rgba(0,0,154,0.07) 18%, var(--base_dark) 38%, rgba(0,0,154,0.04) 55%, var(--base_dark) 72%, rgba(0,0,154,0.06) 100%)",
-        height: 80,
         width: "100%",
         position: "fixed",
         top: 0,
@@ -112,9 +122,8 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "0 20px",
         boxShadow: "0 4px 24px rgba(0,0,0,0.35)",
-        borderBottom: `1px solid var(--border_light)`,
+        borderBottom: "1px solid var(--border_light)",
         zIndex: 100,
         color: "var(--color_font)",
         overflow: "visible",
@@ -127,7 +136,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
       </div>
 
       {/* Header left: logo, Bappenda, title */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className={styles.headerLeft}>
         <div
           role="button"
           tabIndex={0}
@@ -152,10 +161,8 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
           tabIndex={0}
           onClick={toggleSidebar}
           onKeyDown={(e) => e.key === "Enter" && toggleSidebar()}
+          className={styles.headerBappendaBlock}
           style={{
-            display: "flex",
-            alignItems: "center",
-            cursor: "pointer",
             opacity: sidebarExpanded ? 1 : 0,
             transform: sidebarExpanded ? "translateX(0)" : "translateX(-20px)",
             transition,
@@ -170,10 +177,11 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
           <img src="/asset/dekorasi_icon.png" alt="" style={{ width: 100, height: "auto", marginTop: 4 }} />
         </div>
         <div
+          className={styles.headerTitle}
           style={{
             marginLeft: sidebarExpanded ? 24 : 12,
             paddingLeft: sidebarExpanded ? 20 : 0,
-            borderLeft: sidebarExpanded ? `1px solid var(--border_light)` : "none",
+            borderLeft: sidebarExpanded ? "1px solid var(--border_light)" : "none",
             fontSize: 22,
             fontWeight: 700,
             transition,
@@ -184,7 +192,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
       </div>
 
       {/* Header right: profile dropdown, member dropdown */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+      <div className={styles.headerRight}>
         {/* Profile button + dropdown */}
         <div ref={profileRef} style={{ position: "relative" }}>
           <button
@@ -206,14 +214,17 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
               justifyContent: "center",
             }}
           >
-            {foto ? (
-              <img src={foto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <span style={{ fontSize: 20 }}>👤</span>
-            )}
+            <img
+              src={foto && foto.trim() !== "" ? foto : DEFAULT_PHOTO}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = DEFAULT_PHOTO;
+              }}
+            />
           </button>
           {profileOpen && (
-            <div style={profileDropdownStyle}>
+            <div className={styles.headerProfileDropdown} style={profileDropdownStyle}>
               <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border_light)" }}>
                 <div style={{ fontWeight: 600, fontSize: 16, color: "var(--color_font)" }}>{user?.nama || user?.userid || "—"}</div>
                 <div style={{ fontSize: 13, color: "var(--color_font_dim)", marginTop: 4 }}>{user?.divisi || "—"}</div>
@@ -235,6 +246,23 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 >
                   Profil
+                </Link>
+                <Link
+                  href="/faq"
+                  onClick={() => setProfileOpen(false)}
+                  style={{
+                    display: "block",
+                    padding: "10px 14px",
+                    color: "var(--color_font)",
+                    textDecoration: "none",
+                    borderRadius: 8,
+                    fontSize: 14,
+                    transition: "background 0.2s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface_light)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  FAQ
                 </Link>
                 <button
                   type="button"
@@ -276,13 +304,12 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
               background: "none",
               border: "none",
               color: "var(--color_font_muted)",
-              fontSize: 12,
               cursor: "pointer",
               padding: "4px 8px",
             }}
           >
-            <span>member</span>
-            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--color_font)", marginTop: 2 }}>
+            <span className={styles.memberLabel}>member</span>
+            <span className={styles.memberName} style={{ color: "var(--color_font)" }}>
               {user?.nama || user?.userid || "—"}
             </span>
           </button>

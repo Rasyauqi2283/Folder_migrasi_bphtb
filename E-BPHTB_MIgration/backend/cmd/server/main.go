@@ -120,6 +120,67 @@ func main() {
 	// KTP Preview — handler Go (return JSON ekstraksi OCR, bukan gambar)
 	mux.HandleFunc("GET /api/admin/ktp-preview/{id}", usersHandler.KTPPreview)
 
+	// Admin notification-warehouse & pemutakhiran — handler Go (sebelum proxy agar route spesifik didahulukan)
+	var bookingRepo *repository.BookingRepo
+	if pool != nil {
+		bookingRepo = repository.NewBookingRepo(pool)
+	} else {
+		bookingRepo = repository.NewBookingRepo(nil)
+	}
+	adminNW := handler.NewAdminNotificationWarehouseHandler(userRepo, bookingRepo)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users", adminNW.GetPpatUsers)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users/{userid}", adminNW.GetPpatUserByID)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-chart-data", adminNW.GetPpatChartData)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-renewal", adminNW.GetPpatRenewal)
+	mux.HandleFunc("GET /api/admin/ppat/user/{userid}/diserahkan", adminNW.GetDiserahkan)
+
+	// Admin validasi QR — handler Go
+	var validationRepo *repository.ValidationRepo
+	if pool != nil {
+		validationRepo = repository.NewValidationRepo(pool)
+	} else {
+		validationRepo = repository.NewValidationRepo(nil)
+	}
+	adminValidasi := handler.NewAdminValidasiHandler(userRepo, validationRepo)
+	mux.HandleFunc("GET /api/admin/validate-qr/{no_validasi}", adminValidasi.GetValidateQR)
+	mux.HandleFunc("GET /api/admin/validate-qr-search", adminValidasi.GetValidateQRSearch)
+
+	// FAQ — public list + admin CRUD + upload image for rich text
+	var faqRepo *repository.FAQRepo
+	if pool != nil {
+		faqRepo = repository.NewFAQRepo(pool)
+	} else {
+		faqRepo = repository.NewFAQRepo(nil)
+	}
+	faqHandler := handler.NewFAQHandler(cfg, userRepo, faqRepo)
+	mux.HandleFunc("GET /api/faq", faqHandler.GetList)
+	mux.HandleFunc("POST /api/faq", faqHandler.Create)
+	mux.HandleFunc("PUT /api/faq/{id}", faqHandler.Update)
+	mux.HandleFunc("DELETE /api/faq/{id}", faqHandler.Delete)
+	mux.HandleFunc("POST /api/faq/upload", faqHandler.Upload)
+
+	// Banners — public active list; admin CRUD
+	var bannerRepo *repository.BannerRepo
+	if pool != nil {
+		bannerRepo = repository.NewBannerRepo(pool)
+	} else {
+		bannerRepo = repository.NewBannerRepo(nil)
+	}
+	bannerHandler := handler.NewBannerHandler(cfg, userRepo, bannerRepo)
+	mux.HandleFunc("GET /api/banners", bannerHandler.GetActive)
+	mux.HandleFunc("GET /api/admin/banners", bannerHandler.GetListAdmin)
+	mux.HandleFunc("POST /api/admin/banners", bannerHandler.CreateAdmin)
+	mux.HandleFunc("PUT /api/admin/banners/{id}", bannerHandler.UpdateAdmin)
+	mux.HandleFunc("DELETE /api/admin/banners/{id}", bannerHandler.DeleteAdmin)
+
+	// Serve uploaded files (FAQ rich text images, banner images)
+	mux.HandleFunc("GET /api/uploads/faq/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeUploadDir(cfg.FAQUploadDir, r.PathValue("filename"))(w, r)
+	})
+	mux.HandleFunc("GET /api/uploads/banners/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeUploadDir(cfg.BannerUploadDir, r.PathValue("filename"))(w, r)
+	})
+
 	// Proxy /api/admin/* ke Node (sisa endpoint admin yang belum dimigrasi)
 	mux.Handle("/api/admin/", handler.AdminProxyHandler(cfg.LegacyNodeURL))
 
@@ -136,6 +197,17 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/verify-reset-otp", authHandler.VerifyResetOTP)
 	mux.HandleFunc("POST /api/v1/auth/verify-reset-token", authHandler.VerifyResetToken)
 	mux.HandleFunc("POST /api/v1/auth/reset-password", authHandler.ResetPassword)
+
+	// Profile (GET profile, upload foto, ubah password, paraf, lengkapi profil)
+	mux.HandleFunc("GET /api/v1/auth/profile", authHandler.GetProfile)
+	mux.HandleFunc("PUT /api/v1/auth/profile", authHandler.UpdateProfile)
+	mux.HandleFunc("POST /api/v1/auth/profile/upload", authHandler.UploadProfilePhoto)
+	mux.HandleFunc("POST /api/v1/auth/update-password", authHandler.UpdatePassword)
+	mux.HandleFunc("POST /api/v1/auth/update-profile-paraf", authHandler.UpdateProfileParaf)
+	mux.HandleFunc("POST /api/v1/auth/complete-profile", authHandler.CompleteProfile)
+	mux.HandleFunc("GET /api/profile-photo/{userid}", authHandler.ServeProfilePhoto)
+	mux.HandleFunc("GET /api/profile-signature/{userid}", authHandler.ServeProfileSignature)
+	mux.HandleFunc("POST /api/v1/auth/logout", authHandler.Logout)
 
 	// GET /health — health check (mirror Node); termasuk status koneksi DB
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

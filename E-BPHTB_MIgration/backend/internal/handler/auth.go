@@ -591,9 +591,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		divUpper := strings.ToUpper(divisi)
-		if divUpper != "PPAT" && divUpper != "PPATS" {
+		if divUpper != "PPAT" && divUpper != "PPATS" && divUpper != "NOTARIS" {
 			log.Printf("[REGISTER] PU: divisi invalid | special_field=%q pejabat_umum=%q divisi=%q", specialField, pejabatUmum, divisi)
-			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT atau PPATS")
+			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT, PPATS, atau Notaris")
 			return
 		}
 	}
@@ -857,6 +857,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		msg = "Login berhasil, " + user.Userid + "!"
 	}
 
+	// Cookie agar GET /api/v1/auth/profile dan upload/update bisa identifikasi user
+	http.SetCookie(w, &http.Cookie{
+		Name:     "ebphtb_userid",
+		Value:    user.Userid,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   86400, // 1 hari
+	})
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":             true,
@@ -1015,12 +1025,12 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if verseValue == "PU" {
-		if divisi != "PPAT" && divisi != "PPATS" {
-			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT atau PPATS")
+		if divisi != "PPAT" && divisi != "PPATS" && divisi != "Notaris" {
+			jsonError(w, http.StatusBadRequest, "Pilih divisi PPAT, PPATS, atau Notaris")
 			return
 		}
 		if specialField == "" || pejabatUmum == "" {
-			jsonError(w, http.StatusBadRequest, "Data PPAT/PPATS belum lengkap.")
+			jsonError(w, http.StatusBadRequest, "Data PPAT/PPATS/Notaris belum lengkap.")
 			return
 		}
 	}
@@ -1243,8 +1253,15 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if verseOut == "PU" {
 		divisiVal := "PPAT"
-		if user.Divisi != nil && *user.Divisi == "PPATS" {
-			divisiVal = "PPATS"
+		if user.Divisi != nil {
+			switch *user.Divisi {
+			case "PPATS":
+				divisiVal = "PPATS"
+			case "Notaris":
+				divisiVal = "Notaris"
+			default:
+				divisiVal = "PPAT"
+			}
 		}
 		divisiOut = divisiVal
 		useridOut, err = idgen.GenerateUserID(ctx, tx, divisiVal)
@@ -1566,6 +1583,447 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Password berhasil direset.",
 	})
+}
+
+// getProfileUserid returns userid from cookie ebphtb_userid or header X-User-Id (untuk profile endpoints).
+func getProfileUserid(r *http.Request) string {
+	if c, err := r.Cookie("ebphtb_userid"); err == nil && c != nil && strings.TrimSpace(c.Value) != "" {
+		return strings.TrimSpace(c.Value)
+	}
+	return strings.TrimSpace(r.Header.Get("X-User-Id"))
+}
+
+// GetProfile handles GET /api/v1/auth/profile. Mengembalikan data profil user (cookie atau X-User-Id).
+func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getProfileUserid(r)
+	if userid == "" {
+		jsonError(w, http.StatusUnauthorized, "Sesi tidak valid. Silakan login kembali.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	user, err := h.repo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || user == nil {
+		jsonError(w, http.StatusNotFound, "Profil tidak ditemukan.")
+		return
+	}
+	foto := user.Fotoprofil
+	username, nip, specialField, specialParafv, pejabatUmum, telepon, gender, tandaTanganMime, tandaTanganPath := "", "", "", "", "", "", "", "", ""
+	if user.Username != nil {
+		username = *user.Username
+	}
+	if user.NIP != nil {
+		nip = *user.NIP
+	}
+	if user.SpecialField != nil {
+		specialField = *user.SpecialField
+	}
+	if user.SpecialParafv != nil {
+		specialParafv = *user.SpecialParafv
+	}
+	if user.PejabatUmum != nil {
+		pejabatUmum = *user.PejabatUmum
+	}
+	if user.Telepon != nil {
+		telepon = *user.Telepon
+	}
+	if user.Gender != nil {
+		gender = *user.Gender
+	}
+	if user.TandaTanganMime != nil {
+		tandaTanganMime = *user.TandaTanganMime
+	}
+	if user.TandaTanganPath != nil {
+		tandaTanganPath = *user.TandaTanganPath
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"user": map[string]interface{}{
+			"userid":              user.Userid,
+			"nama":                user.Nama,
+			"email":               user.Email,
+			"divisi":              user.Divisi,
+			"fotoprofil":          foto,
+			"username":            username,
+			"nip":                 nip,
+			"special_field":       specialField,
+			"special_parafv":      specialParafv,
+			"pejabat_umum":        pejabatUmum,
+			"telepon":             telepon,
+			"gender":              gender,
+			"tanda_tangan_mime":   tandaTanganMime,
+			"tanda_tangan_path":   tandaTanganPath,
+			"statuspengguna":      user.Statuspengguna,
+		},
+	})
+}
+
+// UploadProfilePhoto handles POST /api/v1/auth/profile/upload. Form: fotoprofil (file).
+func (h *AuthHandler) UploadProfilePhoto(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getProfileUserid(r)
+	if userid == "" {
+		jsonError(w, http.StatusUnauthorized, "Sesi tidak valid. Silakan login kembali.")
+		return
+	}
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		jsonError(w, http.StatusBadRequest, "File tidak valid.")
+		return
+	}
+	file, header, err := r.FormFile("fotoprofil")
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "Field fotoprofil wajib (file gambar).")
+		return
+	}
+	defer file.Close()
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !allowedExtensions[ext] {
+		ext = ".jpg"
+	}
+	dir := h.cfg.ProfilePhotoDir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("[PROFILE] mkdir %s: %v", dir, err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan foto.")
+		return
+	}
+	safeName := userid + ext
+	fpath := filepath.Join(dir, safeName)
+	dst, err := os.Create(fpath)
+	if err != nil {
+		log.Printf("[PROFILE] create %s: %v", fpath, err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan foto.")
+		return
+	}
+	_, err = io.Copy(dst, file)
+	dst.Close()
+	if err != nil {
+		os.Remove(fpath)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan foto.")
+		return
+	}
+	// Path untuk client: prefix yang di-rewrite ke backend (Next.js proxy /api -> Go)
+	pathInDB := "/api/profile-photo/" + userid
+	if h.repo != nil {
+		if err := h.repo.UpdateFotoprofil(r.Context(), userid, pathInDB); err != nil {
+			log.Printf("[PROFILE] UpdateFotoprofil: %v", err)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Foto profil berhasil diupdate",
+		"foto":    pathInDB,
+	})
+}
+
+type updatePasswordReq struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+}
+
+type updateProfileReq struct {
+	Username string `json:"username"`
+	Nip      string `json:"nip"`
+	Email    string `json:"email"`
+	Telepon  string `json:"telepon"`
+}
+
+// UpdateProfile handles PUT /api/v1/auth/profile. Body: username, nip, email, telepon (field yang boleh diedit).
+func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getProfileUserid(r)
+	if userid == "" {
+		jsonError(w, http.StatusUnauthorized, "Sesi tidak valid. Silakan login kembali.")
+		return
+	}
+	var req updateProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	err := h.repo.UpdateProfileEditable(r.Context(), userid,
+		strings.TrimSpace(req.Username), strings.TrimSpace(req.Nip),
+		strings.TrimSpace(req.Email), strings.TrimSpace(req.Telepon))
+	if err != nil {
+		log.Printf("[PROFILE] UpdateProfileEditable: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan perubahan profil.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Profil berhasil diperbarui.",
+	})
+}
+
+// UpdatePassword handles POST /api/v1/auth/update-password. Body: oldPassword, newPassword.
+func (h *AuthHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getProfileUserid(r)
+	if userid == "" {
+		jsonError(w, http.StatusUnauthorized, "Sesi tidak valid. Silakan login kembali.")
+		return
+	}
+	var req updatePasswordReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	if strings.TrimSpace(req.NewPassword) == "" || len(req.NewPassword) < 8 {
+		jsonError(w, http.StatusBadRequest, "Password baru minimal 8 karakter.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	user, err := h.repo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || user == nil {
+		jsonError(w, http.StatusUnauthorized, "Profil tidak ditemukan.")
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		jsonError(w, http.StatusUnauthorized, "Kata sandi lama salah.")
+		return
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 10)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memperbarui password.")
+		return
+	}
+	_, err = h.repo.Pool().Exec(r.Context(), `UPDATE a_2_verified_users SET password = $1 WHERE userid = $2`, string(hashed), userid)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memperbarui password.")
+		return
+	}
+	// Kirim notifikasi ke email (non-blocking)
+	go func() {
+		if err := mail.SendPasswordChangeNotification(user.Email, user.Userid, user.Nama); err != nil {
+			log.Printf("[UPDATE_PASSWORD] Email notifikasi gagal: %v", err)
+		}
+	}()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Password berhasil diperbarui.",
+	})
+}
+
+// UpdateProfileParaf handles POST /api/v1/auth/update-profile-paraf. Form: signature (file).
+func (h *AuthHandler) UpdateProfileParaf(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getProfileUserid(r)
+	if userid == "" {
+		jsonError(w, http.StatusUnauthorized, "Sesi tidak valid. Silakan login kembali.")
+		return
+	}
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		jsonError(w, http.StatusBadRequest, "File tidak valid.")
+		return
+	}
+	file, header, err := r.FormFile("signature")
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "Field signature wajib (file gambar).")
+		return
+	}
+	defer file.Close()
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".webp" {
+		ext = ".png"
+	}
+	mime := "image/png"
+	switch ext {
+	case ".jpg", ".jpeg":
+		mime = "image/jpeg"
+	case ".webp":
+		mime = "image/webp"
+	}
+	dir := h.cfg.ProfileSignatureDir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("[PROFILE] mkdir signature %s: %v", dir, err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan paraf.")
+		return
+	}
+	safeName := userid + ext
+	fpath := filepath.Join(dir, safeName)
+	dst, err := os.Create(fpath)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan paraf.")
+		return
+	}
+	_, err = io.Copy(dst, file)
+	dst.Close()
+	if err != nil {
+		os.Remove(fpath)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan paraf.")
+		return
+	}
+	pathInDB := "/api/profile-signature/" + userid
+	if h.repo != nil {
+		if err := h.repo.UpdateTandaTangan(r.Context(), userid, mime, pathInDB); err != nil {
+			log.Printf("[PROFILE] UpdateTandaTangan: %v", err)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Paraf berhasil disimpan.",
+	})
+}
+
+type completeProfileReq struct {
+	Userid       string `json:"userid"`
+	Nip          string `json:"nip"`
+	Username     string `json:"username"`
+	SpecialField string `json:"special_field"`
+	SpecialParafv string `json:"special_parafv"`
+	PejabatUmum  string `json:"pejabat_umum"`
+}
+
+// CompleteProfile handles POST /api/v1/auth/complete-profile. Body: userid, nip, username, special_field, special_parafv, pejabat_umum.
+func (h *AuthHandler) CompleteProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	var req completeProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, http.StatusBadRequest, "Data tidak valid.")
+		return
+	}
+	userid := strings.TrimSpace(req.Userid)
+	if userid == "" {
+		jsonError(w, http.StatusBadRequest, "userid wajib.")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	user, err := h.repo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || user == nil {
+		jsonError(w, http.StatusNotFound, "User tidak ditemukan.")
+		return
+	}
+	nama, telepon := user.Nama, ""
+	if user.Telepon != nil {
+		telepon = *user.Telepon
+	}
+	err = h.repo.UpdateCompleteUser(r.Context(), userid, nama, telepon,
+		strings.TrimSpace(req.Username), strings.TrimSpace(req.Nip),
+		strings.TrimSpace(req.SpecialParafv), strings.TrimSpace(req.SpecialField),
+		strings.TrimSpace(req.PejabatUmum), "")
+	if err != nil {
+		log.Printf("[PROFILE] CompleteProfile UpdateCompleteUser: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan profil.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Profil berhasil dilengkapi.",
+	})
+}
+
+// ServeProfilePhoto handles GET /api/profile-photo/{userid}. Menyajikan file foto profil.
+func (h *AuthHandler) ServeProfilePhoto(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userid := strings.TrimSpace(r.PathValue("userid"))
+	if userid == "" {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	dir := h.cfg.ProfilePhotoDir
+	for _, ext := range []string{".jpg", ".jpeg", ".png"} {
+		fpath := filepath.Join(dir, userid+ext)
+		if f, err := os.Open(fpath); err == nil {
+			defer f.Close()
+			if stat, err := f.Stat(); err == nil && !stat.IsDir() {
+				w.Header().Set("Content-Type", "image/jpeg")
+				if ext == ".png" {
+					w.Header().Set("Content-Type", "image/png")
+				}
+				http.ServeContent(w, r, stat.Name(), stat.ModTime(), f)
+				return
+			}
+		}
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
+}
+
+// ServeProfileSignature handles GET /api/profile-signature/{userid}. Menyajikan file paraf/tanda tangan.
+func (h *AuthHandler) ServeProfileSignature(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	userid := strings.TrimSpace(r.PathValue("userid"))
+	if userid == "" {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	dir := h.cfg.ProfileSignatureDir
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".webp"} {
+		fpath := filepath.Join(dir, userid+ext)
+		if f, err := os.Open(fpath); err == nil {
+			defer f.Close()
+			if stat, err := f.Stat(); err == nil && !stat.IsDir() {
+				ct := "image/png"
+				switch ext {
+				case ".jpg", ".jpeg":
+					ct = "image/jpeg"
+				case ".webp":
+					ct = "image/webp"
+				}
+				w.Header().Set("Content-Type", ct)
+				http.ServeContent(w, r, stat.Name(), stat.ModTime(), f)
+				return
+			}
+		}
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
+}
+
+// Logout handles POST /api/v1/auth/logout. Menghapus cookie sesi.
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     "ebphtb_userid",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+	})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Berhasil keluar."})
 }
 
 // ResendOTP handles POST /api/v1/auth/resend-otp.

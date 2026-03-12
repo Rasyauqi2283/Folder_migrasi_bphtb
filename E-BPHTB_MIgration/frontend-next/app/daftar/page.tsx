@@ -201,17 +201,17 @@ function DaftarContent() {
       return false;
     }
     if (verse === "pu") {
-      if (divisiPu !== "PPAT" && divisiPu !== "PPATS") {
-        setMessage("Pilih jenis akun PPAT atau PPATS.");
+      if (divisiPu !== "PPAT" && divisiPu !== "PPATS" && divisiPu !== "Notaris") {
+        setMessage("Pilih jenis akun PPAT, PPATS, atau Notaris.");
         setMessageType("error");
         return false;
       }
       if (!specialField.trim()) {
-        setMessage("Nama PPAT/Gelar wajib diisi.");
+        setMessage(divisiPu === "Notaris" ? "Nama Notaris/Gelar wajib diisi." : "Nama PPAT/Gelar wajib diisi.");
         setMessageType("error");
         return false;
       }
-      if (!pejabatUmum.trim()) {
+      if (divisiPu !== "Notaris" && !pejabatUmum.trim()) {
         setMessage("Pejabat Umum wajib diisi.");
         setMessageType("error");
         return false;
@@ -472,18 +472,20 @@ function DaftarContent() {
               </div>
               <div className="daftar-field">
                 <label htmlFor="password">Kata Sandi</label>
-                <p className="daftar-password-helper">
-                  Buat kata sandi mu disini, penting: buat berbeda dengan sandi pada email anda
-                </p>
                 <input
                   type="password"
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 6 karakter"
+                  maxLength={16}
                   required
                 />
-                <div className="daftar-validation-zone" aria-live="polite" />
+                <div className="daftar-validation-zone daftar-validation-zone-double" aria-live="polite" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                  <span className="daftar-password-helper">
+                    Buat kata sandi mu disini, penting: buat berbeda dengan sandi pada email anda
+                  </span>
+                </div>
               </div>
               <div className="daftar-field">
                 <label htmlFor="repeatpassword">Ulangi Kata Sandi</label>
@@ -521,21 +523,27 @@ function DaftarContent() {
                 <select
                   id="divisi_pu"
                   value={divisiPu}
-                  onChange={(e) => setDivisiPu(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDivisiPu(v);
+                    if (v === "PPAT" || v === "PPATS" || v === "Notaris") setPejabatUmum(v);
+                    else setPejabatUmum("");
+                  }}
                 >
                   <option value="">Pilih...</option>
                   <option value="PPAT">PPAT</option>
                   <option value="PPATS">PPATS</option>
+                  <option value="Notaris">Notaris</option>
                 </select>
               </div>
               <div className="daftar-field">
-                <label htmlFor="special_field">Nama PPAT / Gelar</label>
+                <label htmlFor="special_field">{divisiPu === "Notaris" ? "Nama Notaris / Gelar" : "Nama PPAT / Gelar"}</label>
                 <input
                   type="text"
                   id="special_field"
                   value={specialField}
                   onChange={(e) => setSpecialField(e.target.value)}
-                  placeholder="Contoh: Dr. Ahmad, S.H."
+                  placeholder={divisiPu === "Notaris" ? "Contoh: Dr. Ahmad, S.H., M.Kn." : "Contoh: Dr. Ahmad, S.H."}
                   maxLength={255}
                 />
               </div>
@@ -544,10 +552,11 @@ function DaftarContent() {
                 <input
                   type="text"
                   id="pejabat_umum"
-                  value={pejabatUmum}
+                  value={divisiPu === "PPAT" || divisiPu === "PPATS" || divisiPu === "Notaris" ? divisiPu : pejabatUmum}
                   onChange={(e) => setPejabatUmum(e.target.value)}
                   placeholder="Pejabat Umum"
                   maxLength={50}
+                  readOnly={divisiPu === "PPAT" || divisiPu === "PPATS" || divisiPu === "Notaris"}
                 />
               </div>
             </>

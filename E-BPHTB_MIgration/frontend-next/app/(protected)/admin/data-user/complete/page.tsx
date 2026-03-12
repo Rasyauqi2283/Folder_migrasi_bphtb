@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import styles from "./data-user-complete.module.css";
 
 const PAGE_SIZE = 10;
 
@@ -47,22 +48,170 @@ const FIELD_OPTIONS = [
   { value: "telepon", label: "Telepon" },
 ];
 
+function verseCategory(u: CompleteUser): "karyawan" | "pu" | "wp" {
+  const v = (u.verse ?? "").trim();
+  if (v.toUpperCase() === "PU") return "pu";
+  if (v.toLowerCase() === "karyawan") return "karyawan";
+  if (v.toUpperCase() === "WP") return "wp";
+  const div = (u.divisi ?? "").toLowerCase();
+  if (["ppat", "ppats"].includes(div)) return "pu";
+  if (div === "wajib pajak") return "wp";
+  return "karyawan";
+}
+
+function DataTable({
+  rows,
+  onEdit,
+  onDelete,
+  emptyMessage = "Tidak ada data",
+}: {
+  rows: CompleteUser[];
+  onEdit: (u: CompleteUser) => void;
+  onDelete: (u: CompleteUser) => void;
+  emptyMessage?: string;
+}) {
+  return (
+    <div className={styles.tableWrap}>
+      <table className={styles.table}>
+        <thead className={styles.thead}>
+          <tr>
+            <th>User ID</th>
+            <th>Divisi</th>
+            <th>Nama</th>
+            <th>Email</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody className={styles.tbody}>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5} className={styles.emptyCell}>
+                {emptyMessage}
+              </td>
+            </tr>
+          ) : (
+            rows.map((u) => (
+              <tr key={u.id}>
+                <td>{u.userid}</td>
+                <td>{u.divisi}</td>
+                <td>{u.nama}</td>
+                <td>{u.email}</td>
+                <td>
+                  <div className={styles.actions}>
+                    <button
+                      type="button"
+                      className={styles.btnEdit}
+                      onClick={() => onEdit(u)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnDelete}
+                      onClick={() => onDelete(u)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+  onPage,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPage: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
+    (p) => Math.abs(p - currentPage) <= 2
+  );
+  return (
+    <div className={styles.pagination}>
+      <button
+        type="button"
+        className={styles.pageBtn}
+        disabled={currentPage <= 1}
+        onClick={() => onPage(1)}
+      >
+        «
+      </button>
+      <button
+        type="button"
+        className={styles.pageBtn}
+        disabled={currentPage <= 1}
+        onClick={() => onPage(currentPage - 1)}
+      >
+        ‹
+      </button>
+      {pages.map((p) => (
+        <button
+          key={p}
+          type="button"
+          className={`${styles.pageBtn} ${p === currentPage ? styles.pageBtnActive : ""}`}
+          onClick={() => onPage(p)}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        type="button"
+        className={styles.pageBtn}
+        disabled={currentPage >= totalPages}
+        onClick={() => onPage(currentPage + 1)}
+      >
+        ›
+      </button>
+      <button
+        type="button"
+        className={styles.pageBtn}
+        disabled={currentPage >= totalPages}
+        onClick={() => onPage(totalPages)}
+      >
+        »
+      </button>
+    </div>
+  );
+}
+
 export default function AdminDataUserCompletePage() {
   const [users, setUsers] = useState<CompleteUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [pageKaryawan, setPageKaryawan] = useState(1);
+  const [pagePu, setPagePu] = useState(1);
+  const [pageWp, setPageWp] = useState(1);
   const [search, setSearch] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("");
   const [fieldFilter, setFieldFilter] = useState("all");
   const [editOverlayOpen, setEditOverlayOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<CompleteUser | null>(null);
   const [editForm, setEditForm] = useState({
-    nama: "", telepon: "", username: "", nip: "",
-    special_parafv: "", special_field: "", pejabat_umum: "", ppat_khusus: "", status_ppat: "",
+    nama: "",
+    telepon: "",
+    username: "",
+    nip: "",
+    special_parafv: "",
+    special_field: "",
+    pejabat_umum: "",
+    ppat_khusus: "",
+    status_ppat: "",
   });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ userid: string; nama: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    userid: string;
+    nama: string;
+  } | null>(null);
 
   const loadComplete = useCallback(async () => {
     setLoading(true);
@@ -85,7 +234,8 @@ export default function AdminDataUserCompletePage() {
   }, [loadComplete]);
 
   const filteredUsers = users.filter((u) => {
-    if (divisionFilter && u.divisi?.toLowerCase() !== divisionFilter.toLowerCase()) return false;
+    if (divisionFilter && u.divisi?.toLowerCase() !== divisionFilter.toLowerCase())
+      return false;
     const term = search.trim().toLowerCase();
     if (!term) return true;
     const field = fieldFilter === "all" ? null : fieldFilter;
@@ -103,11 +253,21 @@ export default function AdminDataUserCompletePage() {
     );
   });
 
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
-  const startIdx = (page - 1) * PAGE_SIZE;
-  const pageUsers = filteredUsers.slice(startIdx, startIdx + PAGE_SIZE);
-  const startDisplay = filteredUsers.length === 0 ? 0 : startIdx + 1;
-  const endDisplay = Math.min(startIdx + PAGE_SIZE, filteredUsers.length);
+  const karyawanUsers = filteredUsers.filter((u) => verseCategory(u) === "karyawan");
+  const puUsers = filteredUsers.filter((u) => verseCategory(u) === "pu");
+  const wpUsers = filteredUsers.filter((u) => verseCategory(u) === "wp");
+
+  const totalPagesK = Math.max(1, Math.ceil(karyawanUsers.length / PAGE_SIZE));
+  const totalPagesPu = Math.max(1, Math.ceil(puUsers.length / PAGE_SIZE));
+  const totalPagesWp = Math.max(1, Math.ceil(wpUsers.length / PAGE_SIZE));
+
+  const startK = (pageKaryawan - 1) * PAGE_SIZE;
+  const startPu = (pagePu - 1) * PAGE_SIZE;
+  const startWp = (pageWp - 1) * PAGE_SIZE;
+
+  const pageKaryawanRows = karyawanUsers.slice(startK, startK + PAGE_SIZE);
+  const pagePuRows = puUsers.slice(startPu, startPu + PAGE_SIZE);
+  const pageWpRows = wpUsers.slice(startWp, startWp + PAGE_SIZE);
 
   const openEdit = (u: CompleteUser) => {
     setEditingUser(u);
@@ -153,12 +313,15 @@ export default function AdminDataUserCompletePage() {
         }),
       });
       if (!res.ok) throw new Error("Gagal menyimpan");
-      const statusRes = await fetch(`/api/users/${editingUser.userid}/status-ppat`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status_ppat: editForm.status_ppat }),
-      });
+      const statusRes = await fetch(
+        `/api/users/${editingUser.userid}/status-ppat`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status_ppat: editForm.status_ppat }),
+        }
+      );
       if (!statusRes.ok) console.warn("Gagal update status PPAT");
       closeEdit();
       loadComplete();
@@ -169,7 +332,11 @@ export default function AdminDataUserCompletePage() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = (u: CompleteUser) => {
+    setDeleteConfirm({ userid: u.userid, nama: u.nama });
+  };
+
+  const confirmDelete = async () => {
     if (!deleteConfirm) return;
     try {
       const res = await fetch(`/api/users/${deleteConfirm.userid}`, {
@@ -185,300 +352,362 @@ export default function AdminDataUserCompletePage() {
   };
 
   useEffect(() => {
-    setPage(1);
+    setPageKaryawan(1);
+    setPagePu(1);
+    setPageWp(1);
   }, [search, divisionFilter, fieldFilter]);
 
   return (
-    <div>
-      <h1 style={{ color: "var(--color_font_main)", margin: "0 0 0.5rem" }}>
-        Data User (Complete)
-      </h1>
-      <p style={{ color: "var(--color_font_main_muted)", margin: "0 0 1rem" }}>
-        User yang sudah terverifikasi dan memiliki UserID
-      </p>
+    <div className={`${styles.dataUserComplete} ${styles.wrapper}`}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Data User (Complete)</h1>
+        <p className={styles.subtitle}>
+          User yang sudah terverifikasi dan memiliki UserID
+        </p>
+      </header>
 
-      {error && (
-        <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</p>
-      )}
+      {error && <div className={styles.error}>{error}</div>}
 
       {loading ? (
-        <p style={{ color: "var(--color_font_main_muted)" }}>Memuat...</p>
+        <div className={styles.loading}>
+          <div className={styles.spinner} />
+          Memuat data...
+        </div>
       ) : (
         <>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
-              marginBottom: 16,
-              alignItems: "center",
-            }}
-          >
-            <input
-              type="text"
-              placeholder="🔍 Cari pengguna..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--color_font_main_muted)",
-                background: "var(--card_bg)",
-                color: "var(--color_font_main)",
-                minWidth: 220,
-              }}
-            />
+          <div className={styles.filterBar}>
+            <div className={styles.searchWrap}>
+              <span className={styles.searchIcon} aria-hidden>
+                🔍
+              </span>
+              <input
+                type="text"
+                className={styles.searchInput}
+                placeholder="Cari pengguna..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <select
+              className={styles.select}
               value={divisionFilter}
               onChange={(e) => setDivisionFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--color_font_main_muted)",
-                background: "var(--card_bg)",
-                color: "var(--color_font_main)",
-              }}
             >
               {DIVISI_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
             <select
+              className={styles.select}
               value={fieldFilter}
               onChange={(e) => setFieldFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 8,
-                border: "1px solid var(--color_font_main_muted)",
-                background: "var(--card_bg)",
-                color: "var(--color_font_main)",
-              }}
             >
               {FIELD_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
 
-          <div style={{ marginBottom: 8, color: "var(--color_font_main_muted)", fontSize: 14 }}>
-            {filteredUsers.length === 0
-              ? "Menampilkan 0 data"
-              : `Menampilkan ${startDisplay}-${endDisplay} dari ${filteredUsers.length} pengguna`}
+          <div className={styles.summary}>
+            <span className={styles.summaryLabel}>Total: {filteredUsers.length} pengguna</span>
+            <span className={`${styles.badge} ${styles.badgeKaryawan}`}>
+              Karyawan: {karyawanUsers.length}
+            </span>
+            <span className={`${styles.badge} ${styles.badgePu}`}>
+              PU: {puUsers.length}
+            </span>
+            <span className={`${styles.badge} ${styles.badgeWp}`}>
+              WP: {wpUsers.length}
+            </span>
           </div>
 
-          <div
-            style={{
-              overflowX: "auto",
-              background: "#1b263b",
-              borderRadius: 8,
-              border: "1px solid rgba(65,90,119,0.3)",
-            }}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.5)" }}>
-                  <th style={thStyle}>User ID</th>
-                  <th style={thStyle}>Divisi</th>
-                  <th style={thStyle}>Nama</th>
-                  <th style={thStyle}>Email</th>
-                  <th style={thStyle}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ ...tdStyle, textAlign: "center", padding: 24 }}>
-                      Tidak ada data yang ditemukan
-                    </td>
-                  </tr>
-                ) : (
-                  pageUsers.map((u) => (
-                    <tr key={u.id} style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                      <td style={tdStyle}>{u.userid}</td>
-                      <td style={tdStyle}>{u.divisi}</td>
-                      <td style={tdStyle}>{u.nama}</td>
-                      <td style={tdStyle}>{u.email}</td>
-                      <td style={tdStyle}>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(u)}
-                          style={{ ...btnAksi, marginRight: 8 }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirm({ userid: u.userid, nama: u.nama })}
-                          style={{ ...btnAksi, background: "#dc2626" }}
-                        >
-                          Hapus
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 && (
-            <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 12 }}>
-              <button type="button" disabled={page === 1} onClick={() => setPage(1)} style={pageBtnStyle}>«</button>
-              <button type="button" disabled={page === 1} onClick={() => setPage((p) => p - 1)} style={pageBtnStyle}>‹</button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => Math.abs(p - page) <= 2)
-                .map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPage(p)}
-                    style={{ ...pageBtnStyle, ...(p === page ? { background: "var(--accent)", color: "#fff" } : {}) }}
-                  >
-                    {p}
-                  </button>
-                ))}
-              <button type="button" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} style={pageBtnStyle}>›</button>
-              <button type="button" disabled={page === totalPages} onClick={() => setPage(totalPages)} style={pageBtnStyle}>»</button>
+          <div className={styles.tablesGrid}>
+            <div className={styles.tableCard}>
+              <div
+                className={`${styles.tableCardHeader} ${styles.tableCardHeaderKaryawan}`}
+              >
+                Verse Karyawan ({karyawanUsers.length})
+              </div>
+              <DataTable
+                rows={pageKaryawanRows}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+              />
+              <Pagination
+                currentPage={pageKaryawan}
+                totalPages={totalPagesK}
+                onPage={setPageKaryawan}
+              />
             </div>
-          )}
+            <div className={styles.tableCard}>
+              <div
+                className={`${styles.tableCardHeader} ${styles.tableCardHeaderPu}`}
+              >
+                Verse PU ({puUsers.length})
+              </div>
+              <DataTable
+                rows={pagePuRows}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+              />
+              <Pagination
+                currentPage={pagePu}
+                totalPages={totalPagesPu}
+                onPage={setPagePu}
+              />
+            </div>
+          </div>
+
+          <div className={styles.tableCard}>
+            <div
+              className={`${styles.tableCardHeader} ${styles.tableCardHeaderWp}`}
+            >
+              Verse Wajib Pajak (WP) ({wpUsers.length})
+            </div>
+            <DataTable
+              rows={pageWpRows}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+            />
+            <Pagination
+              currentPage={pageWp}
+              totalPages={totalPagesWp}
+              onPage={setPageWp}
+            />
+          </div>
         </>
       )}
 
-      {/* Edit Overlay */}
-      {editOverlayOpen && editingUser && (() => {
-        const isPU = ["PPAT", "PPATS"].includes(editingUser.divisi ?? "");
-        const isPenelitiValidasi = (editingUser.divisi ?? "").toLowerCase() === "peneliti validasi";
-        return (
+      {/* Edit Modal */}
+      {editOverlayOpen && editingUser && (
         <div
+          className={styles.overlay}
           role="dialog"
           aria-modal
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
+          aria-labelledby="edit-modal-title"
           onClick={(e) => e.target === e.currentTarget && closeEdit()}
         >
-          <div
-            style={{
-              background: "var(--card_bg)",
-              borderRadius: 12,
-              padding: 24,
-              width: "min(90vw, 720px)",
-              maxWidth: 720,
-              maxHeight: "85vh",
-              overflowY: "auto",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 20,
-            }}
-          >
-            <div style={{ gridColumn: "1 / -1" }}>
-              <h3 style={{ color: "var(--color_font_main)", margin: "0 0 4px" }}>
-                Edit Pengguna: {editingUser.userid} ({isPU ? "PU" : "Karyawan"})
-              </h3>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div>
-                <label style={labelStyle}>Nama</label>
-                <input type="text" value={editForm.nama} onChange={(e) => setEditForm((f) => ({ ...f, nama: e.target.value }))} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Telepon</label>
-                <input type="text" value={editForm.telepon} onChange={(e) => setEditForm((f) => ({ ...f, telepon: e.target.value }))} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Username</label>
-                <input type="text" value={editForm.username} onChange={(e) => setEditForm((f) => ({ ...f, username: e.target.value }))} style={inputStyle} />
-              </div>
-              {!isPU && (
-                <div>
-                  <label style={labelStyle}>NIP</label>
-                  <input type="text" value={editForm.nip} onChange={(e) => setEditForm((f) => ({ ...f, nip: e.target.value }))} style={inputStyle} />
-                </div>
-              )}
-              {!isPU && isPenelitiValidasi && (
-                <div>
-                  <label style={labelStyle}>Special Parafv</label>
-                  <input type="text" value={editForm.special_parafv} onChange={(e) => setEditForm((f) => ({ ...f, special_parafv: e.target.value }))} style={inputStyle} />
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {isPU && (
+          <div className={styles.modal}>
+            {(() => {
+              const isPU = ["PPAT", "PPATS"].includes(
+                editingUser.divisi ?? ""
+              );
+              const isPenelitiValidasi =
+                (editingUser.divisi ?? "").toLowerCase() === "peneliti validasi";
+              return (
                 <>
-                  <div>
-                    <label style={labelStyle}>Status PPAT</label>
-                    <select value={editForm.status_ppat} onChange={(e) => setEditForm((f) => ({ ...f, status_ppat: e.target.value }))} style={{ ...inputStyle, width: "100%" }}>
-                      <option value="">—</option>
-                      <option value="aktif">aktif</option>
-                      <option value="non-aktif">non-aktif</option>
-                      <option value="meninggal">meninggal</option>
-                      <option value="Pindah Kerja">Pindah Kerja</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>PPAT Khusus</label>
-                    <input type="text" value={editForm.ppat_khusus} onChange={(e) => setEditForm((f) => ({ ...f, ppat_khusus: e.target.value }))} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Special Field</label>
-                    <input type="text" value={editForm.special_field} onChange={(e) => setEditForm((f) => ({ ...f, special_field: e.target.value }))} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Pejabat Umum</label>
-                    <input type="text" value={editForm.pejabat_umum} onChange={(e) => setEditForm((f) => ({ ...f, pejabat_umum: e.target.value }))} style={inputStyle} />
+                  <h2 id="edit-modal-title" className={styles.modalTitle}>
+                    Edit Pengguna: {editingUser.userid} ({isPU ? "PU" : "Karyawan"})
+                  </h2>
+                  <div className={styles.modalForm}>
+                    <div className={styles.modalFormCol}>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Nama</label>
+                        <input
+                          type="text"
+                          className={styles.fieldInput}
+                          value={editForm.nama}
+                          onChange={(e) =>
+                            setEditForm((f) => ({ ...f, nama: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Telepon</label>
+                        <input
+                          type="text"
+                          className={styles.fieldInput}
+                          value={editForm.telepon}
+                          onChange={(e) =>
+                            setEditForm((f) => ({
+                              ...f,
+                              telepon: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Username</label>
+                        <input
+                          type="text"
+                          className={styles.fieldInput}
+                          value={editForm.username}
+                          onChange={(e) =>
+                            setEditForm((f) => ({
+                              ...f,
+                              username: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      {!isPU && (
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>NIP</label>
+                          <input
+                            type="text"
+                            className={styles.fieldInput}
+                            value={editForm.nip}
+                            onChange={(e) =>
+                              setEditForm((f) => ({ ...f, nip: e.target.value }))
+                            }
+                          />
+                        </div>
+                      )}
+                      {!isPU && isPenelitiValidasi && (
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>
+                            Special Parafv
+                          </label>
+                          <input
+                            type="text"
+                            className={styles.fieldInput}
+                            value={editForm.special_parafv}
+                            onChange={(e) =>
+                              setEditForm((f) => ({
+                                ...f,
+                                special_parafv: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.modalFormCol}>
+                      {isPU && (
+                        <>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              Status PPAT
+                            </label>
+                            <select
+                              className={styles.fieldInput}
+                              value={editForm.status_ppat}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  status_ppat: e.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">—</option>
+                              <option value="aktif">aktif</option>
+                              <option value="non-aktif">non-aktif</option>
+                              <option value="meninggal">meninggal</option>
+                              <option value="Pindah Kerja">Pindah Kerja</option>
+                            </select>
+                          </div>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              PPAT Khusus
+                            </label>
+                            <input
+                              type="text"
+                              className={styles.fieldInput}
+                              value={editForm.ppat_khusus}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  ppat_khusus: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              Special Field
+                            </label>
+                            <input
+                              type="text"
+                              className={styles.fieldInput}
+                              value={editForm.special_field}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  special_field: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className={styles.field}>
+                            <label className={styles.fieldLabel}>
+                              Pejabat Umum
+                            </label>
+                            <input
+                              type="text"
+                              className={styles.fieldInput}
+                              value={editForm.pejabat_umum}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  pejabat_umum: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className={styles.modalActions}>
+                      <button
+                        type="button"
+                        className={styles.btnSecondary}
+                        onClick={closeEdit}
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.btnPrimary}
+                        onClick={handleSaveEdit}
+                        disabled={savingEdit}
+                      >
+                        {savingEdit ? "Menyimpan..." : "Simpan"}
+                      </button>
+                    </div>
                   </div>
                 </>
-              )}
-            </div>
-
-            <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-              <button type="button" onClick={closeEdit} style={btnSecondary}>Batal</button>
-              <button type="button" onClick={handleSaveEdit} disabled={savingEdit} style={btnPrimary}>
-                {savingEdit ? "Menyimpan..." : "Simpan"}
-              </button>
-            </div>
+              );
+            })()}
           </div>
         </div>
-        );
-      })()}
+      )}
 
-      {/* Delete Confirmation */}
+      {/* Delete Modal */}
       {deleteConfirm && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
+          className={styles.overlay}
+          role="dialog"
+          aria-modal
+          aria-labelledby="delete-modal-title"
+          onClick={(e) => e.target === e.currentTarget && setDeleteConfirm(null)}
         >
-          <div
-            style={{
-              background: "var(--card_bg)",
-              borderRadius: 12,
-              padding: 24,
-              maxWidth: 400,
-            }}
-          >
-            <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px" }}>Konfirmasi Hapus</h3>
-            <p style={{ color: "var(--color_font_main_muted)", margin: "0 0 16px" }}>
-              Anda yakin ingin menghapus {deleteConfirm.nama} ({deleteConfirm.userid})?
+          <div className={`${styles.modal} ${styles.deleteModal}`}>
+            <h2 id="delete-modal-title" className={styles.modalTitle}>
+              Konfirmasi Hapus
+            </h2>
+            <p className={styles.deleteModalText}>
+              Anda yakin ingin menghapus{" "}
+              <strong>{deleteConfirm.nama}</strong> ({deleteConfirm.userid})?
             </p>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => setDeleteConfirm(null)} style={btnSecondary}>Batal</button>
-              <button type="button" onClick={handleDelete} style={{ ...btnPrimary, background: "#dc2626" }}>Hapus</button>
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className={`${styles.btnPrimary} ${styles.btnDanger}`}
+                onClick={confirmDelete}
+              >
+                Hapus
+              </button>
             </div>
           </div>
         </div>
@@ -486,62 +715,3 @@ export default function AdminDataUserCompletePage() {
     </div>
   );
 }
-
-const thStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  textAlign: "left",
-  color: "rgba(255,255,255,0.9)",
-  fontWeight: 600,
-};
-const tdStyle: React.CSSProperties = {
-  padding: "10px 12px",
-  color: "rgba(255,255,255,0.85)",
-};
-const pageBtnStyle: React.CSSProperties = {
-  minWidth: 34,
-  height: 34,
-  borderRadius: 8,
-  border: "1px solid var(--color_font_main_muted)",
-  background: "var(--card_bg)",
-  color: "var(--color_font_main)",
-  cursor: "pointer",
-};
-const btnAksi: React.CSSProperties = {
-  padding: "4px 10px",
-  background: "#3b82f6",
-  color: "#fff",
-  border: "none",
-  borderRadius: 6,
-  cursor: "pointer",
-  fontSize: 13,
-};
-const inputStyle: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 8,
-  border: "1px solid var(--color_font_main_muted)",
-  background: "var(--card_bg)",
-  color: "var(--color_font_main)",
-  width: "100%",
-};
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: 4,
-  color: "var(--color_font_main)",
-  fontSize: 14,
-};
-const btnPrimary: React.CSSProperties = {
-  padding: "8px 16px",
-  background: "var(--accent)",
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
-};
-const btnSecondary: React.CSSProperties = {
-  padding: "8px 16px",
-  background: "transparent",
-  color: "var(--color_font_main)",
-  border: "1px solid var(--color_font_main_muted)",
-  borderRadius: 8,
-  cursor: "pointer",
-};

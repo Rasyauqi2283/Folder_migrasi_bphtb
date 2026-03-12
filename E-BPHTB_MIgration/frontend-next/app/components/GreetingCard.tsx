@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import styles from "./GreetingCard.module.css";
 
 export interface GreetingCardProps {
   /** Nama user untuk teks "Selamat Datang, {nama}" */
@@ -31,93 +32,35 @@ export default function GreetingCard({
   const svgSrc = isPerempuan ? SVG_PEREMPUAN : SVG_LAKI;
 
   return (
-    <section
-      style={{
-        background: "var(--card_bg)",
-        border: "1px solid var(--card_border)",
-        borderRadius: 12,
-        padding: "24px 28px",
-        marginBottom: 24,
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 28,
-        boxShadow: "var(--card_shadow)",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 28,
-          flex: "1 1 auto",
-          minWidth: 0,
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontSize: "1.35rem",
-              color: "var(--color_font_main)",
-              fontWeight: 600,
-            }}
-          >
+    <section className={styles.card}>
+      <div className={styles.left}>
+        <div className={styles.copy}>
+          <h2 className={styles.title}>
             Selamat Datang,{" "}
-            <span style={{ color: "var(--accent)" }}>{nama}</span>
+            <span className={styles.name}>{nama}</span>
             {pageLabel ? (
               <>
                 {" "}
                 dilaman{" "}
-                <span style={{ color: "var(--color_font_main_muted)" }}>
-                  {pageLabel}
-                </span>
+                <span className={styles.pageLabel}>{pageLabel}</span>
                 .
               </>
             ) : (
               "."
             )}
           </h2>
-          <h5
-            style={{
-              margin: "8px 0 0",
-              fontSize: "0.95rem",
-              color: "var(--color_font_main_muted)",
-              fontWeight: 400,
-            }}
-          >
-            {subtitle}
-          </h5>
+          <h5 className={styles.subtitle}>{subtitle}</h5>
         </div>
-        <div
-          style={{
-            width: 320,
-            height: 280,
-            borderRadius: 12,
-            overflow: "hidden",
-            background: "transparent",
-            flexShrink: 0,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div className={styles.heroWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={svgSrc}
             alt=""
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              objectPosition: "center center",
-            }}
+            className={styles.heroImg}
           />
         </div>
       </div>
-      {rightContent != null ? rightContent : null}
+      {rightContent != null ? <div className={styles.right}>{rightContent}</div> : null}
     </section>
   );
 }

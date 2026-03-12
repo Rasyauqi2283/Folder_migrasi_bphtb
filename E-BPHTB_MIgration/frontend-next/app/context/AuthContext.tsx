@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { getBackendBaseUrl } from "../../lib/api";
 
 export interface AuthUser {
   userid: string;
@@ -45,8 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     if (typeof window === "undefined") return;
+    const base = getBackendBaseUrl();
+    const url = base ? `${base}/api/v1/auth/logout` : "/api/v1/auth/logout";
+    try {
+      await fetch(url, { method: "POST", credentials: "include" });
+    } catch {
+      // ignore; clear local state anyway
+    }
     localStorage.removeItem("userid");
     localStorage.removeItem("divisi");
     localStorage.removeItem("nama");

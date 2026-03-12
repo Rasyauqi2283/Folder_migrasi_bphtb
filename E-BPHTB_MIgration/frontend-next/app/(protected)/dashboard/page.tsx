@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
-import { getLegacyBaseUrl } from "../../lib/api";
+import { getLegacyBaseUrl } from "../../../lib/api";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -14,6 +14,7 @@ export default function DashboardPage() {
         return "/admin";
       case "PPAT":
       case "PPATS":
+      case "Notaris":
         return `${legacyBase}/html_folder/PPAT/ppat-dashboard.html`;
       case "LTB":
         return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;

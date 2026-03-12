@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"time"
 )
 
 // SendOTP sends OTP email to the given address.
@@ -81,6 +82,33 @@ func SendUserIDNotification(to, nama, userid string) error {
 		return sendViaSMTP(to, subject, text, html)
 	}
 	return fmt.Errorf("email tidak dikonfigurasi")
+}
+
+// SendPasswordChangeNotification mengirim pemberitahuan ke email user setelah kata sandi diubah.
+// Format: "Pada tanggal [date], untuk akun dengan userid [x] dan nama [y], diberitahukan bahwa password telah diubah."
+func SendPasswordChangeNotification(to, userid, nama string) error {
+	tanggal := time.Now().Format("02 January 2006, 15:04 WIB")
+	subject := "Pemberitahuan Perubahan Kata Sandi - BAPPENDA BPHTB"
+	text := fmt.Sprintf("Pada tanggal %s, untuk akun dengan userid %s dan nama %s, diberitahukan bahwa password telah diubah.\n\nJika Anda tidak melakukan perubahan ini, segera hubungi administrator.", tanggal, userid, nama)
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+<h2 style="color: #2c3e50;">Pemberitahuan Perubahan Kata Sandi</h2>
+<p>Pada tanggal <strong>%s</strong>, untuk akun dengan:</p>
+<ul>
+<li><strong>User ID:</strong> %s</li>
+<li><strong>Nama:</strong> %s</li>
+</ul>
+<p>diberitahukan bahwa <strong>kata sandi telah diubah</strong>.</p>
+<p style="color: #666; font-size: 0.9em;">Jika Anda tidak melakukan perubahan ini, segera hubungi administrator.</p>
+<p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
+</div>`, tanggal, userid, nama)
+	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
+		return sendViaSendGrid(to, subject, text, html)
+	}
+	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
+		return sendViaSMTP(to, subject, text, html)
+	}
+	log.Printf("[EMAIL] Password change notification skipped (email not configured) to %s", to)
+	return nil
 }
 
 func sendViaSendGrid(to, subject, text, html string) error {

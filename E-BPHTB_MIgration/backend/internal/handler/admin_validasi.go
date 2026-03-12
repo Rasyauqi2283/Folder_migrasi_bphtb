@@ -1,0 +1,232 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"ebphtb/backend/internal/repository"
+)
+
+// AdminValidasiHandler handles /api/admin/validate-qr/* for QR validation.
+type AdminValidasiHandler struct {
+	userRepo *repository.UserRepo
+	valRepo  *repository.ValidationRepo
+}
+
+// NewAdminValidasiHandler creates a handler.
+func NewAdminValidasiHandler(userRepo *repository.UserRepo, valRepo *repository.ValidationRepo) *AdminValidasiHandler {
+	return &AdminValidasiHandler{userRepo: userRepo, valRepo: valRepo}
+}
+
+func (h *AdminValidasiHandler) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
+	userid := adminUseridFromCookie(r)
+	if userid == "" {
+		adminJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"message": "Unauthorized",
+		})
+		return false
+	}
+	if h.userRepo == nil || h.userRepo.Pool() == nil {
+		adminJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"success": false,
+			"message": "Database tidak tersedia",
+		})
+		return false
+	}
+	user, err := h.userRepo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || user == nil {
+		adminJSON(w, http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"message": "Unauthorized",
+		})
+		return false
+	}
+	div := strings.ToLower(strings.TrimSpace(user.Divisi))
+	if div != "administrator" && div != "admin" && div != "a" {
+		adminJSON(w, http.StatusForbidden, map[string]interface{}{
+			"success": false,
+			"message": "Admin access required",
+		})
+		return false
+	}
+	return true
+}
+
+// GetValidateQR handles GET /api/admin/validate-qr/{no_validasi}.
+func (h *AdminValidasiHandler) GetValidateQR(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	noValidasi := strings.TrimSpace(r.PathValue("no_validasi"))
+	if noValidasi == "" {
+		adminJSON(w, http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"message": "Nomor validasi tidak valid",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	v, err := h.valRepo.GetByNoValidasi(ctx, noValidasi)
+	if err != nil {
+		log.Printf("[ADMIN] GetByNoValidasi: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Terjadi kesalahan saat memvalidasi nomor validasi",
+		})
+		return
+	}
+	if v == nil {
+		adminJSON(w, http.StatusNotFound, map[string]interface{}{
+			"success":    false,
+			"message":    "Nomor validasi tidak ditemukan dalam sistem",
+			"no_validasi": noValidasi,
+		})
+		return
+	}
+
+	ptr := func(s *string) interface{} {
+		if s == nil {
+			return nil
+		}
+		return *s
+	}
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Nomor validasi ini asli sesuai ketentuan BAPPENDA Kabupaten Bogor",
+		"validation_info": map[string]interface{}{
+			"no_validasi":              v.NoValidasi,
+			"status":                   ptr(v.Status),
+			"trackstatus":              ptr(v.Trackstatus),
+			"status_tertampil":         ptr(v.StatusTertampil),
+			"keterangan":               ptr(v.Keterangan),
+			"created_at":               v.CreatedAt,
+			"updated_at":               v.UpdatedAt,
+			"bphtb_yangtelah_dibayar":  v.BphtbYangtelahDibayar,
+		},
+		"document_info": map[string]interface{}{
+			"nobooking":              ptr(v.Nobooking),
+			"no_registrasi":          ptr(v.NoRegistrasi),
+			"noppbb":                 ptr(v.Noppbb),
+			"tanggal":                ptr(v.Tanggal),
+			"tahunajb":               ptr(v.Tahunajb),
+			"namawajibpajak":         ptr(v.Namawajibpajak),
+			"namapemilikobjekpajak":  ptr(v.Namapemilikobjekpajak),
+			"npwpwp":                 ptr(v.Npwpwp),
+			"booking_trackstatus":    ptr(v.BookingTrackstatus),
+		},
+		"ppat_info": map[string]interface{}{
+			"nama":          ptr(v.PpatNama),
+			"special_field": ptr(v.PpatSpecialField),
+			"divisi":        ptr(v.PpatDivisi),
+		},
+		"peneliti_info": map[string]interface{}{
+			"nama":          ptr(v.PenelitiNama),
+			"special_parafv": ptr(v.PenelitiSpecialParafv),
+			"nip":           ptr(v.PenelitiNip),
+		},
+		"authenticity": map[string]interface{}{
+			"verified":            true,
+			"verification_method": "QR_CODE_VALIDATION",
+			"institution":         "BAPPENDA Kabupaten Bogor",
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetValidateQRSearch handles GET /api/admin/validate-qr-search.
+func (h *AdminValidasiHandler) GetValidateQRSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	search := strings.TrimSpace(r.URL.Query().Get("q"))
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	res, err := h.valRepo.SearchValidations(ctx, search, status, page, limit)
+	if err != nil {
+		log.Printf("[ADMIN] SearchValidations: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Terjadi kesalahan saat mencari data validasi",
+		})
+		return
+	}
+
+	formatted := make([]map[string]interface{}, 0, len(res.Rows))
+	for _, row := range res.Rows {
+		ptr := func(s *string) interface{} {
+			if s == nil {
+				return nil
+			}
+			return *s
+		}
+		formatted = append(formatted, map[string]interface{}{
+			"no_validasi":      row.NoValidasi,
+			"nobooking":        ptr(row.Nobooking),
+			"namawajibpajak":   ptr(row.Namawajibpajak),
+			"namapemilikobjekpajak": ptr(row.Namapemilikobjekpajak),
+			"status":           ptr(row.Status),
+			"trackstatus":      ptr(row.Trackstatus),
+			"status_tertampil": ptr(row.StatusTertampil),
+			"created_at":       row.CreatedAt,
+			"updated_at":       row.UpdatedAt,
+			"noppbb":           ptr(row.Noppbb),
+			"tanggal":          ptr(row.Tanggal),
+			"tahunajb":         ptr(row.Tahunajb),
+			"ppat_nama":        ptr(row.PpatNama),
+			"ppat_special_field": ptr(row.PpatSpecialField),
+		})
+	}
+
+	totalPages := 1
+	if limit > 0 {
+		totalPages = (res.Total + limit - 1) / limit
+	}
+
+	adminJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data":    formatted,
+		"pagination": map[string]interface{}{
+			"page":       page,
+			"limit":      limit,
+			"total":      res.Total,
+			"total_pages": totalPages,
+		},
+		"search_params": map[string]interface{}{
+			"search": search,
+			"status": status,
+		},
+	})
+}

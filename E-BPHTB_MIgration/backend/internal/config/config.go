@@ -6,15 +6,19 @@ import (
 )
 
 type Config struct {
-	Port           int
-	Env            string
-	APIURL         string
-	DBURL          string
-	LegacyNodeURL  string // Backend Node (verify-otp, resend-otp, login); proxy ke sini
-	TempUploadsDir string // Direktori temp untuk KTP upload
-	EasyOCRURL     string // URL service EasyOCR (endpoint /ocr)
-	EasyOCREnabled bool   // Aktifkan EasyOCR sebagai OCR utama
-	EasyOCRTimeout int    // Timeout request EasyOCR dalam milidetik
+	Port                int
+	Env                 string
+	APIURL              string
+	DBURL               string
+	LegacyNodeURL       string // Backend Node (verify-otp, resend-otp, login); proxy ke sini
+	TempUploadsDir      string // Direktori temp untuk KTP upload
+	ProfilePhotoDir     string // Upload foto profil (path disimpan di DB)
+	ProfileSignatureDir string // Upload paraf/tanda tangan
+	FAQUploadDir        string // Upload gambar untuk rich text FAQ
+	BannerUploadDir    string // Upload gambar banner
+	EasyOCRURL          string // URL service EasyOCR (endpoint /ocr)
+	EasyOCREnabled      bool   // Aktifkan EasyOCR sebagai OCR utama
+	EasyOCRTimeout      int    // Timeout request EasyOCR dalam milidetik
 }
 
 func Load() *Config {
@@ -49,6 +53,22 @@ func Load() *Config {
 	if tempUploadsDir == "" {
 		tempUploadsDir = "./temp_uploads"
 	}
+	profilePhotoDir := os.Getenv("PROFILE_PHOTO_DIR")
+	if profilePhotoDir == "" {
+		profilePhotoDir = "./uploads/profile"
+	}
+	profileSignatureDir := os.Getenv("PROFILE_SIGNATURE_DIR")
+	if profileSignatureDir == "" {
+		profileSignatureDir = "./uploads/signature"
+	}
+	faqUploadDir := os.Getenv("FAQ_UPLOAD_DIR")
+	if faqUploadDir == "" {
+		faqUploadDir = "./uploads/faq"
+	}
+	bannerUploadDir := os.Getenv("BANNER_UPLOAD_DIR")
+	if bannerUploadDir == "" {
+		bannerUploadDir = "./uploads/banners"
+	}
 	easyOCRURL := os.Getenv("EASYOCR_URL")
 	if easyOCRURL == "" {
 		easyOCRURL = "http://localhost:8010/ocr"
@@ -62,15 +82,19 @@ func Load() *Config {
 		}
 	}
 	return &Config{
-		Port:           port,
-		Env:            env,
-		APIURL:         apiURL,
-		DBURL:          dbURL,
-		LegacyNodeURL:  legacyNodeURL,
-		TempUploadsDir: tempUploadsDir,
-		EasyOCRURL:     easyOCRURL,
-		EasyOCREnabled: easyOCREnabled,
-		EasyOCRTimeout: easyOCRTimeout,
+		Port:                port,
+		Env:                 env,
+		APIURL:              apiURL,
+		DBURL:               dbURL,
+		LegacyNodeURL:       legacyNodeURL,
+		TempUploadsDir:      tempUploadsDir,
+		ProfilePhotoDir:     profilePhotoDir,
+		ProfileSignatureDir: profileSignatureDir,
+		FAQUploadDir:        faqUploadDir,
+		BannerUploadDir:     bannerUploadDir,
+		EasyOCRURL:          easyOCRURL,
+		EasyOCREnabled:      easyOCREnabled,
+		EasyOCRTimeout:      easyOCRTimeout,
 	}
 }
 

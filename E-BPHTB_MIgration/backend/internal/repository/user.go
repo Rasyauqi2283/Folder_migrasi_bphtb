@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -467,6 +468,114 @@ func (r *UserRepo) UpdateCompleteUser(ctx context.Context, userid, nama, telepon
 	return err
 }
 
+// PpatUserRow holds PPAT/PPATS user row for admin notification-warehouse.
+type PpatUserRow struct {
+	ID          int
+	Nama        string
+	SpecialField *string
+	Userid      string
+	Divisi      string
+	StatusPpat  *string
+	PpatKhusus  *string
+	Email       string
+	CreatedAt   interface{}
+	UpdatedAt   interface{}
+}
+
+// ListPpatUsers returns PPAT/PPATS users with pagination (matching Node notification_warehouse ppat-users).
+func (r *UserRepo) ListPpatUsers(ctx context.Context, page, limit int, search, status string) ([]PpatUserRow, int, error) {
+	if r.pool == nil {
+		return nil, 0, nil
+	}
+	offset := (page - 1) * limit
+	if offset < 0 {
+		offset = 0
+	}
+	if limit < 1 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	// Base where clause
+	where := `divisi IN ('PPAT', 'PPATS')`
+	params := []interface{}{}
+	idx := 1
+
+	if status != "" {
+		where += ` AND status_ppat = $` + strconv.Itoa(idx)
+		params = append(params, status)
+		idx++
+	}
+	if search != "" {
+		where += ` AND (nama ILIKE $` + strconv.Itoa(idx) + ` OR userid ILIKE $` + strconv.Itoa(idx) + ` OR special_field ILIKE $` + strconv.Itoa(idx) + ` OR email ILIKE $` + strconv.Itoa(idx) + ` OR ppat_khusus::text ILIKE $` + strconv.Itoa(idx) + `)`
+		params = append(params, "%"+search+"%")
+		idx++
+	}
+
+	// Count total
+	var total int
+	countQ := `SELECT COUNT(*) FROM a_2_verified_users WHERE ` + where
+	err := r.pool.QueryRow(ctx, countQ, params...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Fetch page (params + limit + offset)
+	limitParam := idx
+	offsetParam := idx + 1
+	order := ` ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
+	params = append(params, limit, offset)
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, created_at, updated_at
+		 FROM a_2_verified_users WHERE `+where+order,
+		params...,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var list []PpatUserRow
+	for rows.Next() {
+		var u PpatUserRow
+		var createdAt, updatedAt interface{}
+		err := rows.Scan(&u.ID, &u.Nama, &u.SpecialField, &u.Userid, &u.Divisi, &u.StatusPpat, &u.PpatKhusus, &u.Email, &createdAt, &updatedAt)
+		if err != nil {
+			return nil, 0, err
+		}
+		u.CreatedAt = createdAt
+		u.UpdatedAt = updatedAt
+		list = append(list, u)
+	}
+	return list, total, rows.Err()
+}
+
+// GetPpatUserByUserid returns one PPAT/PPATS user by userid or id.
+func (r *UserRepo) GetPpatUserByUserid(ctx context.Context, userid string) (*PpatUserRow, error) {
+	if r.pool == nil || userid == "" {
+		return nil, nil
+	}
+	var u PpatUserRow
+	var createdAt, updatedAt interface{}
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, created_at, updated_at
+		 FROM a_2_verified_users
+		 WHERE (userid = $1 OR id::text = $1) AND divisi IN ('PPAT', 'PPATS')`,
+		userid,
+	).Scan(&u.ID, &u.Nama, &u.SpecialField, &u.Userid, &u.Divisi, &u.StatusPpat, &u.PpatKhusus, &u.Email, &createdAt, &updatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	u.CreatedAt = createdAt
+	u.UpdatedAt = updatedAt
+	return &u, nil
+}
+
 // UpdateStatusPpat updates status_ppat for PPAT/PPATS user.
 func (r *UserRepo) UpdateStatusPpat(ctx context.Context, userid, statusPpat string) error {
 	if r.pool == nil || userid == "" {
@@ -487,6 +596,45 @@ func (r *UserRepo) DeleteCompleteByUserid(ctx context.Context, userid string) er
 	_, err := r.pool.Exec(ctx,
 		`DELETE FROM a_2_verified_users WHERE userid=$1 AND verifiedstatus='complete' AND COALESCE(LOWER(TRIM(divisi)),'') != 'administrator'`,
 		userid,
+	)
+	return err
+}
+
+// UpdateFotoprofil updates foto profil path for user (profile upload).
+func (r *UserRepo) UpdateFotoprofil(ctx context.Context, userid, path string) error {
+	if r.pool == nil || userid == "" {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx,
+		`UPDATE a_2_verified_users SET fotoprofil = $1 WHERE userid = $2 AND verifiedstatus = 'complete'`,
+		path, userid,
+	)
+	return err
+}
+
+// UpdateTandaTangan updates paraf/tanda tangan path and mime for user.
+func (r *UserRepo) UpdateTandaTangan(ctx context.Context, userid, mime, path string) error {
+	if r.pool == nil || userid == "" {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx,
+		`UPDATE a_2_verified_users SET tanda_tangan_mime = $1, tanda_tangan_path = $2 WHERE userid = $3 AND verifiedstatus = 'complete'`,
+		mime, path, userid,
+	)
+	return err
+}
+
+// UpdateProfileEditable updates username, nip, email, telepon for profile edit (by userid).
+func (r *UserRepo) UpdateProfileEditable(ctx context.Context, userid, username, nip, email, telepon string) error {
+	if r.pool == nil || userid == "" {
+		return nil
+	}
+	_, err := r.pool.Exec(ctx,
+		`UPDATE a_2_verified_users SET
+			username = NULLIF(TRIM($1),''), nip = NULLIF(TRIM($2),''),
+			email = NULLIF(TRIM($3),''), telepon = NULLIF(TRIM($4),'')
+		 WHERE userid = $5 AND verifiedstatus = 'complete'`,
+		username, nip, email, telepon, userid,
 	)
 	return err
 }

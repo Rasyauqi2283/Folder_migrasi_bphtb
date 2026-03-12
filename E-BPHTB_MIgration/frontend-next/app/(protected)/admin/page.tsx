@@ -35,11 +35,11 @@ interface ValidationStats {
 
 const CARD_STYLES = {
   wrapper: {
-    background: "var(--card_bg)",
-    border: "1px solid var(--card_border)",
+    background: "var(--card_bg_grey)",
+    border: "1px solid var(--border_color)",
     borderRadius: 12,
     padding: 24,
-    boxShadow: "var(--card_shadow)",
+    boxShadow: "var(--shadow_card)",
     transition: "all 0.3s ease",
     cursor: "pointer",
     position: "relative" as const,
@@ -73,11 +73,11 @@ function CalendarWidget() {
     <div
       style={{
         minWidth: 220,
-        background: "var(--card_bg)",
-        border: "1px solid var(--card_border)",
+        background: "var(--card_bg_grey)",
+        border: "1px solid var(--border_color)",
         borderRadius: 12,
         padding: 16,
-        boxShadow: "var(--card_shadow)",
+        boxShadow: "var(--shadow_card)",
       }}
     >
       <p
@@ -265,7 +265,7 @@ export default function AdminDashboardPage() {
               </div>
               <div style={{ fontSize: 36, fontWeight: 700, margin: "8px 0", color: "var(--color_font_main)" }}>{c.value}</div>
               <div style={{ fontSize: 14, color: "var(--color_font_main_muted)", marginBottom: 12 }}>{c.sub}</div>
-              <div style={{ borderTop: "1px solid var(--card_border)", paddingTop: 16, marginTop: 16 }}>
+              <div style={{ borderTop: "1px solid var(--border_color)", paddingTop: 16, marginTop: 16 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>
                   Lihat Data →
                 </span>
@@ -311,18 +311,18 @@ export default function AdminDashboardPage() {
             Periode 12 bulan • Tahun {new Date().getFullYear()}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 14 }}>
-            <div style={{ background: "rgba(10,19,34,0.06)", border: "1px solid var(--card_border)", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ background: "rgba(10,19,34,0.06)", border: "1px solid var(--border_color)", borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 12, color: "var(--color_font_main_muted)" }}>Total Transaksi</div>
               <div style={{ marginTop: 4, fontSize: 16, fontWeight: 700, color: "var(--color_font_main)" }}>
                 {(taxSummary?.total_transaksi ?? 0).toLocaleString("id-ID")}
               </div>
             </div>
-            <div style={{ background: "rgba(10,19,34,0.06)", border: "1px solid var(--card_border)", borderRadius: 10, padding: "10px 12px" }}>
+            <div style={{ background: "rgba(10,19,34,0.06)", border: "1px solid var(--border_color)", borderRadius: 10, padding: "10px 12px" }}>
               <div style={{ fontSize: 12, color: "var(--color_font_main_muted)" }}>Keterangan</div>
               <div style={{ marginTop: 4, fontSize: 14, fontWeight: 600, color: "var(--color_font_main)" }}>Ringkasan dari Pemutakhiran PPAT</div>
             </div>
           </div>
-          <div style={{ borderTop: "1px solid var(--card_border)", paddingTop: 16, marginTop: 16 }}>
+          <div style={{ borderTop: "1px solid var(--border_color)", paddingTop: 16, marginTop: 16 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>Lihat Detail →</span>
           </div>
         </Link>
@@ -331,14 +331,14 @@ export default function AdminDashboardPage() {
       {/* Statistik Total Permohonan Validasi - chart section */}
       <section
         style={{
-          background: "var(--card_bg)",
-          border: "1px solid var(--card_border)",
+          background: "var(--card_bg_grey)",
+          border: "1px solid var(--border_color)",
           borderRadius: 12,
           padding: 24,
-          boxShadow: "var(--card_shadow)",
+          boxShadow: "var(--shadow_card)",
         }}
       >
-        <h3 style={{ margin: "0 0 20px", color: "var(--color_font_main)", fontSize: 20, fontWeight: 700, borderBottom: "2px solid var(--card_border)", paddingBottom: 12 }}>
+        <h3 style={{ margin: "0 0 20px", color: "var(--color_font_main)", fontSize: 20, fontWeight: 700, borderBottom: "2px solid var(--border_color)", paddingBottom: 12 }}>
           Statistik Total Permohonan Validasi
         </h3>
         {validationStats?.success && validationStats.data ? (
