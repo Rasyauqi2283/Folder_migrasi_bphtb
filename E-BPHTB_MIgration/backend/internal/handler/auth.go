@@ -1614,7 +1614,7 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	foto := user.Fotoprofil
-	username, nip, specialField, specialParafv, pejabatUmum, telepon, gender, tandaTanganMime, tandaTanganPath := "", "", "", "", "", "", "", "", ""
+	username, nip, specialField, specialParafv, pejabatUmum, telepon, gender, tandaTanganMime, tandaTanganPath, alamatPu := "", "", "", "", "", "", "", "", "", ""
 	if user.Username != nil {
 		username = *user.Username
 	}
@@ -1642,6 +1642,9 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	if user.TandaTanganPath != nil {
 		tandaTanganPath = *user.TandaTanganPath
 	}
+	if user.AlamatPu != nil {
+		alamatPu = *user.AlamatPu
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user": map[string]interface{}{
@@ -1657,6 +1660,7 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 			"pejabat_umum":        pejabatUmum,
 			"telepon":             telepon,
 			"gender":              gender,
+			"alamat_pu":           alamatPu,
 			"tanda_tangan_mime":   tandaTanganMime,
 			"tanda_tangan_path":   tandaTanganPath,
 			"statuspengguna":      user.Statuspengguna,
@@ -1731,10 +1735,14 @@ type updatePasswordReq struct {
 }
 
 type updateProfileReq struct {
-	Username string `json:"username"`
-	Nip      string `json:"nip"`
-	Email    string `json:"email"`
-	Telepon  string `json:"telepon"`
+	Username     string  `json:"username"`
+	Nip          string  `json:"nip"`
+	Email        string  `json:"email"`
+	Telepon      string  `json:"telepon"`
+	AlamatPu     *string `json:"alamat_pu,omitempty"`
+	Gender       *string `json:"gender,omitempty"`
+	SpecialField *string `json:"special_field,omitempty"`
+	PejabatUmum  *string `json:"pejabat_umum,omitempty"`
 }
 
 // UpdateProfile handles PUT /api/v1/auth/profile. Body: username, nip, email, telepon (field yang boleh diedit).
@@ -1759,7 +1767,8 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.repo.UpdateProfileEditable(r.Context(), userid,
 		strings.TrimSpace(req.Username), strings.TrimSpace(req.Nip),
-		strings.TrimSpace(req.Email), strings.TrimSpace(req.Telepon))
+		strings.TrimSpace(req.Email), strings.TrimSpace(req.Telepon),
+		req.AlamatPu, req.Gender, req.SpecialField, req.PejabatUmum)
 	if err != nil {
 		log.Printf("[PROFILE] UpdateProfileEditable: %v", err)
 		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan perubahan profil.")

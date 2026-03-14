@@ -1,0 +1,1266 @@
+"use client";
+
+import { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getBackendBaseUrl } from "../../../../../../lib/api";
+
+const today = new Date();
+const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+const defaultTanggal = `${pad(today.getDate())}-${pad(today.getMonth() + 1)}-${today.getFullYear()}`;
+
+const NPOPTKP_MAP: Record<string, number> = {
+  "03": 300_000_000,
+  "04": 400_000_000,
+  "05": 400_000_000,
+  "24": 300_000_000,
+  "30": 300_000_000,
+  "28": 40_000_000,
+  "29": 49_000_000,
+  "34": 0,
+};
+
+/** 40 Kecamatan di Kabupaten Bogor (sumber: denah_kabupatenbogor.md) */
+const KECAMATAN_OBJEK_LIST = [
+  "Babakan Madang", "Bojonggede", "Caringin", "Cariu", "Ciampea", "Ciawi", "Cibinong", "Cibungbulang",
+  "Cigombong", "Cigudeg", "Cijeruk", "Cileungsi", "Ciomas", "Cisarua", "Ciseeng", "Citeureup",
+  "Dramaga", "Gunung Putri", "Gunung Sindur", "Jasinga", "Jonggol", "Kemang", "Klapanunggal",
+  "Leuwiliang", "Leuwisadeng", "Megamendung", "Nanggung", "Pamijahan", "Parung Panjang", "Parung",
+  "Ranca Bungur", "Rumpin", "Sukajaya", "Sukamakmur", "Sukaraja", "Tajur Halang", "Tamansari",
+  "Tanjungsari", "Tenjo", "Tenjolaya",
+];
+
+/** Kelurahan/Desa per Kecamatan. label = tampilan di UI (Kel./Desa), value = yang disimpan ke DB (tanpa prefix) */
+type KelurahanOption = { label: string; value: string };
+
+const KECAMATAN_KELURAHAN: Record<string, KelurahanOption[]> = {
+  "Cibinong": [
+    "Cibinong", "Cirimekar", "Ciriung", "Harapan Jaya", "Karadenan", "Nanggewer", "Nanggewer Mekar",
+    "Pabuaran", "Pabuaran Mekar", "Pakansari", "Pondok Rajeg", "Sukahati", "Tengah",
+  ].map((n) => ({ label: `Kel. ${n}`, value: n })),
+  "Gunung Putri": [
+    "Bojong Kulur", "Bojong Nangka", "Ciangsana", "Cicadas", "Cikeas Udik", "Gunung Putri",
+    "Karanggan", "Nagrak", "Putri Tunggal", "Tlajung Udik", "Wanaherang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Bojonggede": [
+    { label: "Kel. Pabuaran", value: "Pabuaran" },
+    { label: "Desa Bojong Baru", value: "Bojong Baru" },
+    { label: "Desa Bojonggede", value: "Bojonggede" },
+    { label: "Desa Cimanggis", value: "Cimanggis" },
+    { label: "Desa Kedung Waringin", value: "Kedung Waringin" },
+    { label: "Desa Ragajaya", value: "Ragajaya" },
+    { label: "Desa Rawa Panjang", value: "Rawa Panjang" },
+    { label: "Desa Susukan", value: "Susukan" },
+    { label: "Desa Waringin Jaya", value: "Waringin Jaya" },
+  ],
+  "Cileungsi": [
+    "Cileungsi", "Cileungsi Kidul", "Cipenjo", "Dayeuh", "Gandoang", "Jatisari", "Limus Nunggal",
+    "Mampir", "Mekarsari", "Pasir Angin", "Setu Sari", "Sodong",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Babakan Madang": [
+    "Babakan Madang", "Bojong Koneng", "Cijayanti", "Cipambuan", "Citaringgul", "Kadumangu",
+    "Karang Tengah", "Sentul", "Sumur Batu",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Ciawi": [
+    "Banjar Wangi", "Banjar Waru", "Bendungan", "Bitung Sari", "Bojong Murni", "Ciawi", "Cibedug",
+    "Cileungsi", "Citapen", "Jambu Luwuk", "Pandansari", "Ratujaya", "Teluk Pinang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Citeureup": [
+    { label: "Kel. Citeureup", value: "Citeureup" },
+    { label: "Kel. Puspanegara", value: "Puspanegara" },
+    { label: "Desa Karang Asem Timur", value: "Karang Asem Timur" },
+    { label: "Desa Gunungsari", value: "Gunungsari" },
+    { label: "Desa Hambalang", value: "Hambalang" },
+    { label: "Desa Leuwinutug", value: "Leuwinutug" },
+    { label: "Desa Pasir Mukti", value: "Pasir Mukti" },
+    { label: "Desa Puspasari", value: "Puspasari" },
+    { label: "Desa Sanja", value: "Sanja" },
+    { label: "Desa Sukahati", value: "Sukahati" },
+    { label: "Desa Tajur", value: "Tajur" },
+    { label: "Desa Tangkil", value: "Tangkil" },
+    { label: "Desa Tarikolot", value: "Tarikolot" },
+    { label: "Desa Lulut", value: "Lulut" },
+  ],
+  "Ciomas": [
+    { label: "Kel. Padasuka", value: "Padasuka" },
+    { label: "Desa Ciomas", value: "Ciomas" },
+    { label: "Desa Ciomas Rahayu", value: "Ciomas Rahayu" },
+    { label: "Desa Kota Batu", value: "Kota Batu" },
+    { label: "Desa Laladon", value: "Laladon" },
+    { label: "Desa Mekarjaya", value: "Mekarjaya" },
+    { label: "Desa Pagelaran", value: "Pagelaran" },
+    { label: "Desa Parakan", value: "Parakan" },
+    { label: "Desa Sukaharja", value: "Sukaharja" },
+    { label: "Desa Sukamakmur", value: "Sukamakmur" },
+    { label: "Desa Sirnagalih", value: "Sirnagalih" },
+  ],
+  "Parung": [
+    "Bojong Indah", "Bojong Sempu", "Cogreg", "Iwul", "Jabon Mekar", "Pamasari / Pemagarsari",
+    "Parung", "Waru", "Warujaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cisarua": [
+    { label: "Kel. Cisarua", value: "Cisarua" },
+    { label: "Desa Batulayang", value: "Batulayang" },
+    { label: "Desa Cibeureum", value: "Cibeureum" },
+    { label: "Desa Cilember", value: "Cilember" },
+    { label: "Desa Citeko", value: "Citeko" },
+    { label: "Desa Jogjogan", value: "Jogjogan" },
+    { label: "Desa Kopo", value: "Kopo" },
+    { label: "Desa Leuwimalang", value: "Leuwimalang" },
+    { label: "Desa Tugu Selatan", value: "Tugu Selatan" },
+    { label: "Desa Tugu Utara", value: "Tugu Utara" },
+  ],
+  // Kecamatan 11–40 (denah_kabupatenbogor.md)
+  "Megamendung": [
+    "Gadog", "Sukakarya", "Sukamahi", "Sukamaju", "Sukamanah", "Megamendung", "Sukagalih", "Sukaresmi",
+    "Cipayung Girang", "Cipayung Datar", "Sukamulya", "Kuta",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Caringin": [
+    "Caringin", "Cinagara", "Muara Jaya", "Pasir Muncang", "Ciherang Pondok", "Ciderum", "Ciengang",
+    "Tangkil", "Cimande", "Cimande Hilir", "Lemah Duhur", "Pancawati",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Dramaga": [
+    "Babakan", "Ciherang", "Dramaga", "Neglasari", "Petir", "Purwasari", "Sukadamai", "Sukawening", "Sinarsari",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Tamansari": [
+    "Pasireurih", "Sirnagalih", "Sukajadi", "Sukajaya", "Sukaluyu", "Sukamantri", "Sukaresmi", "Tamansari",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Ciampea": [
+    "Benteng", "Bojong Jengkol", "Bojong Rangkas", "Ciampea", "Ciampea Udik", "Cibadak", "Cibanteng", "Cibuntu",
+    "Cicadas", "Cihideung Ilir", "Cihideung Udik", "Cinangka", "Tegal Waru",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Ciseeng": [
+    "Babakan", "Cibeuteung Muara", "Cibeuteung Udik", "Cibentang", "Ciseeng", "Karihkil", "Kuripan",
+    "Parigi Mekar", "Putat Nutug", "Sanja",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Gunung Sindur": [
+    "Cibadung", "Cidokom", "Curug", "Gunungsindur", "Jampang", "Pabuaran", "Padurenan", "Pengasinan", "Rawakalong",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Parung Panjang": [
+    "Cibunar", "Cikuda", "Dago", "Gintung Cilejet", "Gorowong", "Jagabita", "Jagabaya", "Kabasiran",
+    "Lumpang", "Parungpanjang", "Pingku",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Kemang": [
+    "Atang Senjaya", "Bojong", "Jampang", "Kemang", "Pabuaran", "Parakan Jaya", "Pondok Udik", "Semplak Barat", "Tegal",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Ranca Bungur": [
+    "Bantarjaya", "Bantarsari", "Candali", "Mekarsari", "Pasirgaok", "Rancabungur", "Cimulang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Leuwiliang": [
+    "Barengkok", "Cibeber I", "Cibeber II", "Karacak", "Karyasari", "Leuwiliang", "Leuwimekar", "Pabuarasari", "Puraseda", "Karehkel",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Leuwisadeng": [
+    "Babakan Sadeng", "Kalong I", "Kalong II", "Leuwisadeng", "Sadeng", "Sadengkolot", "Sibanteng", "Wangun Jaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Pamijahan": [
+    "Ciasihan", "Ciasmara", "Cibening", "Cibitung Kulon", "Cibitung Wetan", "Cibunian", "Cimayang",
+    "Gunung Bunder I", "Gunung Bunder II", "Gunung Menyan", "Pamijahan", "Pasir Badak", "Pasir Reungit", "Purwabakti", "Tukuh Jaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Tenjolaya": [
+    "Cibitung Tengah", "Cinangneng", "Gunung Mulya", "Situ Daun", "Tapos I", "Tapos II", "Tenjolaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Jasinga": [
+    "Bagoang", "Barengkok", "Cikopomayak", "Curug", "Jasinga", "Jugala Jaya", "Kalongsawah", "Koleang",
+    "Neglasari", "Pamagersari", "Pangaur", "Pangradin", "Sipak", "Setu", "Tegal Wangi", "Wirajaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cigudeg": [
+    "Argapura", "Bangunjaya", "Batu Jajar", "Bunar", "Cigudeg", "Cintamanik", "Mekarjaya", "Rengasjajar",
+    "Sukamaju", "Sukaraksa", "Sukamulya", "Tegallega", "Wargajaya", "Banyuresmi", "Banyuwangi",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Sukajaya": [
+    "Cileuksa", "Cisarua", "Harkatjaya", "Kiarapandak", "Kiarasari", "Pasir Madang", "Sipayung",
+    "Sukajaya", "Sukamulya", "Uranjaya", "Jaya Raharja",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Nanggung": [
+    "Bantarkaret", "Batu Tulis", "Cisarua", "Curug Bitung", "Hambaro", "Kalong Liud", "Malasari",
+    "Nanggung", "Pangkal Jaya", "Parakan Muncang", "Sukaluyu",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Rumpin": [
+    "Cipinang", "Cibodas", "Gobang", "Kampung Sawah", "Kertajaya", "Leuwibatu", "Mekar Sari", "Rabak",
+    "Rumpin", "Sukamulya", "Sukasari", "Taman Sari", "Cidokom", "Mekar Jaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Klapanunggal": [
+    "Bojong", "Cikahuripan", "Klapanunggal", "Leuwikaret", "Ligarmukti", "Lulut", "Nambo", "Bantar Jati", "Kembang Kuning",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Jonggol": [
+    "Balekambang", "Bendungan", "Cibodas", "Jonggol", "Singajaya", "Sirnagalih", "Sukagalih", "Sukajaya",
+    "Sukamanah", "Sukamaju", "Sukasirna", "Weninggalih", "Sukamulya", "Singasari",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cariu": [
+    "Babakan Raden", "Bantar Kuning", "Cariu", "Cibatutiga", "Cikutamahi", "Karya Mekar", "Kuta Mekar", "Mekarwangi", "Sukajadi", "Tegal Panjang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Sukamakmur": [
+    "Cibadak", "Pabuaran", "Sirnajaya", "Sukadamai", "Sukaharja", "Sukamakmur", "Sukamulya", "Sukawangi", "Wargajaya", "Sirnamulya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Tanjungsari": [
+    "Antajaya", "Buanajaya", "Cibadak", "Pasir Tanjung", "Selawangi", "Sirnarasa", "Sirnasari", "Sukarasa", "Tanjungrasa", "Tanjungsari",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Sukaraja": [
+    "Cadas Ngampar", "Cibanon", "Cikeas", "Cilebut Barat", "Cilebut Timur", "Ciluar", "Cimandala",
+    "Nagrak", "Pasir Jambu", "Pasir Laja", "Sukaraja", "Sukatani", "Gunung Geulis",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Tajur Halang": [
+    "Citayam", "Kalisuren", "Sasak Panjang", "Sukmajaya", "Tajurhalang", "Tonjong", "Nanggerang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cigombong": [
+    "Ciadeg", "Ciburayut", "Ciburuy", "Cigombong", "Cipelang", "Pasirjaya", "Srogol", "Tugujaya", "Watesjaya",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Tenjo": [
+    "Batok", "Bojong", "Cilaku", "Ciomas", "Singabangsa", "Singasari", "Tenjo", "Babakan",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cibungbulang": [
+    "Cemplang", "Ciaruteun Ilir", "Ciaruteun Udik", "Cibatok I", "Cibatok II", "Cibungbulang",
+    "Cimanggu I", "Cimanggu II", "Dukuh", "Galuga", "Girimulya", "Leuweung Kolot", "Situ Ilir", "Situ Udik", "Sukamaju",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+  "Cijeruk": [
+    "Cibalung", "Cijeruk", "Cipicung", "Palasari", "Sukaharja", "Tajur Halang", "Tanjungsari", "Warung Menteng", "Cipelang",
+  ].map((n) => ({ label: `Desa ${n}`, value: n })),
+};
+
+const JENIS_PEROLEHAN = [
+  { value: "", label: "-- Pilih Jenis Perolehan Hak --" },
+  { value: "01", label: "01 - Jual Beli" },
+  { value: "02", label: "02 - Tukar Menukar" },
+  { value: "03", label: "03 - Hibah" },
+  { value: "04", label: "04 - Hibah Wasiat" },
+  { value: "05", label: "05 - Waris" },
+  { value: "06", label: "06 - Pemasukan dalam Perseroan / Badan Hukum" },
+  { value: "07", label: "07 - Pemisahan Hak yang Mengakibatkan Peralihan" },
+  { value: "08", label: "08 - Penunjukan Pembeli dalam Lelang" },
+  { value: "09", label: "09 - Pelaksanaan Putusan Hakim" },
+  { value: "10", label: "10 - Penggabungan Usaha" },
+  { value: "11", label: "11 - Peleburan Usaha" },
+  { value: "12", label: "12 - Pemekaran Usaha" },
+  { value: "13", label: "13 - Hadiah" },
+  { value: "14", label: "14 - Perolehan Rumah Bersubsidi" },
+  { value: "15", label: "15 - Perolehan Rumah Subsidi SE-26/2009" },
+  { value: "21", label: "21 - Pemberian Hak Baru (Pelepasan Hak)" },
+  { value: "22", label: "22 - Pemberian Hak Baru (di luar Pelepasan Hak)" },
+  { value: "23", label: "23 - Jual Beli di bawah 2011" },
+  { value: "24", label: "24 - Waris di bawah tahun 2011" },
+  { value: "25", label: "25 - Perumahan Bersubsidi di bawah 2011" },
+  { value: "26", label: "26 - Perumahan Bersubsidi 50 juta" },
+  { value: "27", label: "27 - Jual Beli 1997–2001 September" },
+  { value: "28", label: "28 - NPOPTKP 40 juta" },
+  { value: "29", label: "29 - NPOPTKP 49 juta" },
+  { value: "30", label: "30 - Hibah di bawah tahun 2011" },
+  { value: "31", label: "31 - Pemenang Lelang di bawah tahun 2011" },
+  { value: "32", label: "32 - Subsidi Rumah Sederhana Sehat" },
+  { value: "33", label: "33 - Jual Beli 2001 Oktober s.d. 2005" },
+  { value: "34", label: "34 - Bebas berdasarkan UU No. 28 Tahun 2009" },
+  { value: "35", label: "35 - Perjanjian Pengikatan Jual Beli" },
+];
+
+type CreatePayload = {
+  jenis_wajib_pajak: string;
+  noppbb: string;
+  namawajibpajak: string;
+  alamatwajibpajak: string;
+  namapemilikobjekpajak: string;
+  alamatpemilikobjekpajak: string;
+  tanggal: string;
+  tahunajb: string;
+  kabupatenkotawp: string;
+  kecamatanwp: string;
+  kelurahandesawp: string;
+  rtrwwp: string;
+  npwpwp: string;
+  kodeposwp: string;
+  kabupatenkotaop: string;
+  kecamatanop: string;
+  kelurahandesaop: string;
+  rtrwop: string;
+  npwpop: string;
+  kodeposop: string;
+  trackstatus: string;
+  nilaiPerolehanObjekPajakTidakKenaPajak?: number;
+  bphtb_yangtelah_dibayar?: number;
+  hargatransaksi?: string;
+  letaktanahdanbangunan?: string;
+  rt_rwobjekpajak?: string;
+  kecamatanlp?: string;
+  kelurahandesalp?: string;
+  status_kepemilikan?: string;
+  jenisPerolehan?: string;
+  keterangan?: string;
+  nomor_sertifikat?: string;
+  tanggal_perolehan?: string;
+  tanggal_pembayaran?: string;
+  nomor_bukti_pembayaran?: string;
+  luas_tanah?: number;
+  njop_tanah?: number;
+  luas_bangunan?: number;
+  njop_bangunan?: number;
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border_color)",
+  fontSize: 14,
+  marginTop: 4,
+};
+const labelStyle: React.CSSProperties = { display: "block", marginBottom: 4, fontWeight: 600, fontSize: 14 };
+const sectionStyle: React.CSSProperties = { marginBottom: 24 };
+const rowStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 };
+const judulStyle: React.CSSProperties = { margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "var(--color_font_main)", borderBottom: "2px solid var(--accent)", paddingBottom: 8 };
+const hintStyle: React.CSSProperties = { fontSize: 12, color: "var(--color_font_main_muted)", marginTop: 4 };
+
+function buildNopPbb(d: string[]): string {
+  return `${(d[0] ?? "").padStart(2, "0")}.${(d[1] ?? "").padStart(2, "0")}.${(d[2] ?? "").padStart(3, "0")}.${(d[3] ?? "").padStart(3, "0")}.${(d[4] ?? "").padStart(3, "0")}.${(d[5] ?? "").padStart(4, "0")}.${(d[6] ?? "").padStart(1, "0")}`;
+}
+
+function buildNpwp(d: string[]): string {
+  return `${(d[0] ?? "").padStart(2, "0")}.${(d[1] ?? "").padStart(3, "0")}.${(d[2] ?? "").padStart(3, "0")}.${(d[3] ?? "")}-${(d[4] ?? "").padStart(3, "0")}.${(d[5] ?? "").padStart(3, "0")}`;
+}
+
+/** Format angka ke Rupiah Indonesia (titik sebagai pemisah ribuan) */
+function formatRupiah(n: number | undefined | null): string {
+  if (n == null || isNaN(n)) return "";
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+/** Parse string tampilan rupiah ke angka */
+function parseRupiah(s: string): number {
+  const raw = (s || "").replace(/\./g, "").replace(/\D/g, "");
+  return raw === "" ? 0 : parseInt(raw, 10);
+}
+
+export default function TambahBookingBadanPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [openObjek, setOpenObjek] = useState(true);
+  const [openPerhitungan, setOpenPerhitungan] = useState(false);
+
+  const [tanggal, setTanggal] = useState(defaultTanggal);
+  const [nopDigits, setNopDigits] = useState<string[]>(Array(7).fill(""));
+  const [npwpWpDigits, setNpwpWpDigits] = useState<string[]>(Array(6).fill(""));
+  const [npwpOpDigits, setNpwpOpDigits] = useState<string[]>(Array(6).fill(""));
+  const [jenisPerolehan, setJenisPerolehan] = useState("");
+  const [npoptkp, setNpoptkp] = useState<number>(80_000_000);
+  const [tanggalOleh, setTanggalOleh] = useState({ d: "", m: "", y: "" });
+  const [tanggalBayar, setTanggalBayar] = useState({ d: "", m: "", y: "" });
+
+  const nopRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const npwpWpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const npwpOpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [kecamatanSearch, setKecamatanSearch] = useState("");
+  const [kecamatanDropdownOpen, setKecamatanDropdownOpen] = useState(false);
+  const [kelurahanDropdownOpen, setKelurahanDropdownOpen] = useState(false);
+  const kecamatanDropdownRef = useRef<HTMLDivElement>(null);
+  const kelurahanDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [form, setForm] = useState<Record<string, string | number | undefined>>({
+    namawajibpajak: "",
+    alamatwajibpajak: "",
+    namapemilikobjekpajak: "",
+    alamatpemilikobjekpajak: "",
+    tahunajb: String(today.getFullYear()),
+    kabupatenkotawp: "",
+    kecamatanwp: "",
+    kelurahandesawp: "",
+    rtrwwp: "",
+    kodeposwp: "",
+    kabupatenkotaop: "Kabupaten Bogor",
+    kecamatanop: "",
+    kelurahandesaop: "",
+    rtrwop: "",
+    kodeposop: "",
+    hargatransaksi: "",
+    letaktanahdanbangunan: "",
+    rt_rwobjekpajak: "",
+    kecamatanlp: "",
+    kelurahandesalp: "",
+    status_kepemilikan: "milik_pribadi",
+    jenisPerolehan: "",
+    keterangan: "",
+    nomor_sertifikat: "",
+    nomor_bukti_pembayaran: "",
+    luas_tanah: undefined,
+    njop_tanah: undefined,
+    luas_bangunan: undefined,
+    njop_bangunan: undefined,
+    bphtb_yangtelah_dibayar: undefined,
+  });
+
+  const updateForm = useCallback((key: string, value: string | number | undefined) => {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "kecamatanop") next.kelurahandesaop = "";
+      return next;
+    });
+    setError(null);
+  }, []);
+
+  const filteredKecamatan = KECAMATAN_OBJEK_LIST.filter((k) =>
+    k.toLowerCase().includes((kecamatanSearch || "").toLowerCase().trim())
+  );
+  const kelurahanOptions: KelurahanOption[] = (form.kecamatanop && KECAMATAN_KELURAHAN[form.kecamatanop]) || [];
+  const hasKelurahanData = kelurahanOptions.length > 0;
+  const selectedKelurahanLabel = hasKelurahanData && form.kelurahandesaop
+    ? (kelurahanOptions.find((o) => o.value === form.kelurahandesaop)?.label ?? form.kelurahandesaop)
+    : "";
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (kecamatanDropdownRef.current && !kecamatanDropdownRef.current.contains(target)) setKecamatanDropdownOpen(false);
+      if (kelurahanDropdownRef.current && !kelurahanDropdownRef.current.contains(target)) setKelurahanDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const handleJenisPerolehanChange = useCallback((val: string) => {
+    setJenisPerolehan(val);
+    setNpoptkp(NPOPTKP_MAP[val] ?? 80_000_000);
+    updateForm("jenisPerolehan", val);
+  }, [updateForm]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const noppbb = buildNopPbb(nopDigits);
+    const npwpwp = buildNpwp(npwpWpDigits);
+    const npwpop = buildNpwp(npwpOpDigits);
+
+    const noppbbClean = noppbb.replace(/\./g, "").replace(/-/g, "");
+    if (!noppbbClean || /^0+$/.test(noppbbClean)) {
+      setError("NOP PBB wajib diisi dengan lengkap.");
+      return;
+    }
+    if (!form.namawajibpajak?.toString().trim()) {
+      setError("Nama Wajib Pajak wajib diisi.");
+      return;
+    }
+    if (!form.namapemilikobjekpajak?.toString().trim()) {
+      setError("Nama Pemilik Objek Pajak wajib diisi.");
+      return;
+    }
+
+    const tanggalOlehStr = `${pad(Number(tanggalOleh.d) || 0)}-${pad(Number(tanggalOleh.m) || 0)}-${tanggalOleh.y || "0000"}`;
+    const tanggalBayarStr = `${pad(Number(tanggalBayar.d) || 0)}-${pad(Number(tanggalBayar.m) || 0)}-${tanggalBayar.y || "0000"}`;
+
+    const payload: CreatePayload = {
+      jenis_wajib_pajak: "Badan Usaha",
+      noppbb,
+      namawajibpajak: String(form.namawajibpajak ?? ""),
+      alamatwajibpajak: String(form.alamatwajibpajak ?? ""),
+      namapemilikobjekpajak: String(form.namapemilikobjekpajak ?? ""),
+      alamatpemilikobjekpajak: String(form.alamatpemilikobjekpajak ?? ""),
+      tanggal,
+      tahunajb: String(form.tahunajb ?? ""),
+      kabupatenkotawp: String(form.kabupatenkotawp ?? ""),
+      kecamatanwp: String(form.kecamatanwp ?? ""),
+      kelurahandesawp: String(form.kelurahandesawp ?? ""),
+      rtrwwp: String(form.rtrwwp ?? ""),
+      npwpwp,
+      kodeposwp: String(form.kodeposwp ?? ""),
+      kabupatenkotaop: String(form.kabupatenkotaop ?? ""),
+      kecamatanop: String(form.kecamatanop ?? ""),
+      kelurahandesaop: String(form.kelurahandesaop ?? ""),
+      rtrwop: String(form.rtrwop ?? ""),
+      npwpop,
+      kodeposop: String(form.kodeposop ?? ""),
+      trackstatus: "Draft",
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkp,
+      bphtb_yangtelah_dibayar: form.bphtb_yangtelah_dibayar != null ? Number(form.bphtb_yangtelah_dibayar) : undefined,
+      hargatransaksi: form.hargatransaksi?.toString(),
+      letaktanahdanbangunan: form.letaktanahdanbangunan?.toString(),
+      rt_rwobjekpajak: form.rt_rwobjekpajak?.toString(),
+      kecamatanlp: form.kecamatanlp?.toString(),
+      kelurahandesalp: form.kelurahandesalp?.toString(),
+      status_kepemilikan: form.status_kepemilikan?.toString(),
+      jenisPerolehan: form.jenisPerolehan?.toString(),
+      keterangan: form.keterangan?.toString(),
+      nomor_sertifikat: form.nomor_sertifikat?.toString(),
+      tanggal_perolehan: tanggalOlehStr,
+      tanggal_pembayaran: tanggalBayarStr,
+      nomor_bukti_pembayaran: form.nomor_bukti_pembayaran?.toString(),
+      luas_tanah: form.luas_tanah != null ? Number(form.luas_tanah) : undefined,
+      njop_tanah: form.njop_tanah != null ? Number(form.njop_tanah) : undefined,
+      luas_bangunan: form.luas_bangunan != null ? Number(form.luas_bangunan) : undefined,
+      njop_bangunan: form.njop_bangunan != null ? Number(form.njop_bangunan) : undefined,
+    };
+
+    setLoading(true);
+    try {
+      const base = getBackendBaseUrl();
+      const url = base ? `${base}/api/ppat_create-booking-and-bphtb` : "/api/ppat_create-booking-and-bphtb";
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.message || "Gagal membuat booking.");
+        return;
+      }
+      if (data?.success && data?.nobooking) {
+        setSuccess(`Booking berhasil dibuat. No. Booking: ${data.nobooking}`);
+        setTimeout(() => router.push("/pu/booking-sspd/badan"), 2500);
+      } else {
+        setError(data?.message || "Gagal membuat booking.");
+      }
+    } catch {
+      setError("Network error. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <h1 style={{ margin: "0 0 0.5rem", color: "var(--color_font_main)" }}>Tambah Booking SSPD Badan</h1>
+      <p style={{ margin: 0, color: "var(--color_font_muted)", marginBottom: 24 }}>
+        Isi data lengkap sesuai form. Submit ke API <code>/api/ppat_create-booking-and-bphtb</code>.
+      </p>
+
+      {error && (
+        <div style={{ padding: 12, marginBottom: 16, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>{error}</div>
+      )}
+      {success && (
+        <div style={{ padding: 12, marginBottom: 16, background: "#f0fdf4", color: "#166534", borderRadius: 8 }}>{success}</div>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        style={{ background: "var(--card_bg)", border: "1px solid var(--border_color)", borderRadius: 12, padding: 24 }}
+      >
+        {/* Tanggal & No Booking */}
+        <div style={sectionStyle}>
+          <div style={rowStyle}>
+            <div>
+              <label style={labelStyle}>Tanggal (DD-MM-YYYY)</label>
+              <input
+                style={inputStyle}
+                type="text"
+                value={tanggal}
+                readOnly
+                placeholder="Auto"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>No Booking</label>
+              <input style={inputStyle} type="text" placeholder="Akan tergenerate otomatis" readOnly />
+            </div>
+          </div>
+        </div>
+
+        {/* Pembayar Pajak BPHTB */}
+        <h3 style={judulStyle}>Pembayar Pajak BPHTB</h3>
+        <div style={sectionStyle}>
+          <label style={labelStyle}>NOP PBB</label>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+            {([2, 2, 3, 3, 3, 4, 1] as const).map((len, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <input
+                  ref={(el) => { nopRefs.current[i] = el; }}
+                  style={{ ...inputStyle, width: len === 1 ? 36 : len <= 2 ? 44 : 56, marginTop: 0, textAlign: "center" }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={len}
+                  value={nopDigits[i] ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, len);
+                    setNopDigits((prev) => {
+                      const n = [...prev];
+                      n[i] = v;
+                      return n;
+                    });
+                    if (v.length === len && i < 6) {
+                      nopRefs.current[i + 1]?.focus();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && !nopDigits[i] && i > 0) {
+                      nopRefs.current[i - 1]?.focus();
+                    }
+                  }}
+                  placeholder={"x".repeat(len)}
+                />
+                {i < 6 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
+              </span>
+            ))}
+          </div>
+          <p style={hintStyle}>Format: 32.01.001.001.001.0001.1 — otomatis pindah ke kolom berikutnya</p>
+        </div>
+
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Nama Wajib Pajak</label>
+          <input
+            style={inputStyle}
+            value={form.namawajibpajak ?? ""}
+            onChange={(e) => updateForm("namawajibpajak", e.target.value)}
+            placeholder="Nama wajib pajak"
+            required
+          />
+        </div>
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Alamat Wajib Pajak</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: 60 }}
+            value={form.alamatwajibpajak ?? ""}
+            onChange={(e) => updateForm("alamatwajibpajak", e.target.value)}
+            placeholder="Jl. Contoh No. 123"
+            required
+          />
+        </div>
+        <div style={rowStyle}>
+          <div>
+            <label style={labelStyle}>Kabupaten/Kota WP</label>
+            <input style={inputStyle} value={form.kabupatenkotawp ?? ""} onChange={(e) => updateForm("kabupatenkotawp", e.target.value)} placeholder="Kabupaten Bogor" required />
+          </div>
+          <div>
+            <label style={labelStyle}>Kecamatan WP</label>
+            <input style={inputStyle} value={form.kecamatanwp ?? ""} onChange={(e) => updateForm("kecamatanwp", e.target.value)} required />
+          </div>
+          <div>
+            <label style={labelStyle}>Kelurahan/Desa WP</label>
+            <input style={inputStyle} value={form.kelurahandesawp ?? ""} onChange={(e) => updateForm("kelurahandesawp", e.target.value)} required />
+          </div>
+        </div>
+        <div style={rowStyle}>
+          <div>
+            <label style={labelStyle}>RT/RW WP</label>
+            <input style={inputStyle} value={form.rtrwwp ?? ""} onChange={(e) => updateForm("rtrwwp", e.target.value)} placeholder="001/001" required />
+          </div>
+          <div>
+            <label style={labelStyle}>Tahun AJB</label>
+            <input
+              style={inputStyle}
+              type="number"
+              value={form.tahunajb ?? ""}
+              onChange={(e) => updateForm("tahunajb", e.target.value)}
+              placeholder="2025"
+              maxLength={4}
+              required
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Kode Pos WP</label>
+            <input style={inputStyle} value={form.kodeposwp ?? ""} onChange={(e) => updateForm("kodeposwp", e.target.value)} placeholder="16100" required />
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <label style={labelStyle}>NPWP WP</label>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
+            {([2, 3, 3, 1, 3, 3] as const).map((len, i) => (
+              <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                <input
+                  ref={(el) => { npwpWpRefs.current[i] = el; }}
+                  style={{ ...inputStyle, width: len === 1 ? 36 : 48, marginTop: 0, textAlign: "center" }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={len}
+                  value={npwpWpDigits[i] ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, "").slice(0, len);
+                    setNpwpWpDigits((prev) => {
+                      const n = [...prev];
+                      n[i] = v;
+                      return n;
+                    });
+                    if (v.length === len && i < 5) npwpWpRefs.current[i + 1]?.focus();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && !npwpWpDigits[i] && i > 0) npwpWpRefs.current[i - 1]?.focus();
+                  }}
+                  placeholder={"x".repeat(len)}
+                />
+                {i < 3 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
+                {i === 3 && <span style={{ color: "var(--color_font_main_muted)" }}>-</span>}
+                {i === 4 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
+              </span>
+            ))}
+          </div>
+          <p style={hintStyle}>Format: 00.000.000.0-000.000 — otomatis pindah ke kolom berikutnya</p>
+        </div>
+
+        {/* Pemilik Objek Pajak BPHTB */}
+        <h3 style={judulStyle}>Pemilik Objek Pajak BPHTB</h3>
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Nama Pemilik Objek Pajak</label>
+          <input
+            style={inputStyle}
+            value={form.namapemilikobjekpajak ?? ""}
+            onChange={(e) => updateForm("namapemilikobjekpajak", e.target.value)}
+            placeholder="Nama pemilik objek"
+            required
+          />
+        </div>
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Alamat Pemilik Objek Pajak</label>
+          <textarea
+            style={{ ...inputStyle, minHeight: 60 }}
+            value={form.alamatpemilikobjekpajak ?? ""}
+            onChange={(e) => updateForm("alamatpemilikobjekpajak", e.target.value)}
+            placeholder="Jl. Contoh No. 456"
+            required
+          />
+        </div>
+        <div style={rowStyle}>
+          <div>
+            <label style={labelStyle}>Kabupaten/Kota Objek</label>
+            <input
+              style={{ ...inputStyle, background: "var(--card_bg_grey)", cursor: "default" }}
+              value="Kabupaten Bogor"
+              readOnly
+            />
+          </div>
+          <div ref={kecamatanDropdownRef} style={{ position: "relative" }}>
+            <label style={labelStyle}>Kecamatan Objek</label>
+            <input
+              style={inputStyle}
+              value={kecamatanDropdownOpen ? kecamatanSearch : (form.kecamatanop ?? "")}
+              onChange={(e) => {
+                setKecamatanSearch(e.target.value);
+                if (!kecamatanDropdownOpen) setKecamatanDropdownOpen(true);
+              }}
+              onFocus={() => setKecamatanDropdownOpen(true)}
+              placeholder="Ketik untuk cari (40 kecamatan)"
+              required
+            />
+            {kecamatanDropdownOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  marginTop: 4,
+                  maxHeight: 220,
+                  overflowY: "auto",
+                  background: "var(--card_bg)",
+                  border: "1px solid var(--border_color)",
+                  borderRadius: 8,
+                  boxShadow: "var(--card_shadow)",
+                  zIndex: 50,
+                }}
+              >
+                {filteredKecamatan.length === 0 ? (
+                  <div style={{ padding: 12, color: "var(--color_font_main_muted)", fontSize: 14 }}>Tidak ada kecamatan</div>
+                ) : (
+                  filteredKecamatan.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        border: "none",
+                        background: form.kecamatanop === k ? "var(--accent)" : "transparent",
+                        color: form.kecamatanop === k ? "#fff" : "var(--color_font_main)",
+                        cursor: "pointer",
+                        fontSize: 14,
+                      }}
+                      onClick={() => {
+                        updateForm("kecamatanop", k);
+                        setKecamatanSearch("");
+                        setKecamatanDropdownOpen(false);
+                      }}
+                    >
+                      {k}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          <div ref={kelurahanDropdownRef} style={{ position: "relative" }}>
+            <label style={labelStyle}>Kelurahan/Desa Objek</label>
+            {hasKelurahanData ? (
+              <>
+                <input
+                  style={inputStyle}
+                  value={selectedKelurahanLabel}
+                  onFocus={() => setKelurahanDropdownOpen(true)}
+                  readOnly
+                  placeholder="Pilih kecamatan dulu, lalu pilih kelurahan/desa"
+                  required
+                />
+                {kelurahanDropdownOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      marginTop: 4,
+                      maxHeight: 220,
+                      overflowY: "auto",
+                      background: "var(--card_bg)",
+                      border: "1px solid var(--border_color)",
+                      borderRadius: 8,
+                      boxShadow: "var(--card_shadow)",
+                      zIndex: 50,
+                    }}
+                  >
+                    {kelurahanOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          padding: "10px 12px",
+                          textAlign: "left",
+                          border: "none",
+                          background: form.kelurahandesaop === opt.value ? "var(--accent)" : "transparent",
+                          color: form.kelurahandesaop === opt.value ? "#fff" : "var(--color_font_main)",
+                          cursor: "pointer",
+                          fontSize: 14,
+                        }}
+                        onClick={() => {
+                          updateForm("kelurahandesaop", opt.value);
+                          setKelurahanDropdownOpen(false);
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <input
+                style={inputStyle}
+                value={form.kelurahandesaop ?? ""}
+                onChange={(e) => updateForm("kelurahandesaop", e.target.value)}
+                placeholder={form.kecamatanop ? "Isi kelurahan/desa (data denah belum tersedia)" : "Pilih kecamatan dulu"}
+                required
+              />
+            )}
+          </div>
+        </div>
+        <div style={rowStyle}>
+          <div>
+            <label style={labelStyle}>NPWP Objek</label>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
+              {([2, 3, 3, 1, 3, 3] as const).map((len, i) => (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                  <input
+                    ref={(el) => { npwpOpRefs.current[i] = el; }}
+                    style={{ ...inputStyle, width: len === 1 ? 36 : 48, marginTop: 0, textAlign: "center" }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={len}
+                    value={npwpOpDigits[i] ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, len);
+                      setNpwpOpDigits((prev) => {
+                        const n = [...prev];
+                        n[i] = v;
+                        return n;
+                      });
+                      if (v.length === len && i < 5) npwpOpRefs.current[i + 1]?.focus();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !npwpOpDigits[i] && i > 0) npwpOpRefs.current[i - 1]?.focus();
+                    }}
+                    placeholder={"x".repeat(len)}
+                  />
+                  {i < 3 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
+                  {i === 3 && <span style={{ color: "var(--color_font_main_muted)" }}>-</span>}
+                  {i === 4 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
+                </span>
+              ))}
+            </div>
+            <p style={hintStyle}>Otomatis pindah ke kolom berikutnya</p>
+          </div>
+          <div>
+            <label style={labelStyle}>RT/RW Objek</label>
+            <input style={inputStyle} value={form.rtrwop ?? ""} onChange={(e) => updateForm("rtrwop", e.target.value)} placeholder="001/001" required />
+          </div>
+          <div>
+            <label style={labelStyle}>Kode Pos Objek</label>
+            <input style={inputStyle} value={form.kodeposop ?? ""} onChange={(e) => updateForm("kodeposop", e.target.value)} required />
+          </div>
+        </div>
+
+        {/* Perhitungan NJOP */}
+        <h3 style={judulStyle}>Perhitungan NJOP</h3>
+        <div style={sectionStyle}>
+          <h4 style={{ margin: "0 0 12px", fontSize: 14 }}>Tanah</h4>
+          <div style={rowStyle}>
+            <div>
+              <label style={labelStyle}>Luas Tanah (m²)</label>
+              <input
+                style={inputStyle}
+                type="number"
+                min={0}
+                step={0.01}
+                value={form.luas_tanah ?? ""}
+                onChange={(e) => updateForm("luas_tanah", e.target.value ? Number(e.target.value) : undefined)}
+                required
+              />
+              <p style={hintStyle}>contoh: 289.2 (gunakan titik untuk desimal)</p>
+            </div>
+            <div>
+              <label style={labelStyle}>NJOP Tanah (Rp)</label>
+              <input
+                style={inputStyle}
+                type="text"
+                inputMode="numeric"
+                value={formatRupiah(form.njop_tanah as number | undefined)}
+                onChange={(e) => {
+                  const num = parseRupiah(e.target.value);
+                  updateForm("njop_tanah", num || undefined);
+                }}
+                placeholder="0"
+                required
+              />
+              <p style={hintStyle}>contoh: 1.500.000.000 — otomatis format ribuan</p>
+            </div>
+          </div>
+          <h4 style={{ margin: "16px 0 12px", fontSize: 14 }}>Bagian Bangunan</h4>
+          <div style={rowStyle}>
+            <div>
+              <label style={labelStyle}>Luas Bangunan (m²)</label>
+              <input
+                style={inputStyle}
+                type="number"
+                min={0}
+                step={0.01}
+                value={form.luas_bangunan ?? ""}
+                onChange={(e) => updateForm("luas_bangunan", e.target.value ? Number(e.target.value) : undefined)}
+                required
+              />
+              <p style={hintStyle}>contoh: 289.2</p>
+            </div>
+            <div>
+              <label style={labelStyle}>NJOP Bangunan (Rp)</label>
+              <input
+                style={inputStyle}
+                type="text"
+                inputMode="numeric"
+                value={formatRupiah(form.njop_bangunan as number | undefined)}
+                onChange={(e) => {
+                  const num = parseRupiah(e.target.value);
+                  updateForm("njop_bangunan", num || undefined);
+                }}
+                placeholder="0"
+                required
+              />
+              <p style={hintStyle}>contoh: 1.500.000.000 — otomatis format ribuan</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Objek Pajak BPHTB - Collapsible */}
+        <div style={{ marginBottom: 24, border: "1px solid var(--border_color)", borderRadius: 8, overflow: "hidden" }}>
+          <button
+            type="button"
+            onClick={() => setOpenObjek(!openObjek)}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: "var(--card_bg_grey)",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+          >
+            <span>Objek Pajak BPHTB</span>
+            <span>{openObjek ? "−" : "+"}</span>
+          </button>
+          {openObjek && (
+            <div style={{ padding: 16, borderTop: "1px solid var(--border_color)" }}>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Harga Transaksi/Nilai Pasar</label>
+                <input
+                  style={inputStyle}
+                  type="text"
+                  inputMode="numeric"
+                  value={form.hargatransaksi ? formatRupiah(parseRupiah(String(form.hargatransaksi))) : ""}
+                  onChange={(e) => {
+                    const num = parseRupiah(e.target.value);
+                    updateForm("hargatransaksi", num ? String(num) : "");
+                  }}
+                  placeholder="contoh: 100.000.000"
+                  required
+                />
+                <p style={hintStyle}>otomatis format ribuan (titik)</p>
+              </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Letak Tanah dan/atau Bangunan</label>
+                <textarea
+                  style={{ ...inputStyle, minHeight: 60 }}
+                  value={form.letaktanahdanbangunan ?? ""}
+                  onChange={(e) => updateForm("letaktanahdanbangunan", e.target.value)}
+                  placeholder="Masukkan Alamat Lengkap"
+                  required
+                />
+              </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Jenis Perolehan Hak</label>
+                <select
+                  style={inputStyle}
+                  value={form.jenisPerolehan ?? ""}
+                  onChange={(e) => handleJenisPerolehanChange(e.target.value)}
+                  required
+                >
+                  {JENIS_PEROLEHAN.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={rowStyle}>
+                <div>
+                  <label style={labelStyle}>Status Kepemilikan</label>
+                  <select
+                    style={inputStyle}
+                    value={form.status_kepemilikan ?? "milik_pribadi"}
+                    onChange={(e) => updateForm("status_kepemilikan", e.target.value)}
+                  >
+                    <option value="milik_pribadi">Milik Pribadi</option>
+                    <option value="milik_bersama">Milik Bersama</option>
+                    <option value="sewa">Sewa</option>
+                    <option value="hgb">Hak Guna Bangunan (HGB)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>RT/RW Objek Pajak</label>
+                  <input
+                    style={inputStyle}
+                    value={form.rt_rwobjekpajak ?? ""}
+                    onChange={(e) => updateForm("rt_rwobjekpajak", e.target.value)}
+                    placeholder="001/001"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Nomor Sertifikat Tanah</label>
+                  <input
+                    style={inputStyle}
+                    value={form.nomor_sertifikat ?? ""}
+                    onChange={(e) => updateForm("nomor_sertifikat", e.target.value)}
+                    placeholder="Nomor sertifikat"
+                    required
+                  />
+                </div>
+              </div>
+              <div style={rowStyle}>
+                <div>
+                  <label style={labelStyle}>Kelurahan/Desa</label>
+                  <input
+                    style={inputStyle}
+                    value={form.kelurahandesalp ?? ""}
+                    onChange={(e) => updateForm("kelurahandesalp", e.target.value)}
+                    placeholder="Kelurahan/Desa"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Kecamatan</label>
+                  <input
+                    style={inputStyle}
+                    value={form.kecamatanlp ?? ""}
+                    onChange={(e) => updateForm("kecamatanlp", e.target.value)}
+                    placeholder="Kecamatan"
+                    required
+                  />
+                </div>
+              </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Keterangan (opsional)</label>
+                <textarea
+                  style={{ ...inputStyle, minHeight: 50 }}
+                  value={form.keterangan ?? ""}
+                  onChange={(e) => updateForm("keterangan", e.target.value)}
+                  placeholder="Keterangan tambahan"
+                />
+              </div>
+              <div style={rowStyle}>
+                <div>
+                  <label style={labelStyle}>Tanggal Perolehan (DD-MM-YYYY)</label>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
+                      type="number"
+                      placeholder="DD"
+                      min={1}
+                      max={31}
+                      maxLength={2}
+                      value={tanggalOleh.d}
+                      onChange={(e) => setTanggalOleh((p) => ({ ...p, d: e.target.value }))}
+                      required
+                    />
+                    <span>-</span>
+                    <input
+                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
+                      type="number"
+                      placeholder="MM"
+                      min={1}
+                      max={12}
+                      maxLength={2}
+                      value={tanggalOleh.m}
+                      onChange={(e) => setTanggalOleh((p) => ({ ...p, m: e.target.value }))}
+                      required
+                    />
+                    <span>-</span>
+                    <input
+                      style={{ ...inputStyle, width: 70, marginTop: 0 }}
+                      type="number"
+                      placeholder="YYYY"
+                      min={1700}
+                      max={2200}
+                      maxLength={4}
+                      value={tanggalOleh.y}
+                      onChange={(e) => setTanggalOleh((p) => ({ ...p, y: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Tanggal Pembayaran (DD-MM-YYYY)</label>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
+                      type="number"
+                      placeholder="DD"
+                      min={1}
+                      max={31}
+                      maxLength={2}
+                      value={tanggalBayar.d}
+                      onChange={(e) => setTanggalBayar((p) => ({ ...p, d: e.target.value }))}
+                      required
+                    />
+                    <span>-</span>
+                    <input
+                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
+                      type="number"
+                      placeholder="MM"
+                      min={1}
+                      max={12}
+                      maxLength={2}
+                      value={tanggalBayar.m}
+                      onChange={(e) => setTanggalBayar((p) => ({ ...p, m: e.target.value }))}
+                      required
+                    />
+                    <span>-</span>
+                    <input
+                      style={{ ...inputStyle, width: 70, marginTop: 0 }}
+                      type="number"
+                      placeholder="YYYY"
+                      min={1700}
+                      max={2200}
+                      maxLength={4}
+                      value={tanggalBayar.y}
+                      onChange={(e) => setTanggalBayar((p) => ({ ...p, y: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Nomor Bukti Pembayaran</label>
+                <input
+                  style={inputStyle}
+                  value={form.nomor_bukti_pembayaran ?? ""}
+                  onChange={(e) => updateForm("nomor_bukti_pembayaran", e.target.value)}
+                  placeholder="Nomor bukti pembayaran"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Perhitungan Pajak BPHTB - Collapsible */}
+        <div style={{ marginBottom: 24, border: "1px solid var(--border_color)", borderRadius: 8, overflow: "hidden" }}>
+          <button
+            type="button"
+            onClick={() => setOpenPerhitungan(!openPerhitungan)}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: "var(--card_bg_grey)",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+          >
+            <span>Perhitungan Pajak BPHTB</span>
+            <span>{openPerhitungan ? "−" : "+"}</span>
+          </button>
+          {openPerhitungan && (
+            <div style={{ padding: 16, borderTop: "1px solid var(--border_color)" }}>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>NPOPTKP (auto dari Jenis Perolehan)</label>
+                <input
+                  style={{ ...inputStyle, background: "var(--card_bg_grey)" }}
+                  type="text"
+                  value={npoptkp.toLocaleString("id-ID")}
+                  readOnly
+                />
+              </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>Bea Perolehan Hak Atas Tanah yang telah dibayar</label>
+                <input
+                  style={inputStyle}
+                  type="text"
+                  inputMode="numeric"
+                  value={formatRupiah(form.bphtb_yangtelah_dibayar as number | undefined)}
+                  onChange={(e) => {
+                    const num = parseRupiah(e.target.value);
+                    updateForm("bphtb_yangtelah_dibayar", num || undefined);
+                  }}
+                  placeholder="0"
+                  required
+                />
+                <p style={hintStyle}>otomatis format ribuan (titik)</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: "12px 24px",
+              borderRadius: 8,
+              border: "none",
+              background: "var(--accent)",
+              color: "#fff",
+              fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {loading ? "Menyimpan..." : "Simpan Perhitungan booking dan perhitungan BPHTB"}
+          </button>
+          <Link
+            href="/pu/booking-sspd/badan"
+            style={{ padding: "12px 24px", borderRadius: 8, border: "1px solid var(--border_color)", color: "var(--color_font_main)", fontWeight: 600, textDecoration: "none" }}
+          >
+            Batal
+          </Link>
+        </div>
+      </form>
+
+      <p style={{ marginTop: 16 }}>
+        <Link href="/pu/booking-sspd/badan" style={{ color: "var(--accent)", fontWeight: 600 }}>
+          ← Kembali ke Booking SSPD Badan
+        </Link>
+      </p>
+    </div>
+  );
+}

@@ -100,9 +100,9 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
     >
       <defs>
         <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="rgba(0,0,154,0)" />
-          <stop offset="40%" stopColor="rgba(0,0,154,0.04)" />
-          <stop offset="100%" stopColor="rgba(0,0,154,0.08)" />
+          <stop offset="0%" stopColor="rgba(0,0,0,0)" />
+          <stop offset="40%" stopColor="var(--header_svg_40)" />
+          <stop offset="100%" stopColor="var(--header_svg_100)" />
         </linearGradient>
       </defs>
       <path fill={`url(#${gradId})`} d="M0,80 L0,48 Q100,24 200,48 T400,48 Q500,24 600,48 T800,48 L800,80 L0,80 Z" />
@@ -114,7 +114,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
     <header
       className={styles.headerMain}
       style={{
-        background: "linear-gradient(105deg, var(--base_dark) 0%, rgba(0,0,154,0.07) 18%, var(--base_dark) 38%, rgba(0,0,154,0.04) 55%, var(--base_dark) 72%, rgba(0,0,154,0.06) 100%)",
+        background: `linear-gradient(105deg, var(--base_dark) 0%, var(--header_wave_1) 18%, var(--base_dark) 38%, var(--header_wave_2) 55%, var(--base_dark) 72%, var(--header_wave_3) 100%)`,
         width: "100%",
         position: "fixed",
         top: 0,
@@ -290,7 +290,8 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
           )}
         </div>
 
-        {/* Member button + dropdown */}
+        {/* Member button + dropdown — sembunyikan untuk Pejabat Umum (PPAT, PPATS, Notaris) */}
+        {!["PPAT", "PPATS", "Notaris"].includes(user?.divisi ?? "") && (
         <div ref={memberRef} style={{ position: "relative" }}>
           <button
             type="button"
@@ -355,6 +356,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
             </div>
           )}
         </div>
+        )}
       </div>
     </header>
   );

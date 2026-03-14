@@ -1,9 +1,8 @@
 "use client";
 
-import Header from "../../components/Header";
 import { SidebarProvider } from "../../context/SidebarContext";
 
-/** Layout Profile: Header + main. Pakai SidebarProvider agar Header (useSidebar) tidak error. */
+/** Layout Profile: satu latar saja (main_bg), no layering. */
 export default function ProfileLayout({
   children,
 }: {
@@ -11,12 +10,15 @@ export default function ProfileLayout({
 }) {
   return (
     <SidebarProvider>
-      <Header title="Profile" />
       <main
         style={{
-          marginTop: 80,
-          minHeight: "calc(100vh - 80px)",
-          background: "linear-gradient(0deg, #e8ecf1 0%, #51515f 100%)",
+          marginTop: 0,
+          minHeight: 0,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          background: "var(--main_bg)",
         }}
       >
         {children}

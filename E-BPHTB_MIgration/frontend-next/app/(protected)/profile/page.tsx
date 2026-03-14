@@ -4,17 +4,18 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getBackendBaseUrl, getLegacyBaseUrl } from "../../../lib/api";
+import FeatherIcon from "../../components/FeatherIcon";
 
 function dashboardPath(divisi: string, legacyBase: string): string {
   switch (divisi) {
     case "Administrator":
       return "/admin";
-    case "Customer Service":
-      return `${legacyBase}/html_folder/CS/cs-dashboard.html`;
     case "PPAT":
     case "PPATS":
     case "Notaris":
-      return `${legacyBase}/html_folder/PPAT/ppat-dashboard.html`;
+      return "/pu";
+    case "Customer Service":
+      return `${legacyBase}/html_folder/CS/cs-dashboard.html`;
     case "LTB":
       return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
     case "LSB":
@@ -34,6 +35,7 @@ function dashboardPath(divisi: string, legacyBase: string): string {
 
 /** Foto default saat user belum punya foto (dilayani dari public/asset, tidak 404). */
 const DEFAULT_PHOTO = "/asset/default-foto_when_doesnthavephoto.png";
+const THEME_KEY = "app_theme";
 
 interface ProfileData {
   userid?: string;
@@ -53,9 +55,11 @@ interface ProfileData {
   special_parafv_name?: string;
   pejabat_umum?: string;
   pejabat_umum_name?: string;
+  gender?: string;
   fotoprofil?: string;
   password?: string;
   tanda_tangan_path?: string;
+  alamat_pu?: string;
 }
 
 function useProfile() {
@@ -147,10 +151,12 @@ export default function ProfilePage() {
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
+  const grayscaleCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const divisi = profile?.divisi ?? (typeof window !== "undefined" ? localStorage.getItem("divisi") : null) ?? "";
   const showNip = divisi && !["Wajib Pajak", "PPAT", "PPATS"].includes(divisi);
   const showPejabat = divisi === "PPAT" || divisi === "PPATS";
+  const showAlamatPu = divisi === "PPAT" || divisi === "PPATS" || divisi === "Notaris";
   const showParafValidasi = divisi === "Peneliti Validasi";
   const showParafButton = ["Peneliti", "PPAT", "PPATS"].includes(divisi ?? "");
   const showPvLink = divisi === "Peneliti Validasi";
@@ -160,6 +166,9 @@ export default function ProfilePage() {
     profile?.fotoprofil && profile.fotoprofil.trim() !== ""
       ? `${(profile.fotoprofil || "").replace(/\\/g, "/")}?t=${Date.now()}`
       : DEFAULT_PHOTO;
+
+  const rawSigPath = (profile?.tanda_tangan_path || "").trim().replace(/\\/g, "/");
+  const signatureUrl = rawSigPath ? `${rawSigPath}?t=${Date.now()}` : "";
 
   const closeOverlays = useCallback(() => {
     setPhotoOverlay(false);
@@ -274,12 +283,49 @@ export default function ProfilePage() {
       setSignaturePreview(null);
       return;
     }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setSignatureError("Format: PNG, JPG, atau WebP");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setSignatureError("Maksimal 3MB");
+      return;
+    }
     setSignatureError("");
     setSignatureFile(file);
     const reader = new FileReader();
     reader.onload = () => setSignaturePreview(reader.result as string);
     reader.readAsDataURL(file);
   };
+
+  const overlaySignatureSrc = signaturePreview || (signatureOverlay && signatureUrl ? signatureUrl : null);
+
+  useEffect(() => {
+    if (!signatureOverlay || !overlaySignatureSrc || !grayscaleCanvasRef.current) return;
+    const canvas = grayscaleCanvasRef.current;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const size = Math.max(img.width, img.height, 1);
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
+      const x = Math.floor((size - img.width) / 2);
+      const y = Math.floor((size - img.height) / 2);
+      ctx.filter = "grayscale(100%)";
+      ctx.drawImage(img, x, y);
+    };
+    img.onerror = () => {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+    img.src = overlaySignatureSrc;
+  }, [signatureOverlay, overlaySignatureSrc]);
 
   const handleSignatureUpload = async () => {
     if (!signatureFile) return;
@@ -312,6 +358,10 @@ export default function ProfilePage() {
     setEditNip(profile.nip ?? "");
     setEditEmail(profile.email ?? "");
     setEditTelepon(profile.telepon ?? profile.phone ?? "");
+    setEditAlamatPu(profile.alamat_pu ?? "");
+    setEditSpecialField(profile.special_field ?? profile.special_field_name ?? "");
+    setEditPejabatUmum(profile.pejabat_umum ?? profile.pejabat_umum_name ?? "");
+    setEditGender(profile.gender ?? "");
     setProfileSaveError("");
     setEditMode(true);
   };
@@ -348,9 +398,21 @@ export default function ProfilePage() {
   const [editNip, setEditNip] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editTelepon, setEditTelepon] = useState("");
+  const [editAlamatPu, setEditAlamatPu] = useState("");
+  const [editSpecialField, setEditSpecialField] = useState("");
+  const [editPejabatUmum, setEditPejabatUmum] = useState("");
+  const [editGender, setEditGender] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSaveError, setProfileSaveError] = useState("");
   const [redirectingToDashboard, setRedirectingToDashboard] = useState(false);
+  const [appTheme, setAppTheme] = useState<string>("default");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(THEME_KEY);
+      const valid = ["default", "summer", "eid", "trust", "moderngov", "corporate", "midnight", "emerald"];
+      setAppTheme(saved && valid.includes(saved) ? saved : "default");
+    }
+  }, []);
 
   const handleSaveProfile = useCallback(async (): Promise<boolean> => {
     if (!window.confirm("Anda yakin ingin menyimpan perubahan?")) return false;
@@ -359,15 +421,25 @@ export default function ProfilePage() {
     try {
       const base = getBackendBaseUrl();
       const url = base ? `${base}/api/v1/auth/profile` : "/api/v1/auth/profile";
+      const body: Record<string, unknown> = {
+        username: editUsername.trim(),
+        nip: editNip.trim(),
+        email: editEmail.trim(),
+        telepon: editTelepon.trim(),
+        alamat_pu: editAlamatPu.trim(),
+      };
+      const genderVal = editGender.trim();
+      if (genderVal === "Laki-laki" || genderVal === "Perempuan") {
+        body.gender = genderVal;
+      }
+      if (showPejabat) {
+        body.special_field = editSpecialField.trim();
+        body.pejabat_umum = editPejabatUmum.trim();
+      }
       const res = await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: editUsername.trim(),
-          nip: editNip.trim(),
-          email: editEmail.trim(),
-          telepon: editTelepon.trim(),
-        }),
+        body: JSON.stringify(body),
         credentials: "include",
       });
       const json = await res.json().catch(() => ({}));
@@ -377,6 +449,9 @@ export default function ProfilePage() {
         localStorage.setItem("username", (editUsername.trim() || localStorage.getItem("username")) ?? "");
         localStorage.setItem("nip", (editNip.trim() || localStorage.getItem("nip")) ?? "");
         localStorage.setItem("telepon", (editTelepon.trim() || localStorage.getItem("telepon")) ?? "");
+        if (showPejabat) {
+          localStorage.setItem("special_field", editSpecialField.trim() || "");
+        }
       }
       setEditMode(false);
       reload();
@@ -387,7 +462,7 @@ export default function ProfilePage() {
     } finally {
       setProfileSaving(false);
     }
-  }, [editUsername, editNip, editEmail, editTelepon, reload]);
+  }, [editUsername, editNip, editEmail, editTelepon, editAlamatPu, editGender, editSpecialField, editPejabatUmum, showPejabat, reload]);
 
   const goToDashboard = useCallback(() => {
     if (typeof window !== "undefined") {
@@ -421,7 +496,7 @@ export default function ProfilePage() {
     return (
       <div className="profile-page-main">
         <div className="profile-card">
-          <p style={{ color: "white", textAlign: "center" }}>Memuat profil...</p>
+          <p style={{ color: "var(--color_font_main_muted)", textAlign: "center" }}>Memuat profil...</p>
         </div>
       </div>
     );
@@ -431,7 +506,7 @@ export default function ProfilePage() {
     return (
       <div className="profile-page-main">
         <div className="profile-card">
-          <p style={{ color: "#ffebee" }}>{profileError ?? "Profil tidak tersedia"}</p>
+          <p style={{ color: "var(--color_font_main_muted)" }}>{profileError ?? "Profil tidak tersedia"}</p>
           <button type="button" className="profile-back-btn" onClick={() => router.back()}>
             ←
           </button>
@@ -449,7 +524,6 @@ export default function ProfilePage() {
           <button type="button" className="profile-back-btn" onClick={() => router.back()} aria-label="Kembali">
             ←
           </button>
-          <h2>Profile</h2>
           {!hideDivisiLabel && !fromLengkapi && (
             <div className="profile-divisi">
               Divisi: <span>{u.divisi ?? "—"}</span>
@@ -498,9 +572,33 @@ export default function ProfilePage() {
               Ubah Foto
             </button>
             {showParafButton && (
-              <button type="button" className="profile-btn-paraf" onClick={() => setSignatureOverlay(true)}>
-                Paraf Khusus
-              </button>
+              <>
+                <button type="button" className="profile-btn-paraf" onClick={() => setSignatureOverlay(true)}>
+                  Paraf Khusus
+                </button>
+                {signatureUrl && (
+                  <div className="profile-paraf-preview" style={{ marginTop: 12, textAlign: "center" }}>
+                    <div style={{ fontSize: "0.85em", color: "var(--color_font_main_muted)", marginBottom: 6 }}>Paraf saat ini</div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={signatureUrl}
+                      alt="Preview paraf"
+                      style={{
+                        maxWidth: 120,
+                        maxHeight: 80,
+                        objectFit: "contain",
+                        borderRadius: 8,
+                        background: "white",
+                        padding: 4,
+                        border: "1px solid var(--border_color)",
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
             {showPvLink && (
               <Link
@@ -554,13 +652,41 @@ export default function ProfilePage() {
                 <>
                   <div className="profile-field">
                     <label>Nama PEJABAT</label>
-                    <input type="text" readOnly value={u.special_field ?? u.special_field_name ?? "—"} />
+                    {editMode ? (
+                      <input type="text" value={editSpecialField} onChange={(e) => setEditSpecialField(e.target.value)} />
+                    ) : (
+                      <input type="text" readOnly value={u.special_field ?? u.special_field_name ?? "—"} />
+                    )}
                   </div>
                   <div className="profile-field">
                     <label>Gelar Pejabat</label>
-                    <input type="text" readOnly value={u.pejabat_umum ?? u.pejabat_umum_name ?? "—"} />
+                    {editMode ? (
+                      <input type="text" value={editPejabatUmum} onChange={(e) => setEditPejabatUmum(e.target.value)} />
+                    ) : (
+                      <input type="text" readOnly value={u.pejabat_umum ?? u.pejabat_umum_name ?? "—"} />
+                    )}
                   </div>
+                  {showAlamatPu && (
+                    <div className="profile-field">
+                      <label htmlFor="alamat_pu">Alamat PU</label>
+                      {editMode ? (
+                        <input id="alamat_pu" type="text" value={editAlamatPu} onChange={(e) => setEditAlamatPu(e.target.value)} placeholder="Alamat Pejabat Umum" />
+                      ) : (
+                        <input id="alamat_pu" type="text" readOnly value={u.alamat_pu ?? "—"} />
+                      )}
+                    </div>
+                  )}
                 </>
+              )}
+              {showAlamatPu && !showPejabat && (
+                <div className="profile-field">
+                  <label htmlFor="alamat_pu">Alamat PU</label>
+                  {editMode ? (
+                    <input id="alamat_pu" type="text" value={editAlamatPu} onChange={(e) => setEditAlamatPu(e.target.value)} placeholder="Alamat Pejabat Umum" />
+                  ) : (
+                    <input id="alamat_pu" type="text" readOnly value={u.alamat_pu ?? "—"} />
+                  )}
+                </div>
               )}
               {showParafValidasi && (
                 <div className="profile-field">
@@ -573,6 +699,30 @@ export default function ProfilePage() {
               <div className="profile-field">
                 <label htmlFor="nama">Nama</label>
                 <input id="nama" type="text" readOnly value={u.nama ?? u.name ?? "—"} />
+              </div>
+              <div className="profile-field">
+                <label htmlFor="gender">Jenis Kelamin</label>
+                {editMode ? (
+                  <select
+                    id="gender"
+                    value={editGender}
+                    onChange={(e) => setEditGender(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--border_color)",
+                      background: "var(--card_bg)",
+                      color: "var(--color_font_main)",
+                    }}
+                  >
+                    <option value="">Pilih...</option>
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                ) : (
+                  <input id="gender" type="text" readOnly value={u.gender ?? "—"} />
+                )}
               </div>
               <div className="profile-field">
                 <label htmlFor="email">Email</label>
@@ -610,9 +760,12 @@ export default function ProfilePage() {
                       top: "50%",
                       transform: "translateY(-50%)",
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      color: "var(--color_font_main_muted)",
                     }}
                   >
-                    {showPassword ? "🙈" : "👁️"}
+                    <FeatherIcon name={showPassword ? "eye-off" : "eye"} size={18} />
                   </span>
                 </div>
                 <span
@@ -627,6 +780,41 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="profile-field" style={{ gridColumn: "1 / -1", marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border_color)" }}>
+          <label htmlFor="app-theme">Tema tampilan</label>
+          <select
+            id="app-theme"
+            value={appTheme}
+            onChange={(e) => {
+              const val = e.target.value;
+              setAppTheme(val);
+              if (typeof window !== "undefined") {
+                localStorage.setItem(THEME_KEY, val);
+                document.documentElement.setAttribute("data-theme", val);
+                window.dispatchEvent(new Event("app-theme-changed"));
+              }
+            }}
+            style={{
+              width: "100%",
+              maxWidth: 280,
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              background: "var(--card_bg)",
+              color: "var(--color_font_main)",
+            }}
+          >
+            <option value="default">Default</option>
+            <option value="summer">Summer Aesthetic</option>
+            <option value="eid">Eid Mubarak</option>
+            <option value="trust">Trustworthy Legal (Biru Tua & Emas)</option>
+            <option value="moderngov">Modern Gov (Teal & Mint)</option>
+            <option value="corporate">Clean Corporate (Indigo & Slate)</option>
+            <option value="midnight">Midnight Professional (Navy & Cyan)</option>
+            <option value="emerald">Emerald Abyss (Teal & Gold)</option>
+          </select>
         </div>
 
         {(profileError || profileSaveError) && (
@@ -662,9 +850,9 @@ export default function ProfilePage() {
                 role="button"
                 tabIndex={0}
                 onClick={() => setShowOldPwd((p) => !p)}
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer" }}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", display: "flex", alignItems: "center" }}
               >
-                {showOldPwd ? "🙈" : "👁️"}
+                <FeatherIcon name={showOldPwd ? "eye-off" : "eye"} size={18} />
               </span>
             </div>
           </div>
@@ -682,9 +870,9 @@ export default function ProfilePage() {
                 role="button"
                 tabIndex={0}
                 onClick={() => setShowNewPwd((p) => !p)}
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer" }}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", display: "flex", alignItems: "center" }}
               >
-                {showNewPwd ? "🙈" : "👁️"}
+                <FeatherIcon name={showNewPwd ? "eye-off" : "eye"} size={18} />
               </span>
             </div>
           </div>
@@ -702,9 +890,9 @@ export default function ProfilePage() {
                 role="button"
                 tabIndex={0}
                 onClick={() => setShowConfirmPwd((p) => !p)}
-                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer" }}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", cursor: "pointer", display: "flex", alignItems: "center" }}
               >
-                {showConfirmPwd ? "🙈" : "👁️"}
+                <FeatherIcon name={showConfirmPwd ? "eye-off" : "eye"} size={18} />
               </span>
             </div>
           </div>
@@ -754,18 +942,91 @@ export default function ProfilePage() {
       <div className={`profile-modal ${signatureOverlay ? "show" : ""}`} style={{ display: signatureOverlay ? "block" : "none" }}>
         <h3>Upload Tanda Tangan Digital</h3>
         <div className="profile-field">
-          <label>Pilih gambar tanda tangan (PNG/JPG/WebP, max 3MB)</label>
+          <label htmlFor="paraf-image-input">Pilih gambar tanda tangan (PNG/JPG/WebP, max 3MB)</label>
           <input
             ref={signatureInputRef}
+            id="paraf-image-input"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={handleSignatureSelect}
           />
         </div>
-        {signaturePreview && (
-          <div style={{ marginTop: 15, textAlign: "center" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={signaturePreview} alt="Preview paraf" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8 }} />
+        {(overlaySignatureSrc || signatureUrl) && (
+          <div
+            className="profile-signature-preview-row"
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              gap: 16,
+              justifyContent: "center",
+              alignItems: "stretch",
+              margin: "10px 0 20px 0",
+            }}
+          >
+            <div
+              className="profile-signature-card"
+              style={{
+                flex: "1 1 0",
+                background: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                borderRadius: 12,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                minWidth: 0,
+              }}
+            >
+              <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.9em", marginBottom: 8, alignSelf: "flex-start" }}>
+                Asli
+              </div>
+              {(overlaySignatureSrc || signatureUrl) && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={overlaySignatureSrc || signatureUrl}
+                  alt="Preview Asli"
+                  style={{
+                    width: "100%",
+                    height: 200,
+                    objectFit: "contain",
+                    borderRadius: 8,
+                    background: "white",
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              )}
+            </div>
+            <div
+              className="profile-signature-card"
+              style={{
+                flex: "1 1 0",
+                background: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                borderRadius: 12,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                minWidth: 0,
+              }}
+            >
+              <div style={{ color: "rgba(255,255,255,0.9)", fontSize: "0.9em", marginBottom: 8, alignSelf: "flex-start" }}>
+                Grayscale
+              </div>
+              <canvas
+                ref={grayscaleCanvasRef}
+                aria-label="Preview Grayscale"
+                style={{
+                  width: "100%",
+                  height: 200,
+                  objectFit: "contain",
+                  borderRadius: 8,
+                  background: "white",
+                }}
+              />
+            </div>
           </div>
         )}
         {signatureError && <p style={{ color: "#ffebee" }}>{signatureError}</p>}

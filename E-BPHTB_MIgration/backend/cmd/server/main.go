@@ -181,6 +181,32 @@ func main() {
 		handler.ServeUploadDir(cfg.BannerUploadDir, r.PathValue("filename"))(w, r)
 	})
 
+	// PPAT — handler Go (load-all-booking, rekap/diserahkan, send-now, create-booking); didahulukan dari proxy
+	var ppatRepo *repository.PpatRepo
+	if pool != nil {
+		ppatRepo = repository.NewPpatRepo(pool)
+	} else {
+		ppatRepo = repository.NewPpatRepo(nil)
+	}
+	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo)
+	mux.HandleFunc("GET /api/check-my-signature", ppatHandler.CheckMySignature)
+	mux.HandleFunc("GET /api/ppat/load-all-booking", ppatHandler.LoadAllBooking)
+	mux.HandleFunc("GET /api/ppat/rekap/diserahkan", ppatHandler.RekapDiserahkan)
+	mux.HandleFunc("POST /api/ppat/send-now", ppatHandler.SendNow)
+	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb", ppatHandler.CreateBookingBadan)
+	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb-perorangan", ppatHandler.CreateBookingPerorangan)
+	mux.HandleFunc("GET /api/ppat/booking/{nobooking}", ppatHandler.GetBooking)
+	mux.HandleFunc("PUT /api/ppat/update-trackstatus/{nobooking}", ppatHandler.UpdateTrackstatus)
+	mux.HandleFunc("DELETE /api/ppat/booking/{nobooking}", ppatHandler.DeleteBooking)
+	mux.HandleFunc("GET /api/ppat/quota", ppatHandler.GetQuota)
+	mux.HandleFunc("GET /api/ppat/get-documents", ppatHandler.GetDocuments)
+	mux.HandleFunc("GET /api/ppat/file-proxy", ppatHandler.FileProxy)
+	mux.HandleFunc("POST /api/ppat/schedule-send", ppatHandler.ScheduleSend)
+	mux.HandleFunc("POST /api/ppat/upload-signatures", ppatHandler.UploadSignatures)
+	mux.HandleFunc("POST /api/ppat/upload-documents", ppatHandler.UploadDocuments)
+
+	// PPAT/PU: seluruh layanan di atas dilayani Go. Tidak ada proxy ke Node untuk /api/ppat/* maupun /api/ppat_*.
+
 	// Proxy /api/admin/* ke Node (sisa endpoint admin yang belum dimigrasi)
 	mux.Handle("/api/admin/", handler.AdminProxyHandler(cfg.LegacyNodeURL))
 
@@ -278,8 +304,3 @@ func main() {
 		log.Printf("Server shutdown: %v", err)
 	}
 }
-
-
-
-
-

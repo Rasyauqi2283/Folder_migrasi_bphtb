@@ -19,6 +19,8 @@ type Config struct {
 	EasyOCRURL          string // URL service EasyOCR (endpoint /ocr)
 	EasyOCREnabled      bool   // Aktifkan EasyOCR sebagai OCR utama
 	EasyOCRTimeout      int    // Timeout request EasyOCR dalam milidetik
+	PpatStorageBaseDir  string // Base path untuk dokumen PPAT (akta, sertifikat, pelengkap)
+	TandaTanganBaseDir  string // Base path untuk tanda tangan per-booking (folderttdwp)
 }
 
 func Load() *Config {
@@ -81,6 +83,14 @@ func Load() *Config {
 			easyOCRTimeout = v
 		}
 	}
+	ppatStorageDir := os.Getenv("PPAT_STORAGE_DIR")
+	if ppatStorageDir == "" {
+		ppatStorageDir = "./storage/ppat"
+	}
+	tandaTanganDir := os.Getenv("PPAT_TANDA_TANGAN_DIR")
+	if tandaTanganDir == "" {
+		tandaTanganDir = "./storage/ppat/ttd"
+	}
 	return &Config{
 		Port:                port,
 		Env:                 env,
@@ -95,6 +105,8 @@ func Load() *Config {
 		EasyOCRURL:          easyOCRURL,
 		EasyOCREnabled:      easyOCREnabled,
 		EasyOCRTimeout:      easyOCRTimeout,
+		PpatStorageBaseDir:  ppatStorageDir,
+		TandaTanganBaseDir:  tandaTanganDir,
 	}
 }
 

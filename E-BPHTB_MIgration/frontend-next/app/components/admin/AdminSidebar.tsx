@@ -70,7 +70,7 @@ export default function AdminSidebar() {
   const baseAsideStyle: React.CSSProperties = {
     width: sidebarExpanded ? 250 : 60,
     minWidth: sidebarExpanded ? 250 : 60,
-    background: "linear-gradient(180deg, var(--base_dark) 0%, rgba(0,77,154,0.16) 25%, rgba(0,77,154,0.08) 50%, rgba(0,77,154,0.12) 75%, var(--base_dark) 100%)",
+    background: "linear-gradient(180deg, var(--base_dark) 0%, var(--sidebar_wave_25) 25%, var(--sidebar_wave_50) 50%, var(--sidebar_wave_75) 75%, var(--base_dark) 100%)",
     height: "calc(100vh - 80px - 40px)",
     marginTop: 80,
     position: "fixed",

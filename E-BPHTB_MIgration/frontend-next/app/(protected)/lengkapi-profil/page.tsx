@@ -152,12 +152,12 @@ export default function LengkapiProfilPage() {
           </div>
           {showParafValidasi && (
             <div className="profile-complete-form-group">
-              <label htmlFor="lengkapi-special_parafv">Nama Pejabat (Paraf Validasi)</label>
+              <label htmlFor="lengkapi-special_parafv">Nama Paraf Validasi</label>
               <input
                 type="text"
                 id="lengkapi-special_parafv"
                 name="special_parafv"
-                placeholder="Nama + gelar (contoh: Nama Pejabat BAPPENDA)"
+                placeholder="Nama yang dipakai di spanduk depan rumah (nama pejabat) + gelar"
                 value={specialParafv}
                 onChange={(e) => setSpecialParafv(e.target.value)}
               />

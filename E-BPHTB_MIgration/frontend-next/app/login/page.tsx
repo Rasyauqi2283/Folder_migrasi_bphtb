@@ -2,36 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getBackendBaseUrl, getLegacyBaseUrl } from "../../lib/api";
-
-function redirectBasedOnDivision(divisi: string, legacyBase: string): string {
-  switch (divisi) {
-    case "Administrator":
-      return "/admin"; // Dashboard TSX migrasi (bukan HTML legacy)
-    case "Customer Service":
-      return `${legacyBase}/html_folder/CS/cs-dashboard.html`;
-    case "PPAT":
-    case "PPATS":
-      return `${legacyBase}/html_folder/PPAT/ppat-dashboard.html`;
-    case "LTB":
-      return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
-    case "LSB":
-      return `${legacyBase}/html_folder/LSB/lsb-dashboard.html`;
-    case "Peneliti":
-      return `${legacyBase}/html_folder/Peneliti/peneliti-dashboard.html`;
-    case "Peneliti Validasi":
-      return `${legacyBase}/html_folder/ParafP/penelitiValidasi-dashboard.html`;
-    case "BANK":
-      return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
-    case "Wajib Pajak":
-      return `${legacyBase}/html_folder/WP/wp-dashboard.html`;
-    default:
-      return `${legacyBase}/login`;
-  }
-}
+import { getBackendBaseUrl } from "../../lib/api";
 
 export default function LoginPage() {
-  const legacyBase = getLegacyBaseUrl();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -73,9 +46,9 @@ export default function LoginPage() {
 
         setTimeout(() => {
           if (!data.is_profile_complete) {
-            window.location.href = "/profile-completetask";
+            window.location.href = "/lengkapi-profil";
           } else {
-            window.location.href = redirectBasedOnDivision(data.divisi ?? "", legacyBase);
+            window.location.href = "/dashboard";
           }
         }, 1000);
       } else {

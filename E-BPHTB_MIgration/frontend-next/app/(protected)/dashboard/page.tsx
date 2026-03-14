@@ -3,10 +3,25 @@
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import { getLegacyBaseUrl } from "../../../lib/api";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const legacyBase = getLegacyBaseUrl();
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.divisi === "Administrator") {
+      router.replace("/admin");
+      return;
+    }
+    if (["PPAT", "PPATS", "Notaris"].includes(user.divisi ?? "")) {
+      router.replace("/pu");
+      return;
+    }
+  }, [user, router]);
 
   const legacyDashboardUrl = (() => {
     switch (user?.divisi) {
@@ -15,7 +30,7 @@ export default function DashboardPage() {
       case "PPAT":
       case "PPATS":
       case "Notaris":
-        return `${legacyBase}/html_folder/PPAT/ppat-dashboard.html`;
+        return "/pu";
       case "LTB":
         return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
       case "LSB":

@@ -2,23 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useSidebar } from "../context/SidebarContext";
+import FeatherIcon from "./FeatherIcon";
+import styles from "./admin/AdminSidebar.module.css";
 
-/** Base path legacy HTML di public (Next.js serve dari /html_folder/...). */
+/** Base path legacy HTML di public. */
 const LEGACY = "/html_folder";
 
-/** Item menu single link. */
+const transition = "0.5s cubic-bezier(0.4, 0, 0.2, 1)";
+const dropdownTransition = "0.3s ease";
+const HOVER_CLOSE_DELAY = 200;
+const PORTRAIT_MAX = 640;
+
+function useIsPortrait() {
+  const [isPortrait, setIsPortrait] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsPortrait(typeof window !== "undefined" && window.innerWidth <= PORTRAIT_MAX);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isPortrait;
+}
+
+/** Feather icon name (sesuai FeatherIcon.tsx) */
+type FeatherIconName =
+  | "layout"
+  | "book"
+  | "folder"
+  | "send"
+  | "scale"
+  | "check-circle"
+  | "folder-plus"
+  | "image"
+  | "dollar-sign"
+  | "help-circle"
+  | "user"
+  | "log-out";
+
 interface SidebarLink {
   href: string;
   label: string;
-  icon: string;
+  icon: FeatherIconName;
 }
 
-/** Item menu dropdown (punya submenu). */
 interface SidebarDropdown {
   label: string;
-  icon: string;
+  icon: FeatherIconName;
   children: { href: string; label: string }[];
 }
 
@@ -28,101 +61,93 @@ function isDropdown(e: SidebarEntry): e is SidebarDropdown {
   return "children" in e && Array.isArray((e as SidebarDropdown).children);
 }
 
-/** Konfigurasi aside per divisi — disesuaikan dari legacy: ppat, ltb, lsb, peneliti, penelitiValidasi, bank. CS & WP masih pengembangan. */
 const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
-  // PPAT — legacy: Dashboard, Booking SSPD (Badan/Perorangan), Laporan PPAT (Rekap, Monitoring Keterlambatan, Rincian Bulanan), FAQ, Log Out
   PPAT: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/pu", label: "Dashboard", icon: "layout" },
     {
       label: "Booking SSPD",
-      icon: "📒",
+      icon: "book",
       children: [
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-badan.html`, label: "Booking SSPD Badan" },
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-perorangan.html`, label: "Booking SSPD Perorangan" },
+        { href: "/pu/booking-sspd/badan", label: "Booking SSPD Badan" },
+        { href: "/pu/booking-sspd/perorangan", label: "Booking SSPD Perorangan" },
       ],
     },
     {
-      label: "Laporan PPAT",
-      icon: "📁",
+      label: "Laporan pu",
+      icon: "folder",
       children: [
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/laporan_rekap.html`, label: "Laporan Rekap PPAT" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/monitoring_keteralmbatan_dokumen_ppat.html`, label: "Monitoring Keterlambatan" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/rincian_laporan_bulanan.html`, label: "Rincian Laporan Bulanan PPAT" },
+        { href: "/pu/laporan/rekap", label: "Laporan Rekap PPAT" },
+        { href: "/pu/laporan/monitoring-keterlambatan", label: "Monitoring Keterlambatan" },
+        { href: "/pu/laporan/rincian", label: "Rincian Laporan Bulanan pu" },
       ],
     },
   ],
   PPATS: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/pu", label: "Dashboard", icon: "layout" },
     {
       label: "Booking SSPD",
-      icon: "📒",
+      icon: "book",
       children: [
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-badan.html`, label: "Booking SSPD Badan" },
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-perorangan.html`, label: "Booking SSPD Perorangan" },
+        { href: "/pu/booking-sspd/badan", label: "Booking SSPD Badan" },
+        { href: "/pu/booking-sspd/perorangan", label: "Booking SSPD Perorangan" },
       ],
     },
     {
-      label: "Laporan PPAT",
-      icon: "📁",
+      label: "Laporan pu",
+      icon: "folder",
       children: [
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/laporan_rekap.html`, label: "Laporan Rekap PPAT" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/monitoring_keteralmbatan_dokumen_ppat.html`, label: "Monitoring Keterlambatan" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/rincian_laporan_bulanan.html`, label: "Rincian Laporan Bulanan PPAT" },
+        { href: "/pu/laporan/rekap", label: "Laporan Rekap PPAT" },
+        { href: "/pu/laporan/monitoring-keterlambatan", label: "Monitoring Keterlambatan" },
+        { href: "/pu/laporan/rincian", label: "Rincian Laporan Bulanan pu" },
       ],
     },
   ],
   NOTARIS: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/pu", label: "Dashboard", icon: "layout" },
     {
       label: "Booking SSPD",
-      icon: "📒",
+      icon: "book",
       children: [
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-badan.html`, label: "Booking SSPD Badan" },
-        { href: `${LEGACY}/PPAT/BOOKING-SSPD/bookingsspd-perorangan.html`, label: "Booking SSPD Perorangan" },
+        { href: "/pu/booking-sspd/badan", label: "Booking SSPD Badan" },
+        { href: "/pu/booking-sspd/perorangan", label: "Booking SSPD Perorangan" },
       ],
     },
     {
-      label: "Laporan PPAT",
-      icon: "📁",
+      label: "Laporan pu",
+      icon: "folder",
       children: [
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/laporan_rekap.html`, label: "Laporan Rekap PPAT" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/monitoring_keteralmbatan_dokumen_ppat.html`, label: "Monitoring Keterlambatan" },
-        { href: `${LEGACY}/PPAT/LAPORAN-PPAT/rincian_laporan_bulanan.html`, label: "Rincian Laporan Bulanan PPAT" },
+        { href: "/pu/laporan/rekap", label: "Laporan Rekap PPAT" },
+        { href: "/pu/laporan/monitoring-keterlambatan", label: "Monitoring Keterlambatan" },
+        { href: "/pu/laporan/rincian", label: "Rincian Laporan Bulanan pu" },
       ],
     },
   ],
-
-  // LTB — legacy: Dashboard, Terima Berkas SSPD (Permohonan Validasi SSPD), FAQ, Log Out
   LTB: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/dashboard", label: "Dashboard", icon: "layout" },
     {
       label: "Terima Berkas SSPD",
-      icon: "📂",
+      icon: "folder",
       children: [
         { href: `${LEGACY}/LTB/TerimaBerkas-SSPD/terima-berkas-sspd.html`, label: "Permohonan Validasi SSPD" },
       ],
     },
   ],
-
-  // LSB — legacy: Dashboard, Pelayanan Penyerahan SSPD (2 sub), FAQ, Log Out
   LSB: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/dashboard", label: "Dashboard", icon: "layout" },
     {
       label: "Pelayanan Penyerahan SSPD",
-      icon: "✈",
+      icon: "send",
       children: [
         { href: `${LEGACY}/LSB/Pelayanan_Penyerahan-SSPD/pelayanan-penyerahan-sspd.html`, label: "Pelayanan Penyerahan SSPD" },
         { href: `${LEGACY}/LSB/Pelayanan_Penyerahan-SSPD/monitoring_penyerahan_sspd.html`, label: "Monitoring Penyerahan SSPD" },
       ],
     },
   ],
-
-  // Peneliti — legacy: Dashboard, Verifikasi SSPD (banyak sub), FAQ, Log Out
   Peneliti: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/dashboard", label: "Dashboard", icon: "layout" },
     {
       label: "Verifikasi SSPD",
-      icon: "⚖",
+      icon: "scale",
       children: [
         { href: `${LEGACY}/Peneliti/Verifikasi_sspd/verifikasi-data.html`, label: "Verifikasi SSPD" },
         { href: `${LEGACY}/admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html`, label: "Verifikasi SSPD Offline" },
@@ -133,13 +158,11 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
       ],
     },
   ],
-
-  // Peneliti Validasi — legacy: Dashboard, Validasi Berkas SSPD, Sinkronisasi dan Paraf, Monitoring SSPD, FAQ, Log Out
   "Peneliti Validasi": [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/dashboard", label: "Dashboard", icon: "layout" },
     {
       label: "Validasi Berkas SSPD",
-      icon: "✓",
+      icon: "check-circle",
       children: [
         { href: `${LEGACY}/ParafP/Verifikasi_SSPD/Validasi_berkas_online.html`, label: "Validasi Berkas SSPD Online" },
         { href: `${LEGACY}/ParafP/Verifikasi_SSPD/Validasi_berkas_offline.html`, label: "Validasi Berkas SSPD Offline" },
@@ -147,7 +170,7 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
     },
     {
       label: "Sinkronisasi dan Paraf",
-      icon: "✍",
+      icon: "folder-plus",
       children: [
         { href: `${LEGACY}/ParafP/Sinkronisasi_validasi/Sertifikat_digital.html`, label: "Sertifikat Digital" },
         { href: `${LEGACY}/ParafP/Sinkronisasi_validasi/tanda_paraf.html`, label: "Tanda Paraf" },
@@ -155,40 +178,28 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
     },
     {
       label: "Monitoring SSPD",
-      icon: "📺",
+      icon: "image",
       children: [
         { href: `${LEGACY}/ParafP/Monitoring/monitoring_verifikasi.html`, label: "Monitoring Verifikasi SSPD" },
         { href: `${LEGACY}/ParafP/Monitoring/monitoring_skpd_kurang.html`, label: "Monitoring SKPD Kurang Bayar" },
       ],
     },
   ],
-
-  // BANK — legacy: Dashboard, Transaksi BANK (Hasil transaksi), FAQ, Log Out
   BANK: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
+    { href: "/dashboard", label: "Dashboard", icon: "layout" },
     {
       label: "Transaksi BANK",
-      icon: "💰",
-      children: [
-        { href: `${LEGACY}/Bank/Hasil_Transaksi/hasil_transaksi.html`, label: "Hasil transaksi" },
-      ],
+      icon: "dollar-sign",
+      children: [{ href: `${LEGACY}/Bank/Hasil_Transaksi/hasil_transaksi.html`, label: "Hasil transaksi" }],
     },
   ],
-
-  // CS & WP — masih dalam pengembangan: hanya Dashboard, FAQ, Profil
-  "Customer Service": [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  ],
-  "Wajib Pajak": [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  ],
-  Administrator: [
-    { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  ],
+  "Customer Service": [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
+  "Wajib Pajak": [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
+  Administrator: [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
 };
 
-const FAQ_ENTRY: SidebarLink = { href: "/faq", label: "Tanya Jawab (FAQ)", icon: "❓" };
-const PROFIL_ENTRY: SidebarLink = { href: "/profile", label: "Profil", icon: "👤" };
+const FAQ_ENTRY: SidebarLink = { href: "/faq", label: "Tanya Jawab (FAQ)", icon: "help-circle" };
+const PROFIL_ENTRY: SidebarLink = { href: "/profile", label: "Profil", icon: "user" };
 
 function getEntriesForDivisi(divisi: string | undefined): SidebarEntry[] {
   const role = divisi ? ROLE_SIDEBAR[divisi] ?? [] : [];
@@ -198,21 +209,53 @@ function getEntriesForDivisi(divisi: string | undefined): SidebarEntry[] {
 export default function UserSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { sidebarExpanded, toggleSidebar } = useSidebar();
   const divisi = user?.divisi;
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-
-  const isActive = useCallback(
-    (href: string) => href !== "#" && (pathname === href || pathname.startsWith(href + "/")),
-    [pathname]
-  );
+  const isPortrait = useIsPortrait();
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const hoverCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const entries = getEntriesForDivisi(divisi);
 
-  const asideStyle: React.CSSProperties = {
-    width: 260,
-    minWidth: 260,
+  const isActive = (path: string) =>
+    path !== "#" && (pathname === path || pathname.startsWith(path + "/"));
+
+  useEffect(() => {
+    if (!sidebarExpanded) setOpenDropdownId(null);
+  }, [sidebarExpanded]);
+
+  const handleDropdownToggle = (id: string) => {
+    if (!sidebarExpanded) {
+      toggleSidebar();
+      setTimeout(() => setOpenDropdownId((prev) => (prev === id ? null : id)), 350);
+    } else {
+      setOpenDropdownId((prev) => (prev === id ? null : id));
+    }
+  };
+
+  const handleDropdownEnter = (id: string) => {
+    if (hoverCloseRef.current) {
+      clearTimeout(hoverCloseRef.current);
+      hoverCloseRef.current = null;
+    }
+    if (sidebarExpanded && !isPortrait) setOpenDropdownId(id);
+  };
+
+  const handleDropdownLeave = () => {
+    if (isPortrait) return;
+    hoverCloseRef.current = setTimeout(() => setOpenDropdownId(null), HOVER_CLOSE_DELAY);
+  };
+
+  const handleBackdropClick = () => {
+    setOpenDropdownId(null);
+    if (isPortrait) toggleSidebar();
+  };
+
+  const baseAsideStyle: React.CSSProperties = {
+    width: sidebarExpanded ? 250 : 60,
+    minWidth: sidebarExpanded ? 250 : 60,
     background:
-      "linear-gradient(180deg, var(--base_dark) 0%, rgba(0,77,154,0.16) 25%, rgba(0,77,154,0.08) 50%, rgba(0,77,154,0.12) 75%, var(--base_dark) 100%)",
+      "linear-gradient(180deg, var(--base_dark) 0%, var(--sidebar_wave_25) 25%, var(--sidebar_wave_50) 50%, var(--sidebar_wave_75) 75%, var(--base_dark) 100%)",
     height: "calc(100vh - 80px - 40px)",
     marginTop: 80,
     position: "fixed",
@@ -226,84 +269,123 @@ export default function UserSidebar() {
     paddingTop: 20,
     overflow: "hidden",
     zIndex: 10,
+    transition: `width ${transition}`,
   };
 
-  const linkStyle = (active: boolean): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 20px",
-    color: active ? "var(--accent_hover)" : "var(--color_font_muted)",
-    textDecoration: "none",
-    borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
-    background: active ? "var(--surface_light)" : "transparent",
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    transition: "all 0.2s",
+  const menuItemClasses = (active: boolean) =>
+    `${styles.menuItem} ${active ? styles.menuItemActive : ""} ${!sidebarExpanded ? styles.menuItemCollapsed : ""}`;
+
+  const radioStyle = (active: boolean): React.CSSProperties => ({
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    flexShrink: 0,
+    background: active ? "var(--accent)" : "var(--color_font_muted)",
   });
 
-  const dropdownTriggerStyle = (open: boolean): React.CSSProperties => ({
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 20px",
-    color: "var(--color_font_muted)",
-    borderLeft: "3px solid transparent",
-    background: open ? "var(--surface_light)" : "transparent",
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-    cursor: "pointer",
-    width: "100%",
-    transition: "all 0.2s",
-  });
+  const iconStyle: React.CSSProperties = {
+    opacity: sidebarExpanded ? 1 : 0,
+    visibility: sidebarExpanded ? "visible" : "hidden",
+    transition: `opacity ${dropdownTransition}, visibility ${dropdownTransition}`,
+  };
 
-  const subLinkStyle = (active: boolean): React.CSSProperties => ({
-    display: "block",
-    padding: "8px 20px 8px 44px",
-    color: active ? "var(--accent_hover)" : "var(--color_font_dim)",
-    textDecoration: "none",
-    fontSize: 14,
-    borderLeft: active ? "2px solid var(--accent)" : "2px solid transparent",
-  });
+  const textStyle: React.CSSProperties = {
+    opacity: sidebarExpanded ? 1 : 0,
+    visibility: sidebarExpanded ? "visible" : "hidden",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    transition: `opacity ${dropdownTransition}`,
+  };
+
+  const dropdownContentClasses = (isOpen: boolean) =>
+    `${styles.dropdownContent} ${isOpen ? styles.dropdownContentOpen : styles.dropdownContentClosed}`;
+
+  const backdropStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 80,
+    left: sidebarExpanded ? 250 : 60,
+    right: 0,
+    bottom: 0,
+    transition: `left ${transition}`,
+  };
+
+  const dropdownLinkClasses = (active: boolean) =>
+    `${styles.dropdownLink} ${active ? styles.dropdownLinkActive : ""}`;
 
   const logoutStyle: React.CSSProperties = {
+    padding: sidebarExpanded ? "12px 20px" : "12px",
+    color: "var(--color_logout)",
+    cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: 12,
-    padding: "12px 20px",
-    color: "var(--color_logout)",
-    cursor: "pointer",
+    justifyContent: sidebarExpanded ? "flex-start" : "center",
     borderTop: "1px solid var(--border_sidebar)",
-    marginTop: "auto",
   };
 
   return (
-    <aside style={asideStyle}>
-      <nav style={{ display: "flex", flexDirection: "column", gap: 4, padding: "0 8px", flex: 1, overflowY: "auto" }}>
-        {entries.map((entry) => {
-          if (isDropdown(entry)) {
-            const key = entry.label;
-            const isOpen = openDropdown === key;
-            return (
-              <div key={key}>
+    <>
+      {openDropdownId && (
+        <div
+          className="aside-dropdown-backdrop"
+          style={backdropStyle}
+          onClick={handleBackdropClick}
+          onKeyDown={(e) => e.key === "Enter" && handleBackdropClick()}
+          role="button"
+          tabIndex={0}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`${styles.asideBase} ${!sidebarExpanded ? styles.asideCollapsed : ""}`}
+        style={baseAsideStyle}
+      >
+        <div style={{ overflowY: "auto", overflowX: "hidden", flex: 1 }}>
+          {entries.map((entry) => {
+            if (isDropdown(entry)) {
+              const key = entry.label;
+              const isOpen = openDropdownId === key;
+              const anyChildActive = entry.children.some((c) => isActive(c.href));
+              return (
                 <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setOpenDropdown(isOpen ? null : key)}
-                  onKeyDown={(e) => e.key === "Enter" && setOpenDropdown(isOpen ? null : key)}
-                  style={dropdownTriggerStyle(isOpen)}
+                  key={key}
+                  style={{ padding: "2px", cursor: "pointer" }}
+                  onMouseEnter={() => handleDropdownEnter(key)}
+                  onMouseLeave={handleDropdownLeave}
                 >
-                  <span style={{ fontSize: "1.1rem" }}>{entry.icon}</span>
-                  <span style={{ fontWeight: 500 }}>{entry.label}</span>
-                  <span style={{ marginLeft: "auto", fontSize: 12 }}>{isOpen ? "▼" : "▶"}</span>
-                </div>
-                {isOpen && (
-                  <div style={{ display: "flex", flexDirection: "column", paddingBottom: 8 }}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDropdownToggle(key);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleDropdownToggle(key);
+                      }
+                    }}
+                    className={menuItemClasses(anyChildActive)}
+                  >
+                    {sidebarExpanded ? (
+                      <>
+                        <span className={styles.iconWrap} style={iconStyle}>
+                          <FeatherIcon name={entry.icon} size={20} />
+                        </span>
+                        <span style={textStyle}>{entry.label}</span>
+                      </>
+                    ) : (
+                      <span style={radioStyle(anyChildActive)} />
+                    )}
+                  </div>
+                  <div className={dropdownContentClasses(isOpen)}>
                     {entry.children.map((child) => (
                       <Link
                         key={child.href + child.label}
                         href={child.href}
-                        style={subLinkStyle(isActive(child.href))}
+                        className={dropdownLinkClasses(isActive(child.href))}
                         target={child.href.startsWith(LEGACY) ? "_blank" : undefined}
                         rel={child.href.startsWith(LEGACY) ? "noopener noreferrer" : undefined}
                       >
@@ -311,32 +393,47 @@ export default function UserSidebar() {
                       </Link>
                     ))}
                   </div>
-                )}
+                </div>
+              );
+            }
+            return (
+              <div key={entry.href + entry.label} style={{ padding: "2px", cursor: "pointer" }}>
+                <Link href={entry.href} className={menuItemClasses(isActive(entry.href))}>
+                  {sidebarExpanded ? (
+                    <>
+                      <span className={styles.iconWrap} style={iconStyle}>
+                        <FeatherIcon name={entry.icon} size={20} />
+                      </span>
+                      <span style={textStyle}>{entry.label}</span>
+                    </>
+                  ) : (
+                    <span style={radioStyle(isActive(entry.href))} />
+                  )}
+                </Link>
               </div>
             );
-          }
-          return (
-            <Link
-              key={entry.href + entry.label}
-              href={entry.href}
-              style={linkStyle(isActive(entry.href))}
-            >
-              <span style={{ fontSize: "1.1rem" }}>{entry.icon}</span>
-              <span style={{ fontWeight: 500 }}>{entry.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={logout}
-        onKeyDown={(e) => e.key === "Enter" && logout()}
-        style={logoutStyle}
-      >
-        <span style={{ fontSize: "1.1rem" }}>🚪</span>
-        <span style={{ fontWeight: 500 }}>Log Out</span>
-      </div>
-    </aside>
+          })}
+        </div>
+
+        <div
+          style={logoutStyle}
+          onClick={logout}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && logout()}
+        >
+          {sidebarExpanded ? (
+            <>
+              <span className={styles.iconWrap}>
+                <FeatherIcon name="log-out" size={20} />
+              </span>
+              <span style={textStyle}>Log Out</span>
+            </>
+          ) : (
+            <span style={radioStyle(false)} />
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

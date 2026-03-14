@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -135,23 +136,23 @@ type LoginUser struct {
 	Telepon          *string
 	Gender           *string
 	PpatKhusus       *string
+	AlamatPu         *string
 }
 
 // GetByIdentifierForLogin fetches user from a_2_verified_users by email, userid, or username.
-// Menggunakan NULL::text AS gender agar tetap jalan jika kolom gender belum ada di tabel.
 func (r *UserRepo) GetByIdentifierForLogin(ctx context.Context, identifier string) (*LoginUser, error) {
 	var u LoginUser
 	err := r.pool.QueryRow(ctx,
 		`SELECT userid, password, nama, email, divisi, fotoprofil, statuspengguna,
 			username, nip, special_field, special_parafv, pejabat_umum,
-			tanda_tangan_mime, tanda_tangan_path, telepon, NULL::text AS gender, ppat_khusus
+			tanda_tangan_mime, tanda_tangan_path, telepon, gender, ppat_khusus, alamat_pu
 		 FROM a_2_verified_users
 		 WHERE (email = $1 OR userid = $1 OR username = $1) AND verifiedstatus = 'complete'`,
 		identifier,
 	).Scan(
 		&u.Userid, &u.Password, &u.Nama, &u.Email, &u.Divisi, &u.Fotoprofil, &u.Statuspengguna,
 		&u.Username, &u.NIP, &u.SpecialField, &u.SpecialParafv, &u.PejabatUmum,
-		&u.TandaTanganMime, &u.TandaTanganPath, &u.Telepon, &u.Gender, &u.PpatKhusus,
+		&u.TandaTanganMime, &u.TandaTanganPath, &u.Telepon, &u.Gender, &u.PpatKhusus, &u.AlamatPu,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -624,17 +625,50 @@ func (r *UserRepo) UpdateTandaTangan(ctx context.Context, userid, mime, path str
 	return err
 }
 
-// UpdateProfileEditable updates username, nip, email, telepon for profile edit (by userid).
-func (r *UserRepo) UpdateProfileEditable(ctx context.Context, userid, username, nip, email, telepon string) error {
+// UpdateProfileEditable updates username, nip, email, telepon, alamat_pu (and optionally gender, special_field, pejabat_umum) for profile edit.
+func (r *UserRepo) UpdateProfileEditable(ctx context.Context, userid, username, nip, email, telepon string, alamatPu *string, gender, specialField, pejabatUmum *string) error {
 	if r.pool == nil || userid == "" {
 		return nil
+	}
+	alamatVal := ""
+	if alamatPu != nil {
+		alamatVal = strings.TrimSpace(*alamatPu)
 	}
 	_, err := r.pool.Exec(ctx,
 		`UPDATE a_2_verified_users SET
 			username = NULLIF(TRIM($1),''), nip = NULLIF(TRIM($2),''),
-			email = NULLIF(TRIM($3),''), telepon = NULLIF(TRIM($4),'')
-		 WHERE userid = $5 AND verifiedstatus = 'complete'`,
-		username, nip, email, telepon, userid,
+			email = NULLIF(TRIM($3),''), telepon = NULLIF(TRIM($4),''), alamat_pu = NULLIF(TRIM($5),'')
+		 WHERE userid = $6 AND verifiedstatus = 'complete'`,
+		username, nip, email, telepon, alamatVal, userid,
 	)
+	if err != nil {
+		return err
+	}
+	if gender != nil {
+		g := strings.TrimSpace(*gender)
+		if g == "Laki-laki" || g == "Perempuan" {
+			_, err = r.pool.Exec(ctx,
+				`UPDATE a_2_verified_users SET gender = $1 WHERE userid = $2 AND verifiedstatus = 'complete'`,
+				g, userid,
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if specialField != nil || pejabatUmum != nil {
+		sf := ""
+		pu := ""
+		if specialField != nil {
+			sf = strings.TrimSpace(*specialField)
+		}
+		if pejabatUmum != nil {
+			pu = strings.TrimSpace(*pejabatUmum)
+		}
+		_, err = r.pool.Exec(ctx,
+			`UPDATE a_2_verified_users SET special_field = NULLIF($1,''), pejabat_umum = NULLIF($2,'') WHERE userid = $3 AND verifiedstatus = 'complete'`,
+			sf, pu, userid,
+		)
+	}
 	return err
 }
