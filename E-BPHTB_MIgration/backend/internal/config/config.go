@@ -26,6 +26,11 @@ type Config struct {
 
 func Load() *Config {
 	port := 3005
+	if p := os.Getenv("PORT"); p != "" {
+		if v, err := strconv.Atoi(p); err == nil {
+			port = v
+		}
+	}
 	if p := os.Getenv("GO_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
