@@ -319,11 +319,22 @@ func main() {
 
 	addr := ":" + strconv.Itoa(cfg.Port)
 
-	// CORS: izinkan origin frontend (default localhost:3000)
+	// CORS: izinkan origin frontend. Production (Koyeb) wajib set CORS_ORIGINS ke domain Vercel.
 	corsOrigins := []string{"http://localhost:3000"}
 	if s := os.Getenv("CORS_ORIGINS"); s != "" {
-		corsOrigins = strings.Split(s, ",")
+		parts := strings.Split(s, ",")
+		corsOrigins = nil
+		for _, p := range parts {
+			o := strings.TrimSpace(p)
+			if o != "" {
+				corsOrigins = append(corsOrigins, o)
+			}
+		}
+		if len(corsOrigins) == 0 {
+			corsOrigins = []string{"http://localhost:3000"}
+		}
 	}
+	log.Printf("CORS allowed origins: %v", corsOrigins)
 	h := corsMiddleware(corsOrigins, mux)
 
 	server := &http.Server{Addr: addr, Handler: h}

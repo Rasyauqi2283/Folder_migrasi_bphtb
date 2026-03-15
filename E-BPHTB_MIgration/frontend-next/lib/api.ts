@@ -11,7 +11,7 @@ const FRONTEND_BASE =
  */
 export function getApiBase(): string {
   const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_LEGACY_BASE_URL;
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return fromEnv.replace(/\/+$/, ""); // hapus trailing slash agar tidak jadi .../api/... → ...//api/...
   if (typeof window !== "undefined") return "";
   return "http://localhost:8000";
 }

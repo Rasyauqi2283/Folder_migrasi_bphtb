@@ -25,6 +25,7 @@ Server listen di port **8000** (sama untuk lokal & Koyeb; hanya env `PORT` dipak
 - `NODE_ENV` — environment (development/production)
 - `API_URL` — URL API untuk response /api/config
 - `DATABASE_URL` — connection string PostgreSQL (untuk step 3+)
+- **`CORS_ORIGINS`** — untuk **production (Koyeb)** wajib di-set ke domain frontend Vercel, contoh: `https://bphtbbappenda.vercel.app`. Jika tidak diset, backend hanya mengizinkan `http://localhost:3000` dan request dari Vercel akan kena CORS. Beberapa origin pisah koma.
 
 ## Verifikasi step 1
 
