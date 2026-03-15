@@ -209,6 +209,39 @@ func main() {
 
 	// PPAT/PU: seluruh layanan di atas dilayani Go. Tidak ada proxy ke Node untuk /api/ppat/* maupun /api/ppat_*.
 
+	// Bank, Peneliti, LSB, Paraf (Peneliti Validasi) — handler Go (sama seperti Admin, PU, LTB)
+	var bankRepo *repository.BankRepo
+	var penelitiRepo *repository.PenelitiRepo
+	var lsbRepo *repository.LSBRepo
+	var parafRepo *repository.ParafRepo
+	if pool != nil {
+		bankRepo = repository.NewBankRepo(pool)
+		penelitiRepo = repository.NewPenelitiRepo(pool)
+		lsbRepo = repository.NewLSBRepo(pool)
+		parafRepo = repository.NewParafRepo(pool)
+	} else {
+		bankRepo = repository.NewBankRepo(nil)
+		penelitiRepo = repository.NewPenelitiRepo(nil)
+		lsbRepo = repository.NewLSBRepo(nil)
+		parafRepo = repository.NewParafRepo(nil)
+	}
+	bankHandler := handler.NewBankHandler(bankRepo, userRepo)
+	mux.HandleFunc("GET /api/bank/transaksi", bankHandler.ListTransaksi)
+	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/approve", bankHandler.Approve)
+	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/reject", bankHandler.Reject)
+
+	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
+	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)
+	mux.HandleFunc("GET /api/peneliti/get-berkas-till-verif", penelitiHandler.GetBerkasTillVerif)
+
+	lsbHandler := handler.NewLSBHandler(lsbRepo, userRepo)
+	mux.HandleFunc("GET /api/LSB_berkas-complete", lsbHandler.BerkasComplete)
+	mux.HandleFunc("GET /api/LSB_monitoring-penyerahan", lsbHandler.MonitoringPenyerahan)
+
+	parafHandler := handler.NewParafHandler(parafRepo, userRepo)
+	mux.HandleFunc("GET /api/paraf/get-berkas-pending", parafHandler.GetBerkasPending)
+	mux.HandleFunc("GET /api/paraf/get-monitoring-documents", parafHandler.GetMonitoringDocuments)
+
 	// Proxy /api/admin/* ke Node (sisa endpoint admin yang belum dimigrasi)
 	mux.Handle("/api/admin/", handler.AdminProxyHandler(cfg.LegacyNodeURL))
 
@@ -279,7 +312,7 @@ func main() {
 		})
 	})
 
-	// Legacy API proxy: forward any unmatched /api/* to Node (bank, peneliti, LSB, paraf, pv, validasi, etc.)
+	// Legacy API proxy: forward any unmatched /api/* ke Node (pv/cert, validasi/claim, dll). Bank, Peneliti, LSB, Paraf sudah dilayani Go di atas.
 	mux.Handle("/api/", handler.LegacyAPIProxyHandler(cfg.LegacyNodeURL))
 
 	addr := ":" + strconv.Itoa(cfg.Port)

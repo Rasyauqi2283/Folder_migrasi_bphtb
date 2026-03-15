@@ -73,7 +73,7 @@ export default function LSBMonitoringPenyerahanPage() {
                 borderRadius: 12,
               }}
             >
-              <div style={{ fontWeight: 600 }}>{m.label ?? `${m.bulan ?? ""} ${m.tahun ?? ""}`.trim() || "-"}</div>
+              <div style={{ fontWeight: 600 }}>{(m.label ?? `${m.bulan ?? ""} ${m.tahun ?? ""}`.trim()) || "-"}</div>
               {typeof m.count === "number" && <div style={{ marginTop: 8, color: "var(--color_font_main_muted)" }}>{m.count} dokumen</div>}
             </div>
           ))}
@@ -85,3 +85,4 @@ export default function LSBMonitoringPenyerahanPage() {
     </div>
   );
 }
+

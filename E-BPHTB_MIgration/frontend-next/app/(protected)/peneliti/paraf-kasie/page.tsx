@@ -34,7 +34,7 @@ export default function PenelitiParafKasiePage() {
       const json: ApiResponse = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json as ApiResponse).message || `HTTP ${res.status}`);
       if (!json.success) throw new Error((json as ApiResponse).message || "Gagal memuat data");
-      const arr = Array.isArray((json as ApiResponse).data) ? (json as ApiResponse).data : [];
+      const arr: ParafItem[] = Array.isArray((json as ApiResponse).data) ? ((json as ApiResponse).data ?? []) : [];
       setData(arr);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat data");
@@ -43,7 +43,7 @@ export default function PenelitiParafKasiePage() {
       setLoading(false);
     }
   }, []);
-
+ 
   useEffect(() => {
     load();
   }, [load]);
