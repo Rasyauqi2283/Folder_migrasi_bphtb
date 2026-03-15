@@ -1,11 +1,13 @@
-# Build stage
+# Build stage — jalan saat context = repo root (Koyeb) atau = backend folder (lokal)
+# Di Koyeb: Dockerfile path = E-BPHTB_MIgration/backend/Dockerfile, context = repo root
 FROM golang:1.23-alpine AS builder
 WORKDIR /app
 
-COPY go.mod go.sum ./
+# Jika context repo root: copy dari E-BPHTB_MIgration/backend
+COPY E-BPHTB_MIgration/backend/go.mod E-BPHTB_MIgration/backend/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY E-BPHTB_MIgration/backend ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
 
 # Run stage
@@ -15,7 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /server .
 
-# Default port (Koyeb can override via PORT)
 ENV PORT=3005
 EXPOSE 3005
 
