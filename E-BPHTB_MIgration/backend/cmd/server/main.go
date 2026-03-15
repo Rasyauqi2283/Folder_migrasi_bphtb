@@ -271,8 +271,8 @@ func main() {
 	mux.HandleFunc("GET /api/profile-signature/{userid}", authHandler.ServeProfileSignature)
 	mux.HandleFunc("POST /api/v1/auth/logout", authHandler.Logout)
 
-	// GET /health — health check (mirror Node); termasuk status koneksi DB
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// GET /health dan GET /api/health — health check (Koyeb/frontend bisa pakai salah satu)
+	healthHandler := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
@@ -297,7 +297,9 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(payload)
-	})
+	}
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/api/health", healthHandler)
 
 	// GET /api/config — config untuk frontend (mirror Node)
 	mux.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {

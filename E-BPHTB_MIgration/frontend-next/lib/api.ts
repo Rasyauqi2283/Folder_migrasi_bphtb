@@ -1,8 +1,8 @@
-/** URL backend Go (3005) untuk proxy API. */
+/** URL backend Go. Sandbox & production sama: port 8000 (Koyeb 8000, lokal juga 8000). */
 const API_BASE =
   process.env.NEXT_PUBLIC_LEGACY_BASE_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:3005";
+  "http://localhost:8000";
 
 /** URL Next.js (3000) untuk static html_folder & dashboard redirect. */
 const FRONTEND_BASE =

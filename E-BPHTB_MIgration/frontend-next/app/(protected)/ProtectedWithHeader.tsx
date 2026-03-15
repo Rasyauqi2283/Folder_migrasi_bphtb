@@ -40,22 +40,30 @@ export default function ProtectedWithHeader({ children }: { children: React.Reac
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
   const isPURoute = pathname?.startsWith("/pu") ?? false;
   const isLtbRoute = pathname?.startsWith("/ltb") ?? false;
+  const isBankRoute = pathname?.startsWith("/bank") ?? false;
+  const isPenelitiRoute = pathname?.startsWith("/peneliti") ?? false;
+  const isPenelitiValidasiRoute = pathname?.startsWith("/peneliti-validasi") ?? false;
+  const isLSBRoute = pathname?.startsWith("/lsb") ?? false;
   const isLengkapiProfil = pathname === "/lengkapi-profil";
   const isProfileRoute = pathname?.startsWith("/profile") ?? false;
+
+  // Sidebar global (UserSidebar) hanya untuk FAQ dan Profil. Role (admin, pu, ltb, bank, peneliti, peneliti-validasi, lsb) pakai sidebar masing-masing di layout-nya.
+  const showUserSidebar = pathname === "/faq" || isProfileRoute;
+  const useRoleLayoutOnly =
+    isAdminRoute || isPURoute || isLtbRoute || isBankRoute || isPenelitiRoute || isPenelitiValidasiRoute || isLSBRoute;
 
   // Lengkapi Profil: hanya main (tanpa Header, Sidebar, Footer) — seperti legacy profile-completetask.html
   if (isLengkapiProfil) {
     return <>{children}</>;
   }
 
-  // Admin dan PPAT punya layout sendiri (AdminSidebar / PPATSidebar) — tidak pakai UserSidebar agar tidak duplikat
   return (
     <>
       <Header title={title} />
       <div style={{ paddingTop: 80 }} className="protected-wrapper">
-        {isAdminRoute || isPURoute || isLtbRoute ? (
+        {useRoleLayoutOnly ? (
           children
-        ) : (
+        ) : showUserSidebar ? (
           <>
             <UserSidebar />
             <main
@@ -69,6 +77,19 @@ export default function ProtectedWithHeader({ children }: { children: React.Reac
                 paddingBottom: 48,
                 paddingLeft: isProfileRoute ? "1.5rem" : "2rem",
                 ...(isProfileRoute && { overflow: "hidden", display: "flex", flexDirection: "column" }),
+              }}
+            >
+              {children}
+            </main>
+            <Footer />
+          </>
+        ) : (
+          <>
+            <main
+              className={mainStyles.main}
+              style={{
+                minHeight: "calc(100vh - 80px - 40px)",
+                padding: "1.5rem 2rem 48px",
               }}
             >
               {children}

@@ -30,7 +30,7 @@ Backend Go (step 1):
 ```bash
 cd E-BPHTB_MIgration/backend
 go run ./cmd/server
-# Listen di http://localhost:3005; curl http://localhost:3005/health
+# Listen di http://localhost:8000; curl http://localhost:8000/health
 ```
 
 Atau dari folder ini:

@@ -110,7 +110,7 @@ function DaftarContent() {
         setKtpMessage(
           result?.message ||
             (res.status === 502
-              ? "Backend tidak menjawab. Pastikan Go (port 3005) sudah jalan."
+              ? "Backend tidak menjawab. Pastikan Go (port 8000) sudah jalan."
               : "OCR KTP gagal. Gunakan foto lebih jelas.")
         );
         return;
@@ -383,7 +383,7 @@ function DaftarContent() {
         }
       }
     } catch {
-      setMessage("Gagal terhubung ke server. Pastikan backend Go (port 3005) jalan.");
+      setMessage("Gagal terhubung ke server. Pastikan backend Go (port 8000) jalan.");
       setMessageType("error");
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(PENDING_REGISTRATION_KEY);

@@ -17,7 +17,7 @@ cd E-BPHTB_MIgration/backend
 go run ./cmd/server
 ```
 
-Server listen di port **3005** (atau env `GO_PORT` / `BACKEND_GO_PORT`).
+Server listen di port **8000** (sama untuk lokal & Koyeb; env `PORT` / `GO_PORT` / `BACKEND_GO_PORT` opsional).
 
 ## Env (opsional)
 
@@ -29,6 +29,6 @@ Server listen di port **3005** (atau env `GO_PORT` / `BACKEND_GO_PORT`).
 ## Verifikasi step 1
 
 ```bash
-curl http://localhost:3005/health
-curl http://localhost:3005/api/config
+curl http://localhost:8000/health
+curl http://localhost:8000/api/config
 ```

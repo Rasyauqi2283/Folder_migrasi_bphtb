@@ -7,7 +7,7 @@ Panduan singkat untuk menjalankan uji registrasi karyawan di **localhost:3000** 
 ```
 Browser (localhost:3000)  →  Next.js (frontend)
                                   ↓
-                         Backend Go (localhost:3005)
+                         Backend Go (localhost:8000)
                            - upload-ktp
                            - real-ktp-verification (KTP OCR via Tesseract CLI)
                            - register
@@ -32,14 +32,14 @@ copy .env.example .env
 go run ./cmd/server
 ```
 
-Go listen di **http://localhost:3005**. Endpoint auth (upload-ktp, real-ktp-verification, register) dilayani langsung oleh Go.
+Go listen di **http://localhost:8000**. Endpoint auth (upload-ktp, real-ktp-verification, register) dilayani langsung oleh Go.
 
 ## 2. Frontend Next.js
 
 ```bash
 cd E-BPHTB_MIgration/frontend-next
 copy .env.local.example .env.local
-# .env.local: NEXT_PUBLIC_LEGACY_BASE_URL=http://localhost:3005
+# .env.local: NEXT_PUBLIC_LEGACY_BASE_URL=http://localhost:8000
 npm run dev
 ```
 
@@ -65,7 +65,7 @@ $env:PORT=3001; npm run dev:backend
 
 | Lokasi | Variabel | Nilai |
 |--------|----------|-------|
-| E-BPHTB_MIgration/backend | GO_PORT | 3005 |
+| E-BPHTB_MIgration/backend | PORT / GO_PORT | 8000 (default) |
 | E-BPHTB_MIgration/backend | DATABASE_URL | postgres://... |
 | E-BPHTB_MIgration/backend | TEMP_UPLOADS_DIR | ./temp_uploads |
 | E-BPHTB_MIgration/backend | LEGACY_NODE_URL | http://localhost:3001 (jika butuh verify-otp/login) |
@@ -94,7 +94,7 @@ Database yang dipakai backend Go **sama** dengan yang Anda buka dengan `psql -U 
 3. **Cek lewat HTTP (paling gampang)**
    - Setelah backend jalan, buka di browser atau curl:
      ```bash
-     curl http://localhost:3005/health
+     curl http://localhost:8000/health
      ```
    - Jika DB terhubung, respons berisi `"database": "connected"`.
    - Jika tidak terhubung: `"database": "disconnected"` dan ada `database_error`.
@@ -110,7 +110,7 @@ Karena user beragam role, kolom berikut **boleh kosong/NULL**: `ppatk_khusus`, `
 
 | Gejala | Penyebab | Solusi |
 |--------|----------|--------|
-| ERR_CONNECTION_REFUSED ke 3005 | Backend Go tidak jalan | Jalankan `go run ./cmd/server` dari backend |
+| ERR_CONNECTION_REFUSED ke 8000 | Backend Go tidak jalan | Jalankan `go run ./cmd/server` dari backend |
 | "OCR could not extract text" | Tesseract tidak terpasang atau tidak di PATH | Install Tesseract (mis. `choco install tesseract` di Windows) |
 | Register gagal "Database tidak tersedia" | PostgreSQL tidak jalan atau DATABASE_URL salah | Pastikan DB jalan dan URL benar |
 | OTP tidak terkirim | Layanan email belum dikonfigurasi | OTP dicetak ke log (dev mode) |

@@ -8,7 +8,7 @@
 |----------|-----------------|------|
 | `npm run dev` (di root) | E-BPHTB_root_utama (Node) — **jangan pakai** | 3000 |
 | `npm run dev:next` | **E-BPHTB_MIgration/frontend-next** (Next.js) | 3000 |
-| `npm run dev:go` | **E-BPHTB_MIgration/backend** (Go) | 3005 |
+| `npm run dev:go` | **E-BPHTB_MIgration/backend** (Go) | 8000 |
 
 **Untuk kerja di migrasi:** Gunakan `npm run dev:next` dan `npm run dev:go`.
 
@@ -18,7 +18,7 @@
    ```bash
    npm run dev:go
    ```
-   Berjalan di `http://localhost:3005`.
+   Berjalan di `http://localhost:8000`.
 
 2. **Frontend Next.js**:
    ```bash
@@ -39,7 +39,7 @@ Next.js mem-proxy `/api/*` ke backend Go lokal. Tidak perlu CORS.
 
 ## Env vars (opsional)
 
-- `NEXT_PUBLIC_LEGACY_BASE_URL` — URL backend (default: `http://localhost:3005`)
+- `NEXT_PUBLIC_LEGACY_BASE_URL` — URL backend (default: `http://localhost:8000`)
 - `NEXT_PUBLIC_API_BASE_URL` — alias untuk LEGACY_BASE_URL
 
 ## EasyOCR (Primary) + Tesseract (Fallback)
