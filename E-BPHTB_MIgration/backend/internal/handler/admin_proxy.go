@@ -42,3 +42,21 @@ func AdminProxyHandler(targetURL string) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	return proxy
 }
+
+// LegacyAPIProxyHandler returns a reverse proxy for /api/* requests not handled by Go.
+// Register this last so only unmatched /api/* paths (bank, peneliti, LSB, paraf, pv, validasi, etc.) are forwarded to Node.
+func LegacyAPIProxyHandler(targetURL string) http.Handler {
+	if targetURL == "" {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "Legacy API proxy not configured (LEGACY_NODE_URL)", http.StatusServiceUnavailable)
+		})
+	}
+	target, err := url.Parse(targetURL)
+	if err != nil {
+		log.Printf("[LEGACY_API_PROXY] invalid LEGACY_NODE_URL: %v", err)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "Legacy API proxy misconfigured", http.StatusServiceUnavailable)
+		})
+	}
+	return httputil.NewSingleHostReverseProxy(target)
+}

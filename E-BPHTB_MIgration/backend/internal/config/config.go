@@ -25,18 +25,18 @@ type Config struct {
 }
 
 func Load() *Config {
-	port := 3005
+	// Default 8000 untuk Koyeb (dan kebanyakan PaaS). Lokal bisa set GO_PORT=3005 atau PORT=3005.
+	port := 8000
+	// Prioritas: PORT (Koyeb/Cloud) > GO_PORT > BACKEND_GO_PORT
 	if p := os.Getenv("PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
 		}
-	}
-	if p := os.Getenv("GO_PORT"); p != "" {
+	} else if p := os.Getenv("GO_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
 		}
-	}
-	if p := os.Getenv("BACKEND_GO_PORT"); p != "" {
+	} else if p := os.Getenv("BACKEND_GO_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
 		}

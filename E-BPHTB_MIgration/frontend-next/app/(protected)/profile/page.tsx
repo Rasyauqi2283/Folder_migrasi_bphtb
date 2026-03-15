@@ -19,13 +19,13 @@ function dashboardPath(divisi: string, legacyBase: string): string {
     case "LTB":
       return "/ltb";
     case "LSB":
-      return `${legacyBase}/html_folder/LSB/lsb-dashboard.html`;
+      return "/lsb";
     case "Peneliti":
-      return `${legacyBase}/html_folder/Peneliti/peneliti-dashboard.html`;
+      return "/peneliti";
     case "Peneliti Validasi":
-      return `${legacyBase}/html_folder/ParafP/penelitiValidasi-dashboard.html`;
+      return "/peneliti-validasi";
     case "BANK":
-      return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
+      return "/bank";
     case "Wajib Pajak":
       return "/wp";
     default:

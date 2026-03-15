@@ -33,6 +33,22 @@ export default function DashboardPage() {
       router.replace("/cs");
       return;
     }
+    if ((user.divisi ?? "").toUpperCase() === "BANK") {
+      router.replace("/bank");
+      return;
+    }
+    if (user.divisi === "Peneliti") {
+      router.replace("/peneliti");
+      return;
+    }
+    if (user.divisi === "Peneliti Validasi") {
+      router.replace("/peneliti-validasi");
+      return;
+    }
+    if (user.divisi === "LSB") {
+      router.replace("/lsb");
+      return;
+    }
   }, [user, router]);
 
   const legacyDashboardUrl = (() => {
@@ -46,13 +62,13 @@ export default function DashboardPage() {
       case "LTB":
         return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
       case "LSB":
-        return `${legacyBase}/html_folder/LSB/lsb-dashboard.html`;
+        return "/lsb";
       case "Peneliti":
-        return `${legacyBase}/html_folder/Peneliti/peneliti-dashboard.html`;
+        return "/peneliti";
       case "Peneliti Validasi":
-        return `${legacyBase}/html_folder/ParafP/penelitiValidasi-dashboard.html`;
+        return "/peneliti-validasi";
       case "BANK":
-        return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
+        return "/bank";
       case "Wajib Pajak":
         return "/wp";
       case "LTB":

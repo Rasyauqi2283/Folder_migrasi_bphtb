@@ -279,6 +279,9 @@ func main() {
 		})
 	})
 
+	// Legacy API proxy: forward any unmatched /api/* to Node (bank, peneliti, LSB, paraf, pv, validasi, etc.)
+	mux.Handle("/api/", handler.LegacyAPIProxyHandler(cfg.LegacyNodeURL))
+
 	addr := ":" + strconv.Itoa(cfg.Port)
 
 	// CORS: izinkan origin frontend (default localhost:3000)

@@ -134,25 +134,25 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
     },
   ],
   LSB: [
-    { href: "/dashboard", label: "Dashboard", icon: "layout" },
+    { href: "/lsb", label: "Dashboard", icon: "layout" },
     {
       label: "Pelayanan Penyerahan SSPD",
       icon: "send",
       children: [
-        { href: `${LEGACY}/LSB/Pelayanan_Penyerahan-SSPD/pelayanan-penyerahan-sspd.html`, label: "Pelayanan Penyerahan SSPD" },
-        { href: `${LEGACY}/LSB/Pelayanan_Penyerahan-SSPD/monitoring_penyerahan_sspd.html`, label: "Monitoring Penyerahan SSPD" },
+        { href: "/lsb/pelayanan-penyerahan-sspd", label: "Pelayanan Penyerahan SSPD" },
+        { href: "/lsb/monitoring-penyerahan", label: "Monitoring Penyerahan SSPD" },
       ],
     },
   ],
   Peneliti: [
-    { href: "/dashboard", label: "Dashboard", icon: "layout" },
+    { href: "/peneliti", label: "Dashboard", icon: "layout" },
     {
       label: "Verifikasi SSPD",
       icon: "scale",
       children: [
-        { href: `${LEGACY}/Peneliti/Verifikasi_sspd/verifikasi-data.html`, label: "Verifikasi SSPD" },
+        { href: "/peneliti/verifikasi-sspd", label: "Verifikasi SSPD" },
         { href: `${LEGACY}/admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html`, label: "Verifikasi SSPD Offline" },
-        { href: `${LEGACY}/Peneliti/ParafKasie-sspd/paraf-kasie.html`, label: "Kasie Verifikasi SSPD" },
+        { href: "/peneliti/paraf-kasie", label: "Kasie Verifikasi SSPD" },
         { href: `${LEGACY}/admins_Peneliti/adminv_verifikasisspd/adminv_Kasie_Verifikasi_SSPD/admin_kasie_verifikasisspd_off.html`, label: "Kasie Verifikasi SSPD Offline" },
         { href: `${LEGACY}/admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar.html`, label: "SKPD Kurang Bayar" },
         { href: `${LEGACY}/admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar_off.html`, label: "SKPD Kurang Bayar Offline" },
@@ -160,12 +160,12 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
     },
   ],
   "Peneliti Validasi": [
-    { href: "/dashboard", label: "Dashboard", icon: "layout" },
+    { href: "/peneliti-validasi", label: "Dashboard", icon: "layout" },
     {
       label: "Validasi Berkas SSPD",
       icon: "check-circle",
       children: [
-        { href: `${LEGACY}/ParafP/Verifikasi_SSPD/Validasi_berkas_online.html`, label: "Validasi Berkas SSPD Online" },
+        { href: "/peneliti-validasi/validasi-online", label: "Validasi Berkas SSPD Online" },
         { href: `${LEGACY}/ParafP/Verifikasi_SSPD/Validasi_berkas_offline.html`, label: "Validasi Berkas SSPD Offline" },
       ],
     },
@@ -173,25 +173,25 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
       label: "Sinkronisasi dan Paraf",
       icon: "folder-plus",
       children: [
-        { href: `${LEGACY}/ParafP/Sinkronisasi_validasi/Sertifikat_digital.html`, label: "Sertifikat Digital" },
-        { href: `${LEGACY}/ParafP/Sinkronisasi_validasi/tanda_paraf.html`, label: "Tanda Paraf" },
+        { href: "/peneliti-validasi/sertifikat-digital", label: "Sertifikat Digital" },
+        { href: "/peneliti-validasi/tanda-paraf", label: "Tanda Paraf" },
       ],
     },
     {
       label: "Monitoring SSPD",
       icon: "image",
       children: [
-        { href: `${LEGACY}/ParafP/Monitoring/monitoring_verifikasi.html`, label: "Monitoring Verifikasi SSPD" },
-        { href: `${LEGACY}/ParafP/Monitoring/monitoring_skpd_kurang.html`, label: "Monitoring SKPD Kurang Bayar" },
+        { href: "/peneliti-validasi/monitoring-verifikasi", label: "Monitoring Verifikasi SSPD" },
+        { href: "/peneliti-validasi/monitoring-skpd-kurang", label: "Monitoring SKPD Kurang Bayar" },
       ],
     },
   ],
   BANK: [
-    { href: "/dashboard", label: "Dashboard", icon: "layout" },
+    { href: "/bank", label: "Dashboard", icon: "layout" },
     {
       label: "Transaksi BANK",
       icon: "dollar-sign",
-      children: [{ href: `${LEGACY}/Bank/Hasil_Transaksi/hasil_transaksi.html`, label: "Hasil transaksi" }],
+      children: [{ href: "/bank/hasil-transaksi", label: "Hasil transaksi" }],
     },
   ],
   "Customer Service": [

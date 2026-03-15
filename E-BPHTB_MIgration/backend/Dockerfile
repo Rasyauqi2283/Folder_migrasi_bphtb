@@ -13,6 +13,6 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /server .
 
-ENV PORT=3005
-EXPOSE 3005
+ENV PORT=8000
+EXPOSE 8000
 CMD ["./server"]
