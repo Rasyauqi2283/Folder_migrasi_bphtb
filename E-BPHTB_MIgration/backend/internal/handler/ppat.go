@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"ebphtb/backend/internal/config"
+	"ebphtb/backend/internal/pdf"
 	"ebphtb/backend/internal/repository"
 
 	"github.com/jackc/pgx/v5"
@@ -32,13 +33,14 @@ func getPpatUserid(r *http.Request) string {
 
 // PpatHandler handles /api/ppat/* and /api/ppat_* endpoints (Go-native).
 type PpatHandler struct {
-	repo *repository.PpatRepo
-	cfg  *config.Config
+	repo         *repository.PpatRepo
+	bookingRepo  *repository.BookingRepo
+	cfg          *config.Config
 }
 
 // NewPpatHandler creates a PpatHandler.
-func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo) *PpatHandler {
-	return &PpatHandler{repo: repo, cfg: cfg}
+func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo) *PpatHandler {
+	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, cfg: cfg}
 }
 
 // LoadAllBooking handles GET /api/ppat/load-all-booking.
@@ -824,6 +826,106 @@ func (h *PpatHandler) UploadDocuments(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Documents uploaded"})
+}
+
+// GeneratePdfBadan handles GET /api/ppat_generate-pdf-badan/{nobooking}.
+func (h *PpatHandler) GeneratePdfBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := r.PathValue("nobooking")
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	if h.bookingRepo == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	data, err := h.bookingRepo.GetBookingForSSPDPDF(ctx, userid, nobooking)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || strings.Contains(err.Error(), "no rows") {
+			ppatJSONError(w, http.StatusNotFound, "Data untuk nobooking ini tidak ditemukan")
+			return
+		}
+		log.Printf("[PPAT] GeneratePdfBadan: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	disposition := "inline"
+	if r.URL.Query().Get("download") != "" {
+		disposition = "attachment"
+	}
+	w.Header().Set("Content-Disposition", disposition+`; filename="`+nobooking+`_document.pdf"`)
+	logoPath := h.cfg.PDFLogoPath
+	if logoPath != "" {
+		if abs, err := filepath.Abs(logoPath); err == nil {
+			logoPath = abs
+		}
+		if _, err := os.Stat(logoPath); err != nil {
+			logoPath = ""
+			if fallback, err := filepath.Abs("frontend-next/asset/Logobappenda_pdf.png"); err == nil {
+				if _, err := os.Stat(fallback); err == nil {
+					logoPath = fallback
+				}
+			}
+		}
+	}
+	if err := pdf.GenerateSSPD(w, data, logoPath); err != nil {
+		log.Printf("[PPAT] GeneratePdfBadan PDF write: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
+		return
+	}
+}
+
+// GeneratePdfMohonValidasi handles GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}.
+func (h *PpatHandler) GeneratePdfMohonValidasi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := r.PathValue("nobooking")
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	if h.bookingRepo == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	data, err := h.bookingRepo.GetBookingForMohonValidasiPDF(ctx, userid, nobooking)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || strings.Contains(err.Error(), "no rows") {
+			ppatJSONError(w, http.StatusNotFound, "Data tidak ditemukan")
+			return
+		}
+		log.Printf("[PPAT] GeneratePdfMohonValidasi: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `inline; filename="Permohonan_Validasi_`+nobooking+`.pdf"`)
+	if err := pdf.GenerateMohonValidasi(w, data); err != nil {
+		log.Printf("[PPAT] GeneratePdfMohonValidasi PDF write: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
+		return
+	}
 }
 
 func ensureDir(dir string) error {

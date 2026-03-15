@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
 const LIMIT = 10;
@@ -84,6 +84,24 @@ export default function BookingSSPDBadanPage() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [kirimSubmitting, setKirimSubmitting] = useState(false);
   const [docUploading, setDocUploading] = useState<string | null>(null);
+  const [cekBookingDetail, setCekBookingDetail] = useState<{
+    nobooking: string;
+    nama_wajib_pajak?: string;
+    Alamatop?: string;
+    keterangan?: string;
+    bphtb_yangtelah_dibayar?: number;
+  } | null>(null);
+
+  const setCekBookingNobooking = useCallback((nobooking: string) => {
+    setCekBookingDetail(null);
+    fetch(`/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
+        if (j?.success && j?.data)
+          setCekBookingDetail({ nobooking, ...j.data } as { nobooking: string; nama_wajib_pajak?: string; Alamatop?: string; keterangan?: string; bphtb_yangtelah_dibayar?: number });
+      })
+      .catch(() => setCekBookingDetail(null));
+  }, []);
 
   const loadTable = useCallback(async (p: number, q?: string) => {
     setLoading(true);
@@ -585,40 +603,33 @@ export default function BookingSSPDBadanPage() {
               <tr>
                 <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>No. Booking</th>
                 <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>No. PPBB</th>
-                <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Tahun AJB</th>
-                <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Nama Wajib Pajak</th>
-                <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Nama Pemilik Objek</th>
                 <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>NPWP</th>
                 <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Track Status</th>
                 <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Kirim</th>
-            </tr>
-          </thead>
+              </tr>
+            </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 32 }}>
+                <td colSpan={5} style={{ ...tdStyle, textAlign: "center", padding: 32 }}>
                   Memuat...
                 </td>
               </tr>
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "#475569" }}>
+                <td colSpan={5} style={{ ...tdStyle, textAlign: "center", color: "#475569" }}>
                   Tidak ada data booking badan usaha
                 </td>
               </tr>
             ) : (
               data.map((row) => (
-                <>
+                <React.Fragment key={row.nobooking}>
                   <tr
-                    key={row.nobooking}
                     style={{ cursor: "pointer" }}
                     onClick={() => setExpandedRow((x) => (x === row.nobooking ? null : row.nobooking))}
                   >
                     <td style={tdStyle}>{row.nobooking}</td>
                     <td style={tdStyle}>{row.noppbb || "—"}</td>
-                    <td style={tdStyle}>{row.tahunajb || "—"}</td>
-                    <td style={tdStyle}>{row.namawajibpajak || "—"}</td>
-                    <td style={tdStyle}>{row.namapemilikobjekpajak || "—"}</td>
                     <td style={tdStyle}>{row.npwpwp || "—"}</td>
                     <td style={tdStyle}>{row.trackstatus || "—"}</td>
                     <td style={tdStyle}>
@@ -638,10 +649,17 @@ export default function BookingSSPDBadanPage() {
                   </tr>
                   {expandedRow === row.nobooking && (
                     <tr key={`${row.nobooking}-detail`}>
-                      <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)", padding: 16 }}>
+                      <td colSpan={5} style={{ ...tdStyle, background: "var(--card_bg_grey)", padding: 16 }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                           <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                            <button
+                              type="button"
+                              style={btnSecondary}
+                              onClick={() => setCekBookingNobooking(row.nobooking)}
+                            >
+                              Cek Booking
+                            </button>
                             <Link
                               href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
                               style={{ color: "var(--accent)", fontWeight: 600 }}
@@ -651,11 +669,28 @@ export default function BookingSSPDBadanPage() {
                             <button
                               type="button"
                               style={btnSecondary}
+                              onClick={() => window.open(`/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
+                            >
+                              Lihat Dokumen
+                            </button>
+                            <button
+                              type="button"
+                              style={btnSecondary}
                               onClick={() => window.open(`/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
                             >
                               Lihat Dokumen Validasi
                             </button>
                           </div>
+                          {cekBookingDetail && cekBookingDetail.nobooking === row.nobooking && (
+                            <div style={{ marginTop: 12, padding: 16, background: "var(--card_bg)", borderRadius: 8, border: "1px solid var(--border_color)" }}>
+                              <div style={{ fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>Detail Booking</div>
+                              <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+                                <div><strong>Nama Wajib Pajak:</strong> {cekBookingDetail.nama_wajib_pajak ?? "—"}</div>
+                                <div><strong>Objek Pajak:</strong> {cekBookingDetail.Alamatop ?? cekBookingDetail.keterangan ?? "—"}</div>
+                                <div><strong>Biaya (BPHTB):</strong> {typeof cekBookingDetail.bphtb_yangtelah_dibayar === "number" ? `Rp ${cekBookingDetail.bphtb_yangtelah_dibayar.toLocaleString("id-ID")}` : (cekBookingDetail.bphtb_yangtelah_dibayar ?? "—")}</div>
+                              </div>
+                            </div>
+                          )}
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
                             {(["akta_tanah_path", "sertifikat_tanah_path", "pelengkap_path"] as const).map((pathKey, idx) => {
                               const field = (["aktaTanah", "sertifikatTanah", "pelengkap"] as const)[idx];
@@ -690,7 +725,7 @@ export default function BookingSSPDBadanPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))
             )}
           </tbody>

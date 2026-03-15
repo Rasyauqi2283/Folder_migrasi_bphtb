@@ -21,6 +21,18 @@ export default function DashboardPage() {
       router.replace("/pu");
       return;
     }
+    if (user.divisi === "Wajib Pajak") {
+      router.replace("/wp");
+      return;
+    }
+    if (user.divisi === "LTB") {
+      router.replace("/ltb");
+      return;
+    }
+    if (user.divisi === "Customer Service") {
+      router.replace("/cs");
+      return;
+    }
   }, [user, router]);
 
   const legacyDashboardUrl = (() => {
@@ -42,7 +54,11 @@ export default function DashboardPage() {
       case "BANK":
         return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
       case "Wajib Pajak":
-        return `${legacyBase}/html_folder/WP/wp-dashboard.html`;
+        return "/wp";
+      case "LTB":
+        return "/ltb";
+      case "Customer Service":
+        return "/cs";
       default:
         return `${legacyBase}/login`;
     }

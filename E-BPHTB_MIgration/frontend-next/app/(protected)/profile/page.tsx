@@ -15,9 +15,9 @@ function dashboardPath(divisi: string, legacyBase: string): string {
     case "Notaris":
       return "/pu";
     case "Customer Service":
-      return `${legacyBase}/html_folder/CS/cs-dashboard.html`;
+      return "/cs";
     case "LTB":
-      return `${legacyBase}/html_folder/LTB/ltb-dashboard.html`;
+      return "/ltb";
     case "LSB":
       return `${legacyBase}/html_folder/LSB/lsb-dashboard.html`;
     case "Peneliti":
@@ -27,7 +27,7 @@ function dashboardPath(divisi: string, legacyBase: string): string {
     case "BANK":
       return `${legacyBase}/html_folder/Bank/bank-dashboard.html`;
     case "Wajib Pajak":
-      return `${legacyBase}/html_folder/WP/wp-dashboard.html`;
+      return "/wp";
     default:
       return "/dashboard";
   }
@@ -60,6 +60,7 @@ interface ProfileData {
   password?: string;
   tanda_tangan_path?: string;
   alamat_pu?: string;
+  ppat_khusus?: string;
 }
 
 function useProfile() {
@@ -157,6 +158,7 @@ export default function ProfilePage() {
   const showNip = divisi && !["Wajib Pajak", "PPAT", "PPATS"].includes(divisi);
   const showPejabat = divisi === "PPAT" || divisi === "PPATS";
   const showAlamatPu = divisi === "PPAT" || divisi === "PPATS" || divisi === "Notaris";
+  const showPpatKhusus = divisi === "PPAT" || divisi === "PPATS" || divisi === "Notaris";
   const showParafValidasi = divisi === "Peneliti Validasi";
   const showParafButton = ["Peneliti", "PPAT", "PPATS"].includes(divisi ?? "");
   const showPvLink = divisi === "Peneliti Validasi";
@@ -666,6 +668,12 @@ export default function ProfilePage() {
                       <input type="text" readOnly value={u.pejabat_umum ?? u.pejabat_umum_name ?? "—"} />
                     )}
                   </div>
+                  {showPpatKhusus && (
+                    <div className="profile-field">
+                      <label htmlFor="ppat_khusus">PPAT Khusus</label>
+                      <input id="ppat_khusus" type="text" readOnly value={u.ppat_khusus ?? "—"} title="Penanda pembeda per user PU" />
+                    </div>
+                  )}
                   {showAlamatPu && (
                     <div className="profile-field">
                       <label htmlFor="alamat_pu">Alamat PU</label>
@@ -677,6 +685,12 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </>
+              )}
+              {showPpatKhusus && !showPejabat && (
+                <div className="profile-field">
+                  <label htmlFor="ppat_khusus">PPAT Khusus</label>
+                  <input id="ppat_khusus" type="text" readOnly value={u.ppat_khusus ?? "—"} title="Penanda pembeda per user PU" />
+                </div>
               )}
               {showAlamatPu && !showPejabat && (
                 <div className="profile-field">
@@ -799,7 +813,10 @@ export default function ProfilePage() {
             style={{
               width: "100%",
               maxWidth: 280,
-              padding: "10px 12px",
+              paddingTop: 10,
+              paddingRight: 12,
+              paddingBottom: 10,
+              paddingLeft: 12,
               borderRadius: 8,
               border: "1px solid var(--border_color)",
               background: "var(--card_bg)",

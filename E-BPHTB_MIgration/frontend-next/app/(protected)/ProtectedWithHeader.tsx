@@ -21,7 +21,12 @@ function getHeaderTitle(pathname: string): string {
   if (pathname.startsWith("/admin/iklan")) return "Kelola Iklan";
   if (pathname?.startsWith("/admin")) return "Admin";
   if (pathname?.startsWith("/pu")) return "pu";
+  if (pathname?.startsWith("/ltb")) return "LTB";
   if (pathname === "/dashboard") return "Dashboard";
+  if (pathname?.startsWith("/wp")) return "Wajib Pajak";
+  if (pathname?.startsWith("/info")) return "Informasi & Panduan";
+  if (pathname?.startsWith("/wp/laporan")) return "Laporan WP";
+  if (pathname?.startsWith("/cs")) return "Customer Service";
   if (pathname.startsWith("/profile")) return "Profil";
   if (pathname.startsWith("/lengkapi-profil")) return "Lengkapi Profil";
   if (pathname === "/faq") return "FAQ";
@@ -34,6 +39,7 @@ export default function ProtectedWithHeader({ children }: { children: React.Reac
   const title = getHeaderTitle(pathname ?? "");
   const isAdminRoute = pathname?.startsWith("/admin") ?? false;
   const isPURoute = pathname?.startsWith("/pu") ?? false;
+  const isLtbRoute = pathname?.startsWith("/ltb") ?? false;
   const isLengkapiProfil = pathname === "/lengkapi-profil";
   const isProfileRoute = pathname?.startsWith("/profile") ?? false;
 
@@ -47,7 +53,7 @@ export default function ProtectedWithHeader({ children }: { children: React.Reac
     <>
       <Header title={title} />
       <div style={{ paddingTop: 80 }} className="protected-wrapper">
-        {isAdminRoute || isPURoute ? (
+        {isAdminRoute || isPURoute || isLtbRoute ? (
           children
         ) : (
           <>
@@ -58,8 +64,10 @@ export default function ProtectedWithHeader({ children }: { children: React.Reac
                 marginLeft: sidebarExpanded ? 250 : 60,
                 transition: "margin-left 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
                 minHeight: "calc(100vh - 80px - 40px)",
-                padding: isProfileRoute ? "1rem 1.5rem" : "1.5rem 2rem",
+                paddingTop: isProfileRoute ? "1rem" : "1.5rem",
+                paddingRight: isProfileRoute ? "1.5rem" : "2rem",
                 paddingBottom: 48,
+                paddingLeft: isProfileRoute ? "1.5rem" : "2rem",
                 ...(isProfileRoute && { overflow: "hidden", display: "flex", flexDirection: "column" }),
               }}
             >

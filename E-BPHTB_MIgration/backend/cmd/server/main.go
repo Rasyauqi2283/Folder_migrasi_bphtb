@@ -181,14 +181,16 @@ func main() {
 		handler.ServeUploadDir(cfg.BannerUploadDir, r.PathValue("filename"))(w, r)
 	})
 
-	// PPAT — handler Go (load-all-booking, rekap/diserahkan, send-now, create-booking); didahulukan dari proxy
+	// PPAT — handler Go (load-all-booking, rekap/diserahkan, send-now, create-booking, generate-pdf); didahulukan dari proxy
 	var ppatRepo *repository.PpatRepo
 	if pool != nil {
 		ppatRepo = repository.NewPpatRepo(pool)
 	} else {
 		ppatRepo = repository.NewPpatRepo(nil)
 	}
-	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo)
+	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo)
+	mux.HandleFunc("GET /api/ppat_generate-pdf-badan/{nobooking}", ppatHandler.GeneratePdfBadan)
+	mux.HandleFunc("GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}", ppatHandler.GeneratePdfMohonValidasi)
 	mux.HandleFunc("GET /api/check-my-signature", ppatHandler.CheckMySignature)
 	mux.HandleFunc("GET /api/ppat/load-all-booking", ppatHandler.LoadAllBooking)
 	mux.HandleFunc("GET /api/ppat/rekap/diserahkan", ppatHandler.RekapDiserahkan)
@@ -212,6 +214,7 @@ func main() {
 
 	// Auth handlers — semua di Go (migrasi 100%, tidak proxy ke Node)
 	mux.HandleFunc("/api/v1/auth/upload-ktp", authHandler.UploadKTP)
+	mux.HandleFunc("/api/v1/auth/upload-nib-doc", authHandler.UploadNIBDoc)
 	mux.HandleFunc("/api/v1/auth/real-ktp-verification", authHandler.RealKTPVerification)
 	mux.HandleFunc("/api/v1/auth/register", authHandler.Register)
 	mux.HandleFunc("/api/v1/auth/login", authHandler.Login)

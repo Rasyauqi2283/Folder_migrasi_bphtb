@@ -35,12 +35,12 @@ func (r *UserRepo) GetByEmailUnverified(ctx context.Context, email string) (exis
 	return err == nil, err
 }
 
-// GetByEmailVerified returns true if email exists in a_2_verified_users with verifiedstatus IN ('verified_pending','complete').
-// Hanya verified_pending dan complete yang menandakan user sudah teregistrasi; status lain (pending OTP dll) masih boleh mendaftar.
+// GetByEmailVerified returns true if email exists in a_2_verified_users with verifiedstatus IN ('verified_pending','complete','pending').
+// Termasuk 'pending' agar WP Badan yang menunggu verifikasi admin tidak bisa daftar ulang dengan email sama.
 func (r *UserRepo) GetByEmailVerified(ctx context.Context, email string) (exists bool, err error) {
 	var n int
 	err = r.pool.QueryRow(ctx,
-		`SELECT 1 FROM a_2_verified_users WHERE email = $1 AND verifiedstatus IN ('verified_pending','complete')`, email,
+		`SELECT 1 FROM a_2_verified_users WHERE email = $1 AND verifiedstatus IN ('verified_pending','complete','pending')`, email,
 	).Scan(&n)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil

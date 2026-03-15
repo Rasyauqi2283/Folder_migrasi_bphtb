@@ -123,12 +123,13 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
     },
   ],
   LTB: [
-    { href: "/dashboard", label: "Dashboard", icon: "layout" },
+    { href: "/ltb", label: "Dashboard", icon: "layout" },
     {
       label: "Terima Berkas SSPD",
       icon: "folder",
       children: [
-        { href: `${LEGACY}/LTB/TerimaBerkas-SSPD/terima-berkas-sspd.html`, label: "Permohonan Validasi SSPD" },
+        { href: "/ltb/terima-berkas-sspd", label: "Permohonan Validasi SSPD" },
+        { href: "/ltb/penginputan-offline", label: "Penginputan Offline" },
       ],
     },
   ],
@@ -193,17 +194,30 @@ const ROLE_SIDEBAR: Record<string, SidebarEntry[]> = {
       children: [{ href: `${LEGACY}/Bank/Hasil_Transaksi/hasil_transaksi.html`, label: "Hasil transaksi" }],
     },
   ],
-  "Customer Service": [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
-  "Wajib Pajak": [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
+  "Customer Service": [
+    { href: "/cs", label: "Dashboard", icon: "layout" },
+    { href: "/cs/layanan", label: "Layanan", icon: "folder" },
+  ],
+  "Wajib Pajak": [
+    { href: "/wp", label: "Dashboard", icon: "layout" },
+    {
+      label: "Laporan",
+      icon: "folder",
+      children: [
+        { href: "/wp/laporan/arsip", label: "Arsip SSPD" },
+      ],
+    },
+  ],
   Administrator: [{ href: "/dashboard", label: "Dashboard", icon: "layout" }],
 };
 
+const INFO_ENTRY: SidebarLink = { href: "/info", label: "Informasi & Panduan", icon: "help-circle" };
 const FAQ_ENTRY: SidebarLink = { href: "/faq", label: "Tanya Jawab (FAQ)", icon: "help-circle" };
 const PROFIL_ENTRY: SidebarLink = { href: "/profile", label: "Profil", icon: "user" };
 
 function getEntriesForDivisi(divisi: string | undefined): SidebarEntry[] {
   const role = divisi ? ROLE_SIDEBAR[divisi] ?? [] : [];
-  return [...role, FAQ_ENTRY, PROFIL_ENTRY];
+  return [...role, INFO_ENTRY, FAQ_ENTRY, PROFIL_ENTRY];
 }
 
 export default function UserSidebar() {

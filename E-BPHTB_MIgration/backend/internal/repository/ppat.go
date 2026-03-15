@@ -404,18 +404,20 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 			pp.luas_tanah,
 			pp.luas_bangunan,
 			u.nama AS nama_pemohon,
-			u.telepon::text AS no_telepon
+			u.telepon::text AS no_telepon,
+			bp.bphtb_yangtelah_dibayar
 		FROM pat_1_bookingsspd p
 		LEFT JOIN a_2_verified_users u ON u.userid = p.userid
 		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
 		LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
 		WHERE p.nobooking = $1 AND p.userid = $2
 	`, nobooking, userid)
 	var nobookingOut, nop, namaWp, alamatWp, atasNama, npwpwp, npwpop, kelurahan, kecamatan, kabupatenKota, kodeposwp, kelurahanop, kecamatanopj, kabupatenkotaop, trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon *string
 	var tahunajb *string
 	var createdAt, updatedAt *time.Time
-	var luasTanah, luasBangunan *float64
-	err := row.Scan(&nobookingOut, &nop, &namaWp, &alamatWp, &atasNama, &npwpwp, &npwpop, &tahunajb, &kelurahan, &kecamatan, &kabupatenKota, &kodeposwp, &kelurahanop, &kecamatanopj, &kabupatenkotaop, &trackstatus, &jenisWp, &createdAt, &updatedAt, &alamatop, &keterangan, &luasTanah, &luasBangunan, &namaPemohon, &noTelepon)
+	var luasTanah, luasBangunan, bphtbDibayar *float64
+	err := row.Scan(&nobookingOut, &nop, &namaWp, &alamatWp, &atasNama, &npwpwp, &npwpop, &tahunajb, &kelurahan, &kecamatan, &kabupatenKota, &kodeposwp, &kelurahanop, &kecamatanopj, &kabupatenkotaop, &trackstatus, &jenisWp, &createdAt, &updatedAt, &alamatop, &keterangan, &luasTanah, &luasBangunan, &namaPemohon, &noTelepon, &bphtbDibayar)
 	if err != nil {
 		return nil, err
 	}
@@ -430,6 +432,7 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"trackstatus": val(trackstatus), "jenis_wajib_pajak": val(jenisWp), "created_at": valTime(createdAt), "updated_at": valTime(updatedAt),
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon),
+		"bphtb_yangtelah_dibayar": valFloat(bphtbDibayar),
 	}
 	return out, nil
 }

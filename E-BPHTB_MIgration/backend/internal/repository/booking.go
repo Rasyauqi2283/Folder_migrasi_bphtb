@@ -265,3 +265,120 @@ func (r *BookingRepo) GetDiserahkan(ctx context.Context, userid string) (user *D
 	return user, rows, totalBooking, totalNilaiSum, nil
 }
 
+// SSPDPDFData holds all data needed to generate SSPD BPHTB PDF (booking badan).
+type SSPDPDFData struct {
+	Nobooking, Noppbb, Userid, JenisWajibPajak, Namawajibpajak, Alamatwajibpajak string
+	Namapemilikobjekpajak, Alamatpemilikobjekpajak, Tanggal, Tahunajb             string
+	Kabupatenkotawp, Kecamatanwp, Kelurahandesawp, Rtrwwp, Npwpwp, Kodeposwp    string
+	Kabupatenkotaop, Kecamatanop, Kelurahandesaop, Rtrwop, Npwpop, Kodeposop      string
+	Trackstatus                                                                   string
+	Nilaiperolehanobjekpajaktidakkenapajak, BphtbYangtelahDibayar                float64
+	HargaTransaksi, Letaktanahdanbangunan, RtRwobjekpajak, StatusKepemilikan     string
+	Keterangan, NomorSertifikat, TanggalPerolehan, TanggalPembayaran             string
+	NomorBuktiPembayaran                                                          string
+	NamaPembuat, SpecialField, TandaTanganPath                                    string
+	LuasTanah, NjopTanah, LuasBangunan, NjopBangunan                              float64
+	LuasxnjopTanah, LuasxnjopBangunan, TotalNjoppbb                               float64
+	PathTtdWp                                                                     string
+}
+
+// GetBookingForSSPDPDF returns data for generating SSPD PDF (Badan) by userid and nobooking.
+func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobooking string) (*SSPDPDFData, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	q := `
+		SELECT pb.nobooking, pb.noppbb, pb.userid, COALESCE(pb.jenis_wajib_pajak::text, 'Badan Usaha'), pb.namawajibpajak, COALESCE(pb.alamatwajibpajak,''),
+			COALESCE(pb.namapemilikobjekpajak,''), COALESCE(pb.alamatpemilikobjekpajak,''), COALESCE(pb.tanggal::text,''), COALESCE(pb.tahunajb::text,''),
+			COALESCE(pb.kabupatenkotawp,''), COALESCE(pb.kecamatanwp,''), COALESCE(pb.kelurahandesawp,''), COALESCE(pb.rtrwwp,''),
+			COALESCE(pb.npwpwp,''), COALESCE(pb.kodeposwp,''), COALESCE(pb.kabupatenkotaop,''), COALESCE(pb.kecamatanop,''),
+			COALESCE(pb.kelurahandesaop,''), COALESCE(pb.rtrwop,''), COALESCE(pb.npwpop,''), COALESCE(pb.kodeposop,''),
+			COALESCE(pb.trackstatus,''),
+			COALESCE(bp.nilaiperolehanobjekpajaktidakkenapajak,0), COALESCE(bp.bphtb_yangtelah_dibayar,0),
+			COALESCE(o.harga_transaksi::text,''), COALESCE(o.letaktanahdanbangunan,''), COALESCE(o.rt_rwobjekpajak,''), COALESCE(o.status_kepemilikan,''),
+			COALESCE(o.keterangan,''), COALESCE(o.nomor_sertifikat,''), COALESCE(o.tanggal_perolehan::text,''), COALESCE(o.tanggal_pembayaran::text,''),
+			COALESCE(o.nomor_bukti_pembayaran,''),
+			COALESCE(vb.nama,''), COALESCE(vb.special_field,''), COALESCE(vb.tanda_tangan_path,''),
+			COALESCE(pp.luas_tanah,0), COALESCE(pp.njop_tanah,0), COALESCE(pp.luas_bangunan,0), COALESCE(pp.njop_bangunan,0),
+			COALESCE(pp.luasxnjop_tanah,0), COALESCE(pp.luasxnjop_bangunan,0), COALESCE(pp.total_njoppbb,0),
+			COALESCE(ps.path_ttd_wp,'')
+		FROM pat_1_bookingsspd pb
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
+		LEFT JOIN a_2_verified_users vb ON pb.userid = vb.userid
+		LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
+		LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
+		WHERE pb.userid = $1 AND pb.nobooking = $2
+	`
+	var d SSPDPDFData
+	err := r.pool.QueryRow(ctx, q, userid, nobooking).Scan(
+		&d.Nobooking, &d.Noppbb, &d.Userid, &d.JenisWajibPajak, &d.Namawajibpajak, &d.Alamatwajibpajak,
+		&d.Namapemilikobjekpajak, &d.Alamatpemilikobjekpajak, &d.Tanggal, &d.Tahunajb,
+		&d.Kabupatenkotawp, &d.Kecamatanwp, &d.Kelurahandesawp, &d.Rtrwwp, &d.Npwpwp, &d.Kodeposwp,
+		&d.Kabupatenkotaop, &d.Kecamatanop, &d.Kelurahandesaop, &d.Rtrwop, &d.Npwpop, &d.Kodeposop,
+		&d.Trackstatus,
+		&d.Nilaiperolehanobjekpajaktidakkenapajak, &d.BphtbYangtelahDibayar,
+		&d.HargaTransaksi, &d.Letaktanahdanbangunan, &d.RtRwobjekpajak, &d.StatusKepemilikan,
+		&d.Keterangan, &d.NomorSertifikat, &d.TanggalPerolehan, &d.TanggalPembayaran,
+		&d.NomorBuktiPembayaran,
+		&d.NamaPembuat, &d.SpecialField, &d.TandaTanganPath,
+		&d.LuasTanah, &d.NjopTanah, &d.LuasBangunan, &d.NjopBangunan,
+		&d.LuasxnjopTanah, &d.LuasxnjopBangunan, &d.TotalNjoppbb,
+		&d.PathTtdWp,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
+
+// MohonValidasiPDFData holds data for Permohonan Validasi PDF.
+type MohonValidasiPDFData struct {
+	Nobooking, Tanggal, Namawajibpajak, Alamatwajibpajak, Kelurahandesawp, Kecamatanwp, Kabupatenkotawp string
+	Noppbb, Namapemilikobjekpajak                                                                        string
+	NamaPembuat, Telepon, SpecialField                                                                   string
+	Letaktanahdanbangunan, Keterangan                                                                      string
+	LuasTanah, LuasBangunan                                                                               float64
+	AlamatPemohon, Kampungop, Kelurahanop, Kecamatanopj                                                    string
+	NamaPengirim                                                                                          string
+	TandaTanganPath                                                                                       string
+}
+
+// GetBookingForMohonValidasiPDF returns data for Permohonan Validasi PDF.
+func (r *BookingRepo) GetBookingForMohonValidasiPDF(ctx context.Context, userid, nobooking string) (*MohonValidasiPDFData, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	q := `
+		SELECT COALESCE(pb.nobooking,''), COALESCE(pb.tanggal::text,''), COALESCE(pb.namawajibpajak,''), COALESCE(pb.alamatwajibpajak,''),
+			COALESCE(pb.kelurahandesawp,''), COALESCE(pb.kecamatanwp,''), COALESCE(pb.kabupatenkotawp,''),
+			COALESCE(pb.noppbb,''), COALESCE(pb.namapemilikobjekpajak,''),
+			COALESCE(vu.nama,''), COALESCE(vu.telepon::text,''), COALESCE(vu.special_field,''),
+			COALESCE(po.letaktanahdanbangunan,''), COALESCE(po.keterangan,''),
+			COALESCE(pp.luas_tanah,0), COALESCE(pp.luas_bangunan,0),
+			COALESCE(vt.alamat_pemohon,''), COALESCE(vt.kampungop,''), COALESCE(vt.kelurahanop,''), COALESCE(vt.kecamatanopj,''),
+			COALESCE(pv.nama_pengirim,''), COALESCE(vu.tanda_tangan_path,'')
+		FROM pat_1_bookingsspd pb
+		LEFT JOIN a_2_verified_users vu ON vu.userid = pb.userid
+		LEFT JOIN pat_4_objek_pajak po ON pb.nobooking = po.nobooking
+		LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
+		LEFT JOIN pat_8_validasi_tambahan vt ON pb.nobooking = vt.nobooking
+		LEFT JOIN p_1_verifikasi pv ON pb.nobooking = pv.nobooking
+		LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
+		WHERE pb.userid = $1 AND pb.nobooking = $2
+	`
+	var d MohonValidasiPDFData
+	err := r.pool.QueryRow(ctx, q, userid, nobooking).Scan(
+		&d.Nobooking, &d.Tanggal, &d.Namawajibpajak, &d.Alamatwajibpajak, &d.Kelurahandesawp, &d.Kecamatanwp, &d.Kabupatenkotawp,
+		&d.Noppbb, &d.Namapemilikobjekpajak,
+		&d.NamaPembuat, &d.Telepon, &d.SpecialField,
+		&d.Letaktanahdanbangunan, &d.Keterangan,
+		&d.LuasTanah, &d.LuasBangunan,
+		&d.AlamatPemohon, &d.Kampungop, &d.Kelurahanop, &d.Kecamatanopj,
+		&d.NamaPengirim, &d.TandaTanganPath,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &d, nil
+}

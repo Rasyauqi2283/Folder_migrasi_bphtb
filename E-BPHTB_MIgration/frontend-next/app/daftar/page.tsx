@@ -65,9 +65,18 @@ function DaftarContent() {
   const [ktpMessage, setKtpMessage] = useState("");
   const [ocrData, setOcrData] = useState<KTPOcrData | null>(null);
 
+  const [wpSubtype, setWpSubtype] = useState<"Perorangan" | "Badan Usaha">("Perorangan");
+  const [npwpBadan, setNpwpBadan] = useState("");
+  const [nib, setNib] = useState("");
+  const [nibDocUploadId, setNibDocUploadId] = useState<string | null>(null);
+  const [nibDocStatus, setNibDocStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [nibDocMessage, setNibDocMessage] = useState("");
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "email_already" | "">("");
   const [submitting, setSubmitting] = useState(false);
+
+  const isWPBadan = verse === "wp" && wpSubtype === "Badan Usaha";
 
   const verseLabel =
     verse === "wp"
@@ -131,6 +140,54 @@ function DaftarContent() {
     }
   }, [apiBase, legacyBase]);
 
+  const uploadNibDoc = useCallback(async (file: File) => {
+    setNibDocStatus("loading");
+    setNibDocMessage("Mengupload Sertifikat NIB...");
+    setNibDocUploadId(null);
+    const base = apiBase || legacyBase;
+    try {
+      const formData = new FormData();
+      formData.append("nib_doc", file);
+      const res = await fetch(`${base}/api/v1/auth/upload-nib-doc`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      const result: { success?: boolean; uploadId?: string; message?: string } = await res.json().catch(() => ({}));
+      if (!res.ok || !result.success || !result.uploadId) {
+        setNibDocStatus("error");
+        setNibDocMessage(result?.message || "Upload Sertifikat NIB gagal.");
+        return;
+      }
+      setNibDocUploadId(result.uploadId);
+      setNibDocStatus("success");
+      setNibDocMessage("Sertifikat NIB berhasil diupload.");
+    } catch (e) {
+      setNibDocStatus("error");
+      setNibDocMessage("Tidak bisa terhubung ke server. Cek koneksi.");
+    }
+  }, [apiBase, legacyBase]);
+
+  const onNibDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setNibDocUploadId(null);
+    setNibDocStatus("idle");
+    setNibDocMessage("");
+    if (file) {
+      if (file.type !== "application/pdf") {
+        setNibDocStatus("error");
+        setNibDocMessage("Format harus PDF.");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setNibDocStatus("error");
+        setNibDocMessage("Ukuran maksimal 10MB.");
+        return;
+      }
+      uploadNibDoc(file);
+    }
+  };
+
   const onKtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     setKtpFile(file || null);
@@ -190,7 +247,23 @@ function DaftarContent() {
       setMessageType("error");
       return false;
     }
-    if (!ktpUploadId) {
+    if (isWPBadan) {
+      if (!npwpBadan.trim()) {
+        setMessage("NPWP Badan Usaha wajib diisi.");
+        setMessageType("error");
+        return false;
+      }
+      if (!nib.trim()) {
+        setMessage("NIB (Nomor Induk Berusaha) wajib diisi.");
+        setMessageType("error");
+        return false;
+      }
+      if (!nibDocUploadId) {
+        setMessage("Upload Sertifikat NIB (PDF) terlebih dahulu.");
+        setMessageType("error");
+        return false;
+      }
+    } else if (!ktpUploadId) {
       setMessage("Upload foto KTP terlebih dahulu.");
       setMessageType("error");
       return false;
@@ -225,15 +298,17 @@ function DaftarContent() {
     setMessage("");
     setMessageType("");
     if (!validate()) return;
-    if (!ktpUploadId) {
-      setMessage("KTP harus diupload terlebih dahulu.");
-      setMessageType("error");
-      return;
-    }
-    if (!ocrData) {
-      setMessage("Data OCR KTP belum tersedia. Upload ulang KTP.");
-      setMessageType("error");
-      return;
+    if (!isWPBadan) {
+      if (!ktpUploadId) {
+        setMessage("KTP harus diupload terlebih dahulu.");
+        setMessageType("error");
+        return;
+      }
+      if (!ocrData) {
+        setMessage("Data OCR KTP belum tersedia. Upload ulang KTP.");
+        setMessageType("error");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -252,10 +327,18 @@ function DaftarContent() {
         password: pwdVal || password,
         gender,
         verse: verseToBackend(verse),
-        ktpUploadId,
-        ktpOcrJson: JSON.stringify(ocrData),
+        ktpUploadId: isWPBadan ? "" : ktpUploadId,
+        ktpOcrJson: isWPBadan ? "" : JSON.stringify(ocrData),
       };
 
+      if (verse === "wp") {
+        pendingPayload.wp_subtype = wpSubtype;
+        if (isWPBadan) {
+          pendingPayload.npwp_badan = npwpBadan.trim();
+          pendingPayload.nib = nib.trim();
+          pendingPayload.nib_doc_upload_id = nibDocUploadId;
+        }
+      }
       if (verse === "karyawan") pendingPayload.nip = nip.trim();
       if (verse === "pu") {
         pendingPayload.divisi = divEl?.value || divisiPu;
@@ -316,7 +399,50 @@ function DaftarContent() {
         <h1 className="daftar-title">Pendaftaran Akun BPHTB Online</h1>
         <p className="daftar-verse-label">{verseLabel}</p>
 
-        <div className={`daftar-ktp-zone ${ktpFile ? "has-file" : ""}`}>
+        {verse === "wp" && (
+          <div className="daftar-field" style={{ marginBottom: 16 }}>
+            <label>Tipe Wajib Pajak</label>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="wp_subtype"
+                  checked={wpSubtype === "Perorangan"}
+                  onChange={() => setWpSubtype("Perorangan")}
+                />
+                Perorangan
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="wp_subtype"
+                  checked={wpSubtype === "Badan Usaha"}
+                  onChange={() => setWpSubtype("Badan Usaha")}
+                />
+                Badan Usaha (PT/CV/Firma)
+              </label>
+            </div>
+          </div>
+        )}
+
+        {verse === "wp" && wpSubtype === "Badan Usaha" && (
+          <div className="daftar-ktp-zone" style={{ marginBottom: 16 }}>
+            <div className="daftar-field">
+              <label htmlFor="nib_doc">Sertifikat NIB (PDF, wajib)</label>
+              <input
+                type="file"
+                id="nib_doc"
+                accept=".pdf,application/pdf"
+                onChange={onNibDocChange}
+              />
+            </div>
+            {nibDocStatus !== "idle" && (
+              <div className={`daftar-ktp-status ${nibDocStatus}`}>{nibDocMessage}</div>
+            )}
+          </div>
+        )}
+
+        <div className={`daftar-ktp-zone ${ktpFile ? "has-file" : ""}`} style={{ display: verse === "wp" && wpSubtype === "Badan Usaha" ? "none" : undefined }}>
           <div className="daftar-field">
             <label htmlFor="fotoktp">Foto KTP (wajib)</label>
             <input
@@ -415,25 +541,25 @@ function DaftarContent() {
           <div className="daftar-form-row">
             <div>
               <div className="daftar-field">
-                <label htmlFor="nama">Nama Lengkap</label>
+                <label htmlFor="nama">{isWPBadan ? "Nama Perusahaan / Penanggung Jawab" : "Nama Lengkap"}</label>
                 <input
                   type="text"
                   id="nama"
                   value={nama}
                   onChange={(e) => setNama(e.target.value)}
-                  placeholder="Nama Lengkap"
+                  placeholder={isWPBadan ? "Nama perusahaan atau penanggung jawab" : "Nama Lengkap"}
                   required
                 />
                 <div className="daftar-validation-zone" aria-live="polite" />
               </div>
               <div className="daftar-field">
-                <label htmlFor="nik">NIK (16 digit)</label>
+                <label htmlFor="nik">{isWPBadan ? "NIK Penanggung Jawab (16 digit)" : "NIK (16 digit)"}</label>
                 <input
                   type="text"
                   id="nik"
                   value={nik}
                   onChange={(e) => setNik(e.target.value.replace(/\D/g, "").slice(0, 16))}
-                  placeholder="NIK sesuai KTP"
+                  placeholder={isWPBadan ? "NIK penanggung jawab badan usaha" : "NIK sesuai KTP"}
                   maxLength={16}
                   required
                 />
@@ -441,6 +567,32 @@ function DaftarContent() {
                   <small className="daftar-nik-counter">{nik.length}/16 digit</small>
                 </div>
               </div>
+              {isWPBadan && (
+                <>
+                  <div className="daftar-field">
+                    <label htmlFor="npwp_badan">NPWP Badan Usaha</label>
+                    <input
+                      type="text"
+                      id="npwp_badan"
+                      value={npwpBadan}
+                      onChange={(e) => setNpwpBadan(e.target.value)}
+                      placeholder="Contoh: 12.345.678.9-012.000"
+                      maxLength={25}
+                    />
+                  </div>
+                  <div className="daftar-field">
+                    <label htmlFor="nib">NIB (Nomor Induk Berusaha)</label>
+                    <input
+                      type="text"
+                      id="nib"
+                      value={nib}
+                      onChange={(e) => setNib(e.target.value)}
+                      placeholder="Nomor Induk Berusaha"
+                      maxLength={50}
+                    />
+                  </div>
+                </>
+              )}
               <div className="daftar-field">
                 <label htmlFor="telepon">Telepon</label>
                 <input

@@ -21,6 +21,7 @@ type Config struct {
 	EasyOCRTimeout      int    // Timeout request EasyOCR dalam milidetik
 	PpatStorageBaseDir  string // Base path untuk dokumen PPAT (akta, sertifikat, pelengkap)
 	TandaTanganBaseDir  string // Base path untuk tanda tangan per-booking (folderttdwp)
+	PDFLogoPath        string // Path ke logo BAPPENDA untuk PDF SSPD (mis. ../frontend-next/asset/Logobappenda_pdf.png)
 }
 
 func Load() *Config {
@@ -91,6 +92,10 @@ func Load() *Config {
 	if tandaTanganDir == "" {
 		tandaTanganDir = "./storage/ppat/ttd"
 	}
+	pdfLogoPath := os.Getenv("PDF_LOGO_PATH")
+	if pdfLogoPath == "" {
+		pdfLogoPath = "../frontend-next/asset/Logobappenda_pdf.png"
+	}
 	return &Config{
 		Port:                port,
 		Env:                 env,
@@ -107,6 +112,7 @@ func Load() *Config {
 		EasyOCRTimeout:      easyOCRTimeout,
 		PpatStorageBaseDir:  ppatStorageDir,
 		TandaTanganBaseDir:  tandaTanganDir,
+		PDFLogoPath:        pdfLogoPath,
 	}
 }
 

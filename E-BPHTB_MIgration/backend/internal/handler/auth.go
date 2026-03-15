@@ -22,12 +22,14 @@ import (
 	"ebphtb/backend/internal/repository"
 
 	mail "ebphtb/backend/internal/email"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const maxUploadSize = 5 * 1024 * 1024
 const allowedMimes = "image/jpeg,image/jpg,image/png"
+const maxNIBDocSize = 10 * 1024 * 1024 // 10MB for NIB PDF
 
 var allowedExtensions = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
 
@@ -474,6 +476,60 @@ func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request
 		"data":     data,
 		"stats":    result.Stats,
 		"rawText":  rawText,
+	})
+}
+
+// UploadNIBDoc handles POST /api/v1/auth/upload-nib-doc (Sertifikat NIB PDF untuk WP Badan Usaha).
+func (h *AuthHandler) UploadNIBDoc(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	if err := r.ParseMultipartForm(maxNIBDocSize); err != nil {
+		jsonError(w, http.StatusBadRequest, "File tidak terdeteksi atau terlalu besar (maks 10MB).")
+		return
+	}
+	file, header, err := r.FormFile("nib_doc")
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "Pilih file Sertifikat NIB (PDF).")
+		return
+	}
+	defer file.Close()
+	ct := header.Header.Get("Content-Type")
+	if ct != "application/pdf" && !strings.HasSuffix(strings.ToLower(header.Filename), ".pdf") {
+		jsonError(w, http.StatusBadRequest, "Format harus PDF.")
+		return
+	}
+	if header.Size > maxNIBDocSize {
+		jsonError(w, http.StatusBadRequest, "File terlalu besar (maks 10MB).")
+		return
+	}
+	nibDir := filepath.Join(h.cfg.TempUploadsDir, "nib_docs")
+	if err := os.MkdirAll(nibDir, 0755); err != nil {
+		log.Printf("[UPLOAD_NIB_DOC] MkdirAll: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan file.")
+		return
+	}
+	uploadID := "nib_" + uuid.New().String()
+	destPath := filepath.Join(nibDir, uploadID+".pdf")
+	dest, err := os.Create(destPath)
+	if err != nil {
+		log.Printf("[UPLOAD_NIB_DOC] Create: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan file.")
+		return
+	}
+	_, err = io.Copy(dest, file)
+	dest.Close()
+	if err != nil {
+		os.Remove(destPath)
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan file.")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"uploadId":  uploadID,
+		"message":   "Sertifikat NIB berhasil diupload.",
 	})
 }
 
@@ -1008,14 +1064,35 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	specialField := getStringField(p, "special_field")
 	pejabatUmum := getStringField(p, "pejabat_umum")
 	divisi := strings.ToUpper(getStringField(p, "divisi"))
+	wpSubtype := getStringField(p, "wp_subtype")
+	npwpBadan := getStringField(p, "npwp_badan")
+	nib := getStringField(p, "nib")
+	nibDocUploadID := getStringField(p, "nib_doc_upload_id")
 
-	if nama == "" || nik == "" || telepon == "" || password == "" || gender == "" || ktpOcrJson == "" {
+	isWPBadan := verseValue == "WP" && (wpSubtype == "Badan Usaha" || wpSubtype == "Badan")
+
+	if nama == "" || nik == "" || telepon == "" || password == "" || gender == "" {
 		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap.")
 		return
 	}
-	if len(nik) != 16 || !isDigits(nik) || !ktpocr.ValidNIK(nik) {
-		jsonError(w, http.StatusBadRequest, "NIK tidak valid.")
+	if !isWPBadan && ktpOcrJson == "" {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap (KTP/OCR wajib untuk WP Perorangan).")
 		return
+	}
+	if isWPBadan {
+		if npwpBadan == "" || nib == "" || nibDocUploadID == "" {
+			jsonError(w, http.StatusBadRequest, "NPWP Badan, NIB, dan upload Sertifikat NIB (PDF) wajib untuk WP Badan Usaha.")
+			return
+		}
+		if len(nik) != 16 || !isDigits(nik) {
+			jsonError(w, http.StatusBadRequest, "NIK Penanggung Jawab harus 16 digit.")
+			return
+		}
+	} else {
+		if len(nik) != 16 || !isDigits(nik) || !ktpocr.ValidNIK(nik) {
+			jsonError(w, http.StatusBadRequest, "NIK tidak valid.")
+			return
+		}
 	}
 	if verseValue == "" {
 		verseValue = "WP"
@@ -1065,7 +1142,11 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	ppatKhususOut := ""
 	verifiedStatus := "verified_pending"
 	if verseOut == "WP" {
-		verifiedStatus = "complete"
+		if isWPBadan {
+			verifiedStatus = "pending"
+		} else {
+			verifiedStatus = "complete"
+		}
 	}
 
 	pool := h.repo.Pool()
@@ -1094,6 +1175,7 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var nipPtr, specialFieldPtr, pejabatUmumPtr *string
+	var npwpBadanPtr, nibPtr, nibDocPathPtr *string
 	if nip != "" {
 		nipPtr = &nip
 	}
@@ -1103,16 +1185,27 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	if pejabatUmum != "" {
 		pejabatUmumPtr = &pejabatUmum
 	}
+	if isWPBadan && npwpBadan != "" {
+		npwpBadanPtr = &npwpBadan
+	}
+	if isWPBadan && nib != "" {
+		nibPtr = &nib
+	}
+	if isWPBadan && nibDocUploadID != "" {
+		nibDocPath := filepath.Join("nib_docs", nibDocUploadID+".pdf")
+		nibDocPathPtr = &nibDocPath
+	}
 	genderPtr := &gender
 
 	_, err = tx.Exec(r.Context(),
 		`INSERT INTO a_2_verified_users (
 			nama, nik, telepon, email, password, foto, otp, verifiedstatus, fotoprofil, userid, divisi,
-			statuspengguna, ppat_khusus, gender, verse, nip, special_field, pejabat_umum
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $16, '', $8, $9, 'offline', $10, $11, $12, $13, $14, $15)`,
+			statuspengguna, ppat_khusus, gender, verse, nip, special_field, pejabat_umum, npwp_badan, nib, nib_doc_path
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $16, '', $8, $9, 'offline', $10, $11, $12, $13, $14, $15, $17, $18, $19)`,
 		nama, nik, telepon, email, string(hashedPassword), ktpUploadID, otp,
 		useridOut, divisiOut, ppatKhususOut, genderPtr, verseOut,
 		nipPtr, specialFieldPtr, pejabatUmumPtr, verifiedStatus,
+		npwpBadanPtr, nibPtr, nibDocPathPtr,
 	)
 	if err != nil {
 		if isDuplicateKey(err) {
@@ -1136,17 +1229,19 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	}
 
 	createdAt := time.Now().UnixMilli()
-	jsonBaseName := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(nik), createdAt)
-	if err := os.MkdirAll(h.cfg.TempUploadsDir, 0755); err == nil {
-		payload := ktpExtractJSON{NIK: &nik, Nama: &nama, CreatedAt: createdAt, KtpOcrJson: ktpOcrJson}
-		if body, err := json.Marshal(payload); err == nil {
-			_ = os.WriteFile(filepath.Join(h.cfg.TempUploadsDir, jsonBaseName+".json"), body, 0644)
+	if !isWPBadan && ktpOcrJson != "" {
+		jsonBaseName := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(nik), createdAt)
+		if err := os.MkdirAll(h.cfg.TempUploadsDir, 0755); err == nil {
+			payload := ktpExtractJSON{NIK: &nik, Nama: &nama, CreatedAt: createdAt, KtpOcrJson: ktpOcrJson}
+			if body, err := json.Marshal(payload); err == nil {
+				_ = os.WriteFile(filepath.Join(h.cfg.TempUploadsDir, jsonBaseName+".json"), body, 0644)
+			}
 		}
 	}
 
 	deletePendingOTP(email)
 
-	if verseOut == "WP" {
+	if verseOut == "WP" && !isWPBadan {
 		if err := mail.SendUserIDNotification(email, nama, useridOut); err != nil {
 			log.Printf("[VERIFY_OTP_FINALIZE] SendUserIDNotification error: %v", err)
 		}
@@ -1154,7 +1249,11 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 
 	msg := "Verifikasi berhasil! Akun Anda sedang diproses."
 	if verseOut == "WP" {
-		msg = "Verifikasi berhasil! Silakan periksa email untuk User ID, lalu masuk ke dashboard."
+		if isWPBadan {
+			msg = "Pendaftaran berhasil. Akun Anda menunggu verifikasi admin. Anda dapat login setelah disetujui."
+		} else {
+			msg = "Verifikasi berhasil! Silakan periksa email untuk User ID, lalu masuk ke dashboard."
+		}
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1645,6 +1744,10 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	if user.AlamatPu != nil {
 		alamatPu = *user.AlamatPu
 	}
+	ppatKhusus := ""
+	if user.PpatKhusus != nil {
+		ppatKhusus = *user.PpatKhusus
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user": map[string]interface{}{
@@ -1661,6 +1764,7 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 			"telepon":             telepon,
 			"gender":              gender,
 			"alamat_pu":           alamatPu,
+			"ppat_khusus":         ppatKhusus,
 			"tanda_tangan_mime":   tandaTanganMime,
 			"tanda_tangan_path":   tandaTanganPath,
 			"statuspengguna":      user.Statuspengguna,
