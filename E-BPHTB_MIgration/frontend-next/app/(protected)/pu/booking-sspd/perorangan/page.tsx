@@ -19,6 +19,7 @@ type BookingRow = {
 
 type ApiResponse = {
   success: boolean;
+  message?: string;
   data?: BookingRow[];
   pagination?: { page: number; limit: number; total: number; pages: number };
 };
