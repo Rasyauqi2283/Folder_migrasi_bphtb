@@ -20,6 +20,7 @@ type RekapRow = {
 
 type RekapResponse = {
   success: boolean;
+  message?: string;
   rows?: RekapRow[];
   totalNominal?: number;
   pagination?: { page: number; limit: number; total: number; totalPages: number };

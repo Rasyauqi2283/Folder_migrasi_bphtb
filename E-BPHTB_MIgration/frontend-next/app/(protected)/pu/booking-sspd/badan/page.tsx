@@ -22,6 +22,7 @@ type BookingRow = {
 
 type ApiResponse = {
   success: boolean;
+  message?: string;
   data?: BookingRow[];
   pagination?: { page: number; limit: number; total: number; pages: number };
 };
@@ -113,7 +114,7 @@ export default function BookingSSPDBadanPage() {
       const res = await fetch(url, { credentials: "include" });
       const json = (await res.json()) as ApiResponse;
       if (!res.ok || !json.success) {
-        setError((json as any)?.message || "Gagal memuat data");
+        setError(json?.message || "Gagal memuat data");
         setData([]);
         return;
       }

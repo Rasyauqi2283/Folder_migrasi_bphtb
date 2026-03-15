@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 /** Feather Icons — https://feathericons.com/ — consistent 24x24 SVG icons */
 type IconName =
   | "layout"
@@ -30,7 +32,7 @@ interface FeatherIconProps {
   className?: string;
 }
 
-const ICONS: Record<IconName, JSX.Element> = {
+const ICONS: Record<IconName, React.ReactElement> = {
   layout: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />

@@ -19,6 +19,7 @@ type RincianRow = {
 
 type RincianResponse = {
   success: boolean;
+  message?: string;
   rows?: RincianRow[];
   totalNominal?: number;
   pagination?: { page: number; limit: number; total: number; totalPages: number };
