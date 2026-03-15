@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../../lib/api";
 
 const LIMIT = 10;
 const JENIS_WP = "Perorangan";
@@ -80,7 +81,8 @@ export default function BookingSSPDPeroranganPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = `/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
+      const base = getApiBase();
+      const url = `${base}/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
       const res = await fetch(url, { credentials: "include" });
       const json = (await res.json()) as ApiResponse;
       if (!res.ok || !json.success) {
@@ -114,7 +116,7 @@ export default function BookingSSPDPeroranganPage() {
       const nb = expandedRow || data[0]?.nobooking || "";
       setModalNobooking(nb);
       setDocsLoading(true);
-      fetch(`/api/ppat/get-documents?nobooking=${encodeURIComponent(nb)}`, { credentials: "include" })
+      fetch(`${getApiBase()}/api/ppat/get-documents?nobooking=${encodeURIComponent(nb)}`, { credentials: "include" })
         .then((r) => r.json())
         .then((j) => { if (j?.documents) setDocuments(j.documents); else if (Array.isArray(j)) setDocuments(j); else setDocuments([]); })
         .catch(() => setDocuments([]))
@@ -127,7 +129,7 @@ export default function BookingSSPDPeroranganPage() {
     setUploading(true); setActionMessage(null);
     try {
       const fd = new FormData(); fd.append("nobooking", modalNobooking); fd.append("signature1", signatureFile);
-      const res = await fetch("/api/ppat/upload-signatures", { method: "POST", credentials: "include", body: fd });
+      const res = await fetch(`${getApiBase()}/api/ppat/upload-signatures`, { method: "POST", credentials: "include", body: fd });
       const j = await res.json().catch(() => ({}));
       if (j?.success) { setActionMessage("Tanda tangan berhasil diunggah."); setModal(null); loadTable(page); } else { setActionMessage(j?.message || "Gagal mengunggah."); }
     } catch { setActionMessage("Gagal mengunggah."); } finally { setUploading(false); }
@@ -137,7 +139,7 @@ export default function BookingSSPDPeroranganPage() {
     if (!nb) { setActionMessage("Pilih baris booking yang akan dihapus."); return; }
     setUploading(true); setActionMessage(null);
     try {
-      const res = await fetch(`/api/ppat/update-trackstatus/${encodeURIComponent(nb)}`, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trackstatus: "Dihapus" }) });
+      const res = await fetch(`${getApiBase()}/api/ppat/update-trackstatus/${encodeURIComponent(nb)}`, { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trackstatus: "Dihapus" }) });
       const j = await res.json().catch(() => ({}));
       if (j?.success) { setActionMessage("Data ditandai dihapus."); setModal(null); setExpandedRow(null); loadTable(page); } else { setActionMessage(j?.message || "Gagal menghapus."); }
     } catch { setActionMessage("Gagal menghapus."); } finally { setUploading(false); }
@@ -189,7 +191,7 @@ export default function BookingSSPDPeroranganPage() {
               <select style={{ width: "100%", padding: 8, borderRadius: 8 }} value={modalNobooking} onChange={(e) => {
                 setModalNobooking(e.target.value);
                 setDocsLoading(true);
-                fetch(`/api/ppat/get-documents?nobooking=${encodeURIComponent(e.target.value)}`, { credentials: "include" })
+                fetch(`${getApiBase()}/api/ppat/get-documents?nobooking=${encodeURIComponent(e.target.value)}`, { credentials: "include" })
                   .then((r) => r.json())
                   .then((j) => { if (j?.documents) setDocuments(j.documents); else if (Array.isArray(j)) setDocuments(j); else setDocuments([]); })
                   .catch(() => setDocuments([]))
@@ -200,7 +202,7 @@ export default function BookingSSPDPeroranganPage() {
             </div>
             {docsLoading ? <p>Memuat dokumen...</p> : documents.length === 0 ? <p style={{ color: "var(--color_font_muted)" }}>Tidak ada dokumen.</p> : (
               <ul style={{ margin: 0, paddingLeft: 20 }}>{documents.map((d, i) => (
-                <li key={i}>{d.url ? <a href={d.url.startsWith("http") ? d.url : `/api/ppat/file-proxy?relativePath=${encodeURIComponent(d.url)}`} target="_blank" rel="noopener noreferrer">{d.name || d.url}</a> : String(d.name || d)}</li>
+                <li key={i}>{d.url ? <a href={d.url.startsWith("http") ? d.url : `${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(d.url)}`} target="_blank" rel="noopener noreferrer">{d.name || d.url}</a> : String(d.name || d)}</li>
               ))}</ul>
             )}
             <button type="button" style={{ ...btnSecondary, marginTop: 16 }} onClick={() => setModal(null)}>Tutup</button>
@@ -293,7 +295,7 @@ export default function BookingSSPDPeroranganPage() {
                           if (!canSend(row)) return;
                           try {
                             const res = await fetch(
-                              `/api/ppat/send-now?nobooking=${encodeURIComponent(row.nobooking)}`,
+                              `${getApiBase()}/api/ppat/send-now?nobooking=${encodeURIComponent(row.nobooking)}`,
                               { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nobooking: row.nobooking }) }
                             );
                             const j = await res.json().catch(() => ({}));

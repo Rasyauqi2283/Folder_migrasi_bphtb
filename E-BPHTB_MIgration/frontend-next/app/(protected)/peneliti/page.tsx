@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--card_bg)",
@@ -28,8 +29,8 @@ export default function PenelitiDashboardPage() {
     (async () => {
       try {
         const [res1, res2] = await Promise.all([
-          fetch("/api/peneliti_get-berkas-fromltb", { credentials: "include" }).catch(() => null),
-          fetch("/api/peneliti/get-berkas-till-verif", { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/peneliti_get-berkas-fromltb`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/peneliti/get-berkas-till-verif`, { credentials: "include" }).catch(() => null),
         ]);
         if (cancelled) return;
         const data1 = res1?.ok ? await res1.json().catch(() => ({})) : {};

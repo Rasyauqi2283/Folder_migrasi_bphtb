@@ -17,11 +17,11 @@ cd E-BPHTB_MIgration/backend
 go run ./cmd/server
 ```
 
-Server listen di port **8000** (sama untuk lokal & Koyeb; env `PORT` / `GO_PORT` / `BACKEND_GO_PORT` opsional).
+Server listen di port **8000** (sama untuk lokal & Koyeb; hanya env `PORT` dipakai, default 8000).
 
 ## Env (opsional)
 
-- `GO_PORT` atau `BACKEND_GO_PORT` — port server (default 3005)
+- `PORT` — port server (default **8000**; Koyeb set PORT=8000)
 - `NODE_ENV` — environment (development/production)
 - `API_URL` — URL API untuk response /api/config
 - `DATABASE_URL` — connection string PostgreSQL (untuk step 3+)

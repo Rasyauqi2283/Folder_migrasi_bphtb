@@ -134,7 +134,7 @@ function DaftarContent() {
       const errMsg = e instanceof Error ? e.message : "";
       setKtpMessage(
         errMsg.includes("fetch") || errMsg.includes("network")
-          ? "Tidak bisa terhubung. Pastikan Next.js (port 3000) dan backend Go (port 3005) sudah jalan."
+          ? "Tidak bisa terhubung. Pastikan Next.js (port 3000) dan backend Go (port 8000) sudah jalan."
           : "Tidak bisa terhubung ke server. Cek koneksi dan pastikan kedua server berjalan."
       );
     }

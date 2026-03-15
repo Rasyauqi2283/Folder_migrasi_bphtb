@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { getApiBase } from "../../lib/api";
 
 const JSQR_URL = "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js";
 const PDFJS_URL = "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js";
@@ -101,7 +102,7 @@ export default function ValidasiQrPage() {
   const animationRef = useRef<number | null>(null);
   const resultCardRef = useRef<HTMLDivElement>(null);
 
-  const apiBase = getValidateQrApiBase();
+  const apiBase = getValidateQrApiBase() || getApiBase();
 
   const validateQr = useCallback(
     async (noVal: string) => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../../lib/api";
 
 interface ChartMonth {
   month: number;
@@ -40,7 +41,7 @@ export default function AdminPemutakhiranPpatPage() {
   const loadChart = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/admin/notification-warehouse/ppat-chart-data?tahun=${tahun}`,
+        `${getApiBase()}/api/admin/notification-warehouse/ppat-chart-data?tahun=${tahun}`,
         { credentials: "include" }
       );
       const data = await res.json();
@@ -71,7 +72,7 @@ export default function AdminPemutakhiranPpatPage() {
       if (search.trim()) params.set("search", search.trim());
 
       const res = await fetch(
-        `/api/admin/notification-warehouse/ppat-renewal?${params}`,
+        `${getApiBase()}/api/admin/notification-warehouse/ppat-renewal?${params}`,
         { credentials: "include" }
       );
       const data = await res.json();
@@ -123,7 +124,7 @@ export default function AdminPemutakhiranPpatPage() {
       params.set("jangka_waktu", jangkaWaktu);
       if (search.trim()) params.set("search", search.trim());
       const res = await fetch(
-        `/api/admin/notification-warehouse/ppat-renewal?${params}`,
+        `${getApiBase()}/api/admin/notification-warehouse/ppat-renewal?${params}`,
         { credentials: "include" }
       );
       const data = await res.json();

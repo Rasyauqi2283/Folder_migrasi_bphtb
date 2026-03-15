@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { getApiBase } from "../../../../../lib/api";
 
 const inputStyle: React.CSSProperties = { width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border_color)", fontSize: 14, marginTop: 4 };
 const labelStyle: React.CSSProperties = { display: "block", marginBottom: 4, fontWeight: 600, fontSize: 14 };
@@ -105,7 +106,7 @@ export default function PermohonanValidasiPage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/ppat/create-permohonan-validasi", {
+      const res = await fetch(`${getApiBase()}/api/ppat/create-permohonan-validasi`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

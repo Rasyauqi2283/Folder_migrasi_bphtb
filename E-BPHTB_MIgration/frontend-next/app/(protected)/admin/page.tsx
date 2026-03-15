@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 interface Stats {
   pending: number;
@@ -149,12 +150,12 @@ export default function AdminDashboardPage() {
           taxRes,
           validationRes,
         ] = await Promise.all([
-          fetch("/api/users/pending", { credentials: "include" }).catch(() => null),
-          fetch("/api/users/complete", { credentials: "include" }).catch(() => null),
-          fetch("/api/admin/notification-warehouse/ppat-users-stats", { credentials: "include" }).catch(() => null),
-          fetch("/api/admin/validate-qr-search?page=1&limit=1", { credentials: "include" }).catch(() => null),
-          fetch(`/api/admin/notification-warehouse/ppat-renewal?page=1&limit=1&jangka_waktu=12&tahun=${currentYear}`, { credentials: "include" }).catch(() => null),
-          fetch("/api/admin/validation-statistics", { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/users/pending`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/users/complete`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/admin/notification-warehouse/ppat-users-stats`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/admin/validate-qr-search?page=1&limit=1`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/admin/notification-warehouse/ppat-renewal?page=1&limit=1&jangka_waktu=12&tahun=${currentYear}`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/admin/validation-statistics`, { credentials: "include" }).catch(() => null),
         ]);
 
         let pendingCount = 0;

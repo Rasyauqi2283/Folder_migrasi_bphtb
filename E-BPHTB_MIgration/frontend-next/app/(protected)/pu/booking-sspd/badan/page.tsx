@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../../lib/api";
 
 const LIMIT = 10;
 const JENIS_WP = "Badan Usaha";
@@ -95,7 +96,7 @@ export default function BookingSSPDBadanPage() {
 
   const setCekBookingNobooking = useCallback((nobooking: string) => {
     setCekBookingDetail(null);
-    fetch(`/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" })
+    fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" })
       .then((res) => res.json())
       .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
         if (j?.success && j?.data)
@@ -109,7 +110,8 @@ export default function BookingSSPDBadanPage() {
     setError(null);
     try {
       const s = typeof q === "string" ? q : searchQuery;
-      let url = `/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
+      const base = getApiBase();
+      let url = `${base}/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
       if (s.trim()) url += `&search=${encodeURIComponent(s.trim())}`;
       const res = await fetch(url, { credentials: "include" });
       const json = (await res.json()) as ApiResponse;
@@ -140,7 +142,7 @@ export default function BookingSSPDBadanPage() {
     if (!path) return "";
     if (path.startsWith("http://") || path.startsWith("https://")) return path;
     const rel = path.replace(/^\/storage\/ppat\//, "");
-    return `/api/ppat/file-proxy?relativePath=${encodeURIComponent(rel)}`;
+    return `${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(rel)}`;
   };
   const getFileName = (path: string) => (path ? path.split("/").pop()?.replace(/^v\d+_/, "") || "File" : "File");
 
@@ -152,7 +154,7 @@ export default function BookingSSPDBadanPage() {
     const pad = (n: number) => String(n).padStart(2, "0");
     const t = new Date();
     setScheduleDate(`${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`);
-    fetch(`/api/ppat/quota?date=${`${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`}`, { credentials: "include" })
+    fetch(`${getApiBase()}/api/ppat/quota?date=${`${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`}`, { credentials: "include" })
       .then((r) => r.json())
       .then((j) => {
         if (j?.success && j?.data) setQuota({ used: j.data.used ?? 0, limit: j.data.limit ?? 80, date: j.data.date ?? "" });
@@ -170,7 +172,7 @@ export default function BookingSSPDBadanPage() {
         setActionMessage("Pengiriman tidak tersedia pada hari libur.");
         return;
       }
-      const res = await fetch(`/api/ppat/send-now?nobooking=${encodeURIComponent(nb)}`, {
+      const res = await fetch(`${getApiBase()}/api/ppat/send-now?nobooking=${encodeURIComponent(nb)}`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -195,7 +197,7 @@ export default function BookingSSPDBadanPage() {
       const fd = new FormData();
       fd.append("nobooking", nobooking);
       fd.append(field, file);
-      const res = await fetch("/api/ppat/upload-documents", { method: "POST", credentials: "include", body: fd });
+      const res = await fetch(`${getApiBase()}/api/ppat/upload-documents`, { method: "POST", credentials: "include", body: fd });
       const j = await res.json().catch(() => ({}));
       if (j?.success) loadTable(page, searchQuery);
     } catch (_) {}
@@ -215,7 +217,7 @@ export default function BookingSSPDBadanPage() {
     }
     setKirimSubmitting(true);
     try {
-      const res = await fetch(`/api/ppat/schedule-send`, {
+      const res = await fetch(`${getApiBase()}/api/ppat/schedule-send`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -235,7 +237,7 @@ export default function BookingSSPDBadanPage() {
 
   const openPdfBooking = () => {
     const nb = expandedRow || data[0]?.nobooking;
-    if (nb) window.open(`/api/ppat_generate-pdf-badan/${encodeURIComponent(nb)}`, "_blank", "noopener,noreferrer");
+    if (nb) window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(nb)}`, "_blank", "noopener,noreferrer");
     else openModal("documents");
   };
 
@@ -249,7 +251,7 @@ export default function BookingSSPDBadanPage() {
         const nb = expandedRow || data[0]?.nobooking || "";
         setModalNobooking(nb);
         setDocsLoading(true);
-        fetch(`/api/ppat/get-documents?nobooking=${encodeURIComponent(nb)}`, { credentials: "include" })
+        fetch(`${getApiBase()}/api/ppat/get-documents?nobooking=${encodeURIComponent(nb)}`, { credentials: "include" })
           .then((r) => r.json())
           .then((j) => {
             if (j?.documents) setDocuments(j.documents);
@@ -299,7 +301,7 @@ export default function BookingSSPDBadanPage() {
     setUploading(true);
     setActionMessage(null);
     try {
-      const res = await fetch(`/api/ppat/update-trackstatus/${encodeURIComponent(nb)}`, {
+      const res = await fetch(`${getApiBase()}/api/ppat/update-trackstatus/${encodeURIComponent(nb)}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -405,7 +407,7 @@ export default function BookingSSPDBadanPage() {
                 onChange={(e) => {
                   setModalNobooking(e.target.value);
                   setDocsLoading(true);
-                  fetch(`/api/ppat/get-documents?nobooking=${encodeURIComponent(e.target.value)}`, { credentials: "include" })
+                  fetch(`${getApiBase()}/api/ppat/get-documents?nobooking=${encodeURIComponent(e.target.value)}`, { credentials: "include" })
                     .then((r) => r.json())
                     .then((j) => {
                       if (j?.documents) setDocuments(j.documents);
@@ -503,7 +505,7 @@ export default function BookingSSPDBadanPage() {
             onClick={async (e) => {
               e.preventDefault();
               try {
-                const resp = await fetch("/api/check-my-signature", { credentials: "include" });
+                const resp = await fetch(`${getApiBase()}/api/check-my-signature`, { credentials: "include" });
                 const data = await resp.json().catch(() => ({}));
                 if (!resp.ok || data.success === false) {
                   setActionMessage("Gagal memeriksa status tanda tangan. Coba lagi.");
@@ -670,14 +672,14 @@ export default function BookingSSPDBadanPage() {
                             <button
                               type="button"
                               style={btnSecondary}
-                              onClick={() => window.open(`/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
+                              onClick={() => window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
                             >
                               Lihat Dokumen
                             </button>
                             <button
                               type="button"
                               style={btnSecondary}
-                              onClick={() => window.open(`/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
+                              onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
                             >
                               Lihat Dokumen Validasi
                             </button>

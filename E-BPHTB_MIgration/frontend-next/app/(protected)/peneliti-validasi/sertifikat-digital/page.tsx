@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface CertRow {
   serial_number?: string;
@@ -36,7 +37,7 @@ export default function PenelitiValidasiSertifikatDigitalPage() {
 
   const fetchList = useCallback(async () => {
     try {
-      const res = await fetch("/api/pv/cert/list", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/pv/cert/list`, { credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError((json as { message?: string }).message || "Gagal memuat daftar");
@@ -86,7 +87,7 @@ export default function PenelitiValidasiSertifikatDigitalPage() {
     }
     setIssuing(true);
     try {
-      const res = await fetch("/api/pv/cert/issue", {
+      const res = await fetch(`${getApiBase()}/api/pv/cert/issue`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -121,7 +122,7 @@ export default function PenelitiValidasiSertifikatDigitalPage() {
     if (!confirm("Revoke sertifikat ini?")) return;
     setRevoking(serial);
     try {
-      const res = await fetch(`/api/pv/cert/${encodeURIComponent(serial)}/revoke`, {
+      const res = await fetch(`${getApiBase()}/api/pv/cert/${encodeURIComponent(serial)}/revoke`, {
         method: "POST",
         credentials: "include",
       });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getApiBase } from "../../../../../lib/api";
 
 interface PpatRow {
   id?: number;
@@ -88,7 +89,7 @@ export default function AdminStatusPpatPage() {
       if (search.trim()) params.set("search", search.trim());
       if (statusFilter) params.set("status", statusFilter);
 
-      const url = `/api/admin/notification-warehouse/ppat-users?${params.toString()}`;
+      const url = `${getApiBase()}/api/admin/notification-warehouse/ppat-users?${params.toString()}`;
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
 
@@ -118,7 +119,7 @@ export default function AdminStatusPpatPage() {
       params.set("page", String(notifPage));
       params.set("limit", String(notifLimit));
       if (notifSearch.trim()) params.set("search", notifSearch.trim());
-      const url = `${notifApiPath(warehouseTab)}?${params}`;
+      const url = `${getApiBase()}${notifApiPath(warehouseTab)}?${params}`;
       const res = await fetch(url, { credentials: "include" });
       const data = await res.json();
       if (data?.success && Array.isArray(data?.data)) {
@@ -168,7 +169,7 @@ export default function AdminStatusPpatPage() {
     if (!editUser?.userid) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/users/${editUser.userid}/status-ppat`, {
+      const res = await fetch(`${getApiBase()}/api/users/${editUser.userid}/status-ppat`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

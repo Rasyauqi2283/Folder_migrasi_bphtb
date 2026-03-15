@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 const CARD_STYLES = {
   wrapper: {
@@ -148,10 +149,11 @@ export default function PPATDashboardPage() {
           jenis_wajib_pajak: "Perorangan",
         });
         const qsRekap = new URLSearchParams({ page: "1", limit: "1" });
+        const base = getApiBase();
         const [badanRes, perorRes, rekapRes] = await Promise.all([
-          fetch(`/api/ppat/load-all-booking?${qsBadan}`, { credentials: "include" }).catch(() => null),
-          fetch(`/api/ppat/load-all-booking?${qsPerorangan}`, { credentials: "include" }).catch(() => null),
-          fetch(`/api/ppat/rekap/diserahkan?${qsRekap}`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/ppat/load-all-booking?${qsBadan}`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/ppat/load-all-booking?${qsPerorangan}`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/ppat/rekap/diserahkan?${qsRekap}`, { credentials: "include" }).catch(() => null),
         ]);
         const readTotal = async (res: Response | null): Promise<number> => {
           if (!res?.ok) return 0;

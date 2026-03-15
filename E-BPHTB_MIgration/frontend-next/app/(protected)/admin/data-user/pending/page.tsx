@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getApiBase } from "../../../../../lib/api";
 
 // Divisi Karyawan (5): LTB, LSB, Admin, Peneliti, Peneliti Validasi
 const DIVISI_KARYAWAN: Record<string, string> = {
@@ -207,7 +208,7 @@ export default function AdminDataUserPendingPage() {
     if (divisiCode === "-") return;
     setSaveError(null);
     try {
-      const res = await fetch("/api/users/generate-userid", {
+      const res = await fetch(`${getApiBase()}/api/users/generate-userid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ divisi: divisiCode }),
@@ -241,7 +242,7 @@ export default function AdminDataUserPendingPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch("/api/users/assign-userid-and-divisi", {
+      const res = await fetch(`${getApiBase()}/api/users/assign-userid-and-divisi`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

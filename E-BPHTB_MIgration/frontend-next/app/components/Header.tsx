@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { useSidebar } from "../context/SidebarContext";
+import { getApiBase } from "../../lib/api";
 import { useState, useEffect, useRef, useId } from "react";
 import styles from "./Header.module.css";
 
@@ -46,7 +47,8 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
   // Fetch members by divisi
   useEffect(() => {
     if (!user?.divisi) return;
-    fetch("/api/users/complete", { credentials: "include" })
+    const base = getApiBase();
+    fetch(`${base}/api/users/complete`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "./data-user-complete.module.css";
+import { getApiBase } from "../../../../../lib/api";
 
 const PAGE_SIZE = 10;
 
@@ -217,7 +218,7 @@ export default function AdminDataUserCompletePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/users/complete", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/users/complete`, { credentials: "include" });
       if (!res.ok) throw new Error("Gagal memuat data pengguna");
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : []);
@@ -314,7 +315,7 @@ export default function AdminDataUserCompletePage() {
       });
       if (!res.ok) throw new Error("Gagal menyimpan");
       const statusRes = await fetch(
-        `/api/users/${editingUser.userid}/status-ppat`,
+        `${getApiBase()}/api/users/${editingUser.userid}/status-ppat`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -339,7 +340,7 @@ export default function AdminDataUserCompletePage() {
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      const res = await fetch(`/api/users/${deleteConfirm.userid}`, {
+      const res = await fetch(`${getApiBase()}/api/users/${deleteConfirm.userid}`, {
         method: "DELETE",
         credentials: "include",
       });

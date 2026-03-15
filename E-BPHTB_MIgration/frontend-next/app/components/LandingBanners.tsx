@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { getApiBase } from "../../lib/api";
 
 interface BannerItem {
   id: number;
@@ -56,7 +57,8 @@ export default function LandingBanners() {
         }}
       >
         {banners.map((b) => {
-          const src = `/api/uploads/banners/${b.image_path}`;
+          const base = getApiBase();
+          const src = `${base}/api/uploads/banners/${b.image_path}`;
           const content = (
             <div
               key={b.id}

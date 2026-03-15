@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface MonthItem {
   bulan?: string;
@@ -20,7 +21,7 @@ export default function LSBMonitoringPenyerahanPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/LSB_monitoring-penyerahan", { credentials: "include" });
+        const res = await fetch(`${getApiBase()}/api/LSB_monitoring-penyerahan`, { credentials: "include" });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
           setError((json as { message?: string }).message || "Gagal memuat");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { getApiBase } from "../../../../../lib/api";
 
 const LIMIT = 10;
 
@@ -76,7 +77,7 @@ export default function RincianLaporanBulananPage() {
           limit: String(LIMIT),
           ...(search ? { q: search } : {}),
         });
-        const res = await fetch(`/api/ppat/rekap/diserahkan?${params}`, { credentials: "include" });
+        const res = await fetch(`${getApiBase()}/api/ppat/rekap/diserahkan?${params}`, { credentials: "include" });
         const json = (await res.json()) as RincianResponse;
         if (!res.ok || !json.success) {
           setError(json?.message || "Gagal memuat data");

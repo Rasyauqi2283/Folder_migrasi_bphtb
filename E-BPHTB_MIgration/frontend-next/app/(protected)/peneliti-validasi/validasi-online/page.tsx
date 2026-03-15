@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface DocItem {
   no_validasi?: string;
@@ -52,7 +53,7 @@ export default function PenelitiValidasiValidasiOnlinePage() {
 
   const fetchDocs = useCallback(async () => {
     try {
-      const res = await fetch("/api/paraf/get-berkas-pending", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/paraf/get-berkas-pending`, { credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError((json as { message?: string }).message || "Gagal memuat");
@@ -76,7 +77,8 @@ export default function PenelitiValidasiValidasiOnlinePage() {
   }, [fetchDocs]);
 
   async function callPV(url: string, opts?: { method?: string; body?: unknown }) {
-    const res = await fetch(url, {
+    const fullUrl = url.startsWith("http") ? url : `${getApiBase()}${url}`;
+    const res = await fetch(fullUrl, {
       method: opts?.method ?? "GET",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -392,8 +394,8 @@ export default function PenelitiValidasiValidasiOnlinePage() {
                               <div style={{ marginBottom: 8 }}>
                                 <h5 style={{ color: "#e5e7eb", margin: "0 0 8px 0", fontWeight: 600, fontSize: 14 }}>Dokumen</h5>
                                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                  <a href={`/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Permohonan</a>
-                                  <a href={`/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Booking</a>
+                                  <a href={`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Permohonan</a>
+                                  <a href={`${getApiBase()}/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Booking</a>
                                 </div>
                               </div>
                               <div style={{ background: "#0b0f1a", border: "1px solid #1f2937", borderRadius: 10, padding: 14 }}>

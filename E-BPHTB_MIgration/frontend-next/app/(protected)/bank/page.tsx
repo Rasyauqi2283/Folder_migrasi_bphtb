@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--card_bg)",
@@ -33,11 +34,12 @@ export default function BankDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
+        const base = getApiBase();
         const [pendingRes, reviewedRes, approvedRes, rejectedRes] = await Promise.all([
-          fetch("/api/bank/transaksi?tab=pending&page=1&limit=1", { credentials: "include" }).catch(() => null),
-          fetch("/api/bank/transaksi?tab=reviewed&page=1&limit=1", { credentials: "include" }).catch(() => null),
-          fetch("/api/bank/transaksi?tab=reviewed&status=Disetujui&page=1&limit=1", { credentials: "include" }).catch(() => null),
-          fetch("/api/bank/transaksi?tab=reviewed&status=Ditolak&page=1&limit=1", { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/bank/transaksi?tab=pending&page=1&limit=1`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/bank/transaksi?tab=reviewed&page=1&limit=1`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/bank/transaksi?tab=reviewed&status=Disetujui&page=1&limit=1`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/bank/transaksi?tab=reviewed&status=Ditolak&page=1&limit=1`, { credentials: "include" }).catch(() => null),
         ]);
 
         const getTotal = async (res: Response | null) => {

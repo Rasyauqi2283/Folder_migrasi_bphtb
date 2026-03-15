@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface ParafItem {
   nobooking?: string;
@@ -64,7 +65,7 @@ export default function PenelitiParafKasiePage() {
   const sendToParafValidate = async (nobooking: string) => {
     setActionLoading(nobooking);
     try {
-      const res = await fetch("/api/peneliti_send-to-ParafValidate", {
+      const res = await fetch(`${getApiBase()}/api/peneliti_send-to-ParafValidate`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -85,7 +86,7 @@ export default function PenelitiParafKasiePage() {
     if (!reason?.trim()) return;
     setActionLoading(nobooking);
     try {
-      const res = await fetch("/api/peneliti_reject-with-reason", {
+      const res = await fetch(`${getApiBase()}/api/peneliti_reject-with-reason`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

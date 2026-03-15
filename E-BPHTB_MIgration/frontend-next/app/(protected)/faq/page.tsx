@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { getApiBase } from "../../../lib/api";
 
 interface FAQItem {
   id: number;
@@ -28,7 +29,7 @@ export default function FAQPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/faq", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/faq`, { credentials: "include" });
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || "Gagal memuat FAQ");
@@ -95,7 +96,7 @@ export default function FAQPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus FAQ ini?")) return;
     try {
-      const res = await fetch(`/api/faq/${id}`, {
+      const res = await fetch(`${getApiBase()}/api/faq/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -117,7 +118,7 @@ export default function FAQPage() {
     try {
       const form = new FormData();
       form.append("image", file);
-      const res = await fetch("/api/faq/upload", {
+      const res = await fetch(`${getApiBase()}/api/faq/upload`, {
         method: "POST",
         credentials: "include",
         body: form,

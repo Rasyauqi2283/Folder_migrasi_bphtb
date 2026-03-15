@@ -25,18 +25,9 @@ type Config struct {
 }
 
 func Load() *Config {
-	// Port 8000 untuk lokal & production (Koyeb). Sama di mana pun agar maintenance mudah.
+	// Port 8000 untuk lokal & production (Koyeb). Hanya env PORT dipakai agar tidak tertimpa GO_PORT=3005.
 	port := 8000
-	// Prioritas: PORT (Koyeb/Cloud) > GO_PORT > BACKEND_GO_PORT
 	if p := os.Getenv("PORT"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			port = v
-		}
-	} else if p := os.Getenv("GO_PORT"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			port = v
-		}
-	} else if p := os.Getenv("BACKEND_GO_PORT"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil {
 			port = v
 		}

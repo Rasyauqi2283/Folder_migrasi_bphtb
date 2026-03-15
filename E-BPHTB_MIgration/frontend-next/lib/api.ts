@@ -1,9 +1,3 @@
-/** URL backend Go. Sandbox & production sama: port 8000 (Koyeb 8000, lokal juga 8000). */
-const API_BASE =
-  process.env.NEXT_PUBLIC_LEGACY_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8000";
-
 /** URL Next.js (3000) untuk static html_folder & dashboard redirect. */
 const FRONTEND_BASE =
   process.env.NEXT_PUBLIC_FRONTEND_BASE_URL ||
@@ -12,13 +6,19 @@ const FRONTEND_BASE =
     : "http://localhost:3000");
 
 /**
- * Base URL untuk panggilan API fetch.
- * Di browser: gunakan "" agar fetch ke /api/* lewat proxy Next.js → no CORS.
- * Di SSR: gunakan full URL ke backend.
+ * Base URL untuk panggilan API. Production: pakai NEXT_PUBLIC_API_BASE_URL (langsung ke Koyeb).
+ * Dev tanpa env: di browser "" (proxy Next); di SSR localhost:8000.
  */
-export function getBackendBaseUrl(): string {
+export function getApiBase(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_LEGACY_BASE_URL;
+  if (fromEnv) return fromEnv;
   if (typeof window !== "undefined") return "";
-  return API_BASE;
+  return "http://localhost:8000";
+}
+
+/** Alias untuk getApiBase; dipakai oleh login, daftar, profile, auth, dll. */
+export function getBackendBaseUrl(): string {
+  return getApiBase();
 }
 
 /** Base URL untuk dashboard & static html_folder (dilayani Next.js). */

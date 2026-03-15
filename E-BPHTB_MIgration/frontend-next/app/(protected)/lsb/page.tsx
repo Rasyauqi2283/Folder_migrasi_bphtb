@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--card_bg)",
@@ -28,8 +29,8 @@ export default function LSBDashboardPage() {
     (async () => {
       try {
         const [r1, r2] = await Promise.all([
-          fetch("/api/LSB_berkas-complete", { credentials: "include" }).catch(() => null),
-          fetch("/api/LSB_monitoring-penyerahan", { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/LSB_berkas-complete`, { credentials: "include" }).catch(() => null),
+          fetch(`${getApiBase()}/api/LSB_monitoring-penyerahan`, { credentials: "include" }).catch(() => null),
         ]);
         if (cancelled) return;
         const d1 = r1?.ok ? await r1.json().catch(() => ({})) : {};

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { getApiBase } from "../../../../../lib/api";
 
 interface ValidateResult {
   success?: boolean;
@@ -122,7 +123,7 @@ export default function AdminValidasiQrPage() {
       if (searchStatus) params.set("status", searchStatus);
 
       const res = await fetch(
-        `/api/admin/validate-qr-search?${params}`,
+        `${getApiBase()}/api/admin/validate-qr-search?${params}`,
         { credentials: "include" }
       );
       const data = await res.json();

@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--card_bg)",
@@ -19,7 +20,7 @@ const CARD_STYLE: React.CSSProperties = {
 
 export default function PenelitiValidasiDashboardPage() {
   const { user } = useAuth();
-  const [tillVerif = 0, setTillVerif] = useState<number | null>(null);
+  const [pendingCount = 0, setPendingCount] = useState<number | null>(null);
   const [monitoringCount = 0, setMonitoringCount] = useState<number | null>(null);
   const [certCount = 0, setCertCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,21 +29,22 @@ export default function PenelitiValidasiDashboardPage() {
     let cancelled = false;
     (async () => {
       try {
+        const base = getApiBase();
         const [r1, r2, r3] = await Promise.all([
-          fetch("/api/peneliti/get-berkas-till-verif", { credentials: "include" }).catch(() => null),
-          fetch("/api/paraf/get-monitoring-documents", { credentials: "include" }).catch(() => null),
-          fetch("/api/pv/cert/list", { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/paraf/get-berkas-pending`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/paraf/get-monitoring-documents`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/pv/cert/list`, { credentials: "include" }).catch(() => null),
         ]);
         if (cancelled) return;
         const d1 = r1?.ok ? await r1.json().catch(() => ({})) : {};
         const d2 = r2?.ok ? await r2.json().catch(() => ({})) : {};
         const d3 = r3?.ok ? await r3.json().catch(() => ({})) : {};
-        setTillVerif(Array.isArray(d1?.data) ? d1.data.length : 0);
-        setMonitoringCount(Array.isArray(d2?.documents) ? d2.documents.length : Array.isArray(d2?.data) ? d2.data.length : 0);
+        setPendingCount(Array.isArray(d1?.data) ? d1.data.length : 0);
+        setMonitoringCount(Array.isArray(d2?.data) ? d2.data.length : 0);
         setCertCount(Array.isArray(d3?.certs) ? d3.certs.length : Array.isArray(d3?.list) ? d3.list.length : 0);
       } catch {
         if (!cancelled) {
-          setTillVerif(0);
+          setPendingCount(0);
           setMonitoringCount(0);
           setCertCount(0);
         }
@@ -89,9 +91,9 @@ export default function PenelitiValidasiDashboardPage() {
               >
                 ✓
               </div>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>Berkas till Verif</span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Berkas Pending</span>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>{tillVerif ?? 0}</div>
+            <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>{pendingCount ?? 0}</div>
             <p style={{ margin: 0, fontSize: 14, color: "var(--color_font_main_muted)" }}>
               Validasi Berkas SSPD Online
             </p>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface MonItem {
   no_validasi?: string;
@@ -19,7 +20,7 @@ export default function PenelitiValidasiMonitoringSkpdKurangPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/paraf/get-monitoring-documents", { credentials: "include" });
+        const res = await fetch(`${getApiBase()}/api/paraf/get-monitoring-documents`, { credentials: "include" });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) {
           setError((json as { message?: string }).message || "Gagal memuat");

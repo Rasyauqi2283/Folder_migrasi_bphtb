@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface LSBItem {
   nobooking?: string;
@@ -20,7 +21,7 @@ export default function LSBPelayananPenyerahanSspdPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/LSB_berkas-complete", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/LSB_berkas-complete`, { credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json as { message?: string }).message || `HTTP ${res.status}`);
       if (!(json as { success?: boolean }).success) throw new Error((json as { message?: string }).message || "Gagal memuat");
@@ -40,7 +41,7 @@ export default function LSBPelayananPenyerahanSspdPage() {
   const sendToPpat = async (nobooking: string) => {
     setActionLoading(nobooking);
     try {
-      const res = await fetch("/api/LSB_send-to-ppat", {
+      const res = await fetch(`${getApiBase()}/api/LSB_send-to-ppat`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

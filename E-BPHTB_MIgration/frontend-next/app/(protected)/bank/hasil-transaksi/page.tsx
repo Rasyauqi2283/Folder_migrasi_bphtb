@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { getApiBase } from "../../../../lib/api";
 
 const PAGE_SIZE = 10;
 const TABS = ["pending", "reviewed"] as const;
@@ -72,7 +73,7 @@ export default function BankHasilTransaksiPage() {
         params.set("limit", String(PAGE_SIZE));
         if (statusFilter.trim()) params.set("status", statusFilter.trim());
         if (search.trim()) params.set("q", search.trim());
-        const res = await fetch(`/api/bank/transaksi?${params.toString()}`, { credentials: "include" });
+        const res = await fetch(`${getApiBase()}/api/bank/transaksi?${params.toString()}`, { credentials: "include" });
         const data: ApiResponse = await res.json().catch(() => ({ success: false }));
         if (!res.ok) throw new Error((data as ApiResponse).message || `HTTP ${res.status}`);
         const list = data.rows || [];
@@ -102,7 +103,7 @@ export default function BankHasilTransaksiPage() {
     if (!confirm(`Yakin menyetujui transaksi untuk booking ${nobooking}?`)) return;
     setActionLoading(nobooking);
     try {
-      const res = await fetch(`/api/bank/transaksi/${encodeURIComponent(nobooking)}/approve`, {
+      const res = await fetch(`${getApiBase()}/api/bank/transaksi/${encodeURIComponent(nobooking)}/approve`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -131,7 +132,7 @@ export default function BankHasilTransaksiPage() {
     if (!confirm(`Yakin menolak booking ${rejectTarget} dengan alasan: "${rejectReason.trim()}"?`)) return;
     setActionLoading(rejectTarget);
     try {
-      const res = await fetch(`/api/bank/transaksi/${encodeURIComponent(rejectTarget)}/reject`, {
+      const res = await fetch(`${getApiBase()}/api/bank/transaksi/${encodeURIComponent(rejectTarget)}/reject`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

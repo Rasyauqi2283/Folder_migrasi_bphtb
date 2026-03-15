@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getApiBase } from "../../../../lib/api";
 
 interface VerifikasiItem {
   nobooking?: string;
@@ -33,7 +34,7 @@ export default function PenelitiVerifikasiSspdPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/peneliti_get-berkas-fromltb", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/peneliti_get-berkas-fromltb`, { credentials: "include" });
       const json: ApiResponse = await res.json().catch(() => ({ success: false }));
       if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
       if (!json.success) throw new Error(json.message || "Gagal memuat data");
@@ -87,7 +88,7 @@ export default function PenelitiVerifikasiSspdPage() {
     if (!reason?.trim()) return;
     setActionLoading(nobooking);
     try {
-      const res = await fetch("/api/peneliti_reject-with-reason", {
+      const res = await fetch(`${getApiBase()}/api/peneliti_reject-with-reason`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
