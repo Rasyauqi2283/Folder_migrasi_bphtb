@@ -599,8 +599,28 @@ func (r *PpatRepo) UpdateSignaturePath(ctx context.Context, nobooking, path stri
 		return err
 	}
 	if cmd.RowsAffected() == 0 {
-		_, err = r.pool.Exec(ctx, `INSERT INTO pat_6_sign (nobooking, path_ttd_wp) VALUES ($1, $2)`, nobooking, path)
-		return err
+		// pat_6_sign has NOT NULL columns (userid, nama). Populate them from booking + verified user.
+		// This keeps behavior compatible with legacy, which assumes booking exists.
+		tag, err := r.pool.Exec(ctx, `
+			INSERT INTO pat_6_sign (nobooking, userid, nama, path_ttd_wp, ppat_khusus)
+			SELECT
+				b.nobooking,
+				b.userid,
+				COALESCE(NULLIF(TRIM(b.namawajibpajak), ''), b.userid) AS nama,
+				$2 AS path_ttd_wp,
+				vu.ppat_khusus
+			FROM pat_1_bookingsspd b
+			LEFT JOIN a_2_verified_users vu ON vu.userid = b.userid
+			WHERE b.nobooking = $1
+			ON CONFLICT (nobooking) DO UPDATE SET path_ttd_wp = EXCLUDED.path_ttd_wp
+		`, nobooking, path)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("booking not found")
+		}
+		return nil
 	}
 	return nil
 }

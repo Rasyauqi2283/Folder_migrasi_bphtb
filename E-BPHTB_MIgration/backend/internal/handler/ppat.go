@@ -664,7 +664,7 @@ func (h *PpatHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-const maxSignatureSize = 2 * 1024 * 1024  // 2MB
+const maxSignatureSize = 5 * 1024 * 1024  // 5MB
 const maxDocumentSize = 50 * 1024 * 1024  // 50MB
 
 // UploadSignatures handles POST /api/ppat/upload-signatures.
@@ -699,7 +699,7 @@ func (h *PpatHandler) UploadSignatures(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(data) > maxSignatureSize {
-		ppatJSONError(w, http.StatusBadRequest, "File too large (max 2MB)")
+		ppatJSONError(w, http.StatusBadRequest, "File too large (max 5MB)")
 		return
 	}
 	baseDir := h.cfg.TandaTanganBaseDir
