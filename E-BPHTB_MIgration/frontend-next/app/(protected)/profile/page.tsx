@@ -202,8 +202,8 @@ export default function ProfilePage() {
       setPhotoError("Format: JPG, JPEG, atau PNG");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setPhotoError("Maksimal 2MB");
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Maksimal 5MB");
       return;
     }
     setPhotoError("");
@@ -937,7 +937,7 @@ export default function ProfilePage() {
               style={{ display: "none" }}
             />
           </label>
-          <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9em", marginTop: 8 }}>Format: JPG, PNG (Maks. 2MB)</p>
+          <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9em", marginTop: 8 }}>Format: JPG, PNG (Maks. 5MB)</p>
         </div>
         {photoPreview && (
           <div style={{ textAlign: "center", marginBottom: 15 }}>

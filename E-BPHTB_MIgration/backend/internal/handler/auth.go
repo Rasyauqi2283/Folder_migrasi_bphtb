@@ -174,6 +174,17 @@ func sha256Hex(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func isSecureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	// Behind reverse proxy (Koyeb/Vercel/etc)
+	if strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https") {
+		return true
+	}
+	return false
+}
+
 func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
 	var tempatLahir, tanggalLahir *string
 	if result.TTL != nil {
@@ -920,7 +931,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		MaxAge:   86400, // 1 hari
+		Secure:   isSecureRequest(r),
+		MaxAge:   86400 * 7, // 7 hari
 	})
 
 	w.Header().Set("Content-Type", "application/json")
@@ -2133,6 +2145,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   isSecureRequest(r),
 		MaxAge:   -1,
 	})
 	w.Header().Set("Content-Type", "application/json")
