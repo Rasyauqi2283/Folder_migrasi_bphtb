@@ -188,6 +188,14 @@ func main() {
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users/{userid}", adminNW.GetPpatUserByID)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-chart-data", adminNW.GetPpatChartData)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-renewal", adminNW.GetPpatRenewal)
+	// Missing legacy endpoints that caused production 502/500
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-ltb", adminNW.GetPpatLtb)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-ltb/{bookingId}", adminNW.GetPpatLtbDetail)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/peneliti-lsb", adminNW.GetPenelitiLsb)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/lsb-ppat", adminNW.GetLsbPpat)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/stats", adminNW.GetStats)
+	mux.HandleFunc("POST /api/admin/notification-warehouse/send-ping", adminNW.SendPing)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/poll-ping", adminNW.PollPing)
 	mux.HandleFunc("GET /api/admin/ppat/user/{userid}/diserahkan", adminNW.GetDiserahkan)
 
 	// Admin validasi QR — handler Go
@@ -375,7 +383,7 @@ func main() {
 	})
 
 	// Legacy API proxy: forward any unmatched /api/* ke Node (pv/cert, validasi/claim, dll). Bank, Peneliti, LSB, Paraf sudah dilayani Go di atas.
-	mux.Handle("/api/", handler.LegacyAPIProxyHandler(cfg.LegacyNodeURL))
+	// mux.Handle("/api/", handler.LegacyAPIProxyHandler(cfg.LegacyNodeURL))
 
 	addr := ":" + strconv.Itoa(cfg.Port)
 
