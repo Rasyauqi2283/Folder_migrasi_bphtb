@@ -25,25 +25,75 @@ import (
 
 // corsMiddleware menambahkan header CORS dan menangani preflight OPTIONS.
 func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
-	originSet := make(map[string]bool)
-	for _, o := range allowedOrigins {
-		originSet[strings.TrimSpace(o)] = true
+	// Support:
+	// - exact origin match: "https://bphtbbappenda.vercel.app"
+	// - wildcard any origin: "*"
+	// - suffix match: "*.vercel.app" (matches https://foo.vercel.app)
+	type originRule struct {
+		exact  string
+		suffix string
+		any    bool
 	}
-	if len(originSet) == 0 {
-		originSet["http://localhost:3000"] = true
+	var rules []originRule
+	for _, raw := range allowedOrigins {
+		o := strings.TrimSpace(raw)
+		if o == "" {
+			continue
+		}
+		if o == "*" {
+			rules = append(rules, originRule{any: true})
+			continue
+		}
+		if strings.HasPrefix(o, "*.") {
+			rules = append(rules, originRule{suffix: strings.TrimPrefix(o, "*.")})
+			continue
+		}
+		rules = append(rules, originRule{exact: o})
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if originSet[origin] {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if len(originSet) == 1 {
-			for o := range originSet {
-				w.Header().Set("Access-Control-Allow-Origin", o)
-				break
+	if len(rules) == 0 {
+		rules = []originRule{{exact: "http://localhost:3000"}}
+	}
+
+	isAllowed := func(origin string) bool {
+		if origin == "" {
+			return false
+		}
+		for _, r := range rules {
+			if r.any {
+				return true
+			}
+			if r.exact != "" && origin == r.exact {
+				return true
+			}
+			if r.suffix != "" {
+				// Match both "https://foo.bar" and "http://foo.bar" by checking host suffix.
+				// We deliberately avoid full URL parsing to keep this lightweight and tolerant.
+				if strings.Contains(origin, "://") {
+					// origin format per spec: scheme://host[:port]
+					parts := strings.SplitN(origin, "://", 2)
+					if len(parts) == 2 {
+						hostPort := parts[1]
+						host := strings.SplitN(hostPort, ":", 2)[0]
+						if host == r.suffix || strings.HasSuffix(host, "."+r.suffix) {
+							return true
+						}
+					}
+				}
 			}
 		}
+		return false
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if isAllowed(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		// Ensure caches/proxies don't mix responses across origins.
+		w.Header().Add("Vary", "Origin")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
+		// Allow common custom headers used by clients/proxies.
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-User-Id, X-Requested-With")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

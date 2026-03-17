@@ -8,6 +8,13 @@ interface ParafItem {
   nobooking?: string;
   no_registrasi?: string;
   noppbb?: string;
+  namawajibpajak?: string;
+  namapemilikobjekpajak?: string;
+  userid?: string;
+  tanda_paraf_path?: string;
+  signer_userid?: string;
+  pemverifikasi_nama?: string;
+  tanggal_masuk?: string;
   [key: string]: unknown;
 }
 
@@ -17,7 +24,40 @@ interface ApiResponse {
   message?: string;
 }
 
-const ITEMS_PER_PAGE = 6;
+const PAGE_SIZE = 10;
+
+const tableScrollStyle: React.CSSProperties = {
+  overflowX: "auto",
+  width: "100%",
+  marginTop: 20,
+};
+const tableStyle: React.CSSProperties = {
+  width: "100%",
+  borderCollapse: "collapse",
+  background: "var(--card_bg)",
+  borderRadius: 12,
+  overflow: "hidden",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+  minWidth: 800,
+};
+const thStyle: React.CSSProperties = {
+  padding: "14px 12px",
+  textAlign: "center",
+  fontWeight: 600,
+  fontSize: 13,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)",
+  color: "#fff",
+  border: "none",
+};
+const tdStyle: React.CSSProperties = {
+  padding: "12px 14px",
+  borderBottom: "1px solid var(--border_color)",
+  fontSize: 14,
+  color: "var(--color_font_main)",
+  verticalAlign: "middle",
+};
 
 export default function PenelitiParafKasiePage() {
   const [data, setData] = useState<ParafItem[]>([]);
@@ -26,15 +66,16 @@ export default function PenelitiParafKasiePage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/peneliti/get-berkas-till-verif", { credentials: "include" });
+      const res = await fetch(`${getApiBase()}/api/peneliti/get-berkas-till-verif`, { credentials: "include" });
       const json: ApiResponse = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json as ApiResponse).message || `HTTP ${res.status}`);
-      if (!json.success) throw new Error((json as ApiResponse).message || "Gagal memuat data");
+      if (!(json as ApiResponse).success) throw new Error((json as ApiResponse).message || "Gagal memuat data");
       const arr: ParafItem[] = Array.isArray((json as ApiResponse).data) ? ((json as ApiResponse).data ?? []) : [];
       setData(arr);
     } catch (e) {
@@ -44,23 +85,30 @@ export default function PenelitiParafKasiePage() {
       setLoading(false);
     }
   }, []);
- 
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!realTimeEnabled) return;
+    const t = setInterval(load, 10000);
+    return () => clearInterval(t);
+  }, [realTimeEnabled, load]);
 
   const filtered = search.trim()
     ? data.filter(
         (r) =>
           String(r.nobooking ?? "").toLowerCase().includes(search.toLowerCase()) ||
           String(r.no_registrasi ?? "").toLowerCase().includes(search.toLowerCase()) ||
-          String(r.noppbb ?? "").toLowerCase().includes(search.toLowerCase())
+          String(r.noppbb ?? "").toLowerCase().includes(search.toLowerCase()) ||
+          String(r.namawajibpajak ?? "").toLowerCase().includes(search.toLowerCase())
       )
     : data;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const start = (currentPage - 1) * ITEMS_PER_PAGE;
-  const slice = filtered.slice(start, start + ITEMS_PER_PAGE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
 
   const sendToParafValidate = async (nobooking: string) => {
     setActionLoading(nobooking);
@@ -103,136 +151,209 @@ export default function PenelitiParafKasiePage() {
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
+    <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 16,
+          marginBottom: 20,
+        }}
+      >
         <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Kasie Verifikasi SSPD</h2>
-        <input
-          type="text"
-          placeholder="Cari No. Booking, No. Registrasi..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && setPage(1)}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid var(--border_color)",
-            minWidth: 220,
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => load()}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "1px solid var(--border_color)",
-            background: "var(--card_bg)",
-            cursor: "pointer",
-          }}
-        >
-          Muat ulang
-        </button>
-      </div>
-
-      {loading ? (
-        <p style={{ color: "var(--color_font_main_muted)" }}>Memuat data...</p>
-      ) : error ? (
-        <p style={{ color: "#ef4444" }}>{error}</p>
-      ) : slice.length === 0 ? (
-        <p style={{ color: "var(--color_font_main_muted)" }}>Tidak ada data berkas sampai verif.</p>
-      ) : (
-        <>
-          <div
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <input
+            type="text"
+            placeholder="Cari No. Registrasi, No. Booking, NOP, Nama..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && setPage(1)}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-              gap: 16,
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              minWidth: 220,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => load()}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              background: "var(--card_bg)",
+              cursor: "pointer",
             }}
           >
-            {slice.map((r) => (
-              <div
-                key={r.nobooking ?? ""}
-                style={{
-                  background: "var(--card_bg)",
-                  border: "1px solid var(--border_color)",
-                  borderRadius: 12,
-                  padding: 16,
-                  boxShadow: "var(--card_shadow)",
-                }}
-              >
-                <div style={{ marginBottom: 8 }}>
-                  <strong>No. Booking:</strong> {r.nobooking ?? "-"}
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  <strong>No. Registrasi:</strong> {r.no_registrasi ?? "-"}
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <strong>No. PPBB:</strong> {r.noppbb ?? "-"}
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    disabled={!!actionLoading}
-                    onClick={() => sendToParafValidate(r.nobooking!)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "#10b981",
-                      color: "white",
-                      fontWeight: 600,
-                      cursor: actionLoading ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {actionLoading === r.nobooking ? "..." : "Kirim ke Peneliti Validasi"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!!actionLoading}
-                    onClick={() => reject(r.nobooking!)}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "#ef4444",
-                      color: "white",
-                      fontWeight: 600,
-                      cursor: actionLoading ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    Tolak
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {totalPages > 1 && (
-            <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => setPage((p) => p - 1)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", cursor: currentPage <= 1 ? "not-allowed" : "pointer" }}
-              >
-                Prev
-              </button>
-              <span style={{ color: "var(--color_font_main_muted)" }}>
-                Halaman {currentPage} dari {totalPages} ({filtered.length} data)
-              </span>
-              <button
-                type="button"
-                disabled={currentPage >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", cursor: currentPage >= totalPages ? "not-allowed" : "pointer" }}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
+            Muat ulang
+          </button>
+          <button
+            type="button"
+            onClick={() => setRealTimeEnabled((v) => !v)}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: realTimeEnabled ? "#f59e0b" : "#10b981",
+              color: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            {realTimeEnabled ? "⏸ Pause Real-time" : "▶ Start Real-time"}
+          </button>
+          <span style={{ fontSize: 12, color: "var(--color_font_muted)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: realTimeEnabled ? "#28a745" : "#6c757d",
+              }}
+            />
+            Real-time
+          </span>
+        </div>
+      </div>
+
+      <div style={tableScrollStyle}>
+        <table style={tableStyle}>
+          <thead>
+            <tr>
+              <th style={thStyle}>No</th>
+              <th style={thStyle}>No. Registrasi</th>
+              <th style={thStyle}>NOP PBB</th>
+              <th style={thStyle}>Nama Wajib Pajak</th>
+              <th style={thStyle}>Nama Pemilik Objek</th>
+              <th style={thStyle}>Pembuat Booking</th>
+              <th style={thStyle}>Paraf</th>
+              <th style={thStyle}>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
+                  Memuat data...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "#ef4444" }}>
+                  {error}
+                </td>
+              </tr>
+            ) : slice.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
+                  Tidak ada data berkas sampai verif.
+                </td>
+              </tr>
+            ) : (
+              slice.map((r, idx) => (
+                <tr key={r.nobooking ?? idx} style={{ borderBottom: "1px solid var(--border_color)" }}>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>{start + idx + 1}</td>
+                  <td style={tdStyle}>{r.no_registrasi ?? "-"}</td>
+                  <td style={tdStyle}>{r.noppbb ?? "-"}</td>
+                  <td style={tdStyle}>{r.namawajibpajak ?? "-"}</td>
+                  <td style={tdStyle}>{r.namapemilikobjekpajak ?? "-"}</td>
+                  <td style={tdStyle}>{r.userid ?? "-"}</td>
+                  <td style={tdStyle}>
+                    {r.tanda_paraf_path || r.signer_userid ? (
+                      <span style={{ color: "#10b981", fontWeight: 600 }}>Sudah</span>
+                    ) : (
+                      <span style={{ color: "#f59e0b", fontWeight: 600 }}>Belum</span>
+                    )}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        disabled={!!actionLoading}
+                        onClick={() => sendToParafValidate(r.nobooking!)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor: actionLoading ? "not-allowed" : "pointer",
+                          fontSize: 13,
+                        }}
+                      >
+                        {actionLoading === r.nobooking ? "..." : "Kirim ke Peneliti Validasi"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!!actionLoading}
+                        onClick={() => reject(r.nobooking!)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                          color: "white",
+                          fontWeight: 600,
+                          cursor: actionLoading ? "not-allowed" : "pointer",
+                          fontSize: 13,
+                        }}
+                      >
+                        Tolak
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && !loading && (
+        <div style={{ marginTop: 20, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            disabled={currentPage <= 1}
+            onClick={() => setPage((p) => p - 1)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              cursor: currentPage <= 1 ? "not-allowed" : "pointer",
+              background: "var(--card_bg)",
+            }}
+          >
+            Prev
+          </button>
+          <span style={{ color: "var(--color_font_muted)" }}>
+            Halaman {currentPage} dari {totalPages} ({filtered.length} data)
+          </span>
+          <button
+            type="button"
+            disabled={currentPage >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
+              background: "var(--card_bg)",
+            }}
+          >
+            Next
+          </button>
+        </div>
       )}
+
       <p style={{ marginTop: 24 }}>
-        <Link href="/peneliti" style={{ color: "var(--accent)" }}>← Kembali ke Dashboard Peneliti</Link>
+        <Link href="/peneliti" style={{ color: "var(--accent)" }}>
+          ← Kembali ke Dashboard Peneliti
+        </Link>
       </p>
     </div>
   );

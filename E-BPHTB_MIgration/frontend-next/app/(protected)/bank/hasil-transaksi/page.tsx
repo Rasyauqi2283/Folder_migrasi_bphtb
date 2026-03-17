@@ -61,6 +61,7 @@ export default function BankHasilTransaksiPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [realTimeEnabled, setRealTimeEnabled] = useState(true);
 
   const load = useCallback(
     async (page = currentPage) => {
@@ -93,6 +94,12 @@ export default function BankHasilTransaksiPage() {
   useEffect(() => {
     load(currentPage);
   }, [currentTab, currentPage, statusFilter, load]);
+
+  useEffect(() => {
+    if (!realTimeEnabled) return;
+    const t = setInterval(() => load(currentPage), 10000);
+    return () => clearInterval(t);
+  }, [realTimeEnabled, load, currentPage]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -154,7 +161,44 @@ export default function BankHasilTransaksiPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 20, fontSize: 24, fontWeight: 700 }}>Hasil Transaksi</h2>
+      <h2 style={{ marginBottom: 20, fontSize: 24, fontWeight: 700, textAlign: "center" }}>Verifikasi Pembayaran Bank</h2>
+
+      {/* Tabs: Pending Review / Sudah di Review (sama seperti legacy) */}
+      <div
+        style={{
+          display: "flex",
+          marginBottom: 20,
+          background: "var(--card_bg)",
+          borderRadius: 12,
+          padding: 4,
+          border: "1px solid var(--border_color)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => {
+              setCurrentTab(tab);
+              setCurrentPage(1);
+            }}
+            style={{
+              flex: 1,
+              padding: "12px 20px",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: "pointer",
+              background: currentTab === tab ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "transparent",
+              color: currentTab === tab ? "white" : "var(--color_font_main)",
+              boxShadow: currentTab === tab ? "0 2px 8px rgba(59,130,246,0.3)" : "none",
+            }}
+          >
+            {tab === "pending" ? "📋 Pending Review" : "✅ Sudah di Review"}
+          </button>
+        ))}
+      </div>
 
       <div
         style={{
@@ -169,27 +213,7 @@ export default function BankHasilTransaksiPage() {
           alignItems: "center",
         }}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => {
-              setCurrentTab(tab);
-              setCurrentPage(1);
-            }}
-            style={{
-              padding: "12px 20px",
-              border: "none",
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: "pointer",
-              background: currentTab === tab ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "var(--surface_light)",
-              color: currentTab === tab ? "white" : "var(--color_font_main)",
-            }}
-          >
-            {tab === "pending" ? "Pending Review" : "Sudah di Review"}
-          </button>
-        ))}
+        <label style={{ fontWeight: 600, marginRight: 8 }}>Filter Status:</label>
         <select
           value={statusFilter}
           onChange={(e) => {
@@ -204,13 +228,19 @@ export default function BankHasilTransaksiPage() {
             color: "var(--color_font_main)",
           }}
         >
-          <option value="">Semua status</option>
-          <option value="Disetujui">Disetujui</option>
-          <option value="Ditolak">Ditolak</option>
+          <option value="">Semua</option>
+          {currentTab === "pending" ? (
+            <option value="Pending">Pending</option>
+          ) : (
+            <>
+              <option value="Disetujui">Disetujui</option>
+              <option value="Ditolak">Ditolak</option>
+            </>
+          )}
         </select>
         <input
           type="text"
-          placeholder="Cari (No. Booking, Nama, dll.)"
+          placeholder="Cari No. Registrasi / No. Booking / Nama WP / No. Bukti"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -230,7 +260,7 @@ export default function BankHasilTransaksiPage() {
             padding: "8px 16px",
             borderRadius: 8,
             border: "none",
-            background: "var(--accent)",
+            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
             color: "white",
             fontWeight: 600,
             cursor: "pointer",
@@ -250,23 +280,52 @@ export default function BankHasilTransaksiPage() {
             cursor: "pointer",
           }}
         >
-          Muat ulang
+          🔄 Muat ulang
         </button>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => setRealTimeEnabled((v) => !v)}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "none",
+              background: realTimeEnabled ? "#f59e0b" : "#28a745",
+              color: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontSize: 13,
+            }}
+          >
+            {realTimeEnabled ? "⏸ Pause Real-time" : "▶ Start Real-time"}
+          </button>
+          <span style={{ fontSize: 12, color: "var(--color_font_main_muted)", display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: realTimeEnabled ? "#28a745" : "#6c757d",
+              }}
+            />
+            Real-time
+          </span>
+        </div>
       </div>
 
-      <div style={{ overflowX: "auto", background: "var(--card_bg)", borderRadius: 12, border: "1px solid var(--border_color)" }}>
+      <div style={{ overflowX: "auto", background: "var(--card_bg)", borderRadius: 16, border: "1px solid var(--border_color)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
-            <tr style={{ background: "var(--surface_light)", borderBottom: "2px solid var(--border_color)" }}>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>No</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>No. Registrasi</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>No. Booking</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>Nama WP</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>No. Bukti</th>
-              <th style={{ padding: "14px 12px", textAlign: "right", fontWeight: 600 }}>Nominal</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>Tanggal Bayar</th>
-              <th style={{ padding: "14px 12px", textAlign: "left", fontWeight: 600 }}>Status</th>
-              <th style={{ padding: "14px 12px", textAlign: "center", fontWeight: 600 }}>Aksi</th>
+            <tr style={{ background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)", border: "none" }}>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>No</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>No. Registrasi</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>No. Booking</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>Nama WP</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>No. Bukti</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>Nominal</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>Tanggal Bayar</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>Status</th>
+              <th style={{ padding: "16px 14px", textAlign: "center", fontWeight: 600, color: "#fff", fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}>Aksi</th>
             </tr>
           </thead>
           <tbody>

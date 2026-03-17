@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { getApiBase } from "../../../../../lib/api";
 
 const LIMIT = 10;
+const MONTHS: { value: string; label: string }[] = [
+  { value: "", label: "SEMUA" },
+  { value: "01", label: "Januari" }, { value: "02", label: "Februari" }, { value: "03", label: "Maret" },
+  { value: "04", label: "April" }, { value: "05", label: "Mei" }, { value: "06", label: "Juni" },
+  { value: "07", label: "Juli" }, { value: "08", label: "Agustus" }, { value: "09", label: "September" },
+  { value: "10", label: "Oktober" }, { value: "11", label: "November" }, { value: "12", label: "Desember" },
+];
 
 type RekapRow = {
   nobooking: string;
@@ -27,55 +35,66 @@ type RekapResponse = {
   pagination?: { page: number; limit: number; total: number; totalPages: number };
 };
 
-const tableStyle: React.CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
+const tableScrollStyle: React.CSSProperties = {
   background: "var(--card_bg)",
-  borderRadius: 12,
+  borderRadius: 16,
+  border: "1px solid var(--border_color)",
+  boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
   overflow: "hidden",
-  boxShadow: "var(--card_shadow)",
+  width: "100%",
 };
 const thStyle: React.CSSProperties = {
+  padding: "16px 12px",
   textAlign: "center",
-  padding: "12px 8px",
-  background: "var(--card_bg_grey)",
-  borderBottom: "1px solid var(--border_color)",
   fontWeight: 600,
-  fontSize: 14,
+  color: "#fff",
+  border: "none",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  fontSize: 12,
 };
 const tdStyle: React.CSSProperties = {
-  padding: "10px 8px",
-  borderBottom: "1px solid var(--border_color)",
-  fontSize: 14,
-};
-const btnStyle: React.CSSProperties = {
-  padding: "8px 14px",
-  borderRadius: 8,
+  padding: 12,
   border: "none",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: 13,
-  background: "var(--card_bg_grey)",
   color: "var(--color_font_main)",
+  fontSize: 13,
+  verticalAlign: "middle",
+  textAlign: "center",
 };
+
+function parseMonthYear(tanggal_formatted?: string): { month: number; year: number } | null {
+  if (!tanggal_formatted || typeof tanggal_formatted !== "string") return null;
+  const m = tanggal_formatted.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  const year = parseInt(m[3], 10);
+  if (month >= 1 && month <= 12) return { month, year };
+  if (day >= 1 && day <= 31) return { month: day, year: month }; // DD/MM/YYYY
+  return null;
+}
 
 export default function LaporanRekapPPATPage() {
   const [rows, setRows] = useState<RekapRow[]>([]);
+  const [fullRows, setFullRows] = useState<RekapRow[] | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalNominal, setTotalNominal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filterTahun, setFilterTahun] = useState("");
+  const [filterBulan, setFilterBulan] = useState("");
 
   const load = useCallback(
-    async (p: number) => {
+    async (p: number, limitOverride?: number) => {
       setLoading(true);
       setError(null);
       try {
+        const limit = limitOverride ?? LIMIT;
         const params = new URLSearchParams({
-          page: String(p),
-          limit: String(LIMIT),
+          page: String(limitOverride ? 1 : p),
+          limit: String(limit),
           ...(search ? { q: search } : {}),
         });
         const res = await fetch(`${getApiBase()}/api/ppat/rekap/diserahkan?${params}`, { credentials: "include" });
@@ -83,14 +102,22 @@ export default function LaporanRekapPPATPage() {
         if (!res.ok || !json.success) {
           setError(json?.message || "Gagal memuat data");
           setRows([]);
+          if (limitOverride) setFullRows([]);
           return;
         }
-        setRows(Array.isArray(json.rows) ? json.rows : []);
-        setTotalPages(json.pagination?.totalPages ?? 1);
+        const list = Array.isArray(json.rows) ? json.rows : [];
         setTotalNominal(json.totalNominal ?? 0);
+        if (limitOverride) {
+          setFullRows(list);
+          setTotalPages(1);
+        } else {
+          setRows(list);
+          setTotalPages(json.pagination?.totalPages ?? 1);
+        }
       } catch {
         setError("Gagal memuat data");
         setRows([]);
+        if (limitOverride) setFullRows([]);
       } finally {
         setLoading(false);
       }
@@ -98,33 +125,117 @@ export default function LaporanRekapPPATPage() {
     [search]
   );
 
+  const hasFilter = !!(filterTahun || filterBulan);
   useEffect(() => {
-    load(page);
-  }, [page, load]);
+    if (hasFilter) load(1, 10000);
+    else load(page);
+  }, [hasFilter ? undefined : page, load, hasFilter]);
+
+  useEffect(() => {
+    if (hasFilter) return;
+    setFullRows(null);
+  }, [hasFilter]);
+
+  const filteredRows = (() => {
+    const source = hasFilter && fullRows ? fullRows : rows;
+    if (!hasFilter) return source;
+    return source.filter((r) => {
+      const parsed = parseMonthYear(r.tanggal_formatted);
+      if (!parsed) return true;
+      if (filterTahun && String(parsed.year) !== filterTahun) return false;
+      if (filterBulan && String(parsed.month).padStart(2, "0") !== filterBulan) return false;
+      return true;
+    });
+  })();
+
+  const paginatedDisplay = hasFilter
+    ? filteredRows.slice((page - 1) * LIMIT, page * LIMIT)
+    : filteredRows;
+  const effectiveTotalPages = hasFilter
+    ? Math.max(1, Math.ceil(filteredRows.length / LIMIT))
+    : totalPages;
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ margin: "0 0 0.5rem", color: "var(--color_font_main)" }}>Laporan Rekap PPAT</h1>
-      <p style={{ margin: 0, color: "var(--color_font_muted)", fontSize: "0.9rem", marginBottom: 20 }}>
-        Daftar berkas berstatus Diserahkan. Data dari <code>/api/ppat/rekap/diserahkan</code>.
-      </p>
+      <div style={{ marginBottom: 8, color: "var(--color_font_main)", fontSize: 28, fontWeight: 700 }}>
+        Laporan Rekap Bulanan PPAT
+      </div>
+      <div style={{ marginBottom: 24, color: "var(--color_font_muted)", fontSize: 14 }}>
+        Pemerintah Kabupaten Bogor
+      </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 20, alignItems: "center" }}>
-        <input
-          type="text"
-          placeholder="Cari (nobooking, nama, nop...)"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 12,
+          marginBottom: 20,
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontWeight: 600, fontSize: 14 }}>Tahun Lap PPAT:</label>
+          <input
+            type="text"
+            placeholder="yyyy"
+            maxLength={4}
+            value={filterTahun}
+            onChange={(e) => setFilterTahun(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            style={{ width: 80, padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border_color)" }}
+          />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontWeight: 600, fontSize: 14 }}>Bulan:</label>
+          <select
+            value={filterBulan}
+            onChange={(e) => setFilterBulan(e.target.value)}
+            style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border_color)", minWidth: 120 }}
+          >
+            {MONTHS.map((m) => (
+              <option key={m.value || "all"} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontWeight: 600, fontSize: 14 }}>Cari:</label>
+          <input
+            type="text"
+            placeholder="Cari data..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (setPage(1), load(1))}
+            style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid var(--border_color)", minWidth: 200 }}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => { setPage(1); load(1); }}
           style={{
-            padding: "8px 12px",
+            padding: "8px 16px",
             borderRadius: 8,
-            border: "1px solid var(--border_color)",
-            minWidth: 220,
-            fontSize: 14,
+            border: "none",
+            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
           }}
-        />
-        <button type="button" style={btnStyle} onClick={() => { setPage(1); load(1); }}>
+        >
           Cari
+        </button>
+        <button
+          type="button"
+          onClick={() => load(page)}
+          style={{
+            padding: "8px 16px",
+            borderRadius: 8,
+            border: "none",
+            background: "linear-gradient(135deg, #06b6d4, #0891b2)",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Refresh
         </button>
       </div>
 
@@ -140,10 +251,10 @@ export default function LaporanRekapPPATPage() {
         </div>
       )}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+      <div style={tableScrollStyle}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
-            <tr>
+            <tr style={{ background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)" }}>
               <th style={thStyle}>No. Booking</th>
               <th style={thStyle}>No. PPBB</th>
               <th style={thStyle}>Tahun AJB</th>
@@ -161,15 +272,20 @@ export default function LaporanRekapPPATPage() {
                   Memuat...
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
+            ) : paginatedDisplay.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_muted)" }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_muted)", padding: 40 }}>
                   Tidak ada data rekap diserahkan
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.nobooking}>
+              paginatedDisplay.map((r, i) => (
+                <tr
+                  key={r.nobooking}
+                  style={{
+                    background: i % 2 === 0 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.8)",
+                  }}
+                >
                   <td style={tdStyle}>{r.nobooking}</td>
                   <td style={tdStyle}>{r.noppbb || "—"}</td>
                   <td style={tdStyle}>{r.tahunajb || "—"}</td>
@@ -189,29 +305,45 @@ export default function LaporanRekapPPATPage() {
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {effectiveTotalPages > 1 && !loading && (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 20 }}>
           <button
             type="button"
-            style={btnStyle}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              background: "var(--card_bg)",
+              cursor: page <= 1 ? "not-allowed" : "pointer",
+            }}
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             Sebelumnya
           </button>
           <span style={{ fontSize: 14, color: "var(--color_font_main)" }}>
-            Halaman {page} dari {totalPages}
+            Halaman {page} dari {effectiveTotalPages}
           </span>
           <button
             type="button"
-            style={btnStyle}
-            disabled={page >= totalPages}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              border: "1px solid var(--border_color)",
+              background: "var(--card_bg)",
+              cursor: page >= effectiveTotalPages ? "not-allowed" : "pointer",
+            }}
+            disabled={page >= effectiveTotalPages}
             onClick={() => setPage((p) => p + 1)}
           >
             Selanjutnya
           </button>
         </div>
       )}
+
+      <p style={{ marginTop: 24 }}>
+        <Link href="/pu/laporan" style={{ color: "var(--accent)" }}>← Kembali ke Laporan PPAT</Link>
+      </p>
     </div>
   );
 }
