@@ -88,6 +88,8 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if isAllowed(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			log.Printf("Blocked CORS origin: %s", origin)
 		}
 		// Ensure caches/proxies don't mix responses across origins.
 		w.Header().Add("Vary", "Origin")
@@ -95,11 +97,14 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 		// Allow common custom headers used by clients/proxies.
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-User-Id, X-Requested-With")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		log.Printf("CORS Origin: %s | Allowed: %v", origin, isAllowed(origin))
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		next.ServeHTTP(w, r)
+		log.Printf("Incoming Origin: %s", origin)
 	})
 }
 
