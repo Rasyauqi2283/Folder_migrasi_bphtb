@@ -58,6 +58,106 @@ func (h *AdminValidasiHandler) requireAdmin(w http.ResponseWriter, r *http.Reque
 	return true
 }
 
+// GetValidationStatistics handles GET /api/admin/validation-statistics.
+// Mirrors legacy Node endpoint used by Admin dashboard pie chart.
+func (h *AdminValidasiHandler) GetValidationStatistics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	if h.userRepo == nil || h.userRepo.Pool() == nil {
+		adminJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"success": false,
+			"message": "Database tidak tersedia",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	var sudahValidasi, tinggalVerifikasi, belumTerurus int
+
+	// 1) Sudah di Validasi: LSB sudah menyerahkan (lsb.trackstatus = 'Diserahkan')
+	if err := h.userRepo.Pool().QueryRow(ctx, `
+		SELECT COUNT(DISTINCT lsb.nobooking)::int AS count
+		FROM lsb_1_serah_berkas lsb
+		WHERE UPPER(TRIM(COALESCE(lsb.trackstatus, ''))) = 'DISERAHKAN'
+	`).Scan(&sudahValidasi); err != nil {
+		log.Printf("[ADMIN] validation-statistics sudahValidasi: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik validasi",
+		})
+		return
+	}
+
+	// 2) Tinggal Verifikasi: PV menunggu (pv.status_tertampil = 'Menunggu')
+	if err := h.userRepo.Pool().QueryRow(ctx, `
+		SELECT COUNT(DISTINCT pv.nobooking)::int AS count
+		FROM pv_1_paraf_validate pv
+		WHERE UPPER(TRIM(COALESCE(pv.status_tertampil, ''))) = 'MENUNGGU'
+	`).Scan(&tinggalVerifikasi); err != nil {
+		log.Printf("[ADMIN] validation-statistics tinggalVerifikasi: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik validasi",
+		})
+		return
+	}
+
+	// 3) Belum Terurus: masih di LTB (ltb.trackstatus = 'Diolah' atau ltb.status = 'Diterima')
+	if err := h.userRepo.Pool().QueryRow(ctx, `
+		SELECT COUNT(DISTINCT ltb.nobooking)::int AS count
+		FROM ltb_1_terima_berkas_sspd ltb
+		WHERE (UPPER(TRIM(COALESCE(ltb.trackstatus, ''))) = 'DIOLAH'
+			OR UPPER(TRIM(COALESCE(ltb.status, ''))) = 'DITERIMA')
+	`).Scan(&belumTerurus); err != nil {
+		log.Printf("[ADMIN] validation-statistics belumTerurus: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik validasi",
+		})
+		return
+	}
+
+	total := sudahValidasi + tinggalVerifikasi + belumTerurus
+	pct := func(v int) int {
+		if total <= 0 {
+			return 0
+		}
+		return int((float64(v) / float64(total)) * 100.0 + 0.5) // round
+	}
+
+	adminJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"total": total,
+			"sudahValidasi": map[string]interface{}{
+				"count":       sudahValidasi,
+				"label":       "Sudah di Validasi",
+				"description": "LSB sudah memberikan dokumen terverifikasi ke PPAT",
+				"percentage":  pct(sudahValidasi),
+			},
+			"tinggalVerifikasi": map[string]interface{}{
+				"count":       tinggalVerifikasi,
+				"label":       "Tinggal Verifikasi",
+				"description": "Dokumen sudah masuk ke role atau layanan pejabat (peneliti validasi)",
+				"percentage":  pct(tinggalVerifikasi),
+			},
+			"belumTerurus": map[string]interface{}{
+				"count":       belumTerurus,
+				"label":       "Belum Terurus",
+				"description": "Masih di dalam layanan LTB",
+				"percentage":  pct(belumTerurus),
+			},
+		},
+	})
+}
+
 // GetValidateQR handles GET /api/admin/validate-qr/{no_validasi}.
 func (h *AdminValidasiHandler) GetValidateQR(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

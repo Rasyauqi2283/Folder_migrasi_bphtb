@@ -184,6 +184,7 @@ func main() {
 	}
 	adminNW := handler.NewAdminNotificationWarehouseHandler(userRepo, bookingRepo)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users", adminNW.GetPpatUsers)
+	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users-stats", adminNW.GetPpatUsersStats)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-users/{userid}", adminNW.GetPpatUserByID)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-chart-data", adminNW.GetPpatChartData)
 	mux.HandleFunc("GET /api/admin/notification-warehouse/ppat-renewal", adminNW.GetPpatRenewal)
@@ -199,6 +200,7 @@ func main() {
 	adminValidasi := handler.NewAdminValidasiHandler(userRepo, validationRepo)
 	mux.HandleFunc("GET /api/admin/validate-qr/{no_validasi}", adminValidasi.GetValidateQR)
 	mux.HandleFunc("GET /api/admin/validate-qr-search", adminValidasi.GetValidateQRSearch)
+	mux.HandleFunc("GET /api/admin/validation-statistics", adminValidasi.GetValidationStatistics)
 
 	// FAQ — public list + admin CRUD + upload image for rich text
 	var faqRepo *repository.FAQRepo
@@ -297,8 +299,11 @@ func main() {
 	mux.HandleFunc("GET /api/paraf/get-berkas-pending", parafHandler.GetBerkasPending)
 	mux.HandleFunc("GET /api/paraf/get-monitoring-documents", parafHandler.GetMonitoringDocuments)
 
-	// Proxy /api/admin/* ke Node (sisa endpoint admin yang belum dimigrasi)
-	mux.Handle("/api/admin/", handler.AdminProxyHandler(cfg.LegacyNodeURL))
+	// Proxy /api/admin/* ke Node dimatikan.
+	// Alasan: sebagian besar endpoint /api/admin/* sudah punya handler Go (lihat registrasi di atas),
+	// dan proxy ini berisiko membuat route admin yang seharusnya dilayani Go menjadi nyasar ke legacy Node di production.
+	// Jika nanti ada endpoint /api/admin/* yang belum dimigrasi, kita akan tambah handler Go-nya satu per satu.
+	// mux.Handle("/api/admin/", handler.AdminProxyHandler(cfg.LegacyNodeURL))
 
 	// Auth handlers — semua di Go (migrasi 100%, tidak proxy ke Node)
 	mux.HandleFunc("/api/v1/auth/upload-ktp", authHandler.UploadKTP)
@@ -391,7 +396,6 @@ func main() {
 	}
 	log.Printf("CORS allowed origins: %v", corsOrigins)
 	h := corsMiddleware(corsOrigins, mux)
-
 	server := &http.Server{Addr: addr, Handler: h}
 
 	go func() {

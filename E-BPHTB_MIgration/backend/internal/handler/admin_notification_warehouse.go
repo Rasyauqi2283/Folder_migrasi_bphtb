@@ -111,6 +111,102 @@ func ppatUserToMap(u *repository.PpatUserRow) map[string]interface{} {
 	return m
 }
 
+// GetPpatUsersStats handles GET /api/admin/notification-warehouse/ppat-users-stats.
+// Mirrors legacy Node endpoint used by Admin dashboard cards.
+func (h *AdminNotificationWarehouseHandler) GetPpatUsersStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		adminJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"success": false,
+			"message": "Database tidak tersedia",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// by_status
+	statusStats := map[string]int{}
+	rows, err := h.repo.Pool().Query(ctx, `
+		SELECT COALESCE(status_ppat,'') AS status_ppat, COUNT(*)::int AS count
+		FROM a_2_verified_users
+		WHERE divisi IN ('PPAT','PPATS')
+		GROUP BY status_ppat
+	`)
+	if err != nil {
+		log.Printf("[ADMIN] ppat-users-stats status query: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik PPAT/PPATS",
+		})
+		return
+	}
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err == nil {
+			statusStats[status] = count
+		}
+	}
+	rows.Close()
+
+	// by_divisi
+	divisiStats := map[string]int{}
+	rows2, err := h.repo.Pool().Query(ctx, `
+		SELECT divisi, COUNT(*)::int AS count
+		FROM a_2_verified_users
+		WHERE divisi IN ('PPAT','PPATS')
+		GROUP BY divisi
+	`)
+	if err != nil {
+		log.Printf("[ADMIN] ppat-users-stats divisi query: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik PPAT/PPATS",
+		})
+		return
+	}
+	for rows2.Next() {
+		var divisi string
+		var count int
+		if err := rows2.Scan(&divisi, &count); err == nil {
+			divisiStats[divisi] = count
+		}
+	}
+	rows2.Close()
+
+	// total
+	var total int
+	if err := h.repo.Pool().QueryRow(ctx, `
+		SELECT COUNT(*)::int AS total
+		FROM a_2_verified_users
+		WHERE divisi IN ('PPAT','PPATS')
+	`).Scan(&total); err != nil {
+		log.Printf("[ADMIN] ppat-users-stats total query: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"message": "Gagal mengambil statistik PPAT/PPATS",
+		})
+		return
+	}
+
+	adminJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"total":     total,
+			"by_status": statusStats,
+			"by_divisi": divisiStats,
+		},
+	})
+}
+
 // GetPpatUsers handles GET /api/admin/notification-warehouse/ppat-users.
 func (h *AdminNotificationWarehouseHandler) GetPpatUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

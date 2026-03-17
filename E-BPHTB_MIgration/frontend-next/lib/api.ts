@@ -10,9 +10,13 @@ const FRONTEND_BASE =
  * Dev tanpa env: di browser "" (proxy Next); di SSR localhost:8000.
  */
 export function getApiBase(): string {
+  // Browser: selalu gunakan same-origin "/api/*" agar cookie sesi tersimpan untuk domain Vercel
+  // (menghindari masalah cross-site cookie + CORS saat memanggil Koyeb langsung).
+  if (typeof window !== "undefined") return "";
+
+  // SSR / server-side: boleh pakai base URL langsung (mis. Koyeb) via env.
   const fromEnv = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_LEGACY_BASE_URL;
   if (fromEnv) return fromEnv.replace(/\/+$/, ""); // hapus trailing slash agar tidak jadi .../api/... → ...//api/...
-  if (typeof window !== "undefined") return "";
   return "http://localhost:8000";
 }
 
