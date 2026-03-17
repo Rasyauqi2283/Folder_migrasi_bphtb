@@ -76,6 +76,16 @@ export default function PermohonanValidasiPage() {
             atas_nama: d.atas_nama ?? d.namapemilikobjekpajak ?? prev.atas_nama,
             nama_pemohon: d.nama_pemohon ?? prev.nama_pemohon,
             no_telepon: d.no_telepon ?? prev.no_telepon,
+            alamat_pemohon: d.alamat_pemohon ?? prev.alamat_pemohon,
+            kabupaten_kota: d.kabupaten_kota ?? prev.kabupaten_kota,
+            kecamatan: d.kecamatan ?? prev.kecamatan,
+            kelurahan: d.kelurahan ?? prev.kelurahan,
+            luas_tanah: d.luas_tanah != null ? String(d.luas_tanah) : prev.luas_tanah,
+            luas_bangunan: d.luas_bangunan != null ? String(d.luas_bangunan) : prev.luas_bangunan,
+            Alamatop: d.Alamatop ?? d.alamatop ?? prev.Alamatop,
+            kampungop: d.kampungop ?? prev.kampungop,
+            kelurahanop: d.kelurahanop ?? prev.kelurahanop,
+            kecamatanop: d.kecamatanop ?? d.kecamatanopj ?? prev.kecamatanop,
           }));
         }
       })

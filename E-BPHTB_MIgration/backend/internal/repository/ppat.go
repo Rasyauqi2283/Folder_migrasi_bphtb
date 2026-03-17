@@ -405,6 +405,7 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 			pp.luas_bangunan,
 			u.nama AS nama_pemohon,
 			u.telepon::text AS no_telepon,
+			u.alamat_pu AS alamat_pemohon,
 			bp.bphtb_yangtelah_dibayar
 		FROM pat_1_bookingsspd p
 		LEFT JOIN a_2_verified_users u ON u.userid = p.userid
@@ -413,11 +414,11 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
 		WHERE p.nobooking = $1 AND p.userid = $2
 	`, nobooking, userid)
-	var nobookingOut, nop, namaWp, alamatWp, atasNama, npwpwp, npwpop, kelurahan, kecamatan, kabupatenKota, kodeposwp, kelurahanop, kecamatanopj, kabupatenkotaop, trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon *string
+	var nobookingOut, nop, namaWp, alamatWp, atasNama, npwpwp, npwpop, kelurahan, kecamatan, kabupatenKota, kodeposwp, kelurahanop, kecamatanopj, kabupatenkotaop, trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon, alamatPemohon *string
 	var tahunajb *string
 	var createdAt, updatedAt *time.Time
 	var luasTanah, luasBangunan, bphtbDibayar *float64
-	err := row.Scan(&nobookingOut, &nop, &namaWp, &alamatWp, &atasNama, &npwpwp, &npwpop, &tahunajb, &kelurahan, &kecamatan, &kabupatenKota, &kodeposwp, &kelurahanop, &kecamatanopj, &kabupatenkotaop, &trackstatus, &jenisWp, &createdAt, &updatedAt, &alamatop, &keterangan, &luasTanah, &luasBangunan, &namaPemohon, &noTelepon, &bphtbDibayar)
+	err := row.Scan(&nobookingOut, &nop, &namaWp, &alamatWp, &atasNama, &npwpwp, &npwpop, &tahunajb, &kelurahan, &kecamatan, &kabupatenKota, &kodeposwp, &kelurahanop, &kecamatanopj, &kabupatenkotaop, &trackstatus, &jenisWp, &createdAt, &updatedAt, &alamatop, &keterangan, &luasTanah, &luasBangunan, &namaPemohon, &noTelepon, &alamatPemohon, &bphtbDibayar)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +432,7 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"kelurahanop": val(kelurahanop), "kecamatanopj": val(kecamatanopj), "kabupatenkotaop": val(kabupatenkotaop),
 		"trackstatus": val(trackstatus), "jenis_wajib_pajak": val(jenisWp), "created_at": valTime(createdAt), "updated_at": valTime(updatedAt),
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
-		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon),
+		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
 		"bphtb_yangtelah_dibayar": valFloat(bphtbDibayar),
 	}
 	return out, nil

@@ -111,6 +111,31 @@ func SendPasswordChangeNotification(to, userid, nama string) error {
 	return nil
 }
 
+// SendWpSignInvitation mengirim email ke WP saat PU meminta persetujuan dokumen.
+// Best-effort: jika email tidak dikonfigurasi, return error agar caller bisa memutuskan.
+func SendWpSignInvitation(to, wpNama, puNama, nobooking string) error {
+	subject := "Permintaan Persetujuan Dokumen - BAPPENDA BPHTB"
+	text := fmt.Sprintf("Halo %s,\n\nAda dokumen yang perlu disetujui oleh '%s'.\n\nNo. Booking: %s\n\nSilakan login ke dashboard Wajib Pajak untuk melihat dan menyetujui.\n\nTerima kasih,\nTim BAPPENDA BPHTB", wpNama, puNama, nobooking)
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+<h2 style="color: #2c3e50;">Permintaan Persetujuan Dokumen</h2>
+<p>Halo <strong>%s</strong>,</p>
+<p>Ada dokumen yang perlu disetujui oleh <strong>'%s'</strong>.</p>
+<div style="background-color: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #0ea5e9;">
+  <p style="margin: 0;"><strong>No. Booking:</strong> <code>%s</code></p>
+</div>
+<p>Silakan login ke dashboard <strong>Wajib Pajak</strong> untuk melihat dan menyetujui.</p>
+<p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
+</div>`, wpNama, puNama, nobooking)
+
+	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
+		return sendViaSendGrid(to, subject, text, html)
+	}
+	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
+		return sendViaSMTP(to, subject, text, html)
+	}
+	return fmt.Errorf("email tidak dikonfigurasi")
+}
+
 func sendViaSendGrid(to, subject, text, html string) error {
 	apiKey := os.Getenv("SENDGRID_API_KEY")
 	fromEmail := os.Getenv("EMAIL_USER")

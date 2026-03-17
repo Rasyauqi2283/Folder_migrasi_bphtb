@@ -80,6 +80,11 @@ export default function BookingSSPDBadanPage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [wpInviteOpen, setWpInviteOpen] = useState(false);
+  const [wpNikNpwp, setWpNikNpwp] = useState("");
+  const [wpEmail, setWpEmail] = useState("");
+  const [wpInviting, setWpInviting] = useState(false);
+  const [wpInviteMessage, setWpInviteMessage] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [quota, setQuota] = useState<{ used: number; limit: number; date: string } | null>(null);
@@ -390,6 +395,84 @@ export default function BookingSSPDBadanPage() {
                 {uploading ? "Mengunggah..." : "Upload"}
               </button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
+            </div>
+
+            <hr style={{ margin: "18px 0", border: "none", borderTop: "1px solid var(--border_color)" }} />
+            <div>
+              <button
+                type="button"
+                style={{ ...btnSecondary, width: "100%", justifyContent: "center" }}
+                onClick={() => {
+                  setWpInviteOpen((v) => !v);
+                  setWpInviteMessage(null);
+                }}
+                disabled={wpInviting}
+              >
+                {wpInviteOpen ? "Tutup Libatkan WP" : "Libatkan WP"}
+              </button>
+
+              {wpInviteOpen && (
+                <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4, fontWeight: 600, color: "#0f172a" }}>NIK / NPWP</label>
+                    <input
+                      value={wpNikNpwp}
+                      onChange={(e) => setWpNikNpwp(e.target.value)}
+                      placeholder="Masukkan NIK atau NPWP"
+                      style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border_color)" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", marginBottom: 4, fontWeight: 600, color: "#0f172a" }}>Email WP</label>
+                    <input
+                      value={wpEmail}
+                      onChange={(e) => setWpEmail(e.target.value)}
+                      placeholder="email@contoh.com"
+                      style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border_color)" }}
+                    />
+                  </div>
+
+                  {wpInviteMessage && (
+                    <div style={{ padding: 10, borderRadius: 8, background: wpInviteMessage.startsWith("OK:") ? "#f0fdf4" : "#fef2f2", color: wpInviteMessage.startsWith("OK:") ? "#166534" : "#b91c1c" }}>
+                      {wpInviteMessage.replace(/^OK:\s*/, "")}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    style={{ ...btnTambah, width: "100%" }}
+                    disabled={wpInviting || !modalNobooking || !wpNikNpwp.trim() || !wpEmail.trim()}
+                    onClick={async () => {
+                      setWpInviting(true);
+                      setWpInviteMessage(null);
+                      try {
+                        const res = await fetch(`${getApiBase()}/api/wp/invite-sign`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            nobooking: modalNobooking,
+                            nik_npwp: wpNikNpwp.trim(),
+                            email: wpEmail.trim(),
+                          }),
+                        });
+                        const j = await res.json().catch(() => ({}));
+                        if (!res.ok || !j?.success) {
+                          setWpInviteMessage(j?.message ? String(j.message) : "Gagal melibatkan WP.");
+                          return;
+                        }
+                        setWpInviteMessage("OK: Permintaan ke WP berhasil dibuat.");
+                      } catch {
+                        setWpInviteMessage("Gagal melibatkan WP.");
+                      } finally {
+                        setWpInviting(false);
+                      }
+                    }}
+                  >
+                    {wpInviting ? "Mengirim..." : "Kirim ke WP"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

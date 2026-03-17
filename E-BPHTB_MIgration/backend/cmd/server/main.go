@@ -253,6 +253,29 @@ func main() {
 	} else {
 		ppatRepo = repository.NewPpatRepo(nil)
 	}
+
+	// Ensure WP sign request table exists (idempotent)
+	if pool != nil {
+		_, err := pool.Exec(context.Background(), `
+			CREATE TABLE IF NOT EXISTS wp_sign_requests (
+				id bigserial PRIMARY KEY,
+				nobooking varchar(255) NOT NULL,
+				wp_userid varchar(100) NOT NULL,
+				wp_email text,
+				pu_userid varchar(100) NOT NULL,
+				status varchar(20) NOT NULL DEFAULT 'pending',
+				created_at timestamptz NOT NULL DEFAULT now(),
+				updated_at timestamptz NOT NULL DEFAULT now(),
+				UNIQUE (nobooking, wp_userid)
+			);
+			CREATE INDEX IF NOT EXISTS idx_wp_sign_requests_wp_userid ON wp_sign_requests (wp_userid);
+			CREATE INDEX IF NOT EXISTS idx_wp_sign_requests_status ON wp_sign_requests (status);
+		`)
+		if err != nil {
+			log.Printf("[BOOT] ensure wp_sign_requests: %v", err)
+		}
+	}
+
 	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo)
 	mux.HandleFunc("GET /api/ppat_generate-pdf-badan/{nobooking}", ppatHandler.GeneratePdfBadan)
 	mux.HandleFunc("GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}", ppatHandler.GeneratePdfMohonValidasi)
@@ -271,6 +294,13 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/schedule-send", ppatHandler.ScheduleSend)
 	mux.HandleFunc("POST /api/ppat/upload-signatures", ppatHandler.UploadSignatures)
 	mux.HandleFunc("POST /api/ppat/upload-documents", ppatHandler.UploadDocuments)
+
+	// WP — Libatkan WP flow (validate, invite, list, approve)
+	wpSign := handler.NewWpSignHandler(userRepo, ppatRepo)
+	mux.HandleFunc("POST /api/wp/validate", wpSign.ValidateWP)
+	mux.HandleFunc("POST /api/wp/invite-sign", wpSign.InviteSign)
+	mux.HandleFunc("GET /api/wp/sign-requests", wpSign.ListSignRequests)
+	mux.HandleFunc("POST /api/wp/sign-requests/{id}/approve", wpSign.ApproveSignRequest)
 
 	// PPAT/PU: seluruh layanan di atas dilayani Go. Tidak ada proxy ke Node untuk /api/ppat/* maupun /api/ppat_*.
 
