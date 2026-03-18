@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getApiBase } from "../../../../lib/api";
+import { getApiBase } from "../../../../../lib/api";
 
 /**
  * Arsip SSPD — daftar SSPD yang sudah disetujui, distempel, dan tervalidasi.
