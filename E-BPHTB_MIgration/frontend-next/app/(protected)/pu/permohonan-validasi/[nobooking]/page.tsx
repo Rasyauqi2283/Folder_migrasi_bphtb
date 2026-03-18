@@ -27,7 +27,6 @@ type FormState = {
   kampungop: string;
   kelurahanop: string;
   kecamatanop: string;
-  nomor_validasi: string;
 };
 
 const emptyForm: FormState = {
@@ -48,7 +47,6 @@ const emptyForm: FormState = {
   kampungop: "",
   kelurahanop: "",
   kecamatanop: "",
-  nomor_validasi: "",
 };
 
 export default function PermohonanValidasiPage() {
@@ -59,7 +57,7 @@ export default function PermohonanValidasiPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ kode_validasi?: string; is_duplicate?: boolean } | null>(null);
+  const [success, setSuccess] = useState<{ is_duplicate?: boolean } | null>(null);
 
   useEffect(() => {
     if (!decodedNobooking) return;
@@ -97,17 +95,8 @@ export default function PermohonanValidasiPage() {
     setError(null);
   };
 
-  const generateKode = () => {
-    const code = `PV-${decodedNobooking}-${Date.now().toString(36).toUpperCase()}`;
-    update("nomor_validasi", code);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nomor_validasi?.trim()) {
-      setError("Klik \"Buat Kode Validasi\" terlebih dahulu.");
-      return;
-    }
     if (!/^[0-9]{10,13}$/.test(form.no_telepon.replace(/\s/g, ""))) {
       setError("Nomor telepon harus 10–13 digit.");
       return;
@@ -130,7 +119,7 @@ export default function PermohonanValidasiPage() {
         setError(data?.message || "Gagal menyimpan permohonan.");
         return;
       }
-      setSuccess({ kode_validasi: data.kode_validasi || form.nomor_validasi, is_duplicate: data.is_duplicate });
+      setSuccess({ is_duplicate: data.is_duplicate });
     } catch {
       setError("Gagal menyimpan. Coba lagi.");
     } finally {
@@ -150,8 +139,7 @@ export default function PermohonanValidasiPage() {
       )}
       {success && (
         <div style={{ padding: 16, marginBottom: 16, background: "#f0fdf4", color: "#166534", borderRadius: 8 }}>
-          <p><strong>{success.is_duplicate ? "Permohonan sudah pernah dibuat." : "Permohonan berhasil disimpan."}</strong></p>
-          <p>Kode Validasi: <strong>{success.kode_validasi}</strong></p>
+          <p><strong>{success.is_duplicate ? "Permohonan sudah pernah dibuat." : "Permohonan berhasil disimpan. Kode validasi akan dibuat oleh Peneliti Validasi."}</strong></p>
         </div>
       )}
 
@@ -214,16 +202,6 @@ export default function PermohonanValidasiPage() {
           <div style={sectionStyle}>
             <label style={labelStyle}>Lainnya</label>
             <textarea style={{ ...inputStyle, minHeight: 60 }} value={form.lainnya} onChange={(e) => update("lainnya", e.target.value)} />
-          </div>
-        </div>
-
-        <div style={sectionStyle}>
-          <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>Kode Validasi</h3>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <input style={{ ...inputStyle, maxWidth: 320 }} value={form.nomor_validasi} onChange={(e) => update("nomor_validasi", e.target.value)} placeholder="Klik tombol untuk generate" readOnly />
-            <button type="button" onClick={generateKode} style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg_grey)", fontWeight: 600, cursor: "pointer" }}>
-              Buat Kode Validasi
-            </button>
           </div>
         </div>
 

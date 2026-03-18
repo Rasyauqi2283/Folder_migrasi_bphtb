@@ -239,8 +239,11 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) error 
 	}
 	defer tx.Rollback(ctx)
 
-	// Ensure quota row exists
-	_, _ = tx.Exec(ctx, `INSERT INTO ppat_daily_quota (quota_date, used_count, limit_count) VALUES ($1, 0, 80) ON CONFLICT (quota_date) DO NOTHING`, today)
+	// Ensure quota row exists (check error so transaction is not left aborted)
+	_, err = tx.Exec(ctx, `INSERT INTO ppat_daily_quota (quota_date, used_count, limit_count) VALUES ($1, 0, 80) ON CONFLICT (quota_date) DO NOTHING`, today)
+	if err != nil {
+		return err
+	}
 	var usedCount, limitCount int
 	err = tx.QueryRow(ctx, `SELECT used_count, limit_count FROM ppat_daily_quota WHERE quota_date = $1 FOR UPDATE`, today).Scan(&usedCount, &limitCount)
 	if err != nil {
@@ -600,9 +603,9 @@ func (r *PpatRepo) UpdateSignaturePath(ctx context.Context, nobooking, path stri
 		return err
 	}
 	if cmd.RowsAffected() == 0 {
-		// pat_6_sign has NOT NULL columns (userid, nama). Populate them from booking + verified user.
-		// This keeps behavior compatible with legacy, which assumes booking exists.
-		tag, err := r.pool.Exec(ctx, `
+		// pat_6_sign has NOT NULL columns (userid, nama). Insert from booking + verified user.
+		// No ON CONFLICT: pat_6_sign has no UNIQUE(nobooking), only PRIMARY KEY(id).
+		cmd2, err := r.pool.Exec(ctx, `
 			INSERT INTO pat_6_sign (nobooking, userid, nama, path_ttd_wp, ppat_khusus)
 			SELECT
 				b.nobooking,
@@ -613,12 +616,11 @@ func (r *PpatRepo) UpdateSignaturePath(ctx context.Context, nobooking, path stri
 			FROM pat_1_bookingsspd b
 			LEFT JOIN a_2_verified_users vu ON vu.userid = b.userid
 			WHERE b.nobooking = $1
-			ON CONFLICT (nobooking) DO UPDATE SET path_ttd_wp = EXCLUDED.path_ttd_wp
 		`, nobooking, path)
 		if err != nil {
 			return err
 		}
-		if tag.RowsAffected() == 0 {
+		if cmd2.RowsAffected() == 0 {
 			return fmt.Errorf("booking not found")
 		}
 		return nil
