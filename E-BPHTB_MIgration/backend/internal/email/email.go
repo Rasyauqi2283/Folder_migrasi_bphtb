@@ -1,18 +1,19 @@
 package email
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"net/smtp"
 	"os"
 	"time"
 )
 
-// SendOTP sends OTP email to the given address.
-// Uses SendGrid if SENDGRID_API_KEY is set, else SMTP (EMAIL_USER, EMAIL_PASS).
+// canSendEmail returns true if EMAIL_USER and EMAIL_PASS are set (SMTP dipakai untuk dev & production).
+func canSendEmail() bool {
+	return os.Getenv("EMAIL_USER") != "" && os.Getenv("EMAIL_PASS") != ""
+}
+
+// SendOTP sends OTP email to the given address via SMTP (EMAIL_USER, EMAIL_PASS).
 func SendOTP(to, otp string) error {
 	subject := "OTP untuk Registrasi - BAPPENDA BPHTB"
 	text := fmt.Sprintf("Kode OTP Anda adalah: %s. Silakan masukkan kode ini untuk melanjutkan proses verifikasi. Kode berlaku 10 menit.", otp)
@@ -27,17 +28,13 @@ func SendOTP(to, otp string) error {
 <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
 </div>`, otp)
 
-	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
-		return sendViaSendGrid(to, subject, text, html)
+	if !canSendEmail() {
+		return fmt.Errorf("email tidak dikonfigurasi: set EMAIL_USER dan EMAIL_PASS di .env")
 	}
-	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
-		return sendViaSMTP(to, subject, text, html)
-	}
-	return fmt.Errorf("email tidak dikonfigurasi: set SENDGRID_API_KEY atau EMAIL_USER+EMAIL_PASS di .env")
+	return sendViaSMTP(to, subject, text, html)
 }
 
-// SendPasswordResetOTP sends OTP for password reset.
-// Uses SendGrid if SENDGRID_API_KEY is set, else SMTP (EMAIL_USER, EMAIL_PASS).
+// SendPasswordResetOTP sends OTP for password reset via SMTP.
 func SendPasswordResetOTP(to, otp string) error {
 	subject := "OTP Reset Kata Sandi - BAPPENDA BPHTB"
 	text := fmt.Sprintf("Kode OTP reset kata sandi Anda adalah: %s. Kode berlaku 10 menit.", otp)
@@ -52,13 +49,10 @@ func SendPasswordResetOTP(to, otp string) error {
 <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
 </div>`, otp)
 
-	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
-		return sendViaSendGrid(to, subject, text, html)
+	if !canSendEmail() {
+		return fmt.Errorf("email tidak dikonfigurasi: set EMAIL_USER dan EMAIL_PASS di .env")
 	}
-	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
-		return sendViaSMTP(to, subject, text, html)
-	}
-	return fmt.Errorf("email tidak dikonfigurasi: set SENDGRID_API_KEY atau EMAIL_USER+EMAIL_PASS di .env")
+	return sendViaSMTP(to, subject, text, html)
 }
 
 // SendUserIDNotification mengirim email ke user WP setelah verify OTP berhasil (userid telah dibuat).
@@ -75,17 +69,13 @@ func SendUserIDNotification(to, nama, userid string) error {
 <p>Silakan gunakan <strong>User ID</strong> atau <strong>email</strong> ini untuk masuk ke dashboard.</p>
 <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
 </div>`, nama, userid)
-	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
-		return sendViaSendGrid(to, subject, text, html)
+	if !canSendEmail() {
+		return fmt.Errorf("email tidak dikonfigurasi: set EMAIL_USER dan EMAIL_PASS di .env")
 	}
-	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
-		return sendViaSMTP(to, subject, text, html)
-	}
-	return fmt.Errorf("email tidak dikonfigurasi")
+	return sendViaSMTP(to, subject, text, html)
 }
 
 // SendPasswordChangeNotification mengirim pemberitahuan ke email user setelah kata sandi diubah.
-// Format: "Pada tanggal [date], untuk akun dengan userid [x] dan nama [y], diberitahukan bahwa password telah diubah."
 func SendPasswordChangeNotification(to, userid, nama string) error {
 	tanggal := time.Now().Format("02 January 2006, 15:04 WIB")
 	subject := "Pemberitahuan Perubahan Kata Sandi - BAPPENDA BPHTB"
@@ -101,18 +91,14 @@ func SendPasswordChangeNotification(to, userid, nama string) error {
 <p style="color: #666; font-size: 0.9em;">Jika Anda tidak melakukan perubahan ini, segera hubungi administrator.</p>
 <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
 </div>`, tanggal, userid, nama)
-	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
-		return sendViaSendGrid(to, subject, text, html)
+	if !canSendEmail() {
+		log.Printf("[EMAIL] Password change notification skipped (email not configured) to %s", to)
+		return nil
 	}
-	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
-		return sendViaSMTP(to, subject, text, html)
-	}
-	log.Printf("[EMAIL] Password change notification skipped (email not configured) to %s", to)
-	return nil
+	return sendViaSMTP(to, subject, text, html)
 }
 
 // SendWpSignInvitation mengirim email ke WP saat PU meminta persetujuan dokumen.
-// Best-effort: jika email tidak dikonfigurasi, return error agar caller bisa memutuskan.
 func SendWpSignInvitation(to, wpNama, puNama, nobooking string) error {
 	subject := "Permintaan Persetujuan Dokumen - BAPPENDA BPHTB"
 	text := fmt.Sprintf("Halo %s,\n\nAda dokumen yang perlu disetujui oleh '%s'.\n\nNo. Booking: %s\n\nSilakan login ke dashboard Wajib Pajak untuk melihat dan menyetujui.\n\nTerima kasih,\nTim BAPPENDA BPHTB", wpNama, puNama, nobooking)
@@ -127,61 +113,10 @@ func SendWpSignInvitation(to, wpNama, puNama, nobooking string) error {
 <p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
 </div>`, wpNama, puNama, nobooking)
 
-	if apiKey := os.Getenv("SENDGRID_API_KEY"); apiKey != "" {
-		return sendViaSendGrid(to, subject, text, html)
+	if !canSendEmail() {
+		return fmt.Errorf("email tidak dikonfigurasi: set EMAIL_USER dan EMAIL_PASS di .env")
 	}
-	if user := os.Getenv("EMAIL_USER"); user != "" && os.Getenv("EMAIL_PASS") != "" {
-		return sendViaSMTP(to, subject, text, html)
-	}
-	return fmt.Errorf("email tidak dikonfigurasi")
-}
-
-func sendViaSendGrid(to, subject, text, html string) error {
-	apiKey := os.Getenv("SENDGRID_API_KEY")
-	fromEmail := os.Getenv("EMAIL_USER")
-	if fromEmail == "" {
-		fromEmail = "noreply@bappenda.com"
-	}
-	fromName := "BAPPENDA BPHTB"
-	if n := os.Getenv("EMAIL_FROM_NAME"); n != "" {
-		fromName = n
-	}
-
-	body := map[string]interface{}{
-		"personalizations": []map[string]interface{}{
-			{
-				"to":      []map[string]string{{"email": to}},
-				"subject": subject,
-			},
-		},
-		"from": map[string]string{
-			"email": fromEmail,
-			"name":  fromName,
-		},
-		"content": []map[string]string{
-			{"type": "text/plain", "value": text},
-			{"type": "text/html", "value": html},
-		},
-	}
-	jsonBody, _ := json.Marshal(body)
-	req, err := http.NewRequest("POST", "https://api.sendgrid.com/v3/mail/send", bytes.NewReader(jsonBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		log.Printf("[EMAIL] OTP sent via SendGrid to %s", to)
-		return nil
-	}
-	var buf bytes.Buffer
-	buf.ReadFrom(resp.Body)
-	return fmt.Errorf("SendGrid error %d: %s", resp.StatusCode, buf.String())
+	return sendViaSMTP(to, subject, text, html)
 }
 
 func sendViaSMTP(to, subject, text, html string) error {
@@ -210,6 +145,6 @@ func sendViaSMTP(to, subject, text, html string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[EMAIL] OTP sent via SMTP to %s", to)
+	log.Printf("[EMAIL] Sent via SMTP to %s", to)
 	return nil
 }
