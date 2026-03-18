@@ -1,0 +1,492 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36" version="29.3.4">
+  <diagram id="diagram1" name="Page-1">
+    <mxGraphModel dx="105" dy="89" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" value="USE CASE DIAGRAM - ITERASI 1: 43 Use Case" vertex="1">
+          <mxGeometry height="40" width="1900" x="50" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="system_boundary" parent="1" style="rounded=0;glass=0;labelBackgroundColor=none;strokeWidth=3;fillColor=#f5f5f5;strokeColor=#333333;" value="E-BPHTB Booking System&#xa;(Iterasi 1)" vertex="1">
+          <mxGeometry height="1450" width="1600" x="200" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_user" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e1f5fe;strokeColor=#01579b;" value="User" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="Ubr5mP78p2huEXbN9okR-2" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="uc3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="280" />
+              <mxPoint x="310" y="300" />
+              <mxPoint x="500" y="300" />
+              <mxPoint x="500" y="265" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="actor_ppat" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e1f5fe;strokeColor=#01579b;" value="PPAT/PPATS" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_db" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fff9c4;strokeColor=#f57f17;" value="Database Trigger" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_ltb" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e8f5e8;strokeColor=#388e3c;" value="Loket Terima Berkas (LTB)" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_peneliti" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#f3e5f5;strokeColor=#7b1fa2;" value="Peneliti" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_peneliti_paraf" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fff3e0;strokeColor=#f57c00;" value="Peneliti (Paraf)" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_peneliti_validasi" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#fce4ec;strokeColor=#c2185b;" value="Peneliti Validasi" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="1000" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_lsb" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#e0f2f1;strokeColor=#00695c;" value="Loket Serah Berkas (LSB)" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="1200" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#f1f8e9;strokeColor=#558b2f;" value="Admin" vertex="1">
+          <mxGeometry height="60" width="30" x="1850" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="actor_system" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#eceff1;strokeColor=#37474f;" value="Sistem" vertex="1">
+          <mxGeometry height="60" width="30" x="80" y="1350" as="geometry" />
+        </mxCell>
+        <mxCell id="uc1" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#01579b;fillColor=#e1f5fe;" value="1. Login dan Register" vertex="1">
+          <mxGeometry height="50" width="110" x="250" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="uc2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="2. Create Booking" vertex="1">
+          <mxGeometry height="50" width="110" x="320" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc3" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#f57f17;fillColor=#fff9c4;" value="3. Generate No. Booking" vertex="1">
+          <mxGeometry height="50" width="110" x="450" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc4" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="4. Add Manual Signature" vertex="1">
+          <mxGeometry height="50" width="110" x="580" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc5" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="5. Upload Document" vertex="1">
+          <mxGeometry height="50" width="110" x="710" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc6" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="6. PPAT Delete Document" vertex="1">
+          <mxGeometry height="50" width="110" x="840" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc7" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="7. PPAT View Document (Uploaded)" vertex="1">
+          <mxGeometry height="50" width="110" x="970" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc8" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="8. PPAT View Generated PDF SSPD" vertex="1">
+          <mxGeometry height="50" width="110" x="1100" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc9" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="9. PPAT View Generated PDF Permohonan Validasi" vertex="1">
+          <mxGeometry height="50" width="110" x="1230" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#4a148c;fillColor=#f3e5f5;" value="10. Add Validasi Tambahan" vertex="1">
+          <mxGeometry height="50" width="110" x="1360" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="uc11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#388e3c;fillColor=#e8f5e8;" value="11. LTB Receive from PPAT" vertex="1">
+          <mxGeometry height="50" width="110" x="380" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#388e3c;fillColor=#e8f5e8;" value="12. LTB Generate No. Registrasi" vertex="1">
+          <mxGeometry height="50" width="110" x="510" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#388e3c;fillColor=#e8f5e8;" value="13. LTB Validate Document" vertex="1">
+          <mxGeometry height="50" width="110" x="640" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#388e3c;fillColor=#e8f5e8;" value="14. LTB Accept" vertex="1">
+          <mxGeometry height="50" width="110" x="770" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#388e3c;fillColor=#e8f5e8;" value="15. LTB Reject" vertex="1">
+          <mxGeometry height="50" width="110" x="900" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="uc16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="16. Peneliti Receive from LTB" vertex="1">
+          <mxGeometry height="50" width="110" x="380" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="17. Peneliti View Document" vertex="1">
+          <mxGeometry height="50" width="110" x="510" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="18. Peneliti Verify Document" vertex="1">
+          <mxGeometry height="50" width="110" x="640" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="19. Peneliti Add Manual Signature" vertex="1">
+          <mxGeometry height="50" width="110" x="770" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="20. Peneliti Verifikasi" vertex="1">
+          <mxGeometry height="50" width="110" x="900" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="21. Peneliti Persetujuan Paraf" vertex="1">
+          <mxGeometry height="50" width="110" x="1030" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="22. Peneliti Pemilihan" vertex="1">
+          <mxGeometry height="50" width="110" x="1160" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="23. Peneliti Send to Clear to Paraf" vertex="1">
+          <mxGeometry height="50" width="110" x="1290" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc24" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#7b1fa2;fillColor=#f3e5f5;" value="24. Peneliti Reject" vertex="1">
+          <mxGeometry height="50" width="110" x="1420" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc25" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#37474f;fillColor=#eceff1;" value="25. Generate No. Validasi" vertex="1">
+          <mxGeometry height="50" width="110" x="1550" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="uc26" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#f57c00;fillColor=#fff3e0;" value="26. Peneliti Paraf Receive" vertex="1">
+          <mxGeometry height="50" width="110" x="380" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="uc27" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#f57c00;fillColor=#fff3e0;" value="27. Peneliti Paraf View Document" vertex="1">
+          <mxGeometry height="50" width="110" x="510" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="uc28" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#f57c00;fillColor=#fff3e0;" value="28. Peneliti Paraf Give Paraf" vertex="1">
+          <mxGeometry height="50" width="110" x="640" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="uc29" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#f57c00;fillColor=#fff3e0;" value="29. Peneliti Paraf Send to Validasi" vertex="1">
+          <mxGeometry height="50" width="110" x="770" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="uc30" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#f57c00;fillColor=#fff3e0;" value="30. Peneliti Paraf Reject" vertex="1">
+          <mxGeometry height="50" width="110" x="1060" y="775" as="geometry" />
+        </mxCell>
+        <mxCell id="uc31" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="31. Peneliti Validasi Receive" vertex="1">
+          <mxGeometry height="50" width="110" x="380" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc32" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="32. Peneliti Validasi View Document" vertex="1">
+          <mxGeometry height="50" width="110" x="510" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc33" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="33. Peneliti Validasi Final Validation" vertex="1">
+          <mxGeometry height="50" width="110" x="640" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc34" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="34. Peneliti Validasi Manual Signature" vertex="1">
+          <mxGeometry height="50" width="110" x="770" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc35" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="35. Peneliti Validasi View QR Code" vertex="1">
+          <mxGeometry height="50" width="110" x="900" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc36" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="36. Peneliti Validasi Send to LSB" vertex="1">
+          <mxGeometry height="50" width="110" x="1030" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc37" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#c2185b;fillColor=#fce4ec;" value="37. Peneliti Validasi Reject" vertex="1">
+          <mxGeometry height="50" width="110" x="1160" y="980" as="geometry" />
+        </mxCell>
+        <mxCell id="uc38" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#00695c;fillColor=#e0f2f1;" value="38. LSB Receive from Peneliti Validasi" vertex="1">
+          <mxGeometry height="50" width="110" x="380" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="uc39" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#00695c;fillColor=#e0f2f1;" value="39. LSB Manual Handover" vertex="1">
+          <mxGeometry height="50" width="110" x="510" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="uc40" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=9;align=center;verticalAlign=middle;strokeColor=#00695c;fillColor=#e0f2f1;" value="40. LSB Update Status" vertex="1">
+          <mxGeometry height="50" width="110" x="640" y="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="uc41" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#558b2f;fillColor=#f1f8e9;" value="41. Admin Monitor Process" vertex="1">
+          <mxGeometry height="50" width="120" x="1600" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="uc42" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=7;align=center;verticalAlign=middle;strokeColor=#558b2f;fillColor=#f1f8e9;" value="42. Admin Send Ping Notifications" vertex="1">
+          <mxGeometry height="50" width="120" x="1600" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="uc43" parent="1" style="ellipse;whiteSpace=wrap;html=1;fontSize=8;align=center;verticalAlign=middle;strokeColor=#f57f17;fillColor=#fff9c4;" value="43. PPAT Send to LTB" vertex="1">
+          <mxGeometry height="50" width="110" x="1480" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc1" edge="1" parent="1" source="actor_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc2" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc3" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="uc4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="280" />
+              <mxPoint x="170" y="230" />
+              <mxPoint x="635" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc4" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="uc5">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="280" />
+              <mxPoint x="140" y="220" />
+              <mxPoint x="765" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc5" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="uc6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="290" />
+              <mxPoint x="115" y="210" />
+              <mxPoint x="895" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc6" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc7">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="300" />
+              <mxPoint x="1085" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc7" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc8">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="310" />
+              <mxPoint x="1215" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc8" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="320" />
+              <mxPoint x="1345" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc9" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="330" />
+              <mxPoint x="1475" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc11" edge="1" parent="1" source="actor_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" target="uc3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc12" edge="1" parent="1" source="actor_system" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;" target="uc25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1380" />
+              <mxPoint x="1605" y="1380" />
+              <mxPoint x="1605" y="605" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc13" edge="1" parent="1" source="actor_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc14" edge="1" parent="1" source="actor_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc12">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="480" />
+              <mxPoint x="160" y="420" />
+              <mxPoint x="565" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc15" edge="1" parent="1" source="actor_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc13">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="490" />
+              <mxPoint x="695" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc16" edge="1" parent="1" source="actor_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc14">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="500" />
+              <mxPoint x="825" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc17" edge="1" parent="1" source="actor_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="510" />
+              <mxPoint x="955" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc18" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc19" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc17">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="630" />
+              <mxPoint x="115" y="560" />
+              <mxPoint x="565" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc20" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="640" />
+              <mxPoint x="695" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc20a" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="650" />
+              <mxPoint x="825" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc21" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="660" />
+              <mxPoint x="955" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc22" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc21">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="670" />
+              <mxPoint x="1085" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc23" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc22">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="680" />
+              <mxPoint x="1215" y="680" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc24" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc23">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="690" />
+              <mxPoint x="1345" y="690" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc24a" edge="1" parent="1" source="actor_peneliti" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc24">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="700" />
+              <mxPoint x="1475" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc25" edge="1" parent="1" source="actor_peneliti_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc26" edge="1" parent="1" source="actor_peneliti_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc27">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="830" />
+              <mxPoint x="115" y="770" />
+              <mxPoint x="565" y="770" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc27" edge="1" parent="1" source="actor_peneliti_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc28">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="840" />
+              <mxPoint x="695" y="840" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc28" edge="1" parent="1" source="actor_peneliti_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc29">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="850" />
+              <mxPoint x="825" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc29" edge="1" parent="1" source="actor_peneliti_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc30">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="860" />
+              <mxPoint x="1115" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc30" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc31" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc32">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1030" />
+              <mxPoint x="115" y="970" />
+              <mxPoint x="565" y="970" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc32" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc33">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1040" />
+              <mxPoint x="695" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc33" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc34">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1050" />
+              <mxPoint x="825" y="1050" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc34" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc35">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1060" />
+              <mxPoint x="955" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc35" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc36">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1070" />
+              <mxPoint x="1085" y="1070" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc36" edge="1" parent="1" source="actor_peneliti_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc37">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1080" />
+              <mxPoint x="1215" y="1080" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc38" edge="1" parent="1" source="actor_lsb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc38">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc39" edge="1" parent="1" source="actor_lsb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc39">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1230" />
+              <mxPoint x="115" y="1160" />
+              <mxPoint x="565" y="1160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc40" edge="1" parent="1" source="actor_lsb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc40">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="1240" />
+              <mxPoint x="695" y="1240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc42" edge="1" parent="1" source="actor_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc41">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="assoc43" edge="1" parent="1" source="actor_admin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc42">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1865" y="335" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="assoc44" edge="1" parent="1" source="actor_ppat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="uc43">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="115" y="340" />
+              <mxPoint x="1605" y="340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

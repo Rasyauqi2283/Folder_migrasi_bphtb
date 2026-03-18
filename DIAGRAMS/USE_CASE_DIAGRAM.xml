@@ -1,0 +1,735 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<usecase-diagram xmlns="http://www.omg.org/spec/UML/20131001" 
+                 xmlns:xmi="http://www.omg.org/spec/XMI/20131001"
+                 name="Sistem Booking Online E-BPHTB BAPPENDA Kabupaten Bogor">
+    
+    <!-- ============================================ -->
+    <!-- METADATA DAN INFORMASI UMUM -->
+    <!-- ============================================ -->
+    <metadata>
+        <title>Sistem Booking Online E-BPHTB BAPPENDA Kabupaten Bogor</title>
+        <version>1.0</version>
+        <date>2025</date>
+        <description>Dokumentasi Use Case Diagram untuk Sistem Booking Online E-BPHTB BAPPENDA Kabupaten Bogor</description>
+        <author>Farras Bappenda TA</author>
+    </metadata>
+
+    <!-- ============================================ -->
+    <!-- AKTOR SISTEM -->
+    <!-- ============================================ -->
+    <actors>
+        <actor id="actor_admin" name="Admin">
+            <description>Administrator sistem yang mengelola user, data referensi, dan monitoring keseluruhan sistem</description>
+            <role>Administrator</role>
+            <permissions>
+                <permission>Mengelola data user</permission>
+                <permission>Mengelola referensi PPAT</permission>
+                <permission>Monitoring validasi</permission>
+                <permission>Validasi QR Code</permission>
+                <permission>Akses ke semua modul</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_ppat" name="PPAT/PPATS">
+            <description>Pejabat Pembuat Akta Tanah yang membuat booking SSPD dan mengirim dokumen</description>
+            <role>Pengirim Berkas</role>
+            <permissions>
+                <permission>Membuat booking SSPD</permission>
+                <permission>Upload dokumen</permission>
+                <permission>Melihat status booking</permission>
+                <permission>Mengirim berkas ke LTB</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_ltb" name="LTB">
+            <description>Loket Terima Berkas yang menerima, memfilter, dan memvalidasi dokumen SSPD</description>
+            <role>Penerima dan Validator Awal</role>
+            <permissions>
+                <permission>Menerima berkas dari PPAT</permission>
+                <permission>Memfilter dokumen</permission>
+                <permission>Menerima atau menolak dokumen</permission>
+                <permission>Mengirim ke Peneliti</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_peneliti" name="Peneliti">
+            <description>Peneliti yang memeriksa dan memverifikasi dokumen SSPD</description>
+            <role>Pemeriksa Dokumen</role>
+            <permissions>
+                <permission>Memverifikasi data SSPD</permission>
+                <permission>Memparaf dokumen</permission>
+                <permission>Mengirim ke Peneliti Validasi</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_peneliti_validasi" name="Peneliti Validasi (ParafP)">
+            <description>Peneliti Validasi yang melakukan validasi akhir dan tanda tangan digital</description>
+            <role>Validator Akhir</role>
+            <permissions>
+                <permission>Validasi berkas SSPD online</permission>
+                <permission>Menggunakan sertifikat digital</permission>
+                <permission>Menyetujui atau menolak dokumen</permission>
+                <permission>Mengirim ke LSB</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_lsb" name="LSB">
+            <description>Loket Serah Berkas yang menyerahkan kembali dokumen yang telah divalidasi</description>
+            <role>Penyerah Berkas</role>
+            <permissions>
+                <permission>Menerima dokumen dari Peneliti Validasi</permission>
+                <permission>Menyerahkan dokumen ke PPAT</permission>
+                <permission>Monitoring penyerahan SSPD</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_bank" name="Bank">
+            <description>Bank yang melakukan validasi bukti pembayaran BPHTB</description>
+            <role>Validator Pembayaran</role>
+            <permissions>
+                <permission>Mengecek hasil transaksi</permission>
+                <permission>Validasi bukti pembayaran</permission>
+            </permissions>
+        </actor>
+
+        <actor id="actor_cs" name="Customer Service">
+            <description>Customer Service yang membantu pengguna</description>
+            <role>Support</role>
+            <permissions>
+                <permission>Membantu pengguna</permission>
+                <permission>Melihat dashboard</permission>
+            </permissions>
+        </actor>
+    </actors>
+
+    <!-- ============================================ -->
+    <!-- USE CASES -->
+    <!-- ============================================ -->
+    <usecases>
+        
+        <!-- ========== USE CASE UMUM ========== -->
+        <usecase id="uc_login" name="Login">
+            <description>Setiap pengguna wajib login menggunakan akun terdaftar untuk mengakses sistem</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+                <actor-ref>actor_ppat</actor-ref>
+                <actor-ref>actor_ltb</actor-ref>
+                <actor-ref>actor_peneliti</actor-ref>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+                <actor-ref>actor_lsb</actor-ref>
+                <actor-ref>actor_bank</actor-ref>
+                <actor-ref>actor_cs</actor-ref>
+            </actors>
+            <precondition>Pengguna memiliki akun terdaftar</precondition>
+            <postcondition>Pengguna berhasil masuk ke sistem</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_dashboard" name="Melihat Dashboard">
+            <description>Pengguna melihat ringkasan aktivitas dan statistik di dashboard</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+                <actor-ref>actor_ppat</actor-ref>
+                <actor-ref>actor_ltb</actor-ref>
+                <actor-ref>actor_peneliti</actor-ref>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+                <actor-ref>actor_lsb</actor-ref>
+                <actor-ref>actor_bank</actor-ref>
+            </actors>
+            <precondition>Pengguna sudah login</precondition>
+            <postcondition>Dashboard ditampilkan dengan data terkini</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE PPAT ========== -->
+        <usecase id="uc_tambah_booking" name="Tambah Booking SSPD">
+            <description>PPAT dapat membuat jadwal pemeriksaan dokumen BPHTB secara daring</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <precondition>
+                <item>PPAT sudah login</item>
+                <item>PPAT memiliki tanda tangan yang sudah diupload</item>
+            </precondition>
+            <postcondition>Booking SSPD berhasil dibuat dan masuk ke sistem</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+            <sub-usecases>
+                <usecase-ref>uc_booking_badan</usecase-ref>
+                <usecase-ref>uc_booking_perorangan</usecase-ref>
+            </sub-usecases>
+        </usecase>
+
+        <usecase id="uc_booking_badan" name="Booking SSPD Badan">
+            <description>Membuat booking SSPD untuk wajib pajak badan usaha</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_booking_perorangan" name="Booking SSPD Perorangan">
+            <description>Membuat booking SSPD untuk wajib pajak perorangan</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_upload_dokumen" name="Upload Dokumen">
+            <description>PPAT mengupload dokumen pendukung untuk booking</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <precondition>Booking sudah dibuat</precondition>
+            <postcondition>Dokumen berhasil diupload dan tersimpan</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_upload_tanda_tangan" name="Upload Tanda Tangan">
+            <description>PPAT mengupload tanda tangan untuk digunakan dalam dokumen</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <precondition>PPAT sudah login</precondition>
+            <postcondition>Tanda tangan tersimpan dan siap digunakan</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_kirim_ke_ltb" name="Kirim Berkas ke LTB">
+            <description>PPAT mengirim booking yang sudah lengkap ke Loket Terima Berkas</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <precondition>
+                <item>Booking sudah lengkap</item>
+                <item>Dokumen sudah diupload</item>
+            </precondition>
+            <postcondition>Booking masuk ke antrian LTB</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_laporan_ppat" name="Laporan PPAT">
+            <description>PPAT melihat laporan rekap dan monitoring booking</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <sub-usecases>
+                <usecase-ref>uc_laporan_rekap</usecase-ref>
+                <usecase-ref>uc_monitoring_keterlambatan</usecase-ref>
+                <usecase-ref>uc_rincian_laporan_bulanan</usecase-ref>
+            </sub-usecases>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_laporan_rekap" name="Laporan Rekap PPAT">
+            <description>Melihat laporan rekap booking SSPD</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_monitoring_keterlambatan" name="Monitoring Keterlambatan">
+            <description>Memantau dokumen yang terlambat diproses</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_rincian_laporan_bulanan" name="Rincian Laporan Bulanan PPAT">
+            <description>Melihat rincian laporan booking per bulan</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE LTB ========== -->
+        <usecase id="uc_terima_berkas" name="Terima Berkas SSPD">
+            <description>LTB memfilter dokumen SSPD, melihat dokumen apakah sudah sesuai dengan berkas yang diberikan dan mengirimkan ke Peneliti</description>
+            <actors>
+                <actor-ref>actor_ltb</actor-ref>
+            </actors>
+            <precondition>Ada booking yang masuk dari PPAT</precondition>
+            <postcondition>Dokumen diterima dan siap diproses atau ditolak</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_view_dokumen_ltb" name="View Dokumen (LTB)">
+            <description>LTB melihat dokumen yang masuk untuk divalidasi</description>
+            <actors>
+                <actor-ref>actor_ltb</actor-ref>
+            </actors>
+            <precondition>Ada dokumen yang masuk</precondition>
+            <postcondition>Dokumen ditampilkan untuk review</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_tolak_dokumen" name="Tolak Dokumen">
+            <description>LTB menolak dokumen yang tidak sesuai dengan alasan tertentu</description>
+            <actors>
+                <actor-ref>actor_ltb</actor-ref>
+            </actors>
+            <precondition>Dokumen tidak memenuhi syarat</precondition>
+            <postcondition>Dokumen ditolak dan PPAT mendapat notifikasi</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_kirim_ke_peneliti" name="Kirim ke Peneliti">
+            <description>LTB mengirim dokumen yang sudah diterima ke Peneliti untuk diverifikasi</description>
+            <actors>
+                <actor-ref>actor_ltb</actor-ref>
+            </actors>
+            <precondition>Dokumen sudah diterima dan lengkap</precondition>
+            <postcondition>Dokumen masuk ke antrian Peneliti</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_real_time_monitoring_ltb" name="Real-time Monitoring (LTB)">
+            <description>LTB memantau data baru secara real-time</description>
+            <actors>
+                <actor-ref>actor_ltb</actor-ref>
+            </actors>
+            <priority>Opsional</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE PENELITI ========== -->
+        <usecase id="uc_verifikasi_data" name="Verifikasi Data SSPD">
+            <description>Peneliti memverifikasi data SSPD yang diterima dari LTB</description>
+            <actors>
+                <actor-ref>actor_peneliti</actor-ref>
+            </actors>
+            <precondition>Dokumen sudah diterima dari LTB</precondition>
+            <postcondition>Data terverifikasi dan siap diparaf</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_paraf_kasie" name="Paraf Kasie">
+            <description>Peneliti melakukan paraf kepala seksi untuk dokumen yang sudah diverifikasi</description>
+            <actors>
+                <actor-ref>actor_peneliti</actor-ref>
+            </actors>
+            <precondition>Data sudah diverifikasi</precondition>
+            <postcondition>Dokumen sudah diparaf dan siap dikirim ke Peneliti Validasi</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_kirim_ke_peneliti_validasi" name="Kirim ke Peneliti Validasi">
+            <description>Peneliti mengirim dokumen yang sudah diparaf ke Peneliti Validasi</description>
+            <actors>
+                <actor-ref>actor_peneliti</actor-ref>
+            </actors>
+            <precondition>Dokumen sudah diparaf</precondition>
+            <postcondition>Dokumen masuk ke antrian Peneliti Validasi</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE PENELITI VALIDASI ========== -->
+        <usecase id="uc_validasi_berkas_online" name="Validasi Berkas SSPD Online">
+            <description>Peneliti Validasi memvalidasi berkas SSPD secara online dengan sertifikat digital</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>
+                <item>Dokumen sudah diterima dari Peneliti</item>
+                <item>Sertifikat digital sudah dipilih dan diverifikasi</item>
+            </precondition>
+            <postcondition>Dokumen tervalidasi dan siap ditandatangani</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_pilih_sertifikat_digital" name="Pilih Sertifikat Digital">
+            <description>Peneliti Validasi memilih dan memverifikasi sertifikat digital untuk digunakan dalam tanda tangan</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>Sertifikat digital tersedia di sistem</precondition>
+            <postcondition>Sertifikat digital aktif dan siap digunakan</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_verify_dokumen" name="Verify Dokumen">
+            <description>Peneliti Validasi melakukan verifikasi dokumen sebelum menyetujui atau menolak</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>
+                <item>Dokumen dipilih dari tabel</item>
+                <item>Sertifikat digital sudah aktif</item>
+            </precondition>
+            <postcondition>Dokumen tervalidasi dan tombol approve/reject aktif</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_setujui_dokumen" name="Setujui Dokumen">
+            <description>Peneliti Validasi menyetujui dokumen dan mengirim ke LSB</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>
+                <item>Dokumen sudah diverifikasi</item>
+                <item>Sertifikat digital aktif</item>
+            </precondition>
+            <postcondition>
+                <item>Dokumen ditandatangani digital</item>
+                <item>Dokumen dikirim ke LSB</item>
+                <item>PDF final diunduh otomatis</item>
+            </postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_tolak_dokumen_pv" name="Tolak Dokumen (Peneliti Validasi)">
+            <description>Peneliti Validasi menolak dokumen dengan alasan tertentu</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>
+                <item>Dokumen sudah diverifikasi</item>
+                <item>Ada alasan penolakan</item>
+            </precondition>
+            <postcondition>
+                <item>Dokumen ditolak</item>
+                <item>Data akan dihapus otomatis setelah 10 hari</item>
+            </postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_tanda_paraf" name="Tanda Paraf">
+            <description>Peneliti Validasi melakukan tanda paraf digital pada dokumen</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <precondition>
+                <item>Sertifikat digital aktif</item>
+                <item>Dokumen sudah diverifikasi</item>
+            </precondition>
+            <postcondition>Dokumen sudah ditandatangani digital</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_sinkronisasi_validasi" name="Sinkronisasi Validasi">
+            <description>Peneliti Validasi melakukan sinkronisasi sertifikat dan validasi</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <sub-usecases>
+                <usecase-ref>uc_sertifikat_digital</usecase-ref>
+                <usecase-ref>uc_tanda_paraf</usecase-ref>
+            </sub-usecases>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_sertifikat_digital" name="Sertifikat Digital">
+            <description>Mengelola sertifikat digital untuk tanda tangan</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_monitoring_verifikasi" name="Monitoring Verifikasi SSPD">
+            <description>Peneliti Validasi memantau status verifikasi dokumen</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_monitoring_skpd_kurang" name="Monitoring SKPD Kurang Bayar">
+            <description>Memantau dokumen dengan status SKPD kurang bayar</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_real_time_monitoring_pv" name="Real-time Monitoring (ParafP)">
+            <description>Peneliti Validasi memantau data baru secara real-time</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Opsional</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE LSB ========== -->
+        <usecase id="uc_pelayanan_penyerahan" name="Pelayanan Penyerahan SSPD">
+            <description>LSB menyerahkan kembali dokumen yang telah divalidasi kepada PPAT</description>
+            <actors>
+                <actor-ref>actor_lsb</actor-ref>
+            </actors>
+            <precondition>Dokumen sudah divalidasi oleh Peneliti Validasi</precondition>
+            <postcondition>Dokumen diserahkan ke PPAT</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_monitoring_penyerahan" name="Monitoring Penyerahan SSPD">
+            <description>LSB memantau status penyerahan dokumen</description>
+            <actors>
+                <actor-ref>actor_lsb</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE BANK ========== -->
+        <usecase id="uc_validasi_pembayaran" name="Validasi Pembayaran">
+            <description>Bank melakukan validasi bukti pembayaran yang dikirim PPAT</description>
+            <actors>
+                <actor-ref>actor_bank</actor-ref>
+            </actors>
+            <precondition>Ada bukti pembayaran yang masuk</precondition>
+            <postcondition>Pembayaran tervalidasi</postcondition>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_cek_hasil_transaksi" name="Cek Hasil Transaksi">
+            <description>Bank mengecek hasil transaksi pembayaran BPHTB</description>
+            <actors>
+                <actor-ref>actor_bank</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE ADMIN ========== -->
+        <usecase id="uc_manage_user" name="Mengelola Data User">
+            <description>Admin mengelola data user termasuk verifikasi user baru</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <sub-usecases>
+                <usecase-ref>uc_verifikasi_data_user</usecase-ref>
+                <usecase-ref>uc_data_user_complete</usecase-ref>
+            </sub-usecases>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_verifikasi_data_user" name="Verifikasi Data User">
+            <description>Admin memverifikasi user yang mendaftar</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_data_user_complete" name="Data User">
+            <description>Admin melihat data user yang sudah terverifikasi</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_manage_referensi" name="Mengelola Referensi User">
+            <description>Admin mengelola referensi user termasuk PPAT</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <sub-usecases>
+                <usecase-ref>uc_pemutakhiran_ppat</usecase-ref>
+                <usecase-ref>uc_status_ppat</usecase-ref>
+                <usecase-ref>uc_validasi_qr</usecase-ref>
+            </sub-usecases>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_pemutakhiran_ppat" name="Pemutakhiran Data PPAT">
+            <description>Admin melakukan pemutakhiran data PPAT</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_status_ppat" name="Status PPAT">
+            <description>Admin melihat dan mengelola status PPAT</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_validasi_qr" name="Validasi QR">
+            <description>Admin melakukan validasi QR Code dokumen</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_monitoring_validasi" name="Monitoring Validasi">
+            <description>Admin memantau statistik validasi keseluruhan sistem</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_statistik_validasi" name="Statistik Total Permohonan Validasi">
+            <description>Admin melihat statistik permohonan validasi dalam bentuk chart</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_manage_aplikasi" name="Mengelola Aplikasi">
+            <description>Admin mengelola konfigurasi aplikasi</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <!-- ========== USE CASE UMUM ========== -->
+        <usecase id="uc_faq" name="FAQ">
+            <description>Pengguna melihat Frequently Asked Questions</description>
+            <actors>
+                <actor-ref>actor_admin</actor-ref>
+                <actor-ref>actor_ppat</actor-ref>
+                <actor-ref>actor_ltb</actor-ref>
+                <actor-ref>actor_peneliti</actor-ref>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+                <actor-ref>actor_lsb</actor-ref>
+            </actors>
+            <priority>Opsional</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_notifikasi" name="Notifikasi">
+            <description>Sistem mengirim notifikasi ke pengguna</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+                <actor-ref>actor_ltb</actor-ref>
+                <actor-ref>actor_peneliti</actor-ref>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+                <actor-ref>actor_lsb</actor-ref>
+            </actors>
+            <priority>Opsional</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_view_pdf" name="View PDF Dokumen">
+            <description>Pengguna melihat dokumen PDF</description>
+            <actors>
+                <actor-ref>actor_ppat</actor-ref>
+                <actor-ref>actor_ltb</actor-ref>
+                <actor-ref>actor_peneliti</actor-ref>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+        <usecase id="uc_generate_pdf" name="Generate PDF Validasi">
+            <description>Sistem menghasilkan PDF dokumen validasi</description>
+            <actors>
+                <actor-ref>actor_peneliti_validasi</actor-ref>
+            </actors>
+            <priority>Wajib</priority>
+            <status>Implemented</status>
+        </usecase>
+
+    </usecases>
+
+    <!-- ============================================ -->
+    <!-- RELASI ANTAR USE CASE -->
+    <!-- ============================================ -->
+    <relationships>
+        <!-- Include Relationships -->
+        <include from="uc_setujui_dokumen" to="uc_tanda_paraf" />
+        <include from="uc_setujui_dokumen" to="uc_generate_pdf" />
+        <include from="uc_validasi_berkas_online" to="uc_pilih_sertifikat_digital" />
+        <include from="uc_verify_dokumen" to="uc_pilih_sertifikat_digital" />
+        
+        <!-- Extend Relationships -->
+        <extend from="uc_tambah_booking" to="uc_upload_dokumen" />
+        <extend from="uc_tambah_booking" to="uc_upload_tanda_tangan" />
+        <extend from="uc_terima_berkas" to="uc_view_dokumen_ltb" />
+        <extend from="uc_terima_berkas" to="uc_tolak_dokumen" />
+        
+        <!-- Generalization Relationships -->
+        <generalization parent="uc_booking_badan" child="uc_tambah_booking" />
+        <generalization parent="uc_booking_perorangan" child="uc_tambah_booking" />
+    </relationships>
+
+    <!-- ============================================ -->
+    <!-- WORKFLOW UTAMA -->
+    <!-- ============================================ -->
+    <workflows>
+        <workflow id="wf_booking_to_penyerahan" name="Workflow Booking hingga Penyerahan">
+            <description>Alur lengkap dari booking hingga penyerahan dokumen</description>
+            <steps>
+                <step order="1" usecase="uc_tambah_booking" actor="actor_ppat" />
+                <step order="2" usecase="uc_upload_dokumen" actor="actor_ppat" />
+                <step order="3" usecase="uc_kirim_ke_ltb" actor="actor_ppat" />
+                <step order="4" usecase="uc_terima_berkas" actor="actor_ltb" />
+                <step order="5" usecase="uc_kirim_ke_peneliti" actor="actor_ltb" />
+                <step order="6" usecase="uc_verifikasi_data" actor="actor_peneliti" />
+                <step order="7" usecase="uc_paraf_kasie" actor="actor_peneliti" />
+                <step order="8" usecase="uc_kirim_ke_peneliti_validasi" actor="actor_peneliti" />
+                <step order="9" usecase="uc_validasi_berkas_online" actor="actor_peneliti_validasi" />
+                <step order="10" usecase="uc_verify_dokumen" actor="actor_peneliti_validasi" />
+                <step order="11" usecase="uc_setujui_dokumen" actor="actor_peneliti_validasi" />
+                <step order="12" usecase="uc_pelayanan_penyerahan" actor="actor_lsb" />
+            </steps>
+        </workflow>
+    </workflows>
+
+    <!-- ============================================ -->
+    <!-- STATISTIK USE CASE -->
+    <!-- ============================================ -->
+    <statistics>
+        <total-actors>8</total-actors>
+        <total-usecases>50</total-usecases>
+        <wajib-usecases>42</wajib-usecases>
+        <opsional-usecases>8</opsional-usecases>
+        <implemented-usecases>50</implemented-usecases>
+    </statistics>
+
+</usecase-diagram>
+

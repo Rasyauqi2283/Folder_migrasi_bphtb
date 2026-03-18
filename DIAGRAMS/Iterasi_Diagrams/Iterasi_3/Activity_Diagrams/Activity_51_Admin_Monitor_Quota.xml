@@ -1,0 +1,91 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_51_Admin_Monitor_Quota" name="Activity 51: Admin Monitor Quota">
+    <mxGraphModel dx="1042" dy="562" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_admin" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFEBE9;strokeColor=#5D4037;fontStyle=1;fontSize=14;" value="Admin" vertex="1">
+          <mxGeometry height="340" width="400" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_admin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_open_dashboard" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Membuka Dashboard Admin" vertex="1">
+          <mxGeometry height="50" width="200" x="190" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_request_quota" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Request Quota Info&#xa;(GET /api/ppat/quota?date=today)" vertex="1">
+          <mxGeometry height="50" width="190" x="195" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_view_quota" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Info Kuota&#xa;(used_count, limit_count,&#xa;remaining, progress bar)" vertex="1">
+          <mxGeometry height="50" width="200" x="15" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_monitor_trend" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Monitor Trend Kuota&#xa;(Refresh Periodik,&#xa;Alert jika &gt; 80%)" vertex="1">
+          <mxGeometry height="50" width="175" x="27.5" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_admin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="230" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="340" width="500" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_auth" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Authentication&#xa;(req.session.user)" vertex="1">
+          <mxGeometry height="70" width="200" x="60" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_normalize_date" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Normalize Date Parameter&#xa;(default: today, format: YYYY-MM-DD)" vertex="1">
+          <mxGeometry height="60" width="200" x="290" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_query_quota" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Query ppat_daily_quota&#xa;(SELECT quota_date, used_count,&#xa;limit_count WHERE quota_date=$1)" vertex="1">
+          <mxGeometry height="80" width="200" x="290" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_return_result" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Return JSON Response&#xa;{date, used, limit, remaining}&#xa;(default: used=0, limit=80)" vertex="1">
+          <mxGeometry height="90" width="200" x="50" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_open_dashboard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="admin_open_dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_request_quota" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="admin_request_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_validate_auth" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="185" />
+              <mxPoint x="430" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="sys_validate_auth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_normalize_date" value="Authorized">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="sys_normalize_date" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_query_quota" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="230" />
+              <mxPoint x="850" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_query_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_return_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="sys_return_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="admin_view_quota" value="Response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="290" />
+              <mxPoint x="380" y="265" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="admin_view_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_monitor_trend" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="admin_monitor_trend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HhzTJ8IUUtXjOR5a0Uq5-1" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Admin Monitor Quota Process - ITERASI 3" vertex="1">
+          <mxGeometry height="360" width="900" x="40" y="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

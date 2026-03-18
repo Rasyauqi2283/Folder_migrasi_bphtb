@@ -1,0 +1,339 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_01_Login_Register" name="Activity 01: Login + Register (Swimlane)">
+    <mxGraphModel dx="2084" dy="1124" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_user" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;" value="User" vertex="1">
+          <mxGeometry height="1530" width="600" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_user" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="user_decision" parent="swimlane_user" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Memilih Aksi?" vertex="1">
+          <mxGeometry height="80" width="130" x="200" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="user_register" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memilih Menu Login" vertex="1">
+          <mxGeometry height="50" width="170" x="20" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="user_fill_form" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Mengisi Form Registrasi&#xa;(Nama, Email, NIK, Password, KTP)" vertex="1">
+          <mxGeometry height="70" width="210" x="340" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="user_enter_otp" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memasukkan Kode OTP" vertex="1">
+          <mxGeometry height="50" width="170" x="320" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="user_login" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memilih Menu Register" vertex="1">
+          <mxGeometry height="50" width="170" x="420" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="user_back_register" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Kembali ke Form Registrasi" vertex="1">
+          <mxGeometry height="50" width="170" x="340" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="user_enter_cred" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memasukkan Credentials&#xa;(Email/UserID/Username + Password)" vertex="1">
+          <mxGeometry height="70" width="210" x="100" y="1030" as="geometry" />
+        </mxCell>
+        <mxCell id="edge37" edge="1" parent="swimlane_user" source="user_back_login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="user_enter_cred" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="user_back_login" parent="swimlane_user" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Kembali ke Halaman Login" vertex="1">
+          <mxGeometry height="50" width="210" x="50" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="1530" width="680" x="680" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_register" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menampilkan Halaman Registrasi" vertex="1">
+          <mxGeometry height="50" width="200" x="65" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_form" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Input Form" vertex="1">
+          <mxGeometry height="50" width="200" x="110" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-4" edge="1" parent="swimlane_system" source="sys_check_email" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;" target="sys_error_email">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-5" connectable="0" parent="ByLfwUQaFdGWjtteN8e3-4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Ya" vertex="1">
+          <mxGeometry relative="1" x="-0.199" y="-5" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_check_email" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cek Email di Database" vertex="1">
+          <mxGeometry height="80" width="180" x="350" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_otp" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Generate OTP&#xa;(6 digit)" vertex="1">
+          <mxGeometry height="40" width="140" x="470" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_save_unverified" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menyimpan ke Database&#xa;(a_1_unverified_users)" vertex="1">
+          <mxGeometry height="50" width="180" x="450" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_send_otp" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengirim OTP via Email" vertex="1">
+          <mxGeometry height="50" width="200" x="440" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_otp" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menampilkan Halaman Verifikasi OTP" vertex="1">
+          <mxGeometry height="60" width="200" x="440" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_verify_otp" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Verifikasi OTP" vertex="1">
+          <mxGeometry height="80" width="200" x="50" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_move_verified" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Memindahkan ke Database&#xa;(a_2_verified_users)" vertex="1">
+          <mxGeometry height="60" width="200" x="225" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_delete_unverified" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menghapus dari&#xa;a_1_unverified_users" vertex="1">
+          <mxGeometry height="60" width="200" x="225" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_success_reg" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses" vertex="1">
+          <mxGeometry height="50" width="200" x="470" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_login" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menampilkan Halaman Login" vertex="1">
+          <mxGeometry height="50" width="200" x="20" y="1140" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-12" edge="1" parent="swimlane_system" source="sys_find_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="sys_user_found">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_find_user" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mencari User di Database&#xa;(a_2_verified_users)" vertex="1">
+          <mxGeometry height="60" width="200" x="25" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_user_found" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="User Ditemukan?" vertex="1">
+          <mxGeometry height="60" width="140" x="240" y="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_password_valid" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Password Valid?" vertex="1">
+          <mxGeometry height="50" width="140" x="420" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_profile" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cek Kelengkapan Profil" vertex="1">
+          <mxGeometry height="40" width="170" x="470" y="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_create_session" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Membuat Session&#xa;Menyimpan Data User" vertex="1">
+          <mxGeometry height="60" width="200" x="370" y="1370" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_redirect" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Redirect ke Dashboard" vertex="1">
+          <mxGeometry height="50" width="200" x="100" y="1375" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-27" edge="1" parent="swimlane_system" source="sys_error_email" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="ByLfwUQaFdGWjtteN8e3-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_email" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Email Sudah Terdaftar" vertex="1">
+          <mxGeometry height="50" width="160" x="130" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_otp" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: OTP Tidak Valid" vertex="1">
+          <mxGeometry height="50" width="160" x="220" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_password" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Password Salah" vertex="1">
+          <mxGeometry height="50" width="160" x="410" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_hash_password" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Hash Password&#xa;(bcrypt)" vertex="1">
+          <mxGeometry height="40" width="140" x="470" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="swimlane_system" source="sys_check_email" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_hash_password" value="Tidak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="swimlane_system" source="sys_hash_password" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_generate_otp" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge30" edge="1" parent="swimlane_system" source="sys_password_valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;" target="sys_error_password" value="Tidak">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="990" />
+              <mxPoint x="620" y="990" />
+              <mxPoint x="620" y="890" />
+            </Array>
+            <mxPoint x="640" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_error_user" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: User Tidak Ditemukan" vertex="1">
+          <mxGeometry height="50" width="160" x="245" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="edge27" edge="1" parent="swimlane_system" source="sys_user_found" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;fillColor=#f8cecc;strokeColor=#b85450;" target="sys_error_user" value="Tidak">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="1060" />
+              <mxPoint x="325" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_verify_password" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Verifikasi Password&#xa;(bcrypt.compare)" vertex="1">
+          <mxGeometry height="40" width="170" x="280" y="1210" as="geometry" />
+        </mxCell>
+        <mxCell id="edge28" edge="1" parent="swimlane_system" source="sys_user_found" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_verify_password" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge29" edge="1" parent="swimlane_system" source="sys_verify_password" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.601;exitY=0.023;exitDx=0;exitDy=0;exitPerimeter=0;entryX=-0.014;entryY=0.482;entryDx=0;entryDy=0;entryPerimeter=0;" target="sys_password_valid" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="382" y="1170" />
+              <mxPoint x="410" y="1170" />
+              <mxPoint x="410" y="1104" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_update_status" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update Status ke &#39;online&#39;&#xa;Update last_active" vertex="1">
+          <mxGeometry height="30" width="160" x="310" y="1290" as="geometry" />
+        </mxCell>
+        <mxCell id="edge32" edge="1" parent="swimlane_system" source="sys_check_profile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_status" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge33" edge="1" parent="swimlane_system" source="sys_update_status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_create_session" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-13" edge="1" parent="swimlane_system" source="sys_show_success_reg" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="sys_update_status" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="830" />
+              <mxPoint x="660" y="830" />
+              <mxPoint x="660" y="1305" />
+            </Array>
+            <mxPoint x="570" y="800" as="sourcePoint" />
+            <mxPoint x="-365" y="1450" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-26" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Response" vertex="1">
+          <mxGeometry height="50" width="160" x="130" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="user_decision" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="user_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="user_register" value="Login">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="sys_show_register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="user_fill_form" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="845" y="150" />
+              <mxPoint x="720" y="150" />
+              <mxPoint x="720" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_validate_form" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_email" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_generate_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_save_unverified" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="sys_save_unverified" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_send_otp" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="sys_send_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_show_otp" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="sys_show_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.25;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="user_back_register" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1090" y="650" />
+              <mxPoint x="1090" y="500" />
+              <mxPoint x="580" y="500" />
+              <mxPoint x="580" y="502" />
+            </Array>
+            <mxPoint x="470" y="1060" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="user_enter_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_verify_otp" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="1" source="sys_verify_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fillColor=#f8cecc;strokeColor=#b85450;" target="sys_error_otp" value="Tidak Valid">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="630" />
+              <mxPoint x="980" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="sys_verify_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="sys_move_verified" value="Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="sys_move_verified" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_delete_unverified" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge18" edge="1" parent="1" source="sys_delete_unverified" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_show_success_reg" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge21" edge="1" parent="1" source="user_back_register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="user_enter_otp" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge22" edge="1" parent="1" source="user_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="user_login" value="Register">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge25" edge="1" parent="1" source="user_enter_cred" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_find_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="1105" />
+              <mxPoint x="690" y="1090" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge31" edge="1" parent="1" source="sys_password_valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_profile" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge34" edge="1" parent="1" source="sys_create_session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_redirect" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge35" edge="1" parent="1" source="sys_redirect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="1440" />
+              <mxPoint x="760" y="1450" />
+              <mxPoint x="315" y="1450" />
+            </Array>
+            <mxPoint x="315" y="1490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge36" edge="1" parent="1" source="sys_error_password" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.824;entryY=-0.008;entryDx=0;entryDy=0;entryPerimeter=0;" target="user_back_login" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge38" edge="1" parent="1" source="sys_error_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="user_back_login" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="985" />
+              <mxPoint x="340" y="965" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-3" edge="1" parent="1" source="user_fill_form" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="sys_validate_form">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="415" />
+              <mxPoint x="750" y="185" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-7" edge="1" parent="1" source="user_login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="sys_show_register">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-8" edge="1" parent="1" source="user_register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.75;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="sys_show_login">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="80" y="1240" />
+              <mxPoint x="690" y="1240" />
+              <mxPoint x="690" y="1218" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-9" edge="1" parent="1" source="sys_show_login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" target="user_enter_cred">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-11" edge="1" parent="1" source="sys_error_otp" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" target="user_back_register">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="530" />
+              <mxPoint x="560" y="527" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-28" edge="1" parent="1" source="ByLfwUQaFdGWjtteN8e3-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" target="user_fill_form">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="770" y="433" />
+              <mxPoint x="770" y="433" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-29" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;" value="Login/Register Process" vertex="1">
+          <mxGeometry height="1550" width="1320" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ByLfwUQaFdGWjtteN8e3-37" parent="ByLfwUQaFdGWjtteN8e3-29" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="260" y="1450" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

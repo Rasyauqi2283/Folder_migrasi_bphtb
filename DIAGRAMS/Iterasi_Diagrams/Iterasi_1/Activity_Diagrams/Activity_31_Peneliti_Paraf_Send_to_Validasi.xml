@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_31_Peneliti_Paraf_Send_to_Validasi" name="Activity 31: Peneliti Paraf Send to Validasi (Swimlane)">
+    <mxGraphModel dx="1737" dy="937" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_paraf" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="Peneliti (Paraf)" vertex="1">
+          <mxGeometry height="540" width="480" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_paraf" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="230" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="paraf_open_booking" parent="swimlane_paraf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;" value="Membuka Booking untuk Dikirim" vertex="1">
+          <mxGeometry height="50" width="260" x="120" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="paraf_check_complete" parent="swimlane_paraf" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Paraf Sudah Diberikan?" vertex="1">
+          <mxGeometry height="80" width="200" x="260" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="paraf_click_send" parent="swimlane_paraf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;" value="Menekan Tombol&#xa;&quot;Kirim ke Peneliti Validasi&quot;" vertex="1">
+          <mxGeometry height="70" width="240" x="190" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="paraf_view_result" parent="swimlane_paraf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;" value="Melihat Status:&#xa;Dikirim ke Peneliti Validasi" vertex="1">
+          <mxGeometry height="70" width="240" x="135" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_paraf" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="50" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="paraf_error_no_paraf" parent="swimlane_paraf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Paraf Belum Diberikan" vertex="1">
+          <mxGeometry height="50" width="200" x="20" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="540" width="530" x="520" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_data" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Data dari p_3_clear_to_paraf&#xa;(Cek tanda_paraf_path)" vertex="1">
+          <mxGeometry height="60" width="200" x="40" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="OoVtEBXRmqeDqabbtxBO-1" edge="1" parent="swimlane_system" source="sys_start_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_update_clear_paraf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_start_trans" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Memulai Database Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="280" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_clear_paraf" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update p_3_clear_to_paraf&#xa;SET status=&#39;Paraf Given&#39;,&#xa;persetujuan=&#39;true&#39;" vertex="1">
+          <mxGeometry height="80" width="200" x="280" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_insert_pv" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Insert ke pv_1_paraf_validate&#xa;(Status: Pending)" vertex="1">
+          <mxGeometry height="50" width="180" x="10" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_booking" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update pat_1_bookingsspd&#xa;SET trackstatus=&#39;Paraf Given&#39;" vertex="1">
+          <mxGeometry height="70" width="200" x="300" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="OoVtEBXRmqeDqabbtxBO-2" edge="1" parent="swimlane_system" source="sys_commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="sys_send_notif">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_commit" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Commit Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="20" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="OoVtEBXRmqeDqabbtxBO-3" edge="1" parent="swimlane_system" source="sys_send_notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="sys_show_success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_send_notif" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengirim Notifikasi ke Peneliti Validasi" vertex="1">
+          <mxGeometry height="50" width="200" x="290" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_success" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses" vertex="1">
+          <mxGeometry height="50" width="200" x="50" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="paraf_open_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="paraf_open_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_data" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="sys_get_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;exitDx=0;exitDy=0;" target="paraf_check_complete" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="660" y="240" />
+              <mxPoint x="550" y="240" />
+              <mxPoint x="550" y="280" />
+              <mxPoint x="500" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="paraf_check_complete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;" target="paraf_error_no_paraf" value="Belum">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="paraf_check_complete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="paraf_click_send" value="Sudah">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="paraf_click_send" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_start_trans" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="310" />
+              <mxPoint x="790" y="310" />
+              <mxPoint x="790" y="185" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_update_clear_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="sys_update_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="sys_update_clear_paraf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_insert_pv" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_insert_pv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_commit" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="410" />
+              <mxPoint x="640" y="410" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="paraf_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OoVtEBXRmqeDqabbtxBO-4" edge="1" parent="1" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="paraf_view_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OoVtEBXRmqeDqabbtxBO-5" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Peneliti (Paraf) Send to Validasi&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Process&lt;/span&gt;" vertex="1">
+          <mxGeometry height="563" width="1010" x="40" y="17" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

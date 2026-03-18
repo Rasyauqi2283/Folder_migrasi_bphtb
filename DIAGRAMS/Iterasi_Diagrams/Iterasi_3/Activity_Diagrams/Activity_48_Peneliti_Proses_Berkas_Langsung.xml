@@ -1,0 +1,87 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_48_Peneliti_Proses_Berkas_Langsung" name="Activity 48: Peneliti Proses Berkas Langsung">
+    <mxGraphModel dx="1158" dy="624" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_peneliti" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#F57C00;fontStyle=1;fontSize=14;" value="Peneliti" vertex="1">
+          <mxGeometry height="500" width="260" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_peneliti" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_receive_berkas" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menerima Berkas dari LTB&#xa;(trackstatus=&#39;Diolah&#39;)" vertex="1">
+          <mxGeometry height="40" width="170" x="30" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_open_booking" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Membuka Booking untuk Diverifikasi" vertex="1">
+          <mxGeometry height="30" width="200" x="15" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_verify_doc" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memverifikasi Dokumen&#xa;(Akta, Sertifikat, Tanda Tangan)" vertex="1">
+          <mxGeometry height="70" width="200" x="15" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_increment_counter" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Increment Counter&#xa;(POST /api/peneliti/counter/:userid/increment)" vertex="1">
+          <mxGeometry height="70" width="200" x="15" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_view_result" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Hasil&#xa;(Counter Updated,&#xa;New Counter Value)" vertex="1">
+          <mxGeometry height="50" width="160" x="15" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_peneliti" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="210" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="500" width="270" x="300" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_call_function" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Call increment_peneliti_counter($1, $2)&#xa;(userid, date)" vertex="1">
+          <mxGeometry height="70" width="250" x="10" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_counter_info" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Get Updated Counter Info&#xa;(SELECT * FROM get_peneliti_counter($1, $2))" vertex="1">
+          <mxGeometry height="70" width="250" x="10" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_return_result" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Return JSON Response&#xa;{success, message, data:&#xa;{userid, counter, ...}}" vertex="1">
+          <mxGeometry height="50" width="220" x="25" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="peneliti_receive_berkas" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="peneliti_receive_berkas" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="peneliti_open_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="peneliti_open_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="peneliti_verify_doc" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="peneliti_verify_doc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="peneliti_increment_counter" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="peneliti_increment_counter" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_call_function" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="415" />
+              <mxPoint x="290" y="115" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_call_function" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_get_counter_info" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="sys_get_counter_info" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_return_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_return_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="peneliti_view_result" value="Response">
+          <mxGeometry relative="1" x="-0.0357" y="-10" as="geometry">
+            <mxPoint x="10" y="10" as="offset" />
+            <Array as="points">
+              <mxPoint x="310" y="460" />
+              <mxPoint x="175" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="peneliti_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="taZLVDGaGv_5jgCZbtgb-14" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Peneliti Process Document - ITERASI 3" vertex="1">
+          <mxGeometry height="520" width="530" x="40" y="20" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

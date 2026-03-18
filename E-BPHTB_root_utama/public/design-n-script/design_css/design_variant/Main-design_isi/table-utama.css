@@ -1,0 +1,3449 @@
+/*Design untuk setiap Table Utama*/
+/* Excel-like table styling for main content tables */
+
+/* Universal box-sizing for consistent layout */
+html {
+  box-sizing: border-box;
+}
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+/* Ensure no overflow on the root elements */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll on the entire page */
+}
+
+/* Container helpers - PROPER MAIN LAYOUT */
+.main-content {
+  /* Positioning */
+  margin-left: 70px; /* 60px sidebar + 10px gutter */
+  margin-right: 15px; /* Fixed 15px from viewport edge */
+  margin-top: 80px; /* header height */
+  
+  /* Dimensions - respect viewport width */
+  width: calc(100vw - 70px - 15px);
+  max-width: calc(100vw - 70px - 15px);
+  height: calc(100vh - 80px - 40px); /* minus header and footer */
+  
+  /* Smooth interaction */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: margin-left, width;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  
+  /* Hide scrollbar for aesthetics */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Expanded sidebar state: lock content inside viewport (no translate) */
+.main-content.shifted {
+  margin-left: 260px; /* 250px sidebar + 10px gutter */
+  margin-right: 15px;
+  width: calc(100vw - 260px - 15px);
+  max-width: calc(100vw - 260px - 15px);
+  height: calc(100vh - 80px - 40px);
+  transform: none; /* override generic .shifted translate */
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.main-content::-webkit-scrollbar {
+  display: none; /* WebKit browsers */
+}
+
+/* ===== MAIN ELEMENT STYLING ===== */
+/* Main element styling is now handled by design_sidebar.css with .shifted system */
+/* This ensures consistent behavior across all pages */
+
+.main-content .table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; /* Remove horizontal scroll */
+  overflow-y: auto; /* Allow vertical scroll only */
+  
+  /* Hide scrollbar for aesthetics */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.main-content .table-scroll::-webkit-scrollbar {
+  display: none; /* WebKit browsers */
+}
+/* ===== SHIFTED SYSTEM INTEGRATION ===== */
+/* Main content behavior when sidebar is expanded (controlled by .shifted class) */
+/* Note: This is now handled by the .shifted class in design_sidebar.css */
+/* The .shifted class applies: transform: translateX(190px) and margin-left: 190px */
+
+/* Additional styling for main-content when shifted */
+main.shifted .main-content {
+  /* Width adjustment for shifted state */
+  width: calc(100vw - 250px - 15px); /* 250px sidebar + 15px right margin */
+  max-width: calc(100vw - 250px - 15px);
+  height: calc(100vh - 80px - 40px); /* minus header margin and footer height */
+  
+  /* Ensure content doesn't overflow */
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Ensure all child elements respect the container width */
+main.shifted .main-content * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Specific adjustments for tables when shifted */
+main.shifted .main-content table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+
+/* Specific adjustments for cards when shifted */
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Specific adjustments for table containers when shifted */
+main.shifted .main-content .table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  box-sizing: border-box;
+}
+
+/* Ensure real-time controls don't overflow */
+main.shifted .main-content .real-time-controls {
+  flex-shrink: 0;
+  max-width: 200px;
+}
+
+/* Force all elements to respect the shifted width - CRITICAL FIX */
+main.shifted .main-content,
+main.shifted .main-content * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure no horizontal overflow on shifted content */
+main.shifted .main-content {
+  overflow-x: hidden !important;
+}
+
+/* Ensure all containers respect the shifted width */
+main.shifted .main-content > * {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments for shifted state */
+@media (max-width: 1200px) {
+  main.shifted .main-content {
+    width: calc(100vw - 250px - 10px);
+    max-width: calc(100vw - 250px - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  main.shifted .main-content {
+    width: calc(100vw - 250px - 5px);
+    max-width: calc(100vw - 250px - 5px);
+  }
+}
+
+/* ===== ADMIN DASHBOARD INTEGRATION ===== */
+/* Ensure admin dashboard uses the same shifted system */
+.admin-dashboard .main-content {
+  /* Inherits from main .main-content styling */
+  /* Additional dashboard-specific adjustments */
+  overflow-y: auto; /* Allow vertical scrolling for dashboard content */
+}
+
+/* ===== CRITICAL FIX FOR SIDEBAR EXPANSION ===== */
+/* Ensure all elements respect the shifted width when sidebar expands */
+main.shifted .main-content {
+  /* Force width recalculation */
+  width: calc(100vw - 250px - 15px) !important;
+  max-width: calc(100vw - 250px - 15px) !important;
+  
+  /* Prevent horizontal overflow */
+  overflow-x: hidden !important;
+  
+  /* Ensure proper box sizing */
+  box-sizing: border-box !important;
+}
+
+/* Force all child elements to respect container width */
+main.shifted .main-content * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure tables don't break the layout */
+main.shifted .main-content table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Ensure cards and containers don't overflow */
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container,
+main.shifted .main-content .content-cards {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page containers respect the shifted width */
+main.shifted .main-content .page-container,
+main.shifted .main-content .content-container,
+main.shifted .main-content .main-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page sections respect the shifted width */
+main.shifted .main-content .page-section,
+main.shifted .main-content .content-section,
+main.shifted .main-content .main-section {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page blocks respect the shifted width */
+main.shifted .main-content .page-block,
+main.shifted .main-content .content-block,
+main.shifted .main-content .main-block {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page panels respect the shifted width */
+main.shifted .main-content .page-panel,
+main.shifted .main-content .content-panel,
+main.shifted .main-content .main-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page boxes respect the shifted width */
+main.shifted .main-content .page-box,
+main.shifted .main-content .content-box,
+main.shifted .main-content .main-box {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page wrappers respect the shifted width */
+main.shifted .main-content .page-wrapper,
+main.shifted .main-content .content-wrapper,
+main.shifted .main-content .main-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page elements respect the shifted width */
+main.shifted .main-content .page-element,
+main.shifted .main-content .content-element,
+main.shifted .main-content .main-element {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page components respect the shifted width */
+main.shifted .main-content .page-component,
+main.shifted .main-content .content-component,
+main.shifted .main-content .main-component {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page modules respect the shifted width */
+main.shifted .main-content .page-module,
+main.shifted .main-content .content-module,
+main.shifted .main-content .main-module {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page widgets respect the shifted width */
+main.shifted .main-content .page-widget,
+main.shifted .main-content .content-widget,
+main.shifted .main-content .main-widget {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page items respect the shifted width */
+main.shifted .main-content .page-item,
+main.shifted .main-content .content-item,
+main.shifted .main-content .main-item {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page parts respect the shifted width */
+main.shifted .main-content .page-part,
+main.shifted .main-content .content-part,
+main.shifted .main-content .main-part {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page areas respect the shifted width */
+main.shifted .main-content .page-area,
+main.shifted .main-content .content-area,
+main.shifted .main-content .main-area {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page zones respect the shifted width */
+main.shifted .main-content .page-zone,
+main.shifted .main-content .content-zone,
+main.shifted .main-content .main-zone {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all page regions respect the shifted width */
+main.shifted .main-content .page-region,
+main.shifted .main-content .content-region,
+main.shifted .main-content .main-region {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ===== HARMONIKA APPROACH: MAIN CONTENT STAYS IN PLACE ===== */
+/* When sidebar expands, main content stays in the same position (like harmonika) */
+main.shifted .main-content {
+  /* Keep main content in the same position - no shifting */
+  position: fixed !important;
+  left: 250px !important; /* Start after sidebar width */
+  top: 0 !important;
+  width: calc(100vw - 250px) !important;
+  height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  
+  /* Ensure proper z-index */
+  z-index: 1 !important;
+}
+
+/* Real-time controls stay in their natural position */
+main.shifted .main-content .real-time-controls {
+  /* Keep real-time controls in their natural position */
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  
+  /* No special positioning needed - they stay where they are */
+  margin-left: auto !important;
+  margin-right: 0 !important;
+  
+  /* Ensure they don't overflow */
+  max-width: 200px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Ensure all content within main-content respects the harmonika approach */
+main.shifted .main-content * {
+  /* All child elements stay in their natural positions */
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* Ensure tables and cards don't break the layout */
+main.shifted .main-content table,
+main.shifted .main-content .card,
+main.shifted .main-content .verification-cards-container,
+main.shifted .main-content .paraf-cards-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ===== HARMONIKA APPROACH: RESPONSIVE ADJUSTMENTS ===== */
+/* Ensure harmonika approach works on different screen sizes */
+@media (max-width: 1200px) {
+  main.shifted .main-content {
+    left: 250px !important;
+    width: calc(100vw - 250px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main.shifted .main-content {
+    left: 250px !important;
+    width: calc(100vw - 250px) !important;
+  }
+  
+  /* On mobile, real-time controls might need to be more compact */
+  main.shifted .main-content .real-time-controls {
+    max-width: 150px !important;
+  }
+}
+
+/* ===== HARMONIKA APPROACH: SMOOTH TRANSITIONS ===== */
+/* Add smooth transitions for the harmonika effect */
+main .main-content {
+  transition: left 0.3s ease-in-out, width 0.3s ease-in-out !important;
+}
+
+/* Ensure real-time controls have smooth transitions too */
+main .main-content .real-time-controls {
+  transition: all 0.3s ease-in-out !important;
+}
+
+/* Dashboard welcome section adjustments */
+.admin-dashboard .welcome-section {
+  padding: 20px 20px 0 20px; /* Consistent padding with main-content */
+}
+
+/* Dashboard cards container adjustments */
+.admin-dashboard .content-cards {
+  padding: 0 20px 20px 20px; /* Consistent padding */
+  margin-bottom: 0; /* Remove extra margin */
+}
+
+/* Dashboard chart container adjustments */
+.admin-dashboard .card.chart {
+  margin: 0 20px 20px 20px; /* Consistent margin */
+}
+
+/* Remove any container constraints that might limit width */
+.data-masuk {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure body and html don't have margins that could affect layout */
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Ensure all containers respect viewport width */
+* {
+  box-sizing: border-box;
+}
+
+/* Additional safety for main content area - REMOVED to prevent conflicts */
+
+/* ===== CARD-BASED LAYOUT FOR PENELITI VERIFIKASI & PARAF ===== */
+/* Modern Card Design - DARK THEME */
+
+/* Main content wrapper for viewport optimization - REMOVED to prevent conflicts */
+
+.verification-cards-container,
+.paraf-cards-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 columns for wider, more comfortable viewing */
+  grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards per page */
+  gap: 20px; /* Increased gap for better spacing */
+  padding: 20px; /* Add padding to prevent content from being cut off */
+  background: transparent; /* Remove background to avoid interference */
+  min-height: auto; /* Remove fixed height to prevent empty space */
+  width: 100%; /* Use full width of main-content container */
+  max-width: 100%; /* Use full width of main-content container */
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Desktop Layout - 6 cards (3x2 grid) - WIDER AND MORE COMFORTABLE */
+@media (min-width: 1024px) {
+  .verification-cards-container,
+  .paraf-cards-container {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 20px; /* Increased gap for better spacing */
+    padding: 20px; /* Add padding to prevent content from being cut off */
+    width: 100%; /* Use full width of main-content container */
+    margin: 0;
+    max-width: 100%; /* Use full width of main-content container */
+    box-sizing: border-box;
+  }
+  
+  .verification-card,
+  .paraf-card {
+    min-height: 220px; /* Increased height for more comfortable viewing */
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .card-content {
+    grid-template-columns: 1fr;
+    gap: 12px; /* Increased gap for better readability */
+  }
+}
+
+/* Extra wide screens - optimal spacing with right edge alignment */
+@media (min-width: 1600px) {
+  .verification-cards-container,
+  .paraf-cards-container {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 24px; /* Increased gap for extra wide screens */
+    padding: 24px; /* Add padding to prevent content from being cut off */
+    width: 100%; /* Use full width of main-content container */
+    max-width: 100%; /* Use full width of main-content container */
+  }
+  
+  .verification-card,
+  .paraf-card {
+    min-height: 240px; /* Larger height for extra wide screens */
+  }
+}
+
+/* Large Desktop Layout - Better spacing for wide screens with right edge alignment */
+@media (min-width: 1440px) {
+  .verification-cards-container,
+  .paraf-cards-container {
+    grid-template-columns: repeat(3, 1fr); /* 3 columns for wider cards */
+    grid-template-rows: repeat(2, 1fr); /* 2 rows for 6 cards total */
+    gap: 22px; /* Increased gap for large screens */
+    padding: 24px; /* Add padding to prevent content from being cut off */
+    width: 100%; /* Use full width of main-content container */
+    max-width: 100%; /* Use full width of main-content container */
+  }
+  
+  .verification-card,
+  .paraf-card {
+    min-height: 230px; /* Balanced height for large screens */
+  }
+}
+
+/* Tablet Layout - 2 columns */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .verification-cards-container,
+  .paraf-cards-container {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto; /* Allow rows to expand based on content */
+    gap: 16px;
+  }
+  
+  .card-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile Layout - 1 column */
+@media (max-width: 767px) {
+  .verification-cards-container,
+  .paraf-cards-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto; /* Allow rows to expand based on content */
+    gap: 16px;
+    padding: 16px; /* Add padding to prevent content from being cut off */
+  }
+  
+  .card-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .btn-kirim-prominent {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ===== PAGINATION STYLING ===== */
+.pagination-container {
+  display: none; /* Hidden by default, shown when needed */
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: transparent; /* Remove background to avoid interference */
+  border-top: 1px solid #374151;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Show pagination when there are more than 6 cards */
+.verification-cards-container:has(.verification-card:nth-child(7)),
+.paraf-cards-container:has(.paraf-card:nth-child(7)) {
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 6 cards */
+}
+
+.verification-cards-container:has(.verification-card:nth-child(7)) + .pagination-container,
+.paraf-cards-container:has(.paraf-card:nth-child(7)) + .pagination-container {
+  display: flex; /* Show pagination when more than 6 cards */
+}
+
+/* Fallback for browsers that don't support :has() */
+.pagination-container.show {
+  display: flex !important; /* Force show when JavaScript adds 'show' class */
+}
+
+/* JavaScript-controlled pagination visibility */
+.verification-cards-container.with-pagination,
+.paraf-cards-container.with-pagination {
+  grid-template-rows: repeat(2, 1fr); /* Maintain 2 rows for 6 cards */
+}
+
+.verification-cards-container.with-pagination + .pagination-container,
+.paraf-cards-container.with-pagination + .pagination-container {
+  display: flex !important; /* Show pagination when class is added */
+}
+
+/* ===== DROPDOWN BEHAVIOR CONTROL ===== */
+/* Ensure other cards maintain normal appearance when one dropdown is open */
+.verification-card:not(.dropdown-active),
+.paraf-card:not(.dropdown-active) {
+  transform: none; /* Keep normal transform */
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4); /* Keep normal shadow */
+  border-color: #374151; /* Keep normal border */
+  z-index: 1; /* Normal z-index */
+}
+
+/* Active dropdown card gets elevated appearance */
+.verification-card.dropdown-active,
+.paraf-card.dropdown-active {
+  transform: translateY(-8px) scale(1.02); /* Enhanced transform for active card */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6); /* Enhanced shadow for active card */
+  border-color: #8b5cf6; /* Highlighted border for active card */
+  z-index: 10; /* Higher z-index for active card */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Smooth transition */
+}
+
+/* Prevent other cards from being affected by dropdown state */
+.verification-cards-container .verification-card:not(.dropdown-active),
+.paraf-cards-container .paraf-card:not(.dropdown-active) {
+  position: relative; /* Ensure proper stacking */
+}
+
+/* ===== CARD DROPDOWN TOGGLE BEHAVIOR ===== */
+/* Add visual feedback when card is clicked */
+.verification-card,
+.paraf-card {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.verification-card:hover,
+.paraf-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 12px -2px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Ensure dropdown content is properly positioned */
+.verification-card .card-dropdown-content,
+.paraf-card .card-dropdown-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== DYNAMIC GRID ROWS BASED ON CONTENT ===== */
+/* Smart grid behavior - only show rows that have content */
+.verification-cards-container.auto-rows,
+.paraf-cards-container.auto-rows {
+  grid-template-rows: auto; /* Always use auto for dynamic content */
+  min-height: auto; /* Remove fixed height */
+}
+
+/* Force 1 row when less than 4 cards */
+.verification-cards-container.few-cards,
+.paraf-cards-container.few-cards {
+  grid-template-rows: auto;
+  grid-auto-rows: 0; /* Hide empty rows */
+  overflow: hidden; /* Prevent empty space */
+}
+
+/* Force 2 rows when 4-6 cards */
+.verification-cards-container.many-cards,
+.paraf-cards-container.many-cards {
+  grid-template-rows: repeat(2, 1fr);
+  grid-auto-rows: 0; /* Hide empty rows */
+}
+
+.pagination-info {
+  color: #9ca3af;
+  font-size: 14px;
+  margin-right: 20px;
+  font-weight: 500;
+}
+
+.pagination-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 20px;
+  background: rgba(31, 41, 55, 0.8);
+  border-radius: 8px;
+  border: 1px solid #374151;
+}
+
+.pagination-stats .total-items {
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pagination-stats .current-page-info {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.pagination-button {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  border-color: #6b7280;
+  transform: translateY(-1px);
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pagination-button.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #8b5cf6;
+  color: white;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-number {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  min-width: 40px;
+  text-align: center;
+}
+
+.pagination-number:hover {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  border-color: #6b7280;
+  transform: translateY(-1px);
+}
+
+.pagination-number.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  border-color: #8b5cf6;
+  color: white;
+}
+
+/* Loading state */
+.pagination-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+.pagination-loading::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #374151;
+  border-top: 2px solid #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.verification-card,
+.paraf-card {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #374151;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.verification-card::before,
+.paraf-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6, #10b981);
+  opacity: 0.8;
+}
+
+.verification-card:hover,
+.paraf-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  border-color: #6b7280;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #374151;
+}
+
+/* Card Actions Container */
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.primary-info {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f3f4f6;
+  margin: 0;
+  letter-spacing: -0.025em;
+}
+
+.secondary-info {
+  font-size: 16px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin: 4px 0 0 0;
+}
+
+/* Action Buttons */
+.btn-kirim-prominent {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-view-document {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-paraf-prominent {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-reject {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-kirim-prominent:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.6);
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+.btn-view-document:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.6);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.btn-paraf-prominent:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.6);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.btn-reject:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.6);
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.btn-kirim-prominent:active,
+.btn-view-document:active,
+.btn-paraf-prominent.paraf-approved {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.btn-paraf-prominent.paraf-approved:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.btn-paraf-prominent:active,
+.btn-reject:active {
+  transform: scale(0.98);
+}
+
+/* Card Content */
+.card-content {
+  /* Remove grid layout from card-content - let info-grid handle it */
+  margin-bottom: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Info grid layout - ensures 2 columns */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* Responsive info-grid - maintain 2 columns even on mobile */
+@media (max-width: 480px) {
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+  
+  .info-label {
+    font-size: 11px;
+  }
+  
+  .info-value {
+    font-size: 13px;
+  }
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e5e7eb;
+  word-break: break-word;
+}
+
+.info-value.empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Paraf status styling */
+.info-value.paraf-sudah {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.info-value.paraf-belum {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+.status-badge.dilanjutkan {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.status-badge.diajukan {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.status-badge.selesai {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+/* Card Footer */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #374151;
+  margin-top: 16px;
+}
+
+/* Footer Actions Container */
+.footer-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.tanggal-info {
+  font-size: 13px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tanggal-info::before {
+  content: '📅';
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .verification-cards-container {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .verification-card {
+    padding: 20px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .card-content {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .btn-kirim-prominent {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .verification-card {
+    padding: 16px;
+  }
+  
+  .primary-info {
+    font-size: 18px;
+  }
+  
+  .secondary-info {
+    font-size: 14px;
+  }
+}
+
+/* ===== CARD DROPDOWN CONTENT ===== */
+.card-dropdown-content {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #374151;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none; /* Hide dropdown by default */
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transform: translateY(-10px);
+}
+
+/* Show dropdown when active */
+.card-dropdown-content.active {
+  display: block !important;
+  opacity: 1 !important;
+  max-height: 2000px !important; /* Allow content to expand */
+  overflow: visible !important;
+  transform: translateY(0) !important;
+}
+
+.card-dropdown-content .dropdown-content-wrapper {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+/* Form styling in dropdown */
+.card-dropdown-content .form-group {
+  margin-bottom: 16px;
+}
+
+.card-dropdown-content .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.card-dropdown-content input[type="radio"] {
+  margin: 0;
+}
+
+.card-dropdown-content .sub-inputs {
+  margin-top: 8px;
+  padding-left: 24px;
+  display: block !important; /* Force show dropdown content */
+  opacity: 1 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.card-dropdown-content .sub-inputs input {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.8);
+  color: #e5e7eb;
+  font-size: 14px;
+}
+
+.card-dropdown-content .sub-inputs input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+/* Action buttons in dropdown */
+.card-dropdown-content .action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.card-dropdown-content .btn-save-verification,
+.card-dropdown-content .btn-send-to-paraf {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.card-dropdown-content .btn-save-verification {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.card-dropdown-content .btn-send-to-paraf {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.card-dropdown-content .btn-save-verification:hover,
+.card-dropdown-content .btn-send-to-paraf:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Document links */
+.card-dropdown-content .document-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 4px 8px 4px 0;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 6px;
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.card-dropdown-content .document-link:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+/* Signature preview */
+.card-dropdown-content .signature-preview img {
+  max-width: 200px;
+  max-height: 100px;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+/* Alert styling */
+.card-dropdown-content .alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-dropdown-content .alert-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+/* Section titles */
+.card-dropdown-content .section-title {
+  color: #f3f4f6;
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.card-dropdown-content .document-links-title {
+  color: #f3f4f6;
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+/* ===== FALLBACK: Traditional Table (Hidden by default) ===== */
+/* Hide traditional table when cards are used - but show for LTB */
+.main-content table.excel-table {
+  display: none; /* Hide traditional table when cards are used */
+  border-collapse: collapse;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6; /* slate-100 */
+  font-size: 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+}
+
+/* Show traditional table for LTB pages */
+.main-content table.excel-table#ltbBerkasTable {
+  display: table !important; /* Force show for LTB table */
+}
+
+/* Show traditional table for Peneliti Validasi pages */
+.main-content table.excel-table#penelitikasieTable {
+  display: table !important; /* Force show for Peneliti Validasi table */
+}
+
+/* Show traditional table for Peneliti Verifikasi pages */
+.main-content table.excel-table#penelitiverifikasiTable {
+  display: table !important; /* Force show for Peneliti Verifikasi table */
+}
+
+/* Show traditional table for Peneliti Paraf Kasie pages */
+.main-content table.excel-table#peneliti_paraf_kasie_Table {
+  display: table !important; /* Force show for Peneliti Paraf Kasie table */
+}
+
+/* LTB Specific Styling */
+.main-content #ltbBerkasTable {
+  display: table !important;
+  width: 100%;
+  margin: 20px 0;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+}
+
+/* Peneliti Validasi Specific Styling */
+.main-content #penelitikasieTable {
+  display: table !important;
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0; /* Remove extra margins since main-content handles positioning */
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+  box-sizing: border-box;
+  table-layout: fixed; /* Fixed table layout for better column control */
+}
+
+/* Peneliti Verifikasi Specific Styling */
+.main-content #penelitiverifikasiTable {
+  display: table !important;
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0; /* Remove extra margins since main-content handles positioning */
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+  box-sizing: border-box;
+  table-layout: fixed; /* Fixed table layout for better column control */
+}
+
+/* Peneliti Paraf Kasie Specific Styling */
+.main-content #peneliti_paraf_kasie_Table {
+  display: table !important;
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  margin: 0; /* Remove extra margins since main-content handles positioning */
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid #1f2937;
+  box-sizing: border-box;
+  table-layout: fixed; /* Fixed table layout for better column control */
+}
+
+.main-content #ltbBerkasTable thead th,
+.main-content #penelitikasieTable thead th,
+.main-content #penelitiverifikasiTable thead th,
+.main-content #peneliti_paraf_kasie_Table thead th {
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #374151;
+  padding: 12px 14px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  position: sticky;
+  top: 0;
+  z-index: 1; /* Reduced from 2 to 1 to avoid conflicts with modals */
+}
+
+.main-content #ltbBerkasTable tbody td,
+.main-content #penelitikasieTable tbody td,
+.main-content #penelitiverifikasiTable tbody td,
+.main-content #peneliti_paraf_kasie_Table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #1f2937;
+  color: #e5e7eb;
+  font-size: 13px;
+  word-break: break-word; /* Prevent text overflow in cells */
+  overflow-wrap: break-word; /* Additional word breaking support */
+  white-space: normal; /* Allow text wrapping */
+}
+
+.main-content #ltbBerkasTable tbody tr:nth-child(odd),
+.main-content #penelitikasieTable tbody tr:nth-child(odd),
+.main-content #penelitiverifikasiTable tbody tr:nth-child(odd),
+.main-content #peneliti_paraf_kasie_Table tbody tr:nth-child(odd) {
+  background-color: #0b0f1a;
+}
+
+.main-content #ltbBerkasTable tbody tr:nth-child(even),
+.main-content #penelitikasieTable tbody tr:nth-child(even),
+.main-content #penelitiverifikasiTable tbody tr:nth-child(even),
+.main-content #peneliti_paraf_kasie_Table tbody tr:nth-child(even) {
+  background-color: #0e1422;
+}
+
+.main-content #ltbBerkasTable tbody tr:hover,
+.main-content #penelitikasieTable tbody tr:hover,
+.main-content #penelitiverifikasiTable tbody tr:hover,
+.main-content #peneliti_paraf_kasie_Table tbody tr:hover {
+  background-color: #111827;
+  transition: background .2s ease;
+}
+
+/* Peneliti Validasi table column widths */
+.main-content #penelitikasieTable th:nth-child(1),
+.main-content #penelitikasieTable td:nth-child(1) {
+  width: 15%; /* No. Validasi */
+}
+
+.main-content #penelitikasieTable th:nth-child(2),
+.main-content #penelitikasieTable td:nth-child(2) {
+  width: 12%; /* No. Registrasi */
+}
+
+.main-content #penelitikasieTable th:nth-child(3),
+.main-content #penelitikasieTable td:nth-child(3) {
+  width: 15%; /* No. Booking */
+}
+
+.main-content #penelitikasieTable th:nth-child(4),
+.main-content #penelitikasieTable td:nth-child(4) {
+  width: 8%; /* Tahun AJB */
+}
+
+.main-content #penelitikasieTable th:nth-child(5),
+.main-content #penelitikasieTable td:nth-child(5) {
+  width: 15%; /* Status */
+}
+
+.main-content #penelitikasieTable th:nth-child(6),
+.main-content #penelitikasieTable td:nth-child(6) {
+  width: 20%; /* Pembuat Booking */
+}
+
+.main-content #penelitikasieTable th:nth-child(7),
+.main-content #penelitikasieTable td:nth-child(7) {
+  width: 15%; /* Aksi */
+}
+
+/* Ensure LTB table container is visible */
+.main-content .table-scroll {
+  display: block !important;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Peneliti Validasi table container styling */
+.paraf-validasi-page .main-content .table-scroll {
+  display: block !important;
+  width: 100%; /* Use full available width within main container */
+  max-width: 100%; /* Prevent overflow */
+  overflow-x: hidden; /* Remove horizontal scroll */
+  overflow-y: auto; /* Allow vertical scroll only */
+  margin: 0; /* Remove auto centering */
+  box-sizing: border-box;
+}
+
+/* Force visibility for LTB page elements */
+body:has(#ltbBerkasTable) .main-content table.excel-table {
+  display: table !important;
+}
+
+body:has(#ltbBerkasTable) .main-content .table-scroll {
+  display: block !important;
+}
+
+body:has(#ltbBerkasTable) .main-content .data-masuk {
+  display: table-row-group !important;
+}
+
+/* Additional LTB visibility fixes */
+.main-content:has(#ltbBerkasTable) table.excel-table {
+  display: table !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Fallback for browsers that don't support :has() */
+.ltb-page .main-content table.excel-table,
+.paraf-validasi-page .main-content table.excel-table {
+  display: table !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.ltb-page .main-content .table-scroll,
+.paraf-validasi-page .main-content .table-scroll {
+  display: block !important;
+}
+
+.ltb-page .main-content .data-masuk,
+.paraf-validasi-page .main-content .data-masuk {
+  display: table-row-group !important;
+}
+
+/* Peneliti Validasi page inherits main-content layout automatically */
+.paraf-validasi-page .main-content {
+  /* Inherits positioning from .main-content base class */
+  padding: 20px;
+  box-sizing: border-box;
+  /* Do NOT override margin-left, margin-right, width, max-width - use inherited values */
+}
+
+/* Responsive adjustments for Peneliti Validasi table */
+@media (max-width: 1200px) {
+  .paraf-validasi-page .main-content {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .paraf-validasi-page .main-content {
+    padding: 10px;
+  }
+  
+  .main-content #penelitikasieTable {
+    font-size: 12px;
+  }
+  
+  .main-content #penelitikasieTable th,
+  .main-content #penelitikasieTable td {
+    padding: 8px 10px;
+  }
+}
+
+/* ===== BANK PAGE STYLING ===== */
+/* Bank page specific styling */
+.bank-page {
+  color: #f3f4f6;
+  overflow-x: hidden; /* Prevent horizontal scroll on body */
+}
+
+.bank-page .main-content {
+  background: transparent;
+  /* Remove max-width and margin overrides - use inherited values */
+  padding: 20px;
+  box-sizing: border-box;
+  /* Do NOT override margin-left, margin-right, width, max-width - use inherited values */
+}
+
+/* Bank table specific styling */
+.bank-page .bank-table {
+  display: table !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 100%;
+  table-layout: auto;
+}
+
+.bank-page .table-scroll {
+  display: block !important;
+  overflow-x: auto; /* Enable horizontal scroll for table if needed */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure Bank page containers respect viewport */
+.bank-page .nav-tabs,
+.bank-page .table-toolbar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive adjustments for Bank page */
+@media (max-width: 768px) {
+  .bank-page .main-content {
+    padding: 15px;
+    /* Remove max-width override - use inherited values */
+  }
+  
+  .bank-page .bank-table {
+    min-width: 800px; /* Ensure table can scroll horizontally on mobile */
+  }
+}
+
+
+.main-content table.excel-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1; /* Reduced from 2 to 1 to avoid conflicts with modals */
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  color: #f3f4f6; /* slate-100 */
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #374151; /* slate-700 */
+  box-shadow: 0 1px 0 #1f2937; /* subtle divider */
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: 12px 14px;
+}
+
+.main-content table.excel-table th,
+.main-content table.excel-table td {
+  border: 1px solid #1f2937; /* slate-800 */
+  padding: 10px 12px;
+  vertical-align: middle;
+  background-clip: padding-box; /* crisper borders */
+}
+
+/* Zebra rows - DARK THEME */
+.main-content table.excel-table tbody tr:nth-child(odd) {
+  background-color: #0b0f1a;
+}
+
+.main-content table.excel-table tbody tr:nth-child(even) {
+  background-color: #0e1422;
+}
+
+/* Hover highlight - DARK THEME */
+.main-content table.excel-table tbody tr:hover {
+  background-color: #111827;
+  transition: background .2s ease;
+}
+.main-content .table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+.main-content .table-toolbar .search-input {
+  flex: 1;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  background: rgba(17, 24, 39, 0.8);
+  color: #f3f4f6;
+  transition: all 0.2s ease;
+}
+
+.main-content .table-toolbar .search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.main-content .table-toolbar .search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Button styling - DARK THEME */
+.btn-kirim-document {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-kirim-document:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.btn-kirim-document:disabled {
+  background: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* View Dokumen button */
+.btn-view-document {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.btn-view-document:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Table cell content styling */
+.main-content table.excel-table td {
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+/* Empty state styling */
+.main-content table.excel-table td:empty::before {
+  content: '-';
+  color: #9ca3af;
+}
+
+/* Rounded corners for table */
+.main-content table.excel-table thead tr:first-child th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.main-content table.excel-table thead tr:first-child th:last-child {
+  border-top-right-radius: 12px;
+}
+
+.main-content table.excel-table tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+.main-content table.excel-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 12px;
+}
+
+/* Status badges - DARK THEME */
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(0,0,0,.15);
+}
+
+.status-badge.diajukan {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border-color: #3b82f6;
+}
+
+.status-badge.dilanjutkan {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border-color: #22c55e;
+}
+
+.status-badge.selesai {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border-color: #10b981;
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+/* Action buttons in table */
+.main-content table.excel-table .action-cell {
+  text-align: center;
+  padding: 8px;
+}
+
+/* Loading state */
+.table-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.table-loading .spinner {
+  margin-right: 12px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.main-content .pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+}
+.main-content .pagination .page-btn {
+  min-width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+}
+.main-content .pagination .page-btn.active {
+  background: #0ea5e9; /* sky-500 */
+  color: #ffffff;
+  border-color: #0ea5e9;
+}
+.main-content .pagination .page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cell text behavior: prefer wrapping long tokens gracefully */
+.main-content table.excel-table th,
+.main-content table.excel-table td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+/* Compact badges (optional, reused across pages) */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.status-badge.success { background: #dcfce7; color: #166534; }
+.status-badge.warning { background: #fef9c3; color: #854d0e; }
+.status-badge.info { background: #e0f2fe; color: #075985; }
+.status-badge.error { background: #fee2e2; color: #991b1b; }
+
+/* Sticky footer shadow illusion when scrolled */
+.main-content .table-scroll:is(:hover, :focus-within) thead th {
+  box-shadow: 0 1px 0 #cbd5e1, 0 6px 8px -6px rgba(15, 23, 42, 0.15);
+}
+
+/* Ensure table headers don't interfere with modals */
+.main-content .table-scroll thead th {
+  z-index: 1 !important; /* Force low z-index for table headers */
+}
+
+/* ===== Moved table styles from table_design.css (unified) ===== */
+:root {
+  --primary-blue: #1a365d;
+  --secondary-blue: #2b6cb0;
+  --accent-gold: #d4af37;
+  --light-bg: #f8fafc;
+  --border-color: #e2e8f0;
+  --text-dark: #2d3748;
+  --text-light: #718096;
+}
+.table-container { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.08); overflow: hidden; margin: 20px 30px; border: 1px solid var(--border-color); }
+#KhususPPATbookingTable .table-header { display:flex; justify-content:space-between; align-items:center; padding:20px 25px; background: linear-gradient(90deg, var(--primary-blue) 0%, var(--secondary-blue) 100%); color:#fff; }
+#KhususPPATbookingTable .table-header h3 { margin:0; font-size:1.4rem; font-weight:600; }
+#KhususPPATbookingTable.table-controls { display:flex; gap:15px; align-items:center; }
+#KhususPPATbookingTable .table-footer {margin-top: 20px;display: flex;justify-content: center; width: 100%;}
+#KhususPPATbookingTable.buttonPage {display: flex;justify-content: center;width: 100%;}
+#KhususPPATbookingTable.list-button { display: flex;flex-wrap: wrap;gap: 8px;align-items: center;}
+#KhususPPATbookingTable.page-btn {  background: #4a6070; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500;cursor: pointer;transition: all 0.25s ease;min-width: 36px;text-align: center;}
+#KhususPPATbookingTable.page-btn:hover:not(:disabled) {background: #34495e;transform: translateY(-1px);}
+#KhususPPATbookingTable.page-btn:disabled {opacity: 0.4;cursor: not-allowed;}
+#KhususPPATbookingTable.page-btn.active {background: #16a34a; color: #fff;font-weight: 600;}
+@media (max-width: 480px) {
+  #KhususPPATbookingTable.page-btn { padding: 6px 10px; font-size: 13px;}}
+.search-box { position:relative; display:flex; align-items:center; }
+.search-box input { padding:8px 15px 8px 35px; border-radius:20px; border:none; background: rgba(255,255,255,.2); color:#fff; min-width:250px; transition:all .3s ease; }
+.search-box input::placeholder { color: rgba(255,255,255,.7); }
+.search-box input:focus { outline:none; background: rgba(255,255,255,.3); box-shadow:0 0 0 2px rgba(255,255,255,.2); }
+.search-icon { position:absolute; left:12px; color:#fff; font-size:14px; }
+.refresh-btn { background: rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.3); color:#fff; padding:8px 15px; border-radius:20px; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all .3s ease; }
+.refresh-btn:hover { background: rgba(255,255,255,.2); }
+
+.table-wrapper { overflow-x:auto; padding: 0 20px; }
+.luxury-table { width:100%; border-collapse:separate; border-spacing:0; margin:15px 0; font-size:.9rem; overflow:hidden; }
+.luxury-table thead { background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 100%); color:#fff; }
+.luxury-table thead tr:first-child th:first-child { border-top-left-radius:16px; padding-left:25px; }
+.luxury-table thead tr:first-child th:last-child { border-top-right-radius:16px; padding-right:25px; }
+.luxury-table thead th { background-color:#1a365d; color:#fff; padding:15px; border:none; position:sticky; top:0; }
+.luxury-table tbody tr { transition: all .2s ease; }
+.luxury-table tbody tr:hover { background-color: rgba(43,108,176,.05); }
+.luxury-table td { padding:12px 15px; border-bottom:1px solid var(--border-color); color: var(--text-dark); }
+.luxury-table tbody tr:last-child td { border-bottom:none; }
+.empty-message { text-align:center; color: var(--text-light); padding:30px !important; }
+.status-cell { display:inline-block; padding:4px 10px; border-radius:12px; font-size:.8rem; font-weight:500; }
+.status-pending { background:#fef3c7; color:#92400e; }
+.status-completed { background:#d1fae5; color:#065f46; }
+.status-rejected { background:#fee2e2; color:#991b1b; }
+.action-btn { background: var(--secondary-blue); color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; transition: all .2s ease; font-size:.8rem; }
+.action-btn:hover { background: var(--primary-blue); transform: translateY(-1px); }
+
+@media (max-width: 768px) {
+  .luxury-table { font-size:14px; }
+  .luxury-table th, .luxury-table td { padding:8px; }
+}
+
+/* ===== Legacy styles migrated from design_table/table_design.css (non-table UI) ===== */
+/* Note: Dropdown styles sudah dipindahkan ke dropdown-table.css */
+  
+
+/* Style untuk preview dan lainnya tetap sama seperti sebelumnya */
+.validation-alert {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    z-index: 1000;
+    max-width: 80%;
+}
+
+.missing-field {
+    background-color: #ffebee;
+    border: 1px solid #ffcdd2;
+}
+
+.validation-alert button {
+    margin-top: 15px;
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+
+/**//**/
+/* Tombol Trigger */
+.btn-signature-trigger {
+  background-color: #4a6fdc;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn-signature-trigger:hover {
+  background-color: #3a5bc7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Modal Overlay */
+.signature-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #495057;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.signature-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.signature-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.signature-upload h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 25px;
+  border: 2px dashed #ced4da;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-label:hover {
+  border-color: #4a6fdc;
+  background-color: #f0f5ff;
+}
+
+.upload-label i {
+  font-size: 2rem;
+  color: #4a6fdc;
+  margin-bottom: 10px;
+}
+
+.upload-label span {
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.signature-preview {
+  display: none;
+  position: relative;
+  margin-top: 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 10px;
+  background-color: #f8f9fa;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 40px;
+  display: block;
+  margin: 0 auto;
+}
+
+.clear-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.file-requirements {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #e2f0ff;
+  border-radius: 6px;
+  color: #2c3e50;
+  font-size: 0.85rem;
+}
+
+.file-requirements i {
+  color: #4a6fdc;
+  margin-right: 5px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #4a6fdc;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #3a5bc7;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.loading-indicator {
+  display: none;
+  margin-left: 8px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .modal-content {
+    width: 95%;
+  }
+  
+  .signature-upload-section {
+    gap: 20px;
+  }
+  
+  .upload-label {
+    padding: 20px;
+  }
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+}
+
+/* Form */
+form {
+    font-family: 'Montserrat', sans-serif; /* Pastikan font konsisten */    
+    gap: 10px;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #4c989f;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Untuk memastikan label dan input berada dalam satu grup yang teratur */
+.form-group {
+    display: flex;
+    flex-direction: column; /* Menyusun label di atas input */
+    gap: 5px; /* Menjaga jarak antar label dan input */
+}
+
+form label {
+    font-weight: bold;
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+}
+
+form input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+form input:focus {
+    border-color: #4A90E2;
+}
+
+form .short-input {
+    width: 60%; /* Lebar lebih pendek untuk input angka seperti Kode Pos, Tahun */
+}
+
+form button {
+    grid-column: span 4; /* Tombol memanjang di seluruh kolom */
+    background-color: #4A90E2;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+form button:hover {
+    background-color: #357ABD;
+}
+
+/* Styling untuk tiga input tanggal */
+.tanggal-inputs {
+    display: flex;
+    gap: 0; /* Menghapus gap antar inputan */
+    justify-content: space-between;
+}
+
+.tanggal-inputs input {
+    width: 30%; /* Mengatur lebar input agar lebih kecil dan saling berdekatan */
+    text-align: center;
+    margin: 0; /* Menghapus margin agar tidak ada jarak ekstra */
+}
+/* MIGRATED END */
+
+/* Data User Complete start */
+#datauser-complete .table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  margin-bottom: 80px;
+  margin-right: 20px;
+}
+
+/* Search box */
+#datauser-complete .search-box {
+  flex: 1;
+  max-width: 300px;
+  position: relative;
+}
+#datauser-complete .search-input {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+#datauser-complete .search-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+#datauser-complete .search-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+}
+#datauser-complete .search-box::before {
+  content: "🔍";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Filter dropdowns */
+#datauser-complete .filter-group {
+  display: flex;
+  gap: 12px;
+}
+#datauser-complete .filter-group select {
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+#datauser-complete .filter-group select:hover {
+  border-color: #2563eb;
+}
+#datauser-complete .filter-group select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,.25);
+}
+#datauser-complete .table-info-wrapper {
+  text-align: center;
+  margin-top: 12px;
+  margin-bottom: 5px;
+}
+
+#datauser-complete .table-info {
+  display: inline-block;
+  background: rgba(123, 147, 215, 0.37);
+  padding: 6px 150px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #151616; /* abu-abu terang */
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+
+#datauser-complete .table-responsive {
+  background: #0b0f1a;
+  border-radius: 16px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin-right: 20px;
+}
+
+/* Table Style */
+#datauser-complete-table.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #e5e7eb;
+}
+
+#datauser-complete-table thead th {
+  background: linear-gradient(180deg, #111827, #0b0f1a);
+  color: #c7d2fe;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid #1f2937;
+}
+
+#datauser-complete-table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid #1f2937;
+  font-size: 13px;
+}
+
+#datauser-complete-table tbody tr:hover {
+  background: #111827;
+  transition: background .2s ease;
+}
+
+/* Toolbar Controls */
+#datauser-complete .table-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: linear-gradient(180deg, #111827, #0b0f1a);
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+/* Input dan select */
+#datauser-complete .form-control {
+  background: #0b1220;
+  color: #f1f5f9;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 8px 12px;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+#datauser-complete .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .3);
+  outline: none;
+}
+
+/* Tombol */
+#datauser-complete .btn {
+  background: #0ea5e9;
+  color: white;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .2s ease, transform .2s ease;
+}
+#datauser-complete .btn:hover {
+  background: #0284c7;
+  transform: translateY(-1px);
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+.status-badge.success {
+  background: #193b2d;
+  color: #86efac;
+  border: 1px solid #14532d;
+}
+.status-badge.error {
+  background: #3f1d20;
+  color: #fecaca;
+  border: 1px solid #7f1d1d;
+}
+
+/* Pagination */
+#datauser-complete .pagination-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+#datauser-complete .pagination-controls .page-btn {
+  background: #111827;
+  color: #c7d2fe;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+#datauser-complete .pagination-controls .page-btn:hover {
+  background: #1e293b;
+}
+#datauser-complete .pagination-controls .page-btn.active {
+  background: #0ea5e9;
+  color: #fff;
+  border-color: #0ea5e9;
+}
+
+/* Badge divisi - palet berbeda per divisi */
+.badge { padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; display: inline-block; }
+.badge-admin { background: #1d4ed8; color: #e0e7ff; border: 1px solid #1e40af; }
+.badge-ppat { background: #0ea5e9; color: #e0f2fe; border: 1px solid #0369a1; }
+.badge-ppats { background: #f59e0b; color: #fff7ed; border: 1px solid #b45309; }
+.badge-ltb { background: #10b981; color: #ecfdf5; border: 1px solid #047857; }
+.badge-lsb { background: #8b5cf6; color: #ede9fe; border: 1px solid #6d28d9; }
+.badge-wp { background: #ef4444; color: #fee2e2; border: 1px solid #991b1b; }
+.badge-peneliti { background: #14b8a6; color: #ecfeff; border: 1px solid #0f766e; }
+.badge-peneliti-validasi { background: #0ea5e9; color: #e0f2fe; border: 1px solid #075985; }
+.badge-bank { background: #22c55e; color: #ecfdf5; border: 1px solid #16a34a; }
+
+/* Note: Action dropdown styles sudah dipindahkan ke dropdown-table.css */
+
+/*        */
+/* Overlay penuh layar */
+.overlay-edited {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(20, 20, 30, 0.6); /* soft gothic overlay */
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+}
+.overlay-edited.active{
+  display: flex;
+}
+
+/* Konten modal */
+.overlay-edited-content {
+  background: #f8f9fa; /* putih abu soft */
+  border-radius: 12px;
+  padding: 25px 30px;
+  max-width: 800px;
+  width: 90%;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Header modal */
+.overlay-edited-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding-bottom: 8px;
+}
+
+.overlay-edited-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #2c2c34; /* abu gelap */
+  font-weight: 600;
+}
+
+.close-btn-edited {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.3s;
+}
+.close-btn-edited:hover {
+  color: #4a6cf7;
+}
+
+/* Body form */
+.overlay-edited-body form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 20px;
+  margin-bottom: 20px;
+}
+
+.overlay-edited-body input[type="hidden"] {
+  grid-column: 1 / span 2;
+}
+
+/* Form group */
+.form-group-edited label {
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.form-control-edited {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  font-size: 14px;
+  background: #fff;
+  color: #222;
+  transition: all 0.3s ease;
+}
+.form-control-edited:focus {
+  outline: none;
+  border-color: #7b68ee; /* soft violet */
+  box-shadow: 0 0 0 2px rgba(123, 104, 238, 0.2);
+}
+
+/* Footer button */
+.overlay-edited-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+}
+
+.overlay-edited-footer .btn {
+  padding: 10px 25px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.overlay-edited-footer .btn-secondary {
+  background: #adb5bd;
+  color: #fff;
+}
+.overlay-edited-footer .btn-secondary:hover {
+  background: #868e96;
+}
+
+.overlay-edited-footer .btn-primary {
+  background: #7b68ee; /* soft violet */
+  color: white;
+}
+.overlay-edited-footer .btn-primary:hover {
+  background: #6757d0;
+}
+
+/* Confirmation modal */
+.modal-overlay-confirmation {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(20,20,30,0.7);
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content-confirmation {
+  background: #f9f9fb;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.modal-content-confirmation h3 {
+  color: #2c2c34;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.modal-content-confirmation p {
+  color: #555;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.modal-actions-confirmation {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.modal-actions-confirmation .btn-secondary {
+  background: #adb5bd;
+  color: white;
+}
+.modal-actions-confirmation .btn-secondary:hover {
+  background: #868e96;
+}
+
+.modal-actions-confirmation .btn-primary {
+  background: #7b68ee;
+  color: white;
+}
+.modal-actions-confirmation .btn-primary:hover {
+  background: #6757d0;
+}
+
+
+
+/* Data User Complete end */
+/*========================*/
+/* Data User Pending start */
+/* Container Cards */
+#datauser-pending .card {
+  background: #0b0f1a;
+  color: #0ea5e9;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+  margin-right: 20px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+#userForm {
+  display: none; /* default tersembunyi */
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s ease;
+}
+
+#userForm.show {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* Form Controls */
+#datauser-pending .form-control {
+  background: #0e1422;
+  color: #e5e7eb;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all .2s ease;
+  margin-right: 20px;
+}
+#datauser-pending .form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.25);
+  outline: none;
+}
+
+/* Buttons */
+#datauser-pending .form-actions {
+  margin-top: 8px;
+}
+#datauser-pending .btn-primary {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+#datauser-pending .btn-primary:hover {
+  background: #1d4ed8;
+}
+#datauser-pending .btn-secondary {
+  background: #374151;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 16px;
+}
+#datauser-pending .btn-secondary:hover {
+  background: #4b5563;
+}
+
+/* Table */
+#datauser-pending-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+#datauser-pending-table thead th {
+  background: linear-gradient(180deg,#111827 0%,#0b0f1a 100%);
+  color: #93c5fd; /* soft blue */
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+#datauser-pending-table td {
+  padding: 10px;
+  border-bottom: 1px solid #1f2937;
+  color: #e5e7eb;
+}
+#datauser-pending-table tbody tr:hover {
+  background: #111827;
+}
+
+/* Table info chip */
+#datauser-pending .table-info-wrapper {
+  text-align: center;
+  margin: 12px 0;
+}
+#datauser-pending .table-info {
+  display: inline-block;
+  background: #0e1422;
+  border: 1px solid #1f2937;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+/* Pagination */
+#datauser-pending .pagination-controls {
+  text-align: center;
+  margin-top: 10px;
+}
+#datauser-pending .pagination-controls .page-btn {
+  background: #0e1422;
+  border: 1px solid #1f2937;
+  color: #93c5fd;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 0 3px;
+  cursor: pointer;
+  transition: background .2s ease, transform .15s ease;
+}
+#datauser-pending .pagination-controls .page-btn:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+#datauser-pending .pagination-controls .page-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+/* Data User Pending end */
+/*========================*/
+/*========================*/
+/*========================*/
+/*BAGIAN*/
+/*Peneliti Start*/
+/* Verifikasi SSPD Start (Oleh Peneliti)*/
+
+/* --- TABLE --- */
+/* --- TABLE (Upgrade) --- */
+#penelitiverifikasiTable .table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  margin-right: 100px;
+  background: #fff;
+  border-radius: 12px; /* lebih bulat */
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* lebih lembut */
+}
+
+#penelitiverifikasiTable thead {
+  background: linear-gradient(135deg, #4a6070, #34495e);
+  color: #fff;
+}
+
+#penelitiverifikasiTable th,
+#penelitiverifikasiTable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+#penelitiverifikasiTable tbody tr:hover {
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+/* Note: Peneliti Verifikasi dropdown styles sudah dipindahkan ke dropdown-table.css */
+
+/* Verifikasi SSPD End (Oleh Peneliti)*/
+/*========================*/
+/*Paraf Kasie Start (Oleh Peneliti)*/
+#peneliti_paraf_kasie_Table {
+  opacity: 1;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 25px;
+  margin-left: 0; /* Remove negative margin that causes overflow */
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  table-layout: fixed; /* Fixed table layout for better column control */
+  box-sizing: border-box;
+}
+
+#peneliti_paraf_kasie_Table thead {
+  background: #4a6070;
+  color: #fff;
+}
+
+#peneliti_paraf_kasie_Table th,
+#peneliti_paraf_kasie_Table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e2e2e2;
+  word-break: break-word; /* Prevent text overflow in cells */
+  overflow-wrap: break-word; /* Additional word breaking support */
+  white-space: normal; /* Allow text wrapping */
+}
+
+#peneliti_paraf_kasie_Table tbody tr:hover {
+  background: #f1f1f5;
+  cursor: pointer;
+}
+
+/* Note: Peneliti Paraf Kasie dropdown styles sudah dipindahkan ke dropdown-table.css */
+/* Overlay dasar */
+
+
+/* Kalau aktif → muncul */
+#peneliti_paraf_kasie_Table .overlay-sign.active,
+#peneliti_paraf_kasie_Table .overlay-sign-confirmed.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Konten dalam overlay */
+#peneliti_paraf_kasie_Table .overlay-content-sign,
+#peneliti_paraf_kasie_Table .overlay-content-sign-confirmed {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 10px;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  animation: scaleUp 0.3s ease;
+}
+
+/* Animasi scale saat muncul */
+@keyframes scaleUp {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Styling tombol */
+#peneliti_paraf_kasie_Table button {
+  margin: 10px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#peneliti_paraf_kasie_Table button:hover {
+  opacity: 0.9;
+}
+
+#peneliti_paraf_kasie_Table #close_batal_overlay,
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan_batal_overlay {
+  background: #bbb;
+}
+
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan,
+#peneliti_paraf_kasie_Table #Tambahkan_tandatangan_confirmed {
+  background: #4a6070;
+  color: #fff;
+}
+/* Paraf Kasie End (Oleh Peneliti)*/
+/*========================*/
+/*========================*/
+/*BAGIAN*/
+/*LSB Start*/
+/* Pelayanan Penyerahan SSPD Start*/
+/* MAIN WRAPPER */
+#pelayanan_penyerahan_sspd_design {
+  padding: 20px;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* BUTTON STYLE */
+#pelayanan_penyerahan_sspd_design .btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+#pelayanan_penyerahan_sspd_design .btn.viewpdf {
+  background: #2563eb; /* soft blue */
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  margin-bottom: 15px;
+}
+
+#pelayanan_penyerahan_sspd_design .btn.viewpdf:hover {
+  background: #1e4ed8;
+}
+
+/* TABLE WRAPPER */
+#LSBTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* HEADER */
+#LSBTable thead {
+  background: #4b5563; /* slate grey */
+  color: #fff;
+}
+
+#LSBTable th {
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* BODY */
+#LSBTable td {
+  padding: 12px 15px;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* HOVER ROW */
+#LSBTable tbody tr:hover {
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+/* Note: LSB dropdown styles sudah dipindahkan ke dropdown-table.css */
+
+/* Pelayanan Penyerahan SSPD End*/
+/* LSB End*/
+
+/* ================================ */
+/* BUTTONS BELOW DATE STYLING */
+/* ================================ */
+
+/* Card actions below date styling */
+.card-actions-below-date {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* ================================ */
+/* SECTION DIVIDERS & CLEAR GROUPS */
+/* ================================ */
+
+/* Section dividers for clear separation */
+.section-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #374151 50%, transparent 100%);
+    margin: 12px 0;
+    opacity: 0.6;
+}
+
+/* Header content styling */
+.header-content {
+    text-align: center;
+    padding: 16px;
+}
+
+/* Info grid layout - consolidated with existing .info-grid above */
+
+/* Date section styling */
+.date-section {
+    padding: 12px 16px;
+    text-align: center;
+    background: rgba(55, 65, 81, 0.3);
+    border-radius: 8px;
+    margin: 0 16px;
+}
+
+.tanggal-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.calendar-icon {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+.date-text {
+    font-size: 14px;
+    color: #d1d5db;
+    font-weight: 500;
+}
+
+/* Action groups styling */
+.action-group {
+    margin: 12px 0;
+    padding: 0 16px;
+}
+
+.view-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.view-group .btn-view-document {
+    width: 100%;
+    max-width: 200px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+}
+
+.view-group .btn-view-document:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.status-actions-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.status-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.button-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.button-section .btn-paraf-prominent,
+.button-section .btn-reject {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+}
+
+.button-section .btn-paraf-prominent {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.button-section .btn-paraf-prominent:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.button-section .btn-reject {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.button-section .btn-reject:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.card-actions-below-date .btn-view-document,
+.card-actions-below-date .btn-kirim-prominent,
+.card-actions-below-date .btn-paraf-prominent,
+.card-actions-below-date .btn-pejabat-validation {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 80px;
+    justify-content: center;
+}
+
+.card-actions-below-date .btn-view-document {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.card-actions-below-date .btn-view-document:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.card-actions-below-date .btn-kirim-prominent {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.card-actions-below-date .btn-kirim-prominent:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.card-actions-below-date .btn-kirim-prominent:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.card-actions-below-date .btn-paraf-prominent {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.card-actions-below-date .btn-paraf-prominent:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.card-actions-below-date .btn-paraf-prominent:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.card-actions-below-date .btn-pejabat-validation {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.card-actions-below-date .btn-pejabat-validation:hover {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+.card-actions-below-date .btn-pejabat-validation:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-actions-below-date {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .card-actions-below-date .btn-view-document,
+    .card-actions-below-date .btn-kirim-prominent {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* Ensure proper spacing between rows */
+.verification-card .card-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.verification-card .card-actions-below-date {
+    order: 2;
+}
+
+.verification-card .footer-actions {
+    order: 3;
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Button Simpan Verifikasi styling in footer-actions */
+.footer-actions .btn-save-verification {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.footer-actions .btn-save-verification:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.footer-actions .btn-save-verification:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+
+/* ================================ */
+/* PEJABAT VALIDATION BUTTON STYLING */
+/* ================================ */
+
+.btn-pejabat-validation {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.btn-pejabat-validation:hover {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+}
+
+.btn-pejabat-validation:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/*========================*/
+/*========================*/

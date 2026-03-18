@@ -1,0 +1,279 @@
+No
+Nama Activity Diagram
+Deskripsi Lengkap
+Lampiran
+1
+Login dan Register
+Aktor: User, Sistem.
+Alur: Proses login dan registrasi dengan OTP verification, validasi password, serta session management.
+Lampiran 1 - Activity Diagram Login & Register
+Lampiran 2 - Halaman Login
+Lampiran 3 - Halaman Registrasi
+2
+Create Booking
+Aktor: PPAT/PPATS, Sistem.
+Alur: Pembuatan booking SSPD melalui pengisian data wajib pajak, pemilik objek pajak, perhitungan NJOP, data objek pajak, validasi input, dan penyimpanan data.
+(Activity Diagram dijelaskan di Bab Hasil & Pembahasan)
+Lampiran 1 - Form Create Booking
+Lampiran 2 - Detail Objek Pajak
+3
+Generate No. Booking
+Aktor: Database Trigger, Sistem.
+Alur: Generate nomor booking otomatis menggunakan trigger (BEFORE INSERT) dengan format ppat_khusus-YYYY-000001.
+(Activity Diagram dijelaskan di Bab Hasil & Pembahasan)
+4
+Add Manual Signature
+Aktor: PPAT/PPATS, Sistem.
+Alur: Upload tanda tangan manual, validasi file (JPG/PNG maksimal 2MB), preview, dan penyimpanan.
+Lampiran 3 - Activity Diagram Add Manual Signature
+Lampiran 4 - Halaman Upload Tanda Tangan
+5
+Upload Document
+Aktor: PPAT/PPATS, Sistem.
+Alur: Upload dokumen pendukung (Akta, Sertifikat, Pelengkap), validasi tipe dokumen dan ukuran file, penyimpanan dengan metadata.
+(Activity Diagram dijelaskan di Bab Hasil & Pembahasan)
+Lampiran 5 - Halaman Upload Dokumen Pendukung
+6
+PPAT Delete Document
+Aktor: PPAT/PPATS, Sistem.
+Alur: Penghapusan dokumen yang sudah diupload dengan validasi ownership dan status booking (hanya status Draft yang bisa dihapus), hapus dari storage dan database, update booking.
+Lampiran 6 - Activity Diagram PPAT Delete Document
+Lampiran 7 - Halaman Delete Document
+7
+PPAT View Document (Uploaded)
+Aktor: PPAT/PPATS, Sistem.
+Alur: Melihat dokumen yang sudah diupload (Akta, Sertifikat, Pelengkap) dengan preview di browser.
+Lampiran 8 - Activity Diagram PPAT View Document (Uploaded)
+Lampiran 9 - Halaman View Uploaded Document
+8
+PPAT View Generated PDF SSPD
+Aktor: PPAT/PPATS, Sistem.
+Alur: Melihat dokumen SSPD yang digenerate oleh sistem dalam format PDF melalui endpoint generate-pdf-bookingsspd.
+Lampiran 10 - Activity Diagram PPAT View Generated PDF SSPD
+Lampiran 11 - Halaman View PDF SSPD
+9
+PPAT View Generated PDF Permohonan Validasi
+Aktor: PPAT/PPATS, Sistem.
+Alur: Melihat dokumen Permohonan Validasi yang digenerate oleh sistem dalam format PDF melalui endpoint generate-pdf-mohon-validasi.
+Lampiran 12 - Activity Diagram PPAT View Generated PDF Permohonan Validasi
+Lampiran 13 - Halaman View PDF Permohonan Validasi
+10
+Add Validasi Tambahan
+Aktor: PPAT/PPATS, Sistem.
+Alur: Penambahan validasi tambahan berupa keterangan dan dokumen opsional.
+Lampiran 14 - Activity Diagram Add Validasi Tambahan
+Lampiran 15 - Halaman Validasi Tambahan
+11
+LTB Receive from PPAT
+Aktor: PPAT/PPATS, LTB, Sistem.
+Alur: Pengiriman booking ke LTB, validasi kelengkapan berkas, update status proses, insert ke ltb_1_terima_berkas_sspd.
+(Activity Diagram dijelaskan di Bab Hasil & Pembahasan)
+Lampiran 16 - Halaman Kirim ke LTB
+Lampiran 17 - Tampilan Laman LTB Receive Doc
+41
+PPAT Fill Form Permohonan Validasi
+Aktor: PPAT/PPATS, Sistem.
+Alur: Mengisi formulir permohonan validasi (data alamat pemohon, kampung OP, kelurahan OP, kecamatan OP), validasi form, dan menyimpan ke pat_8_validasi_tambahan.
+Lampiran 18 - Activity Diagram PPAT Fill Form Permohonan Validasi
+Lampiran 19 - Halaman Fill Form Permohonan Validasi
+12
+LTB Generate No. Registrasi
+Aktor: LTB, Sistem.
+Alur: Generate nomor registrasi otomatis dengan format YYYYO00001 menggunakan query MAX sequence.
+Lampiran 20 - Activity Diagram LTB Generate No. Registrasi
+13
+LTB Validate Document
+Aktor: LTB, Sistem.
+Alur: Review dokumen (Akta, Sertifikat, Tanda Tangan), cek kelengkapan dan konsistensi data sebelum Accept/Reject.
+Lampiran 21 - Activity Diagram LTB Validate Document
+Lampiran 22 - Halaman Validasi Dokumen LTB
+14
+LTB Accept
+Aktor: LTB, Sistem.
+Alur: Penentuan status diterima, insert ke p_1_verifikasi, update status di ltb_1_terima_berkas_sspd dan pat_1_bookingsspd, dan notifikasi ke Peneliti.
+Lampiran 23 - Activity Diagram LTB Accept
+Lampiran 24 - Halaman Status Accept
+15
+LTB Reject
+Aktor: LTB, Sistem.
+Alur: Penentuan status ditolak, penyimpanan alasan penolakan, update status di ltb_1_terima_berkas_sspd dan pat_1_bookingsspd, dan notifikasi ke PPAT.
+Lampiran 25 - Activity Diagram LTB Reject
+Lampiran 26 - Halaman Status Reject
+16
+Peneliti Receive from LTB
+Aktor: Peneliti, Sistem.
+Alur: Peneliti menerima notifikasi dari LTB, membuka booking yang diterima, melihat booking yang perlu diverifikasi dari p_1_verifikasi.
+Lampiran 27 - Activity Diagram Peneliti Receive from LTB
+Lampiran 28 - Dashboard Peneliti Verifikasi
+Lampiran 29 - Halaman Receive from LTB
+17
+Peneliti View Document
+Aktor: Peneliti, Sistem.
+Alur: Melihat dokumen yang perlu diverifikasi (dokumen uploaded, generated PDF SSPD) dengan preview di browser.
+Lampiran 30 - Activity Diagram Peneliti View Document
+Lampiran 31 - Halaman View Document Peneliti
+18
+Peneliti Verifikasi
+Aktor: Peneliti, Sistem.
+Alur: Memverifikasi dokumen, menambahkan tanda tangan manual, drop gambar tanda tangan, update p_2_verif_sign dan p_1_verifikasi, dan mengirim ke Clear to Paraf.
+Lampiran 32 - Activity Diagram Peneliti Verifikasi
+Lampiran 33 - Halaman Verifikasi Peneliti
+Lampiran 34 - Tampilan Laman Peneliti tahap Verifikasi
+19
+Peneliti Persetujuan Paraf
+Aktor: Peneliti, Sistem.
+Alur: Memilih radio button "Setujui Paraf" setelah verifikasi dokumen selesai, validasi tanda tangan sudah ada, update p_1_verifikasi.
+Lampiran 35 - Activity Diagram Peneliti Persetujuan Paraf
+Lampiran 36 - Halaman Persetujuan Paraf
+20
+Peneliti Pemilihan
+Aktor: Peneliti, Sistem.
+Alur: Memilih opsi pemilihan (Penghitung Wajib Pajak, STPD Kurang Bayar, Dihitung Sendiri, Lainnya Penghitung WP), update p_1_verifikasi.
+Lampiran 37 - Activity Diagram Peneliti Pemilihan
+Lampiran 38 - Halaman Pemilihan Peneliti
+21
+Peneliti Send to Clear to Paraf
+Aktor: Peneliti, Sistem.
+Alur: Mengirim hasil verifikasi ke Clear to Paraf dengan validasi kelengkapan data (persetujuan & pemilihan), update p_2_verif_sign, p_1_verifikasi, insert ke p_3_clear_to_paraf, update pat_1_bookingsspd, dan notifikasi.
+Lampiran 39 - Activity Diagram Peneliti Send to Clear to Paraf
+Lampiran 40 - Halaman Send to Clear to Paraf
+22
+Peneliti Reject
+Aktor: Peneliti, Sistem.
+Alur: Menolak booking dengan mengisi alasan penolakan, update p_1_verifikasi dan pat_1_bookingsspd, dan notifikasi ke PPAT.
+Lampiran 41 - Activity Diagram Peneliti Reject
+Lampiran 42 - Halaman Peneliti Reject
+23
+Generate No. Validasi
+Aktor: Sistem.
+Alur: Generate nomor validasi otomatis dengan format 8acak-3acak ketika Clear to Paraf mengirim ke Peneliti Validasi, update pat_7_validasi_surat.
+Lampiran 43 - Activity Diagram Generate No. Validasi
+24
+Peneliti Paraf Receive
+Aktor: Peneliti (Paraf), Sistem.
+Alur: Peneliti Paraf menerima notifikasi dari Peneliti, membuka booking, melihat booking yang diterima dari p_3_clear_to_paraf (Status: Pending).
+Lampiran 44 - Activity Diagram Peneliti Paraf Receive
+Lampiran 45 - Dashboard Peneliti Paraf
+Lampiran 46 - Halaman Receive Peneliti Paraf
+25
+Peneliti Paraf View Document
+Aktor: Peneliti (Paraf), Sistem.
+Alur: Melihat dokumen yang sudah diverifikasi (dokumen uploaded, generated PDF SSPD) dengan preview di browser.
+Lampiran 47 - Activity Diagram Peneliti Paraf View Document
+Lampiran 48 - Halaman View Document Peneliti Paraf
+26
+Peneliti Paraf Give Paraf
+Aktor: Peneliti (Paraf), Sistem.
+Alur: Upload paraf dan stempel (drop gambar), validasi file (JPG/PNG maksimal 2MB), penyimpanan ke secure storage, dan update p_3_clear_to_paraf.
+Lampiran 49 - Activity Diagram Peneliti Paraf Give Paraf
+Lampiran 50 - Halaman Give Paraf
+Lampiran 51 - Proses Paraf
+27
+Peneliti Paraf Send to Validasi
+Aktor: Peneliti (Paraf), Sistem.
+Alur: Mengirim ke Peneliti Validasi dengan validasi kelengkapan paraf, update p_3_clear_to_paraf, insert ke pv_1_paraf_validate, update pat_1_bookingsspd, dan notifikasi.
+Lampiran 52 - Activity Diagram Peneliti Paraf Send to Validasi
+Lampiran 53 - Halaman Send to Peneliti Validasi
+28
+Peneliti Paraf Reject
+Aktor: Peneliti (Paraf), Sistem.
+Alur: Menolak booking dengan mengisi alasan penolakan, update p_3_clear_to_paraf dan pat_1_bookingsspd, dan notifikasi ke PPAT.
+Lampiran 54 - Activity Diagram Peneliti Paraf Reject
+Lampiran 55 - Halaman Peneliti Paraf Reject
+29
+Peneliti Validasi Receive
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Peneliti Validasi menerima notifikasi dari Clear to Paraf, membuka booking, melihat booking yang diterima dari pv_1_paraf_validate (Status: Pending).
+Lampiran 56 - Activity Diagram Peneliti Validasi Receive
+Lampiran 57 - Dashboard Peneliti Validasi
+Lampiran 58 - Halaman Receive Peneliti Validasi
+30
+Peneliti Validasi View Document
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Melihat dokumen yang sudah diparaf (dokumen uploaded, generated PDF SSPD) dengan preview di browser.
+Lampiran 59 - Activity Diagram Peneliti Validasi View Document
+Lampiran 60 - Halaman View Document Peneliti Validasi
+31
+Peneliti Validasi Final Validation
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Melakukan final validation dengan mereview dokumen yang sudah diparaf, menentukan valid/tidak valid, dan menyimpan hasil validasi ke pv_1_paraf_validate.
+Lampiran 61 - Activity Diagram Peneliti Validasi Final Validation
+Lampiran 62 - Halaman Final Validation
+Lampiran 63 - Tampilan Laman tahap Pejabat
+32
+Peneliti Validasi Manual Signature
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Menambahkan tanda tangan manual, drop gambar tanda tangan, validasi file (JPG/PNG maksimal 2MB), penyimpanan ke secure storage, dan update pv_1_paraf_validate.
+Lampiran 64 - Activity Diagram Peneliti Validasi Manual Signature
+Lampiran 65 - Halaman Upload Tanda Tangan Peneliti Validasi
+33
+Peneliti Validasi View QR Code
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Melihat QR Code (hanya pajangan - tidak fungsional di Iterasi 1, tidak ada generate QR code).
+Lampiran 66 - Activity Diagram Peneliti Validasi View QR Code
+Lampiran 67 - Halaman View QR Code (Pajangan)
+34
+Peneliti Validasi Send to LSB
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Mengirim ke LSB dengan validasi kelengkapan data (validasi & tanda tangan), update pv_1_paraf_validate, insert ke lsb_1_serah_berkas, update pat_1_bookingsspd, dan notifikasi.
+Lampiran 68 - Activity Diagram Peneliti Validasi Send to LSB
+Lampiran 69 - Halaman Send to LSB
+35
+Peneliti Validasi Reject
+Aktor: Peneliti Validasi (Pejabat), Sistem.
+Alur: Menolak booking dengan mengisi alasan penolakan, update pv_1_paraf_validate dan pat_1_bookingsspd, dan notifikasi ke PPAT.
+Lampiran 70 - Activity Diagram Peneliti Validasi Reject
+Lampiran 71 - Halaman Peneliti Validasi Reject
+36
+LSB Receive from Peneliti Validasi
+Aktor: Peneliti Validasi (Pejabat), LSB, Sistem.
+Alur: Peneliti Validasi mengirim dokumen ke LSB, dilakukan validasi akhir sebelum pengiriman, update status proses, insert ke lsb_1_serah_berkas dengan status 'Pending Handover', update pv_1_paraf_validate dan pat_1_bookingsspd.
+Lampiran 72 - Activity Diagram LSB Receive from Peneliti Validasi
+Lampiran 73 - Halaman Pengiriman ke LSB
+Lampiran 74 - Tampilan Laman LSB Receive Doc
+37
+LSB Manual Handover
+Aktor: LSB, PPAT/PPATS, Sistem.
+Alur: Serah terima dokumen dari LSB ke PPAT, verifikasi identitas PPAT dan dokumen fisik, update lsb_1_serah_berkas dan pat_1_bookingsspd.
+Lampiran 75 - Activity Diagram LSB Manual Handover
+Lampiran 76 - Halaman Serah Terima Dokumen
+38
+LSB Update Status
+Aktor: LSB, Sistem.
+Alur: Update status pasca handover menjadi Diserahkan, update lsb_1_serah_berkas dan pat_1_bookingsspd (trackstatus='Diserahkan'), update pv_1_paraf_validate, dan notifikasi ke PPAT.
+Lampiran 77 - Activity Diagram LSB Update Status
+Lampiran 78 - Halaman Status Diserahkan
+39
+Admin Monitor Process
+Aktor: Admin, Sistem.
+Alur: Admin memantau seluruh proses melalui dashboard, melihat status booking, statistik, dan analytics.
+Lampiran 79 - Activity Diagram Admin Monitor Process
+Lampiran 80 - Dashboard Admin
+40
+Admin Send Ping Notifications
+Aktor: Admin, Sistem.
+Alur: Admin mengirim notifikasi pengingat melalui sistem (long polling) dan email kepada pengguna terkait dengan pemilihan penerima dan penyusunan pesan.
+Lampiran 81 - Activity Diagram Admin Send Ping Notifications
+Lampiran 82 - Halaman Kirim Notifikasi
+
+---
+
+RINGKASAN:
+Total Activity Diagram: 41 Activity Diagram
+- Activity Diagram di Lampiran: 37 Activity Diagram
+- Activity Diagram di Bab Hasil & Pembahasan (Tidak Masuk Lampiran): 4 Activity Diagram (No 2, 3, 5, 11)
+Total Lampiran: 82 Lampiran
+- Activity Diagram di Lampiran: 37 lampiran
+- Tampilan Website: 45 lampiran
+
+Catatan:
+- Format: Activity Diagram selalu ditempatkan terlebih dahulu, diikuti tampilan website terkait
+- Prinsip: 1 fitur = 1 Activity Diagram (semua sudah dipisah)
+- 4 Activity Diagram dikhususkan dijelaskan di Bab Hasil & Pembahasan (tidak masuk lampiran):
+  * No 2: Create Booking
+  * No 3: Generate No. Booking
+  * No 5: Upload Document
+  * No 11: LTB Receive from PPAT
+- Accept dan Reject dipisah menjadi Activity Diagram terpisah untuk LTB, Peneliti, Peneliti Paraf, dan Peneliti Validasi
+- View Document dipisah berdasarkan jenis dokumen (Uploaded, Generated PDF SSPD, Generated PDF Permohonan Validasi) untuk PPAT, Peneliti, Peneliti Paraf, dan Peneliti Validasi
+- Activity 41 (PPAT Fill Form Permohonan Validasi) ditambahkan sebagai Activity Diagram baru

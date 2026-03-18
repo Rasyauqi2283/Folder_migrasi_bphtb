@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_24_Peneliti_View_Document" name="Activity 24: Peneliti View Document (Swimlane)">
+    <mxGraphModel dx="1226" dy="661" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_peneliti" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="Peneliti" vertex="1">
+          <mxGeometry height="620" width="480" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_peneliti" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="230" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_open_booking" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;" value="Membuka Booking untuk Dilihat" vertex="1">
+          <mxGeometry height="50" width="260" x="120" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_select_doc_type" parent="swimlane_peneliti" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Memilih Jenis Dokumen?" vertex="1">
+          <mxGeometry height="80" width="200" x="150" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_view_uploaded" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;" value="Melihat Dokumen yang Di-upload&#xa;(Akta, Sertifikat, Pelengkap)" vertex="1">
+          <mxGeometry height="60" width="200" x="260" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_view_sspd" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;" value="Melihat Dokumen SSPD&#xa;(Generated PDF)" vertex="1">
+          <mxGeometry height="70" width="240" x="130" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="peneliti_view_result" parent="swimlane_peneliti" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;" value="Melihat Preview Dokumen" vertex="1">
+          <mxGeometry height="50" width="190" x="150" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="620" width="560" x="520" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_booking" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Data Booking&#xa;(pat_1_bookingsspd)" vertex="1">
+          <mxGeometry height="60" width="200" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_uploaded_docs" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Dokumen Uploaded&#xa;(akta_tanah_path, sertifikat_tanah_path,&#xa;pelengkap_path dari storage)" vertex="1">
+          <mxGeometry height="90" width="200" x="20" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_sspd" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Generate PDF SSPD&#xa;(Validasi_lanjutan-generate-pdf-bookingsspd)" vertex="1">
+          <mxGeometry height="70" width="200" x="50" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_uploaded" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Dokumen Uploaded&#xa;(Preview di browser)" vertex="1">
+          <mxGeometry height="70" width="200" x="330" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_sspd" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan PDF SSPD&#xa;(Stream PDF ke browser)" vertex="1">
+          <mxGeometry height="70" width="200" x="330" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="peneliti_open_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="peneliti_open_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="sys_get_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="peneliti_select_doc_type" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="200" />
+              <mxPoint x="500" y="200" />
+              <mxPoint x="500" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="peneliti_select_doc_type" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="peneliti_view_uploaded" value="Dokumen Uploaded">
+          <mxGeometry relative="1" x="-0.25" as="geometry">
+            <mxPoint y="-1" as="offset" />
+            <Array as="points">
+              <mxPoint x="390" y="330" />
+              <mxPoint x="400" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="peneliti_select_doc_type" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;entryX=0;entryY=0;exitDx=0;exitDy=0;" target="peneliti_view_sspd" value="Dokumen SSPD">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="90" y="310" />
+              <mxPoint x="90" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="peneliti_view_uploaded" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_uploaded_docs" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="sys_get_uploaded_docs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_show_uploaded" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_show_uploaded" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=1;entryY=0.75;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="peneliti_view_result" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="275" />
+              <mxPoint x="1060" y="600" />
+              <mxPoint x="420" y="600" />
+              <mxPoint x="420" y="628" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="peneliti_view_sspd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_generate_sspd" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="515" />
+              <mxPoint x="530" y="375" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_generate_sspd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_show_sspd" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="sys_show_sspd" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="peneliti_view_result" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="440" />
+              <mxPoint x="540" y="440" />
+              <mxPoint x="540" y="570" />
+              <mxPoint x="390" y="570" />
+              <mxPoint x="390" y="603" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="peneliti_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="R2wBEFwSsJWWQfr4qkqf-2" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Peneliti View Document&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Process&lt;/span&gt;" vertex="1">
+          <mxGeometry height="644" width="1040" x="40" y="16" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="R2wBEFwSsJWWQfr4qkqf-2" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="40" y="600" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

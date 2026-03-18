@@ -1,0 +1,159 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="E-BPHTB-Activity-Iterasi3" name="E-BPHTB Activity Iterasi 3">
+    <mxGraphModel dx="1042" dy="562" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;strokeColor=#000000;fillColor=#ffffff;" value="Mulai Hari Kerja" vertex="1">
+          <mxGeometry height="60" width="120" x="400" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="reset-counter" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#2E7D32;fillColor=#E8F5E8;" value="Reset Daily Counter (0/80)" vertex="1">
+          <mxGeometry height="60" width="160" x="380" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="berkas-masuk" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#1976D2;fillColor=#E3F2FD;" value="Berkas Masuk dari PPAT" vertex="1">
+          <mxGeometry height="60" width="160" x="380" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="cek-counter" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#F57C00;fillColor=#FFF3E0;" value="Cek Daily Counter" vertex="1">
+          <mxGeometry height="80" width="140" x="390" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="counter-ok" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#D32F2F;fillColor=#FFEBEE;" value="Counter &lt; 80?" vertex="1">
+          <mxGeometry height="80" width="140" x="390" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="proses-langsung" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#388E3C;fillColor=#E8F5E8;" value="Proses Berkas Langsung" vertex="1">
+          <mxGeometry height="60" width="160" x="200" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="increment-counter" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#7B1FA2;fillColor=#F3E5F5;" value="Counter +1" vertex="1">
+          <mxGeometry height="60" width="160" x="200" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="masuk-antrian" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#5D4037;fillColor=#EFEBE9;" value="Masuk Antrian (ppat_send_queue)" vertex="1">
+          <mxGeometry height="60" width="180" x="580" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="schedule-next" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#5D4037;fillColor=#EFEBE9;" value="Schedule untuk Hari Berikutnya" vertex="1">
+          <mxGeometry height="60" width="180" x="580" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="cek-antrian" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#F57C00;fillColor=#FFF3E0;" value="Cek Antrian Hari Ini" vertex="1">
+          <mxGeometry height="60" width="160" x="380" y="790" as="geometry" />
+        </mxCell>
+        <mxCell id="ada-antrian" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#D32F2F;fillColor=#FFEBEE;" value="Ada Berkas di Antrian?" vertex="1">
+          <mxGeometry height="80" width="140" x="390" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="proses-antrian" parent="1" style="shape=rectangle;whiteSpace=wrap;html=1;rounded=1;strokeColor=#388E3C;fillColor=#E8F5E8;" value="Proses Berkas dari Antrian" vertex="1">
+          <mxGeometry height="60" width="160" x="200" y="1010" as="geometry" />
+        </mxCell>
+        <mxCell id="jam-selesai" parent="1" style="shape=rhombus;whiteSpace=wrap;html=1;rounded=1;strokeColor=#D32F2F;fillColor=#FFEBEE;" value="Jam Kerja Selesai? (16:10)" vertex="1">
+          <mxGeometry height="80" width="140" x="390" y="1110" as="geometry" />
+        </mxCell>
+        <mxCell id="EdgT4RoaNm7S_qPJdhZx-2" edge="1" parent="1" source="jam-selesai" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=light-dark(#1976d2, #ededed);" target="berkas-masuk">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="1150" />
+              <mxPoint x="180" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="EdgT4RoaNm7S_qPJdhZx-3" connectable="0" parent="EdgT4RoaNm7S_qPJdhZx-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Belum" vertex="1">
+          <mxGeometry relative="1" x="-0.0703" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="end" parent="1" style="ellipse;whiteSpace=wrap;html=1;rounded=1;strokeColor=#000000;fillColor=#ffffff;" value="Selesai Hari Kerja" vertex="1">
+          <mxGeometry height="60" width="120" x="400" y="1230" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="endArrow=classic;html=1;rounded=0;strokeColor=#2E7D32;" target="reset-counter" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="reset-counter" style="endArrow=classic;html=1;rounded=0;strokeColor=#1976D2;" target="berkas-masuk" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="berkas-masuk" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" target="cek-counter" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="cek-counter" style="endArrow=classic;html=1;rounded=0;strokeColor=#D32F2F;" target="counter-ok" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="counter-ok" style="endArrow=classic;html=1;rounded=0;strokeColor=#388E3C;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="proses-langsung" value="Ya">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="counter-ok" style="endArrow=classic;html=1;rounded=0;strokeColor=#5D4037;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="masuk-antrian" value="Tidak">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="proses-langsung" style="endArrow=classic;html=1;rounded=0;strokeColor=#7B1FA2;" target="increment-counter" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="masuk-antrian" style="endArrow=classic;html=1;rounded=0;strokeColor=#5D4037;" target="schedule-next" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="increment-counter" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" target="cek-antrian" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="schedule-next" style="endArrow=classic;html=1;rounded=0;strokeColor=#F57C00;" target="cek-antrian" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="cek-antrian" style="endArrow=classic;html=1;rounded=0;strokeColor=#D32F2F;" target="ada-antrian" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="ada-antrian" style="endArrow=classic;html=1;rounded=0;strokeColor=#388E3C;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="proses-antrian" value="Ya">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="ada-antrian" style="endArrow=classic;html=1;rounded=0;strokeColor=#D32F2F;" target="jam-selesai" value="Tidak">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="600" y="930" />
+              <mxPoint x="600" y="1030" />
+              <mxPoint x="600" y="1150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="proses-antrian" style="endArrow=classic;html=1;rounded=0;strokeColor=#388E3C;" target="jam-selesai" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="1040" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="jam-selesai" style="endArrow=classic;html=1;rounded=0;strokeColor=#000000;" target="end" value="Ya">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

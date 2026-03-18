@@ -1,0 +1,206 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_24_Integrasi_Bank_LTB_Parallel_Workflow_Iterasi2" name="Activity 24: Integrasi Bank dengan LTB Parallel Workflow (Iterasi 2)">
+    <mxGraphModel dx="1895" dy="1022" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_ppat" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="PPAT/PPATS" vertex="1">
+          <mxGeometry height="840" width="300" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_ppat" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_ppat" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="200" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_ltb" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e8f5e8;strokeColor=#388e3c;fontStyle=1;fontSize=14;" value="LTB" vertex="1">
+          <mxGeometry height="840" width="300" x="340" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_process_verification" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e8;strokeColor=#388e3c;" value="Proses Verifikasi Berkas&#xa;(Validate Documents,&#xa;Generate No. Registrasi)" vertex="1">
+          <mxGeometry height="80" width="240" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_wait_bank_sync" parent="swimlane_ltb" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Menunggu Sinkronisasi&#xa;dari Bank?" vertex="1">
+          <mxGeometry height="80" width="200" x="40" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_sync_with_bank" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Sinkronisasi dengan Bank&#xa;(Update status berdasarkan&#xa;hasil verifikasi Bank)" vertex="1">
+          <mxGeometry height="80" width="240" x="30" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_send_to_peneliti" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e8;strokeColor=#388e3c;" value="Mengirim ke Peneliti&#xa;(Setelah Bank &amp; LTB Selesai)" vertex="1">
+          <mxGeometry height="70" width="240" x="30" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_bank" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontStyle=1;fontSize=14;" value="Bank (Produk Online Terintegrasi)" vertex="1">
+          <mxGeometry height="840" width="300" x="640" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_receive_parallel" parent="swimlane_bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Receive from PPAT&#xa;(Parallel dengan LTB)" vertex="1">
+          <mxGeometry height="60" width="240" x="30" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_process_payment" parent="swimlane_bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Proses Verifikasi Pembayaran&#xa;(Input Payment Data,&#xa;Verify Payment)" vertex="1">
+          <mxGeometry height="80" width="240" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_update_transaction" parent="swimlane_bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Update bank_1_cek_hasil_transaksi&#xa;(Status: Terverifikasi)" vertex="1">
+          <mxGeometry height="70" width="240" x="30" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_sync_with_ltb" parent="swimlane_bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Sinkronisasi dengan LTB&#xa;(Parallel Workflow)&#xa;Update ltb_1_terima_berkas_sspd" vertex="1">
+          <mxGeometry height="80" width="240" x="30" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="840" width="420" x="940" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Integrasi Bank dengan LTB Parallel Workflow - Iterasi 2" vertex="1">
+          <mxGeometry height="860" width="1330" x="30" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_send_booking" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="Mengirim Booking ke LTB &amp; Bank&#xa;(Parallel - Secara Bersamaan)" vertex="1">
+          <mxGeometry height="50" width="190" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_receive_parallel" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e8;strokeColor=#388e3c;strokeWidth=2;" value="Receive from PPAT&#xa;(Parallel dengan Bank)" vertex="1">
+          <mxGeometry height="60" width="240" x="340" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_receive_parallel" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Receive Booking dari PPAT&#xa;(Parallel: Kirim ke LTB &amp; Bank&#xa;Secara Bersamaan)" vertex="1">
+          <mxGeometry height="70" width="210" x="930" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="title_box" source="ppat_send_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_receive_parallel" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="290" y="70" />
+              <mxPoint x="920" y="70" />
+              <mxPoint x="920" y="135" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_start_parallel" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Memulai Parallel Workflow&#xa;(LTB dan Bank bekerja secara paralel)" vertex="1">
+          <mxGeometry height="50" width="180" x="945" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="title_box" source="sys_receive_parallel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_start_parallel" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="title_box" source="sys_start_parallel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.25;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="ltb_receive_parallel" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="213" />
+              <mxPoint x="910" y="110" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_wait_both" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Kedua Proses&#xa;Selesai?" vertex="1">
+          <mxGeometry height="80" width="200" x="1110" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_process_bank" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;" value="Proses Bank&#xa;(Verify Payment,&#xa;Update Transaction)" vertex="1">
+          <mxGeometry height="50" width="170" x="920" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="title_box" source="sys_process_bank" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="sys_wait_both" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="375" />
+              <mxPoint x="1100" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_sync_data" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Sinkronisasi Data&#xa;(Update ltb_1_terima_berkas_sspd&#xa;dengan data dari Bank)&#xa;(Update pat_2_bphtb_perhitungan&#xa;dengan bphtb_yangtelah_dibayar)" vertex="1">
+          <mxGeometry height="80" width="210" x="930" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="title_box" source="sys_wait_both" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_sync_data" value="Ya">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1035" y="430" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_process_ltb" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e8;strokeColor=#388e3c;" value="Proses LTB&#xa;(Validate Documents,&#xa;Generate No. Registrasi)" vertex="1">
+          <mxGeometry height="60" width="200" x="940" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="title_box" source="sys_process_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;" target="sys_wait_both" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_update_booking_status" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Update pat_1_bookingsspd&#xa;SET trackstatus=&#39;Verified by LTB &amp; Bank&#39;" vertex="1">
+          <mxGeometry height="70" width="250" x="950" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="title_box" source="sys_sync_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_update_booking_status" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1035" y="580" />
+              <mxPoint x="1075" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_send_notif" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengirim Notifikasi&#xa;(Ke LTB: Bank sudah verifikasi)&#xa;(Ke Bank: LTB sudah verifikasi)&#xa;(Ke PPAT: Keduanya selesai)" vertex="1">
+          <mxGeometry height="60" width="210" x="970" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="edge18" edge="1" parent="title_box" source="sys_update_booking_status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_send_notif" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_commit" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Commit Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="925" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="edge19" edge="1" parent="title_box" source="sys_send_notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_commit" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_send_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="sys_start_parallel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="bank_receive_parallel" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="245" />
+              <mxPoint x="930" y="170" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="ltb_receive_parallel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_process_verification" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="ltb_process_verification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;dashed=1;fillColor=#f8cecc;strokeColor=#b85450;" target="sys_process_ltb" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="330" />
+              <mxPoint x="940" y="330" />
+              <mxPoint x="940" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="bank_receive_parallel" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bank_process_payment" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="bank_process_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bank_update_transaction" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="bank_update_transaction" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_process_bank" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="sys_sync_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;entryX=1;entryY=0.5;exitDx=0;exitDy=0;" target="ltb_sync_with_bank" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1010" y="550" />
+              <mxPoint x="1010" y="580" />
+              <mxPoint x="660" y="580" />
+              <mxPoint x="660" y="520" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="1" source="sys_sync_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="bank_sync_with_ltb" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="940" y="510" />
+              <mxPoint x="940" y="460" />
+              <mxPoint x="790" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="ltb_sync_with_bank" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_send_to_peneliti" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge20" edge="1" parent="1" source="sys_commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="end" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="825" />
+              <mxPoint x="310" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

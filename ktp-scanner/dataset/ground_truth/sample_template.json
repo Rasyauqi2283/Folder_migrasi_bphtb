@@ -1,0 +1,16 @@
+{
+  "nik": "3270530100200080",
+  "nama": "NAMA LENGKAP CONTOH",
+  "ttl": { "tempat": "JAKARTA", "tanggal": "01-01-1990" },
+  "alamat": "JL. CONTOH NO. 1",
+  "rtRw": "001/002",
+  "kelurahan": "KELURAHAN CONTOH",
+  "kecamatan": "KECAMATAN CONTOH",
+  "jenisKelamin": "Laki-laki",
+  "golonganDarah": "O",
+  "agama": "ISLAM",
+  "statusPerkawinan": "Belum Kawin",
+  "pekerjaan": "KARYAWAN SWASTA",
+  "kewarganegaraan": "WNI",
+  "berlakuHingga": "SEUMUR HIDUP"
+}

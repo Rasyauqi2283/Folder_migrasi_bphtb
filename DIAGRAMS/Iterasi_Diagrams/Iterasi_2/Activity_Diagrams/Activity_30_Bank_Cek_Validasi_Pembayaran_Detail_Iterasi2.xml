@@ -1,0 +1,149 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_30_Bank_Cek_Validasi_Pembayaran_Detail_Iterasi2" name="Activity 30: Bank Cek Validasi Pembayaran Detail (Iterasi 2)">
+    <mxGraphModel dx="1603" dy="865" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_bank" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontStyle=1;fontSize=14;" value="Bank (Produk Online Terintegrasi)" vertex="1">
+          <mxGeometry height="840" width="400" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_bank" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_view_result" parent="swimlane_bank" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;" value="Melihat Hasil Verifikasi&#xa;(Status: Terverifikasi)" vertex="1">
+          <mxGeometry height="70" width="300" x="80" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_bank" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="220" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="840" width="670" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_pat4" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update pat_4_objek_pajak&#xa;SET nomor_bukti_pembayaran,&#xa;tanggal_pembayaran" vertex="1">
+          <mxGeometry height="80" width="250" x="400" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Bank Cek Validasi Pembayaran Detail - Iterasi 2" vertex="1">
+          <mxGeometry height="860" width="1070" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_view_booking_list" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Melihat Daftar Booking&#xa;yang Memerlukan Verifikasi Pembayaran" vertex="1">
+          <mxGeometry height="50" width="200" x="90" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_booking_list" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Mengambil Daftar Booking&#xa;(pat_1_bookingsspd: status pending verifikasi)&#xa;(Filter berdasarkan divisi Bank)" vertex="1">
+          <mxGeometry height="60" width="210" x="420" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="title_box" source="bank_view_booking_list" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_booking_list" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_select_booking" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;" value="Memilih Booking untuk Diverifikasi" vertex="1">
+          <mxGeometry height="50" width="300" x="70" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="title_box" source="sys_get_booking_list" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" target="bank_select_booking" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="525" y="135" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bank_view_detail" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Melihat Detail Booking&#xa;(Data Wajib Pajak, Objek Pajak,&#xa;Perhitungan BPHTB)" vertex="1">
+          <mxGeometry height="60" width="180" x="130" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="title_box" source="bank_select_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bank_view_detail" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_booking_detail" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Mengambil Detail Booking&#xa;(pat_1_bookingsspd, pat_2_bphtb_perhitungan,&#xa;pat_4_objek_pajak, pat_5_penghitungan_njop)" vertex="1">
+          <mxGeometry height="100" width="250" x="470" y="195" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="title_box" source="bank_view_detail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_booking_detail" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bank_input_payment" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Menginput Data Pembayaran&#xa;(Nomor Bukti, Tanggal,&#xa;BPHTB yang Dibayar)" vertex="1">
+          <mxGeometry height="60" width="200" x="120" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="title_box" source="sys_get_booking_detail" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" target="bank_input_payment" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="495" y="380" />
+              <mxPoint x="410" y="380" />
+              <mxPoint x="410" y="455" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="bank_verify_payment" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Melakukan Verifikasi Pembayaran&#xa;(Cek Validitas Bukti Pembayaran)" vertex="1">
+          <mxGeometry height="70" width="300" x="70" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="title_box" source="bank_input_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bank_verify_payment" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_payment" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Data Pembayaran?" vertex="1">
+          <mxGeometry height="80" width="200" x="410" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="title_box" source="bank_verify_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_validate_payment" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_start_trans" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Memulai Database Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="730" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="title_box" source="sys_validate_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_start_trans" value="Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_insert_bank_trans" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" value="Insert/Update bank_1_cek_hasil_transaksi&#xa;(nobooking, userid, nomor_bukti_pembayaran,&#xa;tanggal_pembayaran, bphtb_yangtelah_dibayar,&#xa;status_verifikasi=&#39;Terverifikasi&#39;,&#xa;nama_pengecek, verified_by, verified_at)" vertex="1">
+          <mxGeometry height="130" width="250" x="705" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="title_box" source="sys_start_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_insert_bank_trans" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_invalid" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Data Pembayaran Tidak Valid" vertex="1">
+          <mxGeometry height="50" width="200" x="460" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="title_box" source="sys_validate_payment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_error_invalid" value="Tidak Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_pat2" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update pat_2_bphtb_perhitungan&#xa;SET bphtb_yangtelah_dibayar = input_value" vertex="1">
+          <mxGeometry height="70" width="250" x="500" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="title_box" source="sys_insert_bank_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_pat2" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="640" />
+              <mxPoint x="625" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_show_success" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses&#xa;(Verifikasi Pembayaran Berhasil)" vertex="1">
+          <mxGeometry height="70" width="250" x="470" y="770" as="geometry" />
+        </mxCell>
+        <mxCell id="Uoi_MIOfAR7Is5We7wv2-1" edge="1" parent="title_box" source="sys_commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="sys_show_success">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_commit" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Commit Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="760" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="bank_view_booking_list" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="sys_update_pat2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_pat4" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="720" />
+              <mxPoint x="790" y="740" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="sys_update_pat4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_commit" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="790" />
+              <mxPoint x="960" y="790" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="bank_view_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="bank_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

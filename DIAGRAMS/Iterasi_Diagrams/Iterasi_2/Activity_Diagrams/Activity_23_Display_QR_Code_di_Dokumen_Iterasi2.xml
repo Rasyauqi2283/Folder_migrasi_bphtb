@@ -1,0 +1,123 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.10">
+  <diagram id="Activity_23_Display_QR_Code_di_Dokumen_Iterasi2" name="Activity 23: Display QR Code di Dokumen (Iterasi 2)">
+    <mxGraphModel dx="1737" dy="937" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="650" width="1100" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_system" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_trigger_pdf" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Trigger Generate PDF Validasi&#xa;(Setelah QR Code Generated)" vertex="1">
+          <mxGeometry height="60" width="250" x="80" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Display QR Code di Dokumen - Iterasi 2" vertex="1">
+          <mxGeometry height="680" width="1100" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_qr_data" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Mengambil Data QR Code&#xa;(qr_image_path dari pat_7_validasi_surat)&#xa;(qr_payload untuk verifikasi)" vertex="1">
+          <mxGeometry height="90" width="250" x="370" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_qr_exists" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="QR Code File&#xa;Ada?" vertex="1">
+          <mxGeometry height="80" width="200" x="90" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="title_box" source="sys_get_qr_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_qr_exists" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="210" />
+              <mxPoint x="190" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_load_qr_image" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Load QR Code Image&#xa;(dari /penting_F_simpan/qr_code_place/)&#xa;Format: PNG, Size: 256x256" vertex="1">
+          <mxGeometry height="90" width="250" x="360" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="title_box" source="sys_check_qr_exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_load_qr_image" value="Ada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_build_pdf" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Membangun PDF Validasi&#xa;(Menggunakan PDFKit atau PDFMake)&#xa;Dengan Template Dokumen Validasi" vertex="1">
+          <mxGeometry height="90" width="250" x="660" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="title_box" source="sys_load_qr_image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_build_pdf" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="785" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_embed_qr" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Embed QR Code ke PDF&#xa;(Position: Kanan Bawah)&#xa;Size: 100x100, Margin: 50px" vertex="1">
+          <mxGeometry height="90" width="250" x="430" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="title_box" source="sys_build_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_embed_qr" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="785" y="460" />
+              <mxPoint x="720" y="460" />
+              <mxPoint x="720" y="385" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_error_no_qr" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: QR Code File Tidak Ditemukan" vertex="1">
+          <mxGeometry height="50" width="200" x="200" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="title_box" source="sys_check_qr_exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_error_no_qr" value="Tidak Ada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_add_signature_info" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Menambahkan Info Tanda Tangan&#xa;(NIP, Special Parafv di bawah QR Code)" vertex="1">
+          <mxGeometry height="70" width="250" x="130" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="title_box" source="sys_embed_qr" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_add_signature_info" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="555" y="485" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_save_pdf" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Menyimpan PDF dengan QR Code&#xa;(Path: /penting_F_simpan/pdf_validasi/)&#xa;Filename: validasi_{nomor_validasi}.pdf" vertex="1">
+          <mxGeometry height="90" width="250" x="190" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="title_box" source="sys_add_signature_info" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_save_pdf" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="410" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_show_success" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses&#xa;(PDF dengan QR Code Berhasil Dibuat)" vertex="1">
+          <mxGeometry height="70" width="250" x="820" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_db_pdf" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Update Database&#xa;(pat_7_validasi_surat: pdf_path)&#xa;(pv_1_paraf_validate: document_path)" vertex="1">
+          <mxGeometry height="90" width="250" x="520" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="title_box" source="sys_save_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_db_pdf" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="610" />
+              <mxPoint x="500" y="610" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="title_box" source="sys_update_db_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_show_success" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="595" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="end" parent="title_box" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="930" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="title_box" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_trigger_pdf" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="sys_trigger_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_get_qr_data" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

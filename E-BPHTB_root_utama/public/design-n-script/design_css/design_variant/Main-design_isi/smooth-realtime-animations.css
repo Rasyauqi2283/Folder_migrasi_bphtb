@@ -1,0 +1,192 @@
+/**
+ * Smooth Real-Time Update Animations
+ * CSS untuk animasi smooth saat data baru masuk
+ */
+
+/* Animation untuk row baru */
+.new-row-animation {
+    animation: slideInFromTop 0.4s ease-out;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 1000px;
+    }
+}
+
+/* Highlight effect untuk row baru */
+.row-highlight {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    animation: highlightPulse 2s ease-out;
+    border-left: 4px solid #3b82f6;
+}
+
+@keyframes highlightPulse {
+    0% {
+        background-color: rgba(59, 130, 246, 0.3);
+        border-left-color: #3b82f6;
+    }
+    50% {
+        background-color: rgba(59, 130, 246, 0.15);
+        border-left-color: #60a5fa;
+    }
+    100% {
+        background-color: transparent;
+        border-left-color: transparent;
+    }
+}
+
+/* Update highlight untuk row yang diupdate */
+.row-update-highlight {
+    background-color: rgba(251, 191, 36, 0.2) !important;
+    animation: updatePulse 1s ease-out;
+    border-left: 3px solid #fbbf24;
+}
+
+@keyframes updatePulse {
+    0% {
+        background-color: rgba(251, 191, 36, 0.3);
+        border-left-color: #fbbf24;
+    }
+    100% {
+        background-color: transparent;
+        border-left-color: transparent;
+    }
+}
+
+/* Smooth fade out untuk row yang dihapus */
+tr[style*="opacity: 0"] {
+    transition: all 0.3s ease-out;
+}
+
+/* Prevent layout shift saat animasi */
+tbody tr {
+    transition: background-color 0.2s ease, transform 0.3s ease;
+}
+
+/* Smooth scroll behavior */
+.table-scroll {
+    scroll-behavior: smooth;
+}
+
+/* Indicator untuk data baru (badge) */
+.new-data-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    animation: badgePulse 1s ease-out;
+    z-index: 10;
+}
+
+@keyframes badgePulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+/* Notification toast untuk data baru */
+.new-data-notification {
+    position: fixed;
+    top: 90px;
+    right: 20px;
+    background: rgba(59, 130, 246, 0.95);
+    backdrop-filter: blur(10px);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    z-index: 9999;
+    animation: slideInRight 0.3s ease-out;
+    max-width: 300px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.new-data-notification.hide {
+    animation: slideOutRight 0.3s ease-out forwards;
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Loading indicator untuk real-time updates */
+.realtime-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.realtime-indicator.active::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.2);
+    }
+}
+
+/* Smooth transition untuk semua table cells */
+tbody td {
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Preserve user interaction state */
+tbody tr.user-editing {
+    background-color: rgba(251, 191, 36, 0.1) !important;
+    border-left: 3px solid #fbbf24;
+}
+
+tbody tr.user-editing:hover {
+    background-color: rgba(251, 191, 36, 0.15) !important;
+}
+

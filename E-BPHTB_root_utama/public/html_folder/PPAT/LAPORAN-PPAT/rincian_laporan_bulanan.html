@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PPAT| Rincian Laporan Bulanan</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!---->
+    <!--Design Variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/sidebar-smooth-shift.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/dropdown-table.css">
+    <!---->
+
+    <link rel="stylesheet" href="../../../design-n-script/design_css/form_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <!-- Universal Alert System -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/universal-alert.css">
+    <!-- Modern Pagination Design -->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/pagination-design.css">
+    <!---->
+    <link id="favicon" rel="icon" href="path/to/favicon.ico">
+
+  <style>
+    .btn-pdf {
+      transition: all 0.3s ease;
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-block;
+      margin: 2px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-pdf:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      opacity: 0.9;
+    }
+    
+    .btn-pdf:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .pdf-section {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+    
+    .pdf-section p {
+      margin: 0 0 8px 0;
+      font-weight: 600;
+      color: #495057;
+    }
+    
+    .pdf-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    table thead th {
+      text-align: center !important;
+      vertical-align: middle !important;
+    }
+
+    /* Cards Grid Styling - matching monitoring_penyerahan_sspd.html */
+    .rincian-header {
+      margin-bottom: 30px;
+    }
+
+    .rincian-header h2 {
+      color: #1f2937;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .rincian-header p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .rincian-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .rincian-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(81, 81, 95, 0.3);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .rincian-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    }
+
+    .rincian-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      border-color: #3b82f6;
+    }
+
+    .rincian-card.active {
+      border-color: #3b82f6;
+      box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .card-month {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+    }
+
+    .card-body {
+      margin-bottom: 16px;
+    }
+
+    .card-count {
+      font-size: 36px;
+      font-weight: 700;
+      color: #3b82f6;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .card-label {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid rgba(81, 81, 95, 0.2);
+    }
+
+    .card-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+    }
+
+    .card-arrow {
+      color: #9ca3af;
+      font-size: 18px;
+      transition: transform 0.3s ease;
+    }
+
+    .rincian-card:hover .card-arrow {
+      transform: translateX(4px);
+      color: #3b82f6;
+    }
+
+    /* Table Section */
+    .table-section {
+      display: none;
+      margin-top: 30px;
+    }
+
+    .table-section.active {
+      display: block;
+    }
+
+    .table-header-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .table-header-section h3 {
+      color: #1f2937;
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .btn-close-table {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+    }
+
+    .btn-close-table:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #ef4444;
+    }
+
+    .table-scroll {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      border: 1px solid rgba(81, 81, 95, 0.3);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      overflow: hidden;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6b7280;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 8px;
+      color: #374151;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      color: #d1d5db;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .rincian-cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Rincian Laporan Bulanan PPAT</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <a href="../../../profile.html"><button class="profile-btn" id="profileButton" class="profile-button">Profil</button></a>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../../ppat-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-address-book sidebar-icon"></i>
+                <span class="sidebar-text">Booking SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../BOOKING-SSPD/bookingsspd-badan.html">Booking SSPD Badan</a>
+            <a href="../BOOKING-SSPD/bookingsspd-perorangan.html">Booking SSPD Perorangan</a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-folder-open sidebar-icon"></i>
+                <span class="sidebar-text">Laporan PPAT</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+                <a href="laporan_rekap.html">Laporan Rekap PPAT</a>
+            <a href="monitoring_keteralmbatan_dokumen_ppat.html">Monitoring Keterlambatan</a>
+            <a href="rincian_laporan_bulanan.html">Rincian Laporan Bulanan PPAT</a>
+        </div>
+    </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item AUT" id="logout_page" style="cursor: pointer;">
+          <div class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+
+  <!-- MAIN -->
+  <main id="laporan_rekap_ppat_design" class="main-content">
+    <div class="rincian-header">
+      <h2>Rincian Laporan Bulanan PPAT</h2>
+      <p>Ringkasan bulanan berkas yang sudah diserahkan</p>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
+      <div class="rincian-card" style="cursor: default; border-left: 4px solid #10b981; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);">
+        <div class="card-header">
+          <div class="card-month">Total Transaksi (Akumulasi)</div>
+          <div class="card-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <i class="fa fa-money-bill-wave"></i>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-count" id="totalNominal" style="color: #10b981; font-size: 32px;">Rp 0</div>
+          <div class="card-label">Total BPHTB yang Telah Dibayar</div>
+        </div>
+      </div>
+
+      <div class="rincian-card" style="cursor: default; border-left: 4px solid #3b82f6; background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);">
+        <div class="card-header">
+          <div class="card-month">Total Berkas Selesai</div>
+          <div class="card-icon">
+            <i class="fa fa-file-check"></i>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="card-count" id="totalBerkas">0</div>
+          <div class="card-label">Jumlah Berkas Status "Diserahkan"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section" style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px; background: white; padding: 15px; border-radius: 12px; border: 1px solid rgba(81, 81, 95, 0.2);">
+      <span style="font-weight: 600; color: #374151;">Pilih Tahun:</span>
+      <div id="yearButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <!-- Year buttons will be populated here -->
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <div class="rincian-cards-grid" id="rincianCardsGrid">
+      <!-- Cards will be populated by JavaScript -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-state-icon">📊</div>
+      <h3>Belum ada data laporan</h3>
+      <p>Data laporan akan muncul setelah berkas diserahkan</p>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-section" id="tableSection">
+      <div class="table-header-section">
+        <h3 id="tableMonthTitle">Data Laporan</h3>
+        <button class="btn-close-table" onclick="closeTable()">✕ Tutup Tabel</button>
+      </div>
+      <div class="table-scroll">
+        <div class="table-container">
+          <div class="table-header">
+            <div class="table-controls">
+              <div class="search-box">
+                <i class="search-icon">🔍</i>
+                <input id="searchInput" type="text" placeholder="Cari data...">
+              </div>
+              <button class="refresh-btn" id="refreshBtn"><i class="refresh-icon">🔄</i> Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table id="rekapTable" class="luxury-table">
+              <thead>
+                <tr>
+                  <th>No Booking</th>
+                  <th>NOP PBB</th>
+                  <th>Tanggal</th>
+                  <th>Tahun AJB</th>
+                  <th>Nama Wajib Pajak</th>
+                  <th>Nama Pemilik Objek Pajak</th>
+                  <th>NPWP Wajib Pajak</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="data-tabel-badan" id="table-body">
+                <tr><td colspan="9" class="empty-message">Pilih bulan untuk melihat data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <div class="buttonPage"><div class="list-button" id="pager"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer berada di dalam page-wrapper -->
+  <footer class="footer">
+      <div class="footer-content">
+          <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+      </div>
+  </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/fungsi-click_dropdown.js"></script>
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!--backend-->
+<script src="../../../design-n-script/script-backend/header-backend.js"></script>
+
+  <script>
+  (function(){
+    const PAGE_SIZE = 10;
+    let allRows = [];
+    let currentMonthRows = [];
+    let currentPage = 1;
+    let currentMonth = null;
+    let selectedYear = new Date().getFullYear();
+    const tbody = document.getElementById('table-body');
+    const pager = document.getElementById('pager');
+    const searchInput = document.getElementById('searchInput');
+    const refreshBtn = document.getElementById('refreshBtn');
+    
+    // Month names in Indonesian
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      if (!rows.length){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 9; td.className = 'empty-message';
+        td.textContent = 'Tidak ada Data masuk, 0 to 0 Data Pages';
+        tr.appendChild(td); tbody.appendChild(tr); return;
+      }
+      rows.forEach(item => {
+        const tr = document.createElement('tr');
+        const vals = [
+          item.nobooking, 
+          item.noppbb, 
+          item.tanggal_formatted || item.tanggal, 
+          item.tahunajb, 
+          item.namawajibpajak, 
+          item.namapemilikobjekpajak, 
+          item.npwpwajibpajak, 
+          item.trackstatus
+        ];
+        vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v||'-'; tr.appendChild(td); });
+        // dropdown row (detail + 2 dokumen PDF)
+        const dd = document.createElement('tr');
+        const ddTd = document.createElement('td');
+        ddTd.colSpan = 9;
+        ddTd.style.display = 'none';
+        ddTd.innerHTML = buildDropdownContent(item);
+        dd.appendChild(ddTd);
+
+        // action column: toggle dropdown (bukan unduh file stempel/pdf lama)
+        const action = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.textContent = 'Dokumen PDF';
+        btn.addEventListener('click', (e)=> {
+          e.stopPropagation();
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+        action.appendChild(btn);
+        tr.appendChild(action);
+
+        tbody.appendChild(tr);
+        tbody.appendChild(dd);
+
+        // wire buttons inside dropdown
+        wireDropdownButtons(ddTd, item);
+
+        tr.addEventListener('click', ()=>{
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+      });
+    }
+
+    function buildDropdownContent(item){
+      const nomorValidasi = item.nomor_validasi ? `<p><strong>Nomor Validasi:</strong> ${item.nomor_validasi}</p>` : '';
+      const bphtbDibayar = item.bphtb_yangtelah_dibayar ? `<p><strong>BPHTB yang Telah Dibayar:</strong> Rp ${Number(item.bphtb_yangtelah_dibayar).toLocaleString('id-ID')}</p>` : '';
+      const keteranganSerah = item.keterangan_serah ? `<p><strong>Keterangan LSB:</strong> ${item.keterangan_serah}</p>` : '';
+      
+      return `<div style="padding:12px;">
+        <p><strong>No Booking:</strong> ${item.nobooking}</p>
+        <p><strong>NOP PBB:</strong> ${item.noppbb}</p>
+        ${nomorValidasi}
+        ${bphtbDibayar}
+        ${keteranganSerah}
+        <div class="pdf-section">
+          <p>📄 Dokumen (2 file)</p>
+          <div class="pdf-buttons">
+            <button data-action="view" data-type="validasi" class="btn-pdf" style="background: #4CAF50; color: white; border: none; padding: 8px 12px; cursor: pointer;">📄 Lihat PDF Validasi</button>
+            <button data-action="view" data-type="verif-paraf" class="btn-pdf" style="background: #2196F3; color: white; border: none; padding: 8px 12px; cursor: pointer;">📋 Lihat PDF Verif Paraf</button>
+            <button data-action="download" data-type="validasi" class="btn-pdf" style="background: #FF9800; color: white; border: none; padding: 8px 12px; cursor: pointer;">💾 Unduh PDF Validasi</button>
+            <button data-action="download" data-type="verif-paraf" class="btn-pdf" style="background: #9C27B0; color: white; border: none; padding: 8px 12px; cursor: pointer;">💾 Unduh PDF Verif Paraf</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function wireDropdownButtons(containerTd, item){
+      if (!containerTd) return;
+      const nobooking = (item && item.nobooking) ? String(item.nobooking) : '';
+      const buttons = containerTd.querySelectorAll('button[data-action][data-type]');
+      buttons.forEach(btn => {
+        // Overwrite handler to avoid any accidental double-binding
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          // Guard: prevent double-trigger within a short time window
+          if (btn.dataset.busy === '1') return;
+          btn.dataset.busy = '1';
+          setTimeout(() => { try { delete btn.dataset.busy; } catch(_) { btn.dataset.busy = ''; } }, 1200);
+
+          const action = btn.getAttribute('data-action');
+          const type = btn.getAttribute('data-type');
+          if (!nobooking) {
+            alert('No Booking tidak ditemukan.');
+            return;
+          }
+          if (action === 'view') window.viewPDF(type, nobooking);
+          else if (action === 'download') window.downloadPDF(type, nobooking);
+        };
+      });
+    }
+
+    // Global function for PDF viewing
+    window.viewPDF = function(type, nobooking) {
+      console.log(`🔍 [PDF-VIEWER] Opening PDF: ${type} for nobooking: ${nobooking}`);
+      const nb = encodeURIComponent(String(nobooking || ''));
+      if (!nb) { alert('No Booking tidak valid'); return; }
+      
+      let pdfUrl = '';
+      let pdfName = '';
+      
+      if (type === 'validasi') {
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nb}`;
+        pdfName = 'PDF Validasi';
+      } else if (type === 'verif-paraf') {
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nb}`;
+        pdfName = 'PDF Verif Paraf';
+      } else {
+        alert('Jenis PDF tidak valid');
+        return;
+      }
+      
+      // Show loading message
+      const loadingMsg = document.createElement('div');
+      loadingMsg.innerHTML = `
+        <div style="
+          position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          background: rgba(0,0,0,0.8); color: white; padding: 20px;
+          border-radius: 8px; z-index: 10000; font-family: Arial, sans-serif;
+        ">
+          <div style="text-align: center;">
+            <div style="font-size: 18px; margin-bottom: 10px;">📄 Membuka ${pdfName}...</div>
+            <div style="font-size: 14px; opacity: 0.8;">Mohon tunggu sebentar</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(loadingMsg);
+      
+      try {
+        // Open PDF in new tab for viewing
+        const pdfWindow = window.open(pdfUrl, '_blank');
+        
+        if (!pdfWindow) {
+          document.body.removeChild(loadingMsg);
+          alert('Pop-up diblokir. Silakan izinkan pop-up untuk melihat PDF.');
+          return;
+        }
+        
+        // Remove loading message after a delay
+        setTimeout(() => {
+          if (document.body.contains(loadingMsg)) {
+            document.body.removeChild(loadingMsg);
+          }
+        }, 2000);
+        
+        console.log(`✅ [PDF-VIEWER] PDF opened successfully: ${pdfUrl}`);
+        
+        // Optional: Check if PDF loaded successfully
+        pdfWindow.addEventListener('load', () => {
+          console.log(`✅ [PDF-VIEWER] PDF window loaded successfully`);
+        });
+        
+        pdfWindow.addEventListener('error', (error) => {
+          console.error('❌ [PDF-VIEWER] PDF window error:', error);
+          alert('Gagal memuat PDF. Silakan coba lagi.');
+        });
+        
+      } catch (error) {
+        if (document.body.contains(loadingMsg)) {
+          document.body.removeChild(loadingMsg);
+        }
+        console.error('❌ [PDF-VIEWER] Error opening PDF:', error);
+        alert('Gagal membuka PDF: ' + error.message);
+      }
+    };
+
+    // Global function for PDF downloading
+    window.downloadPDF = function(type, nobooking) {
+      console.log(`🔍 [PDF-DOWNLOAD] Downloading PDF: ${type} for nobooking: ${nobooking}`);
+      const nb = encodeURIComponent(String(nobooking || ''));
+      if (!nb) { alert('No Booking tidak valid'); return; }
+      
+      let pdfUrl = '';
+      let pdfName = '';
+      
+      if (type === 'validasi') {
+        pdfUrl = `/api/ppat/generate-pdf-validasi/${nb}?download=true`;
+        pdfName = 'PDF_Validasi';
+      } else if (type === 'verif-paraf') {
+        pdfUrl = `/api/ppat/generate-pdf-verif-paraf/${nb}?download=true`;
+        pdfName = 'PDF_Verif_Paraf';
+      } else {
+        alert('Jenis PDF tidak valid');
+        return;
+      }
+      
+      try {
+        // Let server Content-Disposition handle download (more reliable than HTML download attr)
+        const w = window.open(pdfUrl, '_blank', 'noopener');
+        if (!w) {
+          // Popup blocked -> fallback to same-tab navigation
+          window.location.href = pdfUrl;
+        }
+        
+        console.log(`✅ [PDF-DOWNLOAD] PDF download initiated: ${pdfUrl}`);
+        
+      } catch (error) {
+        console.error('❌ [PDF-DOWNLOAD] Error downloading PDF:', error);
+        alert('Gagal mengunduh PDF: ' + error.message);
+      }
+    };
+
+    function renderPager(total){
+      pager.innerHTML = '';
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      function mk(label, disabled, on){ const b=document.createElement('button'); b.textContent=label; b.disabled=!!disabled; b.onclick=on; return b; }
+      pager.appendChild(mk('<', currentPage<=1, ()=>go(currentPage-1)));
+      for(let p=1;p<=totalPages;p++){ const b=mk(String(p), p===currentPage, ()=>go(p)); if(p===currentPage) b.style.fontWeight='700'; pager.appendChild(b);} 
+      pager.appendChild(mk('>', currentPage>=totalPages, ()=>go(currentPage+1)));
+    }
+    function go(p){
+      const total = allRows.length; const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      currentPage = Math.min(Math.max(1,p), totalPages);
+      const start = (currentPage-1)*PAGE_SIZE; const end = start+PAGE_SIZE;
+      renderRows(allRows.slice(start,end)); renderPager(total);
+    }
+
+    // Load all data for cards
+    async function loadAllData(){
+      try{
+        const url = '/api/ppat/rekap/diserahkan?page=1&limit=10000';
+        console.log('🔍 [FRONTEND] Loading all data from:', url);
+        
+        const res = await fetch(url, { credentials:'include' });
+        const js = await res.json();
+        
+        if (!res.ok || !js.success) throw new Error(js.message||'Gagal memuat');
+        allRows = Array.isArray(js.rows) ? js.rows : [];
+        console.log('🔍 [FRONTEND] Loaded rows:', allRows.length);
+        
+        // Update summary
+        const totalNominalEl = document.getElementById('totalNominal');
+        const totalBerkasEl = document.getElementById('totalBerkas');
+        if (totalNominalEl) totalNominalEl.textContent = 'Rp ' + (js.totalNominal || 0).toLocaleString('id-ID');
+        if (totalBerkasEl) totalBerkasEl.textContent = js.pagination?.total || allRows.length;
+
+        // Extract available years
+        const years = [...new Set(allRows.map(item => {
+          const dateStr = item.tanggal_serah || item.updated_at || item.created_at;
+          return dateStr ? new Date(dateStr).getFullYear() : null;
+        }))].filter(y => y !== null).sort((a, b) => b - a);
+
+        // If current year is not in the list, add it
+        const currentYear = new Date().getFullYear();
+        if (!years.includes(currentYear)) {
+          years.unshift(currentYear);
+          years.sort((a, b) => b - a);
+        }
+
+        renderYearButtons(years);
+        renderCards();
+        
+        // Show empty state if no data
+        const emptyState = document.getElementById('emptyState');
+        const cardsGrid = document.getElementById('rincianCardsGrid');
+        if (allRows.length === 0) {
+          emptyState.style.display = 'block';
+          cardsGrid.style.display = 'none';
+        } else {
+          emptyState.style.display = 'none';
+          cardsGrid.style.display = 'grid';
+        }
+      }catch(e){
+        console.error('❌ [FRONTEND] Load data error:', e);
+        const cardsGrid = document.getElementById('rincianCardsGrid');
+        cardsGrid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h3>Gagal memuat data</h3>
+            <p>${e.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function renderYearButtons(years) {
+      const container = document.getElementById('yearButtons');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      years.forEach(year => {
+        const btn = document.createElement('button');
+        btn.textContent = year;
+        btn.style.cssText = `
+          padding: 8px 16px;
+          border-radius: 8px;
+          border: 1px solid #3b82f6;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        `;
+        
+        if (year === selectedYear) {
+          btn.style.backgroundColor = '#3b82f6';
+          btn.style.color = 'white';
+        } else {
+          btn.style.backgroundColor = 'white';
+          btn.style.color = '#3b82f6';
+        }
+        
+        btn.addEventListener('click', () => {
+          selectedYear = year;
+          renderYearButtons(years);
+          renderCards();
+          closeTable();
+        });
+        
+        container.appendChild(btn);
+      });
+    }
+
+    // Render cards for each month
+    function renderCards() {
+      const cardsGrid = document.getElementById('rincianCardsGrid');
+      cardsGrid.innerHTML = '';
+      
+      // Group data by month for the selected year
+      const monthData = {};
+      
+      // Initialize all 12 months for the selected year
+      for (let i = 0; i < 12; i++) {
+        const monthKey = `${selectedYear}-${String(i + 1).padStart(2, '0')}`;
+        monthData[monthKey] = {
+          month: i + 1,
+          monthName: monthNames[i],
+          year: selectedYear,
+          data: [],
+          count: 0,
+          totalNominal: 0
+        };
+      }
+      
+      // Group existing data by month
+      allRows.forEach(item => {
+        // Prioritas tanggal: tanggal_serah (lsb.updated_at), then b.updated_at, then b.created_at
+        const dateStr = item.tanggal_serah || item.updated_at || item.created_at;
+        if (dateStr) {
+          const date = new Date(dateStr);
+          const year = date.getFullYear();
+          const month = date.getMonth() + 1;
+          const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+          
+          if (year === selectedYear) {
+            if (monthData[monthKey]) {
+              monthData[monthKey].data.push(item);
+              monthData[monthKey].count++;
+              monthData[monthKey].totalNominal += parseFloat(item.bphtb_yangtelah_dibayar || 0);
+            }
+          }
+        }
+      });
+      
+      // Sort months (usually already sorted since we initialized them in order)
+      const sortedMonths = Object.keys(monthData).sort((a, b) => a.localeCompare(b));
+      
+      sortedMonths.forEach(monthKey => {
+        const monthInfo = monthData[monthKey];
+        const card = document.createElement('div');
+        card.className = 'rincian-card';
+        card.dataset.monthKey = monthKey;
+        
+        // Use different icon colors if there's data
+        const iconStyle = monthInfo.count > 0 ? 
+          'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);' : 
+          'background: #d1d5db;';
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-month">${monthInfo.monthName} ${monthInfo.year}</div>
+            <div class="card-icon" style="${iconStyle}">
+              <i class="fa fa-calendar-check"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-count" style="${monthInfo.count > 0 ? '' : 'color: #9ca3af;'}">${monthInfo.count}</div>
+            <div class="card-label">Berkas Diserahkan</div>
+            <div style="margin-top: 10px; font-size: 14px; font-weight: 600; color: #10b981;">
+              ${monthInfo.count > 0 ? 'Rp ' + monthInfo.totalNominal.toLocaleString('id-ID') : ''}
+            </div>
+          </div>
+          <div class="card-footer">
+            <span class="card-badge" style="${monthInfo.count > 0 ? '' : 'background: #f3f4f6; color: #9ca3af;'}">${monthInfo.count} item</span>
+            <span class="card-arrow">→</span>
+          </div>
+        `;
+        
+        if (monthInfo.count > 0) {
+          card.addEventListener('click', () => {
+            openMonthTable(monthInfo, monthKey);
+          });
+        } else {
+          card.style.opacity = '0.7';
+          card.style.cursor = 'default';
+        }
+        
+        cardsGrid.appendChild(card);
+      });
+    }
+
+    // Open table for selected month
+    function openMonthTable(monthInfo, monthKey) {
+      currentMonth = monthInfo;
+      currentMonthRows = monthInfo.data || [];
+      filteredRows = currentMonthRows; // Reset filtered rows
+      if (searchInput) searchInput.value = ''; // Clear search
+      
+      // Update UI
+      document.querySelectorAll('.rincian-card').forEach(card => {
+        card.classList.remove('active');
+      });
+      const activeCard = document.querySelector(`[data-month-key="${monthKey}"]`);
+      if (activeCard) {
+        activeCard.classList.add('active');
+      }
+      
+      // Show table section
+      const tableSection = document.getElementById('tableSection');
+      const tableMonthTitle = document.getElementById('tableMonthTitle');
+      tableMonthTitle.textContent = `Data Laporan - ${monthInfo.monthName} ${monthInfo.year}`;
+      tableSection.classList.add('active');
+      
+      // Scroll to table
+      tableSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Render table with current month data
+      go(1);
+    }
+
+    // Close table
+    function closeTable() {
+      const tableSection = document.getElementById('tableSection');
+      tableSection.classList.remove('active');
+      
+      // Remove active class from cards
+      document.querySelectorAll('.rincian-card').forEach(card => {
+        card.classList.remove('active');
+      });
+      
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Make closeTable globally available
+    window.closeTable = closeTable;
+
+    // Modified renderRows to use rows parameter (already filtered/paginated)
+    function renderRows(rows){
+      tbody.innerHTML = '';
+      
+      if (!rows || rows.length === 0){
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 9; td.className = 'empty-message';
+        td.textContent = currentMonthRows.length > 0 ? 'Tidak ada Data masuk, 0 to 0 Data Pages' : 'Pilih bulan untuk melihat data...';
+        tr.appendChild(td); tbody.appendChild(tr); 
+        renderPager(0);
+        return;
+      }
+      rows.forEach(item => {
+        const tr = document.createElement('tr');
+        const vals = [
+          item.nobooking, 
+          item.noppbb, 
+          item.tanggal_formatted || item.tanggal, 
+          item.tahunajb, 
+          item.namawajibpajak, 
+          item.namapemilikobjekpajak, 
+          item.npwpwajibpajak, 
+          item.trackstatus
+        ];
+        vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v||'-'; tr.appendChild(td); });
+        // dropdown row (detail + 2 dokumen PDF)
+        const dd = document.createElement('tr');
+        const ddTd = document.createElement('td');
+        ddTd.colSpan = 9;
+        ddTd.style.display = 'none';
+        ddTd.innerHTML = buildDropdownContent(item);
+        dd.appendChild(ddTd);
+
+        // action column: toggle dropdown (bukan unduh file stempel/pdf lama)
+        const action = document.createElement('td');
+        const btn = document.createElement('button');
+        btn.textContent = 'Dokumen PDF';
+        btn.addEventListener('click', (e)=> {
+          e.stopPropagation();
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+        action.appendChild(btn);
+        tr.appendChild(action);
+
+        tbody.appendChild(tr);
+        tbody.appendChild(dd);
+
+        // wire buttons inside dropdown
+        wireDropdownButtons(ddTd, item);
+
+        tr.addEventListener('click', ()=>{
+          const show = ddTd.style.display === 'none';
+          ddTd.style.display = show ? 'table-cell' : 'none';
+        });
+      });
+    }
+
+    // Store filtered data for pagination
+    let filteredRows = [];
+
+    // Modified go function to use filteredRows
+    function go(p){
+      const dataSource = filteredRows.length > 0 ? filteredRows : (currentMonthRows.length > 0 ? currentMonthRows : []);
+      const total = dataSource.length; 
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      currentPage = Math.min(Math.max(1,p), totalPages);
+      const start = (currentPage-1)*PAGE_SIZE; 
+      const end = start+PAGE_SIZE;
+      renderRows(dataSource.slice(start,end)); 
+      renderPager(total);
+    }
+
+    // Modified loadData for search functionality
+    function loadData(){
+      if (currentMonthRows.length === 0) {
+        // If no month selected, show message
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-message">Pilih bulan untuk melihat data...</td></tr>`;
+        pager.innerHTML = '';
+        filteredRows = [];
+        return;
+      }
+      
+      // Filter current month data by search query
+      const q = (searchInput.value||'').trim().toLowerCase();
+      
+      if (q) {
+        filteredRows = currentMonthRows.filter(item => {
+          return (
+            (item.nobooking && item.nobooking.toString().toLowerCase().includes(q)) ||
+            (item.noppbb && item.noppbb.toString().toLowerCase().includes(q)) ||
+            (item.namawajibpajak && item.namawajibpajak && item.namawajibpajak.toLowerCase().includes(q)) ||
+            (item.namapemilikobjekpajak && item.namapemilikobjekpajak && item.namapemilikobjekpajak.toLowerCase().includes(q)) ||
+            (item.npwpwajibpajak && item.npwpwajibpajak && item.npwpwajibpajak.toString().toLowerCase().includes(q)) ||
+            (item.trackstatus && item.trackstatus.toLowerCase().includes(q))
+          );
+        });
+      } else {
+        filteredRows = currentMonthRows;
+      }
+      
+      go(1);
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      loadAllData();
+      if (refreshBtn) refreshBtn.addEventListener('click', () => {
+        loadAllData();
+        if (currentMonth) {
+          // Reload current month if one is selected
+          const monthKey = `${currentMonth.year}-${String(currentMonth.month).padStart(2, '0')}`;
+          const card = document.querySelector(`[data-month-key="${monthKey}"]`);
+          if (card) {
+            card.click();
+          }
+        }
+      });
+      let t=null; 
+      if (searchInput) {
+        searchInput.addEventListener('input', ()=>{
+          if(t)clearTimeout(t); 
+          t=setTimeout(loadData,300); 
+        });
+      }
+    });
+  })();
+  </script>
+  <script type="module">
+    import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+
+<!-- Universal Alert System -->
+<script src="../../../design-n-script/script_backend/universal-alert.js"></script>
+
+<!-- 🔔 Enhanced Notification System with Sound -->
+<script src="../../../design-n-script/script-backend/notification-system.js"></script>
+
+<script>
+  // Initialize Universal Alert System when DOM is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.universalAlert) {
+      console.log('Universal Alert System initialized');
+    } else {
+      console.warn('Universal Alert System failed to load');
+    }
+    
+    // Initialize Notification System
+    if (window.notificationSystem) {
+      console.log('🔔 Notification System initialized with sound alerts');
+      
+      // Add notification controls to the page
+      addNotificationControls();
+    } else {
+      console.warn('🔔 Notification System failed to load');
+    }
+  });
+  
+  function addNotificationControls() {
+    // Add notification toggle button to the page
+    const controlsContainer = document.querySelector('.table-controls');
+    if (controlsContainer) {
+      const soundToggleBtn = document.createElement('button');
+      soundToggleBtn.id = 'notification-sound-toggle';
+      soundToggleBtn.innerHTML = '🔊';
+      soundToggleBtn.title = 'Toggle notification sound';
+      soundToggleBtn.style.cssText = `
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+      `;
+      
+      soundToggleBtn.addEventListener('click', () => {
+        if (window.notificationSystem) {
+          const soundEnabled = window.notificationSystem.toggleSound();
+          soundToggleBtn.innerHTML = soundEnabled ? '🔊' : '🔇';
+          soundToggleBtn.title = soundEnabled ? 'Disable notification sound' : 'Enable notification sound';
+        }
+      });
+      
+      controlsContainer.appendChild(soundToggleBtn);
+    }
+  }
+</script>
+</body>
+</html>

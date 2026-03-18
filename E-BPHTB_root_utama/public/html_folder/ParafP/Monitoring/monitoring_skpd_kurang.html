@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pejabat| Monitoring SKPD Kurang Bayar</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/sidebar-smooth-shift.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/peneliti_kasie_design.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+
+    <style>
+      /* Gothic table theme (scoped to this page) */
+      .table-scroll { max-width: 100%; overflow-x: auto; }
+      /* Increase specificity to override base excel-table rules */
+      .main-content table.excel-table.gothic-table,
+      table.gothic-table {
+        background: #0b0f1a; /* near-black */
+        color: #e5e7eb; /* slate-200 */
+        border-color: #1f2937; /* slate-800 */
+        border-collapse: separate;
+        border-spacing: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        border-radius: 14px;
+        overflow: hidden; /* ensure rounded corners are visible */
+      }
+      .main-content table.excel-table.gothic-table thead th,
+      table.gothic-table thead th {
+        background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+        color: #f3f4f6; /* slate-100 */
+        border-bottom: 1px solid #374151; /* slate-700 */
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        padding: 12px 14px;
+      }
+      .main-content table.excel-table.gothic-table th, .main-content table.excel-table.gothic-table td,
+      table.gothic-table th, table.gothic-table td { border: 1px solid #1f2937; }
+      .main-content table.excel-table.gothic-table td,
+      table.gothic-table td { padding: 10px 12px; }
+      .main-content table.excel-table.gothic-table tbody tr:nth-child(odd),
+      table.gothic-table tbody tr:nth-child(odd) { background: #0b0f1a; }
+      .main-content table.excel-table.gothic-table tbody tr:nth-child(even),
+      table.gothic-table tbody tr:nth-child(even) { background: #0e1422; }
+      .main-content table.excel-table.gothic-table tbody tr:hover,
+      table.gothic-table tbody tr:hover { background: #111827; transition: background .2s ease; }
+
+      /* Rounded corners on header/footer cells for better rendering across browsers */
+      .main-content table.excel-table.gothic-table thead tr:first-child th:first-child,
+      table.gothic-table thead tr:first-child th:first-child { border-top-left-radius: 14px; }
+      .main-content table.excel-table.gothic-table thead tr:first-child th:last-child,
+      table.gothic-table thead tr:first-child th:last-child { border-top-right-radius: 14px; }
+      .main-content table.excel-table.gothic-table tbody tr:last-child td:first-child,
+      table.gothic-table tbody tr:last-child td:first-child { border-bottom-left-radius: 14px; }
+      .main-content table.excel-table.gothic-table tbody tr:last-child td:last-child,
+      table.gothic-table tbody tr:last-child td:last-child { border-bottom-right-radius: 14px; }
+      
+      /* Use generic status-badge from table_utama with darker edges */
+      .status-badge { border: 1px solid rgba(0,0,0,.15); }
+      .status-badge.success { background: #10B981; color: #fff; }
+      .status-badge.error { background: #EF4444; color: #fff; }
+      .status-badge.warning { background: #F59E0B; color: #fff; }
+
+      /* Scrollbar subtle for dark theme */
+      .table-scroll::-webkit-scrollbar { height: 10px; }
+      .table-scroll::-webkit-scrollbar-thumb { background:#1f2937; border-radius: 10px; }
+
+      /* Filter section */
+      .filter-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 20px;
+      }
+
+      /* Filter tabs */
+      .filter-tabs {
+        display: flex;
+        gap: 8px;
+        background: #111827;
+        border-radius: 8px;
+        padding: 4px;
+      }
+      .filter-tab {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        color: #9ca3af;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .filter-tab.active {
+        background: #1d4ed8;
+        color: #fff;
+      }
+      .filter-tab:hover:not(.active) {
+        background: #374151;
+        color: #e5e7eb;
+      }
+
+      /* Table controls */
+      .table-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .page-size-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #9ca3af;
+        font-size: 14px;
+      }
+
+      .page-size-selector label {
+        font-weight: 500;
+      }
+
+      .page-size-select {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 6px;
+        color: #e5e7eb;
+        padding: 6px 10px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: border-color 0.2s ease;
+      }
+
+      .page-size-select:focus {
+        outline: none;
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.2);
+      }
+
+      .page-size-selector span {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      /* Pagination Styles */
+      .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 20px 0;
+        padding: 0 20px;
+      }
+
+      .pagination-info {
+        color: #9ca3af;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .pagination-controls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .pagination-controls .page-btn {
+        min-width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid #374151;
+        background: #1f2937;
+        color: #e5e7eb;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .pagination-controls .page-btn:hover:not(:disabled) {
+        background: #374151;
+        border-color: #4b5563;
+        transform: translateY(-1px);
+      }
+
+      .pagination-controls .page-btn.active {
+        background: #1d4ed8;
+        color: #ffffff;
+        border-color: #1d4ed8;
+        box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+      }
+
+      .pagination-controls .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #111827;
+        border-color: #1f2937;
+      }
+
+      .pagination-controls .page-btn:disabled:hover {
+        transform: none;
+        background: #111827;
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .filter-section {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+        }
+
+        .filter-tabs {
+          justify-content: center;
+        }
+
+        .table-controls {
+          justify-content: center;
+        }
+
+        .pagination-container {
+          flex-direction: column;
+          gap: 12px;
+          padding: 0 16px;
+        }
+
+        .pagination-controls {
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .pagination-controls .page-btn {
+          min-width: 30px;
+          height: 30px;
+          font-size: 12px;
+        }
+      }
+    </style>
+</head>
+<body class="paraf-validasi-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Monitoring SKPD Kurang Bayar</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../penelitiValidasi-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Validasi Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Verifikasi_SSPD/Validasi_berkas_online.html">Validasi Berkas SSPD Online</a>
+            <a href="../Verifikasi_SSPD/Validasi_berkas_offline.html">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fas fa-signature sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="../Sinkronisasi_validasi/Sertifikat_digital.html">Sertifikat Digital</a>
+          <a href="../Sinkronisasi_validasi/tanda_paraf.html">Tanda Paraf</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-television sidebar-icon"></i>
+                <span class="sidebar-text">Monitoring SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="monitoring_verifikasi.html">Monitoring Verifikasi SSPD</a>
+            <a href="monitoring_skpd_kurang.html">Monitoring SKPD Kurang Bayar</a>
+        </div>
+      </div>
+   </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <!-- Filter Tabs and Controls -->
+    <div class="filter-section">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">Semua</button>
+        <button class="filter-tab" data-filter="pending">Belum Bayar</button>
+        <button class="filter-tab" data-filter="partial">Kurang Bayar</button>
+        <button class="filter-tab" data-filter="completed">Lunas</button>
+      </div>
+      
+      <div class="table-controls">
+        <div class="page-size-selector">
+          <label for="pageSize">Tampilkan:</label>
+          <select id="pageSize" class="page-size-select">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>data per halaman</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+    <table id="monitoringTable" class="excel-table gothic-table">
+        <thead>
+            <tr>
+                <th>No. Registrasi</th>
+                <th>No. Booking</th>
+                <th>Nama WP</th>
+                <th>Nama Objek Pajak</th>
+                <th>Nilai Transaksi</th>
+                <th>Pajak Terutang</th>
+                <th>Pajak Dibayar</th>
+                <th>Kekurangan</th>
+                <th>Status</th>
+                <th>Tanggal Update</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+    </table>
+    </div>
+
+    <!-- Pagination Container -->
+    <div class="pagination-container" id="paginationMonitoring">
+      <!-- Pagination controls will be inserted here -->
+    </div>
+
+</main>
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
+
+<!-- Monitoring Script -->
+<script>
+(function(){
+  // Mock data untuk demonstrasi - ganti dengan API endpoint yang sesuai
+  const MOCK_DATA = [
+    {
+      no_registrasi: "2025000001",
+      nobooking: "20001-2025-000001",
+      nama_wp: "PT. Contoh Perusahaan",
+      nama_objek: "Tanah & Bangunan A",
+      nilai_transaksi: 500000000,
+      pajak_terutang: 25000000,
+      pajak_dibayar: 20000000,
+      kekurangan: 5000000,
+      status: "kurang_bayar",
+      updated_at: new Date().toISOString()
+    },
+    {
+      no_registrasi: "2025000002",
+      nobooking: "20002-2025-000002",
+      nama_wp: "CV. Sumber Makmur",
+      nama_objek: "Tanah & Bangunan B",
+      nilai_transaksi: 750000000,
+      pajak_terutang: 37500000,
+      pajak_dibayar: 0,
+      kekurangan: 37500000,
+      status: "belum_bayar",
+      updated_at: new Date().toISOString()
+    },
+    {
+      no_registrasi: "2025000003",
+      nobooking: "20003-2025-000003",
+      nama_wp: "Budi Santoso",
+      nama_objek: "Tanah & Bangunan C",
+      nilai_transaksi: 300000000,
+      pajak_terutang: 15000000,
+      pajak_dibayar: 15000000,
+      kekurangan: 0,
+      status: "lunas",
+      updated_at: new Date().toISOString()
+    }
+  ];
+
+  let PAGE_SIZE = 10;
+  let currentPage = 1;
+  let allData = [];
+  let filteredData = [];
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', () => {
+    setupFilterTabs();
+    setupPageSizeSelector();
+    setupKeyboardNavigation();
+    loadMonitoringData();
+  });
+
+  // Setup filter tabs
+  function setupFilterTabs() {
+    const tabs = document.querySelectorAll('.filter-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Update active tab
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Filter data
+        const filter = tab.dataset.filter;
+        filterData(filter);
+      });
+    });
+  }
+
+  // Setup page size selector
+  function setupPageSizeSelector() {
+    const pageSizeSelect = document.getElementById('pageSize');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', (e) => {
+        PAGE_SIZE = parseInt(e.target.value);
+        currentPage = 1; // Reset to first page when changing page size
+        renderTable();
+        renderPagination();
+        
+        // Show notification about page size change
+        console.log(`[MONITORING] Page size changed to ${PAGE_SIZE} items per page`);
+      });
+    }
+  }
+
+  // Load monitoring data
+  async function loadMonitoringData() {
+    try {
+      console.log('[MONITORING] Loading data...');
+      
+      // Simulate API call with mock data
+      // Replace with actual API endpoint
+      // const response = await fetch('/api/skpd/get-monitoring-documents', {
+      //   credentials: 'include',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'X-Requested-With': 'XMLHttpRequest'
+      //   }
+      // });
+
+      allData = MOCK_DATA.map(item => transformRow(item));
+      filteredData = [...allData];
+      
+      console.log('[MONITORING] Data loaded:', allData.length, 'items');
+      renderTable();
+      renderPagination();
+      
+    } catch (error) {
+      console.error('[MONITORING] Error loading data:', error);
+      showError('Gagal memuat data monitoring: ' + error.message);
+    }
+  }
+
+  // Transform row data
+  function transformRow(row) {
+    const safe = (v) => (v === null || v === undefined) ? '' : v;
+    
+    return {
+      no_registrasi: safe(row.no_registrasi),
+      nobooking: safe(row.nobooking),
+      nama_wp: safe(row.nama_wp),
+      nama_objek: safe(row.nama_objek),
+      nilai_transaksi: formatCurrency(row.nilai_transaksi),
+      pajak_terutang: formatCurrency(row.pajak_terutang),
+      pajak_dibayar: formatCurrency(row.pajak_dibayar),
+      kekurangan: formatCurrency(row.kekurangan),
+      status_display: getStatusDisplay(row.status),
+      updated_at: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : '',
+      raw_status: row.status
+    };
+  }
+
+  // Format currency
+  function formatCurrency(amount) {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    }).format(amount);
+  }
+
+  // Get status display
+  function getStatusDisplay(status) {
+    if (!status) return 'Belum Bayar';
+    const s = String(status).trim();
+    if (s === 'lunas') return 'Lunas';
+    if (s === 'kurang_bayar') return 'Kurang Bayar';
+    if (s === 'belum_bayar') return 'Belum Bayar';
+    return 'Belum Bayar';
+  }
+
+  // Filter data based on status
+  function filterData(filter) {
+    if (filter === 'all') {
+      filteredData = [...allData];
+    } else if (filter === 'pending') {
+      filteredData = allData.filter(item => item.raw_status === 'belum_bayar');
+    } else if (filter === 'partial') {
+      filteredData = allData.filter(item => item.raw_status === 'kurang_bayar');
+    } else if (filter === 'completed') {
+      filteredData = allData.filter(item => item.raw_status === 'lunas');
+    }
+    
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  }
+
+  // Render table
+  function renderTable() {
+    const tbody = document.querySelector('#monitoringTable tbody.data-masuk');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    if (filteredData.length === 0) {
+      const row = tbody.insertRow();
+      const cell = row.insertCell(0);
+      cell.colSpan = 11;
+      cell.textContent = 'Tidak ada data yang ditemukan';
+      cell.style.textAlign = 'center';
+      cell.style.padding = '20px';
+      return;
+    }
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, filteredData.length);
+    const pageData = filteredData.slice(start, end);
+
+    pageData.forEach(item => {
+      renderTableRow(tbody, item);
+    });
+  }
+
+  // Render table row
+  function renderTableRow(tbody, item) {
+    const row = tbody.insertRow();
+    row.setAttribute('data-nobooking', item.nobooking);
+    row.setAttribute('data-noregistrasi', item.no_registrasi);
+
+    // Add cells
+    const cells = [
+      item.no_registrasi,
+      item.nobooking,
+      item.nama_wp,
+      item.nama_objek,
+      item.nilai_transaksi,
+      item.pajak_terutang,
+      item.pajak_dibayar,
+      item.kekurangan,
+      item.status_display,
+      item.updated_at
+    ];
+
+    cells.forEach((cellData, index) => {
+      const cell = row.insertCell();
+      if (index === 8) { // Status column
+        cell.innerHTML = renderStatusBadge(cellData);
+      } else {
+        cell.textContent = cellData || '-';
+      }
+    });
+
+    // Add action cell
+    const actionCell = row.insertCell();
+    renderActionButton(actionCell, item);
+  }
+
+  // Render status badge
+  function renderStatusBadge(status) {
+    const s = String(status || 'Belum Bayar');
+    if (s === 'Lunas') return '<span class="status-badge success">Lunas</span>';
+    if (s === 'Kurang Bayar') return '<span class="status-badge warning">Kurang Bayar</span>';
+    return '<span class="status-badge error">Belum Bayar</span>';
+  }
+
+  // Render action button
+  function renderActionButton(container, item) {
+    const button = document.createElement('button');
+    button.className = 'btn-view';
+    button.textContent = 'Lihat Detail';
+    button.style.cssText = 'padding:6px 10px; border-radius:6px; border:1px solid #334155; background:#1d4ed8; color:#fff; cursor:pointer;';
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showDetailModal(item);
+    });
+    container.appendChild(button);
+  }
+
+  // Show detail modal
+  function showDetailModal(item) {
+    // Create modal HTML
+    const modalHTML = `
+      <div id="detailModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center;">
+        <div style="background: #1f2937; color: #e5e7eb; padding: 24px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #f3f4f6;">Detail SKPD Kurang Bayar</h3>
+            <button id="closeModal" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer;">Tutup</button>
+          </div>
+          <div style="display: grid; gap: 12px;">
+            <div><strong>No. Registrasi:</strong> ${item.no_registrasi}</div>
+            <div><strong>No. Booking:</strong> ${item.nobooking}</div>
+            <div><strong>Nama WP:</strong> ${item.nama_wp}</div>
+            <div><strong>Nama Objek:</strong> ${item.nama_objek}</div>
+            <div><strong>Nilai Transaksi:</strong> ${item.nilai_transaksi}</div>
+            <div><strong>Pajak Terutang:</strong> ${item.pajak_terutang}</div>
+            <div><strong>Pajak Dibayar:</strong> ${item.pajak_dibayar}</div>
+            <div><strong>Kekurangan:</strong> ${item.kekurangan}</div>
+            <div><strong>Status:</strong> ${renderStatusBadge(item.status_display)}</div>
+            <div><strong>Tanggal Update:</strong> ${item.updated_at}</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Add close functionality
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('detailModal').remove();
+    });
+
+    // Close on background click
+    document.getElementById('detailModal').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModal') {
+        document.getElementById('detailModal').remove();
+      }
+    });
+  }
+
+  // Render pagination
+  function renderPagination() {
+    const pagination = document.getElementById('paginationMonitoring');
+    if (!pagination) return;
+
+    const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, filteredData.length);
+
+    if (totalPages <= 1) {
+      pagination.innerHTML = `
+        <div class="pagination-info">
+          Menampilkan ${filteredData.length} data
+        </div>
+        <div class="pagination-controls"></div>
+      `;
+      return;
+    }
+
+    // Create pagination info
+    const info = document.createElement('div');
+    info.className = 'pagination-info';
+    info.textContent = `Menampilkan ${start + 1} sampai ${end} dari ${filteredData.length} data`;
+
+    // Create pagination controls
+    const controls = document.createElement('div');
+    controls.className = 'pagination-controls';
+
+    // Previous button
+    const prevBtn = createPageButton('‹', currentPage <= 1, () => goToPage(currentPage - 1));
+    controls.appendChild(prevBtn);
+
+    // Page numbers with smart pagination
+    const pageNumbers = generatePageNumbers(currentPage, totalPages);
+    
+    pageNumbers.forEach((page, index) => {
+      if (page === '...') {
+        const ellipsis = document.createElement('span');
+        ellipsis.textContent = '...';
+        ellipsis.style.padding = '0 8px';
+        ellipsis.style.color = '#9ca3af';
+        controls.appendChild(ellipsis);
+      } else {
+        const pageBtn = createPageButton(String(page), false, () => goToPage(page));
+        if (page === currentPage) {
+          pageBtn.classList.add('active');
+        }
+        controls.appendChild(pageBtn);
+      }
+    });
+
+    // Next button
+    const nextBtn = createPageButton('›', currentPage >= totalPages, () => goToPage(currentPage + 1));
+    controls.appendChild(nextBtn);
+
+    pagination.innerHTML = '';
+    pagination.appendChild(info);
+    pagination.appendChild(controls);
+  }
+
+  // Generate smart page numbers (show ellipsis for large page counts)
+  function generatePageNumbers(current, total) {
+    const pages = [];
+    const maxVisible = 7; // Maximum number of page buttons to show
+    
+    if (total <= maxVisible) {
+      // Show all pages if total is small
+      for (let i = 1; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Smart pagination with ellipsis
+      if (current <= 4) {
+        // Show first pages + ellipsis + last page
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(total);
+      } else if (current >= total - 3) {
+        // Show first page + ellipsis + last pages
+        pages.push(1);
+        pages.push('...');
+        for (let i = total - 4; i <= total; i++) {
+          pages.push(i);
+        }
+      } else {
+        // Show first + ellipsis + current range + ellipsis + last
+        pages.push(1);
+        pages.push('...');
+        for (let i = current - 1; i <= current + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(total);
+      }
+    }
+    
+    return pages;
+  }
+
+  // Create page button helper
+  function createPageButton(text, disabled, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn';
+    btn.textContent = text;
+    btn.disabled = disabled;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  // Go to page
+  function goToPage(page) {
+    const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      currentPage = page;
+      renderTable();
+      renderPagination();
+      
+      // Smooth scroll to top of table
+      const table = document.getElementById('monitoringTable');
+      if (table) {
+        table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  // Keyboard navigation for pagination
+  function setupKeyboardNavigation() {
+    document.addEventListener('keydown', (e) => {
+      // Only handle keyboard navigation when pagination is visible and focused
+      const pagination = document.getElementById('paginationMonitoring');
+      if (!pagination || !pagination.offsetParent) return;
+
+      const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+      if (totalPages <= 1) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (currentPage > 1) {
+            goToPage(currentPage - 1);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (currentPage < totalPages) {
+            goToPage(currentPage + 1);
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          goToPage(1);
+          break;
+        case 'End':
+          e.preventDefault();
+          goToPage(totalPages);
+          break;
+      }
+    });
+  }
+
+  // Show error
+  function showError(message) {
+    const tbody = document.querySelector('#monitoringTable tbody.data-masuk');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="11" style="text-align: center; padding: 20px; color: #ef4444;">
+            ${message}
+          </td>
+        </tr>
+      `;
+    }
+  }
+})();
+</script>
+</body>
+</html>

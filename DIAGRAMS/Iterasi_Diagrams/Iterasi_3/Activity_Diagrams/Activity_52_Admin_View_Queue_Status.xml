@@ -1,0 +1,84 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_52_Admin_View_Queue_Status" name="Activity 52: Admin View Queue Status">
+    <mxGraphModel dx="906" dy="489" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_admin" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#EFEBE9;strokeColor=#5D4037;fontStyle=1;fontSize=14;" value="Admin" vertex="1">
+          <mxGeometry height="330" width="400" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_admin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_open_dashboard" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Membuka Dashboard Admin" vertex="1">
+          <mxGeometry height="50" width="200" x="170" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_request_queue" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Request Queue Status&#xa;(GET /api/ppat/my-schedules)" vertex="1">
+          <mxGeometry height="70" width="200" x="170" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_view_queue" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Status Antrian&#xa;(id, nobooking, scheduled_for,&#xa;status, requested_at, sent_at)" vertex="1">
+          <mxGeometry height="60" width="190" x="175" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="admin_filter_sort" parent="swimlane_admin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Filter &amp; Sort Antrian&#xa;(By Date, Status, Priority)" vertex="1">
+          <mxGeometry height="50" width="150" x="10" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_admin" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="200" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="330" width="500" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_auth" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Authentication&#xa;(req.session.user)" vertex="1">
+          <mxGeometry height="70" width="200" x="60" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_query_queue" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Query ppat_send_queue&#xa;(SELECT id, nobooking, scheduled_for,&#xa;status, requested_at, sent_at&#xa;WHERE userid=$1&#xa;ORDER BY scheduled_for, requested_at)" vertex="1">
+          <mxGeometry height="100" width="200" x="270" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_return_result" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Return JSON Response&#xa;{success, data: [&#xa;{id, nobooking, scheduled_for,&#xa;status, requested_at, sent_at}]}" vertex="1">
+          <mxGeometry height="100" width="200" x="20" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_open_dashboard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="admin_open_dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_request_queue" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="admin_request_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_validate_auth" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="195" />
+              <mxPoint x="430" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="sys_validate_auth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_query_queue" value="Authorized">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="sys_query_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_return_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_return_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="admin_view_queue" value="Response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="240" />
+              <mxPoint x="310" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="admin_view_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="admin_filter_sort" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="admin_filter_sort" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="125" y="335" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="A0B9Tcb1Vp4k5fBDTJ4z-1" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Admin View Status Process - ITERASI 3" vertex="1">
+          <mxGeometry height="354" width="900" x="40" y="16" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

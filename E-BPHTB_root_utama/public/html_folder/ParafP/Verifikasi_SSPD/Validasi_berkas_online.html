@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pejabat| Validasi Berkas SSPD Online</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/sidebar-smooth-shift.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/peneliti_kasie_design.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+
+    /* Tambahkan di head atau file CSS terpisah */
+<style>
+  /* Button Sertifikat Digital Styling */
+  .btn.pilih_sertifikat {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn.pilih_sertifikat:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+  
+  .btn.pilih_sertifikat:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+  }
+  
+  .btn.pilih_sertifikat:disabled {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .pv-badge { display:inline-flex; align-items:center; gap:6px; font-weight:600; padding:4px 10px; border-radius:999px; border:1px solid transparent; }
+  .pv-badge.ok { background:#ECFDF5; color:#065F46; border-color:#A7F3D0; }
+  .pv-badge.warn { background:#FEF2F2; color:#991B1B; border-color:#FECACA; }
+  #pv-actions { border-color:#e5e5e5; }
+  #pv-actions h3 { margin:0 0 8px 0; }
+  #pv-actions .btn[disabled], #pv-actions button[disabled] { opacity:0.6; cursor:not-allowed; }
+  /* Gothic table theme (scoped to this page) */
+  .table-scroll { max-width: 100%; overflow-x: auto; }
+  /* Increase specificity to override base excel-table rules */
+  .main-content table.excel-table.gothic-table,
+  table.gothic-table {
+    background: #0b0f1a; /* near-black */
+    color: #e5e7eb; /* slate-200 */
+    border-color: #1f2937; /* slate-800 */
+    border-collapse: separate;
+    border-spacing: 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 14px;
+    overflow: hidden; /* ensure rounded corners are visible */
+  }
+  .main-content table.excel-table.gothic-table thead th,
+  table.gothic-table thead th {
+    background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+    color: #f3f4f6; /* slate-100 */
+    border-bottom: 1px solid #374151; /* slate-700 */
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 12px 14px;
+    text-align: center !important;
+    vertical-align: middle !important;
+  }
+  .main-content table.excel-table.gothic-table th, .main-content table.excel-table.gothic-table td,
+  table.gothic-table th, table.gothic-table td { border: 1px solid #1f2937; }
+  .main-content table.excel-table.gothic-table td,
+  table.gothic-table td { padding: 10px 12px; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(odd),
+  table.gothic-table tbody tr:nth-child(odd) { background: #0b0f1a; }
+  .main-content table.excel-table.gothic-table tbody tr:nth-child(even),
+  table.gothic-table tbody tr:nth-child(even) { background: #0e1422; }
+  .main-content table.excel-table.gothic-table tbody tr:hover,
+  table.gothic-table tbody tr:hover { background: #111827; transition: background .2s ease; }
+
+  /* Selected row highlight */
+  .main-content table.excel-table.gothic-table tbody tr.selected-row,
+  table.gothic-table tbody tr.selected-row {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%) !important;
+    border: 2px solid #3b82f6 !important;
+    box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.2);
+  }
+  .main-content table.excel-table.gothic-table tbody tr.selected-row td,
+  table.gothic-table tbody tr.selected-row td {
+    border-color: #3b82f6 !important;
+  }
+
+  /* Rounded corners on header/footer cells for better rendering across browsers */
+  .main-content table.excel-table.gothic-table thead tr:first-child th:first-child,
+  table.gothic-table thead tr:first-child th:first-child { border-top-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table thead tr:first-child th:last-child,
+  table.gothic-table thead tr:first-child th:last-child { border-top-right-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:first-child,
+  table.gothic-table tbody tr:last-child td:first-child { border-bottom-left-radius: 14px; }
+  .main-content table.excel-table.gothic-table tbody tr:last-child td:last-child,
+  table.gothic-table tbody tr:last-child td:last-child { border-bottom-right-radius: 14px; }
+  /* Buttons inside table */
+  .gothic-table .btn-kirim-document {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid #334155; background:#0ea5e9; color:#fff; cursor:pointer;
+  }
+  .gothic-table .btn-kirim-document:hover { filter: brightness(1.05); }
+  /* Use generic status-badge from table_utama with darker edges */
+  .status-badge { border: 1px solid rgba(0,0,0,.15); }
+
+  /* Gothic dropdown styles */
+  tr.dropdown-row > td {
+    background: linear-gradient(180deg, #0e1422 0%, #0b0f1a 100%);
+    border-top: 1px solid #1f2937;
+    border-bottom: 1px solid #1f2937;
+    padding: 16px 18px;
+  }
+  .dropdown-content-wrapper {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 16px;
+    color: #d1d5db; /* slate-300 */
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .action-buttons h5 {
+    color: #e5e7eb;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .action-buttons .form-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .action-buttons {
+      grid-template-columns: 1fr;
+    }
+  }
+  .document-info-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .document-info-section p { margin: 6px 0; color: #cbd5e1; }
+  .document-info-section strong { color: #e5e7eb; }
+
+  .document-links-section {
+    background: #0b0f1a;
+    border: 1px solid #1f2937;
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .document-links-title { color: #e5e7eb; margin: 0 0 8px 0; font-weight: 600; }
+  .document-links-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .document-link-item { background:#111827; border:1px solid #1f2937; border-radius:8px; padding:10px; display:flex; align-items:center; gap:10px; }
+  .document-label { min-width: 120px; color:#9ca3af; }
+  .btn-view { padding:6px 10px; border-radius:6px; border:1px solid #334155; background:#1d4ed8; color:#fff; cursor:pointer; }
+  .btn-view:hover { filter:brightness(1.1); }
+
+  /* Scrollbar subtle for dark theme */
+  .table-scroll::-webkit-scrollbar { height: 10px; }
+  .table-scroll::-webkit-scrollbar-thumb { background:#1f2937; border-radius: 10px; }
+  
+  /* Real-time controls styling for ParafP */
+  .real-time-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  
+  .real-time-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: pulse 2s infinite;
+  }
+  
+  .indicator-dot.paused {
+    background: #6c757d;
+    animation: none;
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Card-based layout for PV sections */
+  .pv-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease;
+  }
+
+  /* Dark theme card for sertifikat (matches table theme) */
+  #sertif-overlay.pv-card {
+    background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+    border: 1px solid #1f2937;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    color: #e5e7eb;
+  }
+
+  #sertif-overlay.pv-card:hover {
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  }
+
+  #sertif-overlay .pv-card-header {
+    border-bottom: 2px solid #374151;
+  }
+
+  #sertif-overlay .pv-card-title {
+    color: #f3f4f6;
+  }
+
+  #sertif-overlay .pv-card-body {
+    color: #e5e7eb;
+  }
+
+  .pv-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .pv-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f3f4f6;
+  }
+
+  .pv-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pv-card-close-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
+  }
+
+  .pv-card-close-btn:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+  }
+
+  .pv-card-body {
+    margin-top: 16px;
+  }
+
+  .pv-info-box {
+    padding: 12px 16px;
+    background: #EFF6FF;
+    border: 1px solid #93C5FD;
+    border-radius: 8px;
+    color: #1E40AF;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .pv-info-box a {
+    color: #1E40AF;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+
+  .pv-input-group {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .pv-input-group label {
+    min-width: 120px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+  }
+
+  .pv-input-group input {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .pv-input-group input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Dark theme inputs for sertifikat card */
+  #sertif-overlay .pv-input-group label {
+    color: #e5e7eb;
+  }
+
+  #sertif-overlay .pv-text-input,
+  #sertif-overlay .pv-select-input {
+    background: #0b0f1a;
+    border: 1px solid #374151;
+    color: #f3f4f6;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  #sertif-overlay .pv-text-input:focus,
+  #sertif-overlay .pv-select-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  }
+
+  #sertif-overlay .pv-text-input::placeholder {
+    color: #9ca3af;
+  }
+
+  /* Ensure sertifikat dropdown is visible */
+  #sertif-dropdown {
+    display: none !important;
+  }
+  
+  #sertif-dropdown[style*="display: block"],
+  #sertif-dropdown[style*="display:block"] {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  #sertif-select option {
+    background: #0b0f1a;
+    color: #f3f4f6;
+    padding: 8px;
+  }
+
+  .pv-btn-primary {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  .pv-badge-success {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(5, 150, 105, 0.2);
+    border: 1px solid #059669;
+    border-radius: 8px;
+    color: #10b981;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .pv-button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .pv-button-group button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pv-button-group button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .pv-btn-verify {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-btn-verify:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  .pv-btn-approve {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+  }
+
+  .pv-btn-approve:hover:not(:disabled) {
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+  }
+
+  .pv-btn-reject {
+    background: linear-gradient(135deg, #DC2626 0%, #b91c1c 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  }
+
+  .pv-btn-reject:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  }
+
+  .pv-note-box {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #F0FDF4;
+    border: 1px solid #A7F3D0;
+    border-radius: 8px;
+    color: #065F46;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .pv-note-box strong {
+    color: #047857;
+  }
+
+  .pv-appearance-details {
+    margin-top: 16px;
+  }
+
+  .pv-appearance-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #374151;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    user-select: none;
+  }
+
+  .pv-appearance-details summary:hover {
+    background: #f3f4f6;
+  }
+
+  .pv-appearance-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .pv-appearance-inputs input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+  }
+
+  .pv-appearance-inputs input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .pv-appearance-inputs input[type="number"] {
+    width: 100px;
+  }
+
+  .pv-appearance-inputs input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .pv-appearance-inputs button {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .pv-appearance-inputs button:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1px);
+  }
+
+  .pv-preview-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .pv-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pv-preview-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .pv-preview-header button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .pv-preview-header .btn.viewpdf {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pv-preview-header .btn.viewpdf:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  }
+
+  #pv-preview-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+
+  #pv-preview-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+
+  #pv-preview-msg {
+    margin-left: 8px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  #pv-usermsg {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  #pv-usermsg:empty {
+    display: none;
+  }
+
+  #pv-debug {
+    margin-top: 12px;
+  }
+
+  #pv-debug summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #6b7280;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    user-select: none;
+  }
+
+  #pv-debug summary:hover {
+    background: #f3f4f6;
+  }
+
+  #pv-output {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f7f7f7;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+  }
+
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .pv-card {
+      padding: 16px;
+    }
+
+    .pv-card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .pv-input-group {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pv-input-group label {
+      min-width: auto;
+      margin-bottom: 8px;
+    }
+
+    .pv-input-group input {
+      min-width: 100%;
+    }
+
+    .pv-button-group {
+      flex-direction: column;
+    }
+
+    .pv-button-group button {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .pv-appearance-inputs {
+      flex-direction: column;
+    }
+
+    .pv-appearance-inputs input {
+      width: 100% !important;
+    }
+
+    .pv-preview-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .pv-preview-header button {
+      width: 100%;
+      margin-top: 8px;
+    }
+  }
+</style>
+</head>
+<body class="paraf-validasi-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Validasi Berkas SSPD</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <button class="profile-btn" id="profileButton" class="profile-button">Profil</button>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../penelitiValidasi-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Validasi Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="Validasi_berkas_online.html">Validasi Berkas SSPD Online</a>
+            <a href="Validasi_berkas_offline.html">Validasi Berkas SSPD Offline</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fas fa-signature sidebar-icon"></i>
+                <span class="sidebar-text">Sinkronisasi dan Paraf</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+          <a href="../Sinkronisasi_validasi/Sertifikat_digital.html">Sertifikat Digital</a>
+          <a href="../Sinkronisasi_validasi/tanda_paraf.html">Tanda Paraf</a>
+        </div>
+      </div>
+      <div class="box">
+        <div class="menu-item dropdown laporan-bulanan" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-television sidebar-icon"></i>
+                <span class="sidebar-text">Monitoring SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Monitoring/monitoring_verifikasi.html">Monitoring Verifikasi SSPD</a>
+            <a href="../Monitoring/monitoring_skpd_kurang.html">Monitoring SKPD Kurang Bayar</a>
+        </div>
+      </div>
+   </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <button class="btn pilih_sertifikat" onclick="drop_downsertifikat(); return false;" type="button">Sertifikat Digital</button><!--button ini akan menurunkan dropdown-->
+      
+      <!-- Real-time controls -->
+      <div class="real-time-controls">
+        <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+          <i class="fa fa-pause"></i> Pause Real-time
+        </button>
+        <div class="real-time-indicator" id="realTimeIndicator">
+          <div class="indicator-dot"></div>
+          <span>Real-time</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sertifikat Digital Card -->
+    <section id="sertif-overlay" class="pv-card" style="display:none;">
+      <div class="pv-card-header">
+        <h3 class="pv-card-title">
+          Sertifikat Digital
+        </h3>
+        <button id="sertif-overlay-close" class="pv-card-close-btn">Tutup</button>
+      </div>
+      
+      <div class="pv-card-body">
+        <div class="sertif_aktif">
+          <button id="pilih_sertifikat" class="pv-btn-primary">Pilih Sertifikat</button>
+          <div class="sertif_overlayDropdown" id="sertif-dropdown" style="display:none; margin-top:16px; padding:16px; background: rgba(15, 23, 42, 0.95); border: 1px solid #374151; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <div class="pv-input-group">
+              <label style="color: #e5e7eb; font-weight: 600;">Pilih Sertifikat:</label>
+              <select id="sertif-select" class="pv-select-input" style="flex: 1; min-width: 200px; background: #0b0f1a; border: 1px solid #374151; color: #f3f4f6; padding: 10px 12px; border-radius: 8px;">
+                <option value="">-- Memuat sertifikat... --</option>
+              </select>
+            </div>
+            <div class="pv-input-group">
+              <label style="color: #e5e7eb; font-weight: 600;">Passphrase:</label>
+              <input id="sertif-pass" type="password" placeholder="Masukkan passphrase sertifikat" class="pv-text-input" style="flex: 1; min-width: 200px; background: #0b0f1a; border: 1px solid #374151; color: #f3f4f6;"/>
+            </div>
+            <div class="pv-button-group">
+              <button id="sertif-verify" class="pv-btn-verify">Gunakan Sertifikat</button>
+            </div>
+            <div id="sertif-badge" class="pv-badge-success" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+        <!-- PV Actions Panel (Peneliti Validasi) -->
+        <section id="pv-actions" class="pv-card">
+          <div class="pv-card-header">
+            <h3 class="pv-card-title">
+              Proses Validasi (PV) - Dokumen Status "Menunggu"
+              <span id="pv-auth-badge" class="pv-badge warn">Auth belum siap</span>
+            </h3>
+          </div>
+          
+          <div class="pv-card-body">
+            <div class="pv-info-box">
+              <strong>Info:</strong> Halaman ini menampilkan dokumen dengan status "Menunggu" untuk divalidasi. 
+              Dokumen yang sudah "Sudah Divalidasi" atau "Ditolak" dapat dilihat di halaman 
+              <a href="../Monitoring/monitoring_verifikasi.html">Monitoring Verifikasi</a>.
+            </div>
+            
+            <div class="pv-input-group">
+              <label>No. Validasi</label>
+              <input id="pv-no-validasi" type="text" placeholder="Klik baris tabel untuk memilih" readonly/>
+            </div>
+            
+            <div class="pv-input-group">
+              <label>No. Booking</label>
+              <input id="pv-no-booking" type="text" placeholder="Otomatis terisi saat memilih baris" readonly/>
+            </div>
+            
+            <!-- ACTION BUTTONS - Verify, Approve, Reject -->
+            <div class="pv-action-buttons-panel" style="margin-top: 20px; padding: 15px; background: rgba(30, 41, 59, 0.8); border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+              <h4 style="margin: 0 0 15px 0; color: #fff; font-size: 14px;">Aksi Validasi:</h4>
+              
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <!-- VERIFY Button -->
+                <button id="pv-verify-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); opacity: 0.5;">
+                  🔍 Verify
+                </button>
+                
+                <!-- APPROVE Button -->
+                <button id="pv-approve-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3); opacity: 0.5;">
+                  ✅ Setujui & Kirim ke LSB
+                </button>
+                
+                <!-- REJECT Button -->
+                <button id="pv-reject-btn" disabled
+                  style="padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3); opacity: 0.5;">
+                  ❌ Tolak
+                </button>
+              </div>
+              
+              <div id="pv-action-status" style="margin-top: 10px; font-size: 12px; color: #94a3b8;">
+                Pilih dokumen dari tabel untuk mengaktifkan tombol.
+              </div>
+            </div>
+            
+            <details class="pv-appearance-details" style="margin-top: 15px;">
+              <summary>Appearance (koordinat TTE)</summary>
+              <div class="pv-appearance-inputs">
+                <input id="ap-page" type="number" min="1" value="1" placeholder="page"/>
+                <input id="ap-x" type="number" value="420" placeholder="x"/>
+                <input id="ap-y" type="number" value="680" placeholder="y"/>
+                <input id="ap-w" type="number" value="160" placeholder="width"/>
+                <input id="ap-h" type="number" value="55" placeholder="height"/>
+                <input id="ap-reason" type="text" value="Validasi dokumen" placeholder="reason"/>
+                <input id="ap-location" type="text" value="Bappenda" placeholder="location"/>
+                <button id="pv-appearance">Simpan Appearance</button>
+              </div>
+            </details>
+            
+            <div id="pv-usermsg" style="margin-top: 10px;"></div>
+            
+            <details id="pv-debug">
+              <summary>Detail teknis</summary>
+              <pre id="pv-output"></pre>
+            </details>
+          </div>
+        </section>
+        
+        <!-- Preview Panel (Tab Baru) -->
+        <section id="pv-preview" class="pv-preview-card">
+          <div class="pv-preview-header">
+            <h3>Review Dokumen</h3>
+            <button id="pv-preview-btn">Buka Preview di Tab Baru</button>
+            <span id="pv-preview-msg"></span>
+          </div>
+        </section>
+
+    <div class="table-scroll">
+    <table id="penelitikasieTable" class="excel-table gothic-table">
+        <thead>
+            <tr>
+                <th>No. Validasi</th>
+                <th>No. Registrasi</th>
+                <th>No. Booking</th>
+                <th>Tahun AJB</th>
+                <th>Status</th> <!--status ini berbeda dengan status sebelumnya yang tersimpan di database(jika didatabase seperti ini (diterima, ditolak, diajukan, dikerjakan, diselesaikan), untuk status ini merupakan status penanda(menunggu (paraf), Ditolak, Telah Ditandangani). catatan hanya di halaman ini saja status yang boleh tertampil dan terbaca hanya (menunggu), sisa dari 2 status (Ditolak, Telah Ditandangani) akan dimuat dalam laman di menu lain)-->
+                <th>Pembuat Booking</th> <!--nama pembuat adalah nama pembuat dokumen (nobooking) dan gelar adalah gelar pembuat dokumen (misal: Rasya. ST. MH/ Notaris, atau Luciana. ST. MH/ PPAT) sebagai bentuk kejelasan-->
+            </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+    </table>
+    </div>
+
+    <div id="paginationPV" style="margin:12px 0; display:flex; align-items:center; justify-content:space-between;"></div>
+
+
+</main>
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
+  <script src="../../../design-n-script/script-backend/paraf_validasi.js"></script>
+  
+  <!-- Real-time monitoring script for ParafP -->
+  <script>
+    (function(){
+      // Real-time notification system for ParafP
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+      
+      // Track user activity
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        
+        // Reset interaction flag after 5 seconds of inactivity
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) {
+            userIsInteracting = false;
+          }
+        }, 5000);
+      }
+      
+      // Function to start real-time monitoring
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+        }
+        
+        // Check for new data every 5 seconds (reduced frequency)
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          
+          // Skip if user is actively interacting
+          if (userIsInteracting) {
+            console.log('⏸️ Skipping ParafP real-time check - user is interacting');
+            return;
+          }
+          
+          try {
+            await checkForNewData();
+          } catch (error) {
+            console.error('❌ Error in ParafP real-time monitoring:', error);
+          }
+        }, 5000); // Check every 5 seconds
+        
+        console.log('🔄 ParafP Real-time monitoring started');
+      }
+      
+      // Function to stop real-time monitoring
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+        console.log('⏹️ ParafP Real-time monitoring stopped');
+      }
+      
+      // Function to check for new data
+      async function checkForNewData() {
+        try {
+          // Get current data count from the table
+          const tbody = document.querySelector('#penelitikasieTable tbody');
+          const currentCount = tbody ? tbody.children.length : 0;
+          
+          // If count increased, show notification and reload with debouncing
+          if (currentCount > lastDataCount && lastDataCount > 0) {
+            console.log(`🆕 New ParafP data detected! Count: ${lastDataCount} → ${currentCount}`);
+            lastDataCount = currentCount;
+            
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
+            
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleParafPNotification();
+                
+                // Reload the table data
+                if (window.loadPvDocs) {
+                  window.loadPvDocs();
+                }
+              } else {
+                console.log('⏸️ Skipping ParafP refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
+          } else if (currentCount !== lastDataCount) {
+            // Update count even if it decreased
+            lastDataCount = currentCount;
+          }
+        } catch (error) {
+          console.error('❌ Error checking for new ParafP data:', error);
+        }
+      }
+      
+      // Function to show subtle ParafP notification (less intrusive)
+      function showSubtleParafPNotification() {
+        // Remove existing indicators
+        const existingIndicator = document.querySelector('.subtle-parafp-notification');
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
+        
+        // Create subtle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'subtle-parafp-notification';
+        indicator.innerHTML = `
+          <div class="subtle-content">
+            <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+            <span>Data ParafP baru tersedia</span>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('subtle-parafp-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'subtle-parafp-notification-styles';
+          style.textContent = `
+            .subtle-parafp-notification {
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              background: rgba(40, 167, 69, 0.9);
+              color: white;
+              border-radius: 20px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 9998;
+              animation: slideInRight 0.3s ease-out;
+              font-size: 12px;
+              font-weight: 500;
+              backdrop-filter: blur(10px);
+            }
+            
+            .subtle-content {
+              display: flex;
+              align-items: center;
+            }
+            
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(indicator);
+        
+        // Auto remove after 3 seconds (shorter duration)
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+              if (indicator.parentElement) {
+                indicator.remove();
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // Function to toggle real-time monitoring
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+      
+      // Function to update real-time button state
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+        
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+            button.title = 'Klik untuk menghentikan auto-refresh';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+            button.title = 'Klik untuk memulai auto-refresh';
+          }
+        }
+        
+        if (dot) {
+          if (isEnabled) {
+            dot.classList.remove('paused');
+            dot.title = 'Real-time monitoring aktif';
+          } else {
+            dot.classList.add('paused');
+            dot.title = 'Real-time monitoring dihentikan';
+          }
+        }
+      }
+      
+      // Initialize real-time monitoring
+      function initializeRealTime() {
+        // Get initial count
+        const tbody = document.querySelector('#penelitikasieTable tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        
+        startRealTimeMonitoring();
+      }
+      
+      // Expose functions to global scope
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
+      
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', () => {
+        // Wait a bit for the table to load
+        setTimeout(() => {
+          initializeRealTime();
+        }, 1000);
+        
+        // Track user interactions to prevent unwanted refreshes
+        const table = document.querySelector('#penelitikasieTable');
+        if (table) {
+          // Track clicks on buttons and interactive elements
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+              trackUserActivity();
+              console.log('👆 User clicked ParafP button - tracking activity');
+            }
+          });
+          
+          // Track mouse movements over the table
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        
+        // Track clicks on real-time toggle button
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) {
+          realTimeToggle.addEventListener('click', trackUserActivity);
+        }
+        
+        // Track clicks on PV action buttons
+        const pvButtons = document.querySelectorAll('#pv-actions button');
+        pvButtons.forEach(btn => {
+          btn.addEventListener('click', trackUserActivity);
+        });
+        
+        // Track clicks on preview button
+        const previewBtn = document.getElementById('pv-preview-btn');
+        if (previewBtn) {
+          previewBtn.addEventListener('click', trackUserActivity);
+        }
+        
+        // Track clicks on viewpdf button
+        const viewpdfBtn = document.querySelector('.btn.viewpdf');
+        if (viewpdfBtn) {
+          viewpdfBtn.addEventListener('click', trackUserActivity);
+        }
+      });
+    })();
+  </script>
+  
+<!-- PV Actions logic -->
+<script>
+(function(){
+  const el = (id)=>document.getElementById(id);
+  const out = document.getElementById('pv-output');
+  const usermsg = document.getElementById('pv-usermsg');
+  const noVal = ()=> (el('pv-no-validasi')?.value||'').trim();
+  const idem = ()=> (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+  const authBadge = document.getElementById('pv-auth-badge');
+  let lastVerifiedNoVal = null; // per-doc verification success flag
+  // PDF.js tidak diperlukan untuk membuka viewer bawaan browser
+  async function callPV(url, opts={}){
+    console.debug('[PV][FE] call', url, opts);
+    const res = await fetch(url, { credentials:'include', headers:{ 'Content-Type':'application/json', ...(opts.headers||{}) }, method: opts.method||'POST', body: opts.body ? JSON.stringify(opts.body): undefined });
+    const js = await res.json().catch(()=>({ success:false, message:'JSON parse error'}));
+    console.debug('[PV][FE] resp', url, { ok: res.ok, status: res.status, js });
+    if(!res.ok) throw new Error(js.message||('HTTP '+res.status));
+    return js;
+  }
+  function log(msg, data){
+    if(usermsg){ usermsg.textContent = (msg||''); }
+    if(out){ out.textContent = (msg||'') + (data? ('\n'+JSON.stringify(data,null,2)):''); }
+  }
+  // Function to toggle sertifikat overlay
+  async function drop_downsertifikat() {
+    try {
+      console.log('[SERTIF] drop_downsertifikat called');
+      const overlay = document.getElementById('sertif-overlay');
+      if (!overlay) {
+        console.error('[SERTIF] Overlay element not found!');
+        alert('Elemen sertifikat tidak ditemukan. Silakan refresh halaman.');
+        return;
+      }
+      
+      // Check current visibility - handle both inline style and computed style
+      const currentDisplay = overlay.style.display;
+      const computedDisplay = window.getComputedStyle(overlay).display;
+      const isVisible = (currentDisplay !== 'none' && currentDisplay !== '') || 
+                       (computedDisplay !== 'none' && computedDisplay !== '');
+      
+      console.log('[SERTIF] Current visibility:', isVisible, 'inline display:', currentDisplay, 'computed display:', computedDisplay);
+      
+      if (isVisible) {
+        // Hide overlay
+        overlay.style.display = 'none';
+        const dd = document.getElementById('sertif-dropdown');
+        if (dd) dd.style.display = 'none';
+        console.log('[SERTIF] Overlay hidden');
+      } else {
+        // Show overlay
+        overlay.style.display = 'block';
+        console.log('[SERTIF] Overlay shown');
+        
+        // Load certificate list
+        try {
+          await loadCertList();
+          await refreshVerified();
+        } catch (err) {
+          console.warn('[SERTIF] Error loading cert list:', err);
+        }
+        
+        // Auto-expand dropdown for passphrase input
+        const dd = document.getElementById('sertif-dropdown');
+        const badge = document.getElementById('sertif-badge');
+        if (dd) {
+          // Always show dropdown when overlay is opened so user can input passphrase
+          dd.style.display = 'block';
+          console.log('[SERTIF] Dropdown shown for passphrase input');
+        }
+        if (badge && badge.style.display === 'none') {
+          // If no cert is active, ensure dropdown is visible
+          if (dd) dd.style.display = 'block';
+        }
+      }
+    } catch (error) {
+      console.error('[SERTIF] Error in drop_downsertifikat:', error);
+      alert('Terjadi kesalahan saat membuka sertifikat digital: ' + error.message);
+    }
+  }
+  
+  // Expose function globally - ensure it's available when button is clicked
+  window.drop_downsertifikat = drop_downsertifikat;
+  
+  // Also ensure it's available after DOM loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      window.drop_downsertifikat = drop_downsertifikat;
+      console.log('[SERTIF] Function exposed after DOMContentLoaded');
+    });
+  } else {
+    // DOM already loaded
+    window.drop_downsertifikat = drop_downsertifikat;
+    console.log('[SERTIF] Function exposed immediately');
+  }
+
+  // Sertifikat dropdown behavior
+  async function loadCertList(){
+    try{
+      console.log('[SERTIF] loadCertList: Starting to load certificate list...');
+      const res = await fetch('/api/pv/cert/list', { credentials:'include' });
+      console.log('[SERTIF] loadCertList: Response status:', res.status, res.ok);
+      
+      const js = await res.json().catch(err => {
+        console.error('[SERTIF] loadCertList: JSON parse error:', err);
+        return { success: false, message: 'Failed to parse response' };
+      });
+      
+      console.log('[SERTIF] loadCertList: Response data:', js);
+      
+      const sel = el('sertif-select');
+      if(!sel) {
+        console.error('[SERTIF] loadCertList: Select element not found!');
+        return;
+      }
+      
+      sel.innerHTML = '<option value="">-- Pilih Sertifikat --</option>';
+      
+      if(res.ok && js.success){
+        const certs = js.data || [];
+        console.log('[SERTIF] loadCertList: Found', certs.length, 'certificates');
+        
+        if(certs.length === 0) {
+          console.warn('[SERTIF] loadCertList: No certificates found');
+          sel.innerHTML = '<option value="">-- Tidak ada sertifikat tersedia --</option>';
+          return;
+        }
+        
+        let addedCount = 0;
+        certs.forEach(c=>{
+          if(c.status === 'active' || c.status === 'expired'){
+            const opt = document.createElement('option');
+            opt.value = c.serial_number;
+            opt.textContent = `${c.serial_number} | ${c.subject_cn||''}`.trim();
+            sel.appendChild(opt);
+            addedCount++;
+          }
+        });
+        
+        console.log('[SERTIF] loadCertList: Added', addedCount, 'certificates to dropdown');
+        
+        if(addedCount === 0) {
+          sel.innerHTML = '<option value="">-- Tidak ada sertifikat aktif --</option>';
+          console.warn('[SERTIF] loadCertList: No active/expired certificates found');
+        }
+      } else {
+        console.error('[SERTIF] loadCertList: Failed to load certificates:', js.message || 'Unknown error');
+        sel.innerHTML = '<option value="">-- Error memuat sertifikat --</option>';
+      }
+    }catch(err){
+      console.error('[SERTIF] loadCertList: Exception:', err);
+      const sel = el('sertif-select');
+      if(sel) {
+        sel.innerHTML = '<option value="">-- Error: ' + (err.message || 'Unknown error') + ' --</option>';
+      }
+    }
+  }
+  async function refreshVerified(){
+    try{
+      const res = await fetch('/api/pv/cert/verified', { credentials:'include' });
+      const js = await res.json();
+      const badge = el('sertif-badge');
+      if(!badge) return;
+      if(js.success && js.verified){ 
+        badge.textContent = `Aktif: ${js.serial_number}`;
+        badge.style.display = 'block';
+      }
+      else { 
+        badge.textContent = '';
+        badge.style.display = 'none';
+      }
+      // update global auth badge + gating
+      await gateActions();
+    }catch(_){ }
+  }
+  // Setup event listeners for sertifikat card
+  const pilihBtn = document.getElementById('pilih_sertifikat');
+  const dd = document.getElementById('sertif-dropdown');
+  const overlay = document.getElementById('sertif-overlay');
+  const overlayClose = document.getElementById('sertif-overlay-close');
+  
+  console.log('[SERTIF] Setup: pilihBtn found:', !!pilihBtn, 'dd found:', !!dd, 'overlay found:', !!overlay);
+  
+  // Button "Pilih Sertifikat" inside card - toggle dropdown
+  if(pilihBtn && dd){
+    console.log('[SERTIF] Setup: Adding click listener to pilih_sertifikat button');
+    pilihBtn.addEventListener('click', async (e)=>{
+      e.stopPropagation(); // Prevent event bubbling
+      console.log('[SERTIF] Button clicked: Toggling dropdown');
+      
+      const currentDisplay = dd.style.display;
+      const computedDisplay = window.getComputedStyle(dd).display;
+      const isVisible = (currentDisplay !== 'none' && currentDisplay !== '') || 
+                       (computedDisplay !== 'none' && computedDisplay !== '');
+      
+      console.log('[SERTIF] Current dropdown state:', { currentDisplay, computedDisplay, isVisible });
+      
+      if(isVisible) {
+        dd.style.display = 'none';
+        console.log('[SERTIF] Dropdown hidden');
+      } else {
+        dd.style.display = 'block';
+        console.log('[SERTIF] Dropdown shown, loading certificate list...');
+        
+        try {
+          await loadCertList(); 
+          await refreshVerified();
+          console.log('[SERTIF] Certificate list loaded successfully');
+        } catch(err) {
+          console.error('[SERTIF] Error loading certificate list:', err);
+        }
+      }
+    });
+  } else {
+    console.error('[SERTIF] Setup: Missing elements! pilihBtn:', !!pilihBtn, 'dd:', !!dd);
+  }
+  
+  // Close button in card header
+  if (overlayClose && overlay) {
+    overlayClose.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      overlay.style.display = 'none';
+      if (dd) dd.style.display = 'none';
+    });
+  }
+  
+  // Note: The main trigger button (.btn.pilih_sertifikat) uses onclick="drop_downsertifikat()" 
+  // which is already exposed globally, so no additional listener needed
+  const verifyBtn = el('sertif-verify');
+  if(verifyBtn){
+    verifyBtn.addEventListener('click', async ()=>{
+      try{
+        const sel = el('sertif-select');
+        const serial = sel ? sel.value : '';
+        const pass = (el('sertif-pass')?.value)||'';
+        const res = await fetch('/api/pv/cert/verify-local', { method:'POST', credentials:'include', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ serial_number: serial, passphrase: pass }) });
+        const js = await res.json();
+        if(!res.ok || !js.success) throw new Error(js.message||'Verifikasi gagal');
+        const badge = el('sertif-badge');
+        if(badge) {
+          badge.textContent = `Aktif: ${serial}`;
+          badge.style.display = 'block';
+        }
+        if(el('sertif-pass')) el('sertif-pass').value='';
+        if(dd) dd.style.display = 'none';
+        alert('Sertifikat siap digunakan');
+        await gateActions();
+      }catch(e){ alert(e.message); }
+    });
+  }
+  // Table row click -> fill no_validasi AND no_booking in panel
+  // NOTE: This should NOT interfere with dropdown toggle in paraf_validasi.js
+  // We only update panel inputs, dropdown toggle is handled by paraf_validasi.js
+  const tb = document.querySelector('#penelitikasieTable tbody.data-masuk');
+  if(tb){
+    tb.addEventListener('click', (ev)=>{
+      // Don't interfere with dropdown clicks - let paraf_validasi.js handle it
+      if(ev.target.closest('.dropdown-row') || ev.target.closest('.dropdown-content-wrapper')) {
+        return;
+      }
+      
+      let tr = ev.target.closest('tr:not(.dropdown-row)');
+      if(!tr) return;
+      
+      // Get no_validasi from cell[0] and no_booking from cell[2]
+      const cellNoVal = tr.cells && tr.cells[0];
+      const cellNoBooking = tr.cells && tr.cells[2];
+      
+      if(cellNoVal){
+        const nv = (cellNoVal.textContent||'').trim();
+        const nb = cellNoBooking ? (cellNoBooking.textContent||'').trim() : '';
+        
+        // Fill panel inputs
+        const inputNoVal = el('pv-no-validasi');
+        const inputNoBooking = el('pv-no-booking');
+        if(inputNoVal) inputNoVal.value = nv;
+        if(inputNoBooking) inputNoBooking.value = nb;
+        if(out) out.textContent = 'Dipilih: ' + nv + ' / ' + nb;
+        
+        // Highlight selected row
+        tb.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
+        tr.classList.add('selected-row');
+        
+        // Update action status
+        const actionStatus = el('pv-action-status');
+        if(actionStatus) actionStatus.innerHTML = `📋 Dokumen terpilih: <strong>${nv}</strong>`;
+        
+        // Reset action buttons until verify is run for new selection
+        lastVerifiedNoVal = null;
+        selectedNoValidasi = nv;
+        selectedNoBooking = nb;
+        
+        // Update panel buttons state
+        gateActions();
+        
+        // Auto-claim saat memilih baris untuk mengunci dokumen ini (non-blocking)
+        (async ()=>{ try{ await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`); }catch(_){ /* abaikan jika sudah di-claim */ } })();
+      }
+    });
+  }
+  
+  // Track selected document
+  let selectedNoValidasi = null;
+  let selectedNoBooking = null;
+  // Delegasikan render tabel ke paraf_validasi.js
+  async function loadPvDocs(){
+    try{
+      console.debug('[PV][FE] loadPvDocs:start');
+      await loadTableDataParafValidasi();
+      console.debug('[PV][FE] loadPvDocs:rendered');
+      // Tambah badge status setelah render
+      const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+      if (!tbody) return;
+      [...tbody.querySelectorAll('tr:not(.dropdown-row)')].forEach(tr=>{
+        const statusCell = tr.querySelector('[data-field="status_display"]');
+        if (statusCell) statusCell.innerHTML = renderStatusBadge(statusCell.textContent.trim());
+      });
+      // Update gate actions for panel buttons
+      await gateActions();
+    }catch(e){ log('Gagal memuat daftar: '+e.message); }
+  }
+  
+  
+  // Extract verify logic to reusable function
+  async function handleVerify(nv) {
+    console.log('🔵 [VERIFY] ========== VERIFY STARTED ==========');
+    console.log('🔵 [VERIFY] No Validasi:', nv);
+    console.log('🔵 [VERIFY] Timestamp:', new Date().toISOString());
+    
+    try {
+      if(!nv){ 
+        console.error('❌ [VERIFY] No validasi tidak ada!');
+        log('Pilih no_validasi dulu'); 
+        return; 
+      }
+      
+      console.log('🔵 [VERIFY] Step 1: Claiming document...');
+      // Claim (idempotent)
+      try{ 
+        const claimResult = await callPV(`/api/validasi/${encodeURIComponent(nv)}/claim`);
+        console.log('✅ [VERIFY] Claim successful:', claimResult);
+      }catch(err){ 
+        console.warn('⚠️ [VERIFY] Claim warning (non-fatal):', err?.message);
+      }
+      
+      console.log('🔵 [VERIFY] Step 2: Preparing document...');
+      // Prepare document (server enforces signature + verified cert)
+      const prep = await callPV(`/api/validasi/${encodeURIComponent(nv)}/prepare-document`);
+      console.log('✅ [VERIFY] Prepare document successful:', prep);
+      
+      console.log('🔵 [VERIFY] Step 3: Verifying document...');
+      // Verify
+      const js = await callPV(`/api/validasi/${encodeURIComponent(nv)}/verify`);
+      console.log('✅ [VERIFY] Verify API response:', js);
+      
+      log('Verifikasi berhasil', js);
+      
+      // Enable approve/reject after success
+      lastVerifiedNoVal = nv;
+      console.log('✅ [VERIFY] lastVerifiedNoVal set to:', lastVerifiedNoVal);
+      
+      console.log('🔵 [VERIFY] Step 4: Updating button states...');
+      // Update dropdown buttons state
+      await gateActions();
+      console.log('✅ [VERIFY] Button states updated');
+      
+      console.log('🔵 [VERIFY] Step 5: Reloading table...');
+      // Reload table to refresh UI
+      await loadPvDocs();
+      console.log('✅ [VERIFY] Table reloaded');
+      
+      console.log('🟢 [VERIFY] ========== VERIFY COMPLETED SUCCESSFULLY ==========');
+      
+    }catch(e){ 
+      console.error('❌ [VERIFY] ========== VERIFY FAILED ==========');
+      console.error('❌ [VERIFY] Error type:', e.constructor.name);
+      console.error('❌ [VERIFY] Error message:', e.message);
+      console.error('❌ [VERIFY] Error stack:', e.stack);
+      console.error('❌ [VERIFY] Full error object:', e);
+      log('Gagal verifikasi: '+e.message);
+      alert('Gagal verifikasi: ' + e.message);
+    }
+  }
+  
+  // Extract approve logic to reusable function
+  async function handleApprove(nv) {
+    try {
+      console.log('[FE-DEBUG] Attempting approval for:', nv);
+      
+      if(!nv) {
+        alert('Pilih dokumen terlebih dahulu!');
+        return;
+      }
+      
+      if(!confirm('Setujui dokumen ini?')) return; 
+      
+      const response = await fetch(`/api/validasi/${encodeURIComponent(nv)}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision: 'approve' }),
+        credentials: 'include'
+      });
+      
+      console.log('[FE-DEBUG] Response status:', response.status);
+      const js = await response.json();
+      console.log('[FE-DEBUG] Response body:', js);
+      
+      if(js.success) {
+        log('Dokumen disetujui', js);
+        
+        // Tampilkan pesan khusus jika dokumen berhasil dikirim ke LSB
+        if(js.lsb_result && js.lsb_result.success) {
+          alert(`✅ ${js.message}\n\n📤 Dokumen telah otomatis dikirim ke LSB (Loket Serah Berkas).\n📋 No. Booking: ${js.nobooking}\n🔢 No. Validasi: ${js.no_validasi}`);
+        } else {
+          alert(`✅ ${js.message}`);
+        }
+
+        // Setelah approve: unduh PDF final (bukan preview builder) jika nobooking tersedia
+        try {
+          let nobooking = js.nobooking || '';
+          if (!nobooking) {
+            // fallback cari di tabel
+            const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+            if (tbody) {
+              const rows = tbody.querySelectorAll('tr:not(.dropdown-row)');
+              for (const row of rows) {
+                const noValidasiCell = row.cells && row.cells[0];
+                if (noValidasiCell && noValidasiCell.textContent.trim() === nv) {
+                  const nobookingCell = row.cells && row.cells[2];
+                  if (nobookingCell) nobooking = nobookingCell.textContent.trim();
+                  break;
+                }
+              }
+            }
+          }
+          if (nobooking) {
+            const pdfUrl = `/api/ppat/generate-pdf-validasi/${encodeURIComponent(nobooking)}?download=true`;
+            const a = document.createElement('a');
+            a.href = pdfUrl;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            console.warn('[FE-DEBUG] Nobooking tidak ditemukan untuk unduhan PDF final');
+          }
+        } catch(downloadErr) {
+          console.warn('[FE-DEBUG] Gagal memulai unduhan PDF final:', downloadErr);
+        }
+      } else {
+        log('Gagal: ' + (js.message || 'Unknown error'), js);
+        alert('Gagal: ' + (js.message || 'Unknown error'));
+      }
+      
+      await loadPvDocs();
+    }catch(e){ 
+      console.error('[FE-ERROR] Approval failed:', e);
+      log('APPROVE Gagal: '+e.message);
+      alert('APPROVE Gagal: '+e.message);
+    }
+  }
+  
+  // Extract reject logic to reusable function
+  async function handleReject(nv) {
+    try {
+      const reason = prompt('Alasan penolakan? (wajib)');
+      if(!reason) return; 
+      
+      // Cek apakah nobooking sudah pernah digunakan
+      const checkResponse = await fetch(`/api/check-nobooking-usage/${encodeURIComponent(nv)}`);
+      const checkData = await checkResponse.json();
+      
+      if (checkData.success && checkData.isUsed) {
+        alert('Nomor booking sudah pernah digunakan dan tidak dapat digunakan kembali. Silakan buat booking baru.');
+        return;
+      }
+      
+      // Get nobooking from table row
+      const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+      let nobooking = null;
+      if (tbody) {
+        const rows = tbody.querySelectorAll('tr:not(.dropdown-row)');
+        for (const row of rows) {
+          const noValidasiCell = row.cells && row.cells[0];
+          if (noValidasiCell && noValidasiCell.textContent.trim() === nv) {
+            const nobookingCell = row.cells && row.cells[2];
+            if (nobookingCell) nobooking = nobookingCell.textContent.trim();
+            break;
+          }
+        }
+      }
+      
+      // Kirim penolakan dengan auto-delete
+      const js = await callPV(`/api/pv/reject-with-auto-delete`, { 
+        body:{ 
+          nobooking: nobooking || nv,
+          rejectionReason: reason,
+          userid: 'current_user' // Server akan menggunakan session dari cookie
+        } 
+      });
+      
+      if (js.success) {
+        log(`Dokumen ditolak. Data akan otomatis dihapus setelah 10 hari.\nJadwal penghapusan: ${new Date(js.scheduledDeleteAt).toLocaleString('id-ID')}`, js);
+        console.debug('[PV][FE] decision reject with auto-delete ok', js);
+      } else {
+        log('REJECT Gagal: ' + (js.message || 'Terjadi kesalahan'), js);
+      }
+      
+      await loadPvDocs();
+    }catch(e){ log('REJECT Gagal: '+e.message);} 
+  }
+  function renderStatusBadge(s){
+    const t = String(s||'Menunggu');
+    if (t === 'Sudah Divalidasi') return '<span class="status-badge success">Sudah Divalidasi</span>';
+    if (t === 'Ditolak') return '<span class="status-badge error">Ditolak</span>';
+    return '<span class="status-badge warning">Menunggu</span>';
+  }
+  // Load on start. Nonaktifkan auto-render bawaan paraf_validasi.js
+  window.PV_DISABLE_AUTO_RENDER = true;
+  loadPvDocs();
+
+  // Pagination (10 per page)
+  const PAGE_SIZE_PV = 10;
+  let currentPagePV = 1;
+  function getRowPairs() {
+    const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+    const pairs = [];
+    if (!tbody) return pairs;
+    const rows = Array.from(tbody.children);
+    for (let i = 0; i < rows.length; i++) {
+      const main = rows[i];
+      if (main && !main.classList.contains('dropdown-row')) {
+        const next = rows[i + 1];
+        const dropdown = next && next.classList && next.classList.contains('dropdown-row') ? next : null;
+        if (dropdown) i++;
+        pairs.push({ main, dropdown });
+      }
+    }
+    return pairs;
+  }
+  function renderPVRowsForPage(page) {
+    const tbody = document.querySelector('#penelitikasieTable tbody.data-masuk');
+    if (!tbody) return;
+    const pairs = getRowPairs();
+    const total = pairs.length;
+    // Kosongkan dan tampilkan pesan jika tidak ada data
+    if (total === 0) {
+      tbody.innerHTML = '';
+      const r = tbody.insertRow();
+      const c = r.insertCell(0);
+      c.colSpan = 6;
+      c.textContent = 'Tidak ada data "Menunggu" saat ini yang masuk';
+      const pag = document.getElementById('paginationPV');
+      if (pag) {
+        pag.innerHTML = '<div>Tidak ada data "Menunggu" yang tersedia</div>';
+      }
+      return;
+    }
+    const start = (page - 1) * PAGE_SIZE_PV;
+    const end = Math.min(total, start + PAGE_SIZE_PV);
+    // Sembunyikan semua baris
+    pairs.forEach(({ main, dropdown }) => {
+      if (main) main.style.display = 'none';
+      if (dropdown) dropdown.style.display = 'none';
+    });
+    // Tampilkan yang masuk halaman
+    for (let i = start; i < end; i++) {
+      const { main, dropdown } = pairs[i];
+      if (main) main.style.display = '';
+      if (dropdown) dropdown.style.display = 'none';
+    }
+    // Render pagination info/controls
+    const pag = document.getElementById('paginationPV');
+    if (pag) {
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_PV));
+      const info = document.createElement('div');
+      info.textContent = `Showing ${start + 1} to ${end} of ${total} entries`;
+      const controls = document.createElement('div');
+      function mkBtn(label, disabled, onClick) {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.disabled = !!disabled;
+        b.style.marginLeft = '6px';
+        b.addEventListener('click', onClick);
+        return b;
+      }
+      controls.appendChild(mkBtn('<', page <= 1, () => goToPV(page - 1)));
+      for (let p = 1; p <= totalPages; p++) {
+        const b = mkBtn(String(p), p === page, () => goToPV(p));
+        if (p === page) b.style.fontWeight = '700';
+        controls.appendChild(b);
+      }
+      controls.appendChild(mkBtn('>', page >= totalPages, () => goToPV(page + 1)));
+      pag.innerHTML = '';
+      pag.appendChild(info);
+      pag.appendChild(controls);
+    }
+  }
+  function goToPV(p) {
+    const total = getRowPairs().length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_PV));
+    currentPagePV = Math.min(Math.max(1, p), totalPages);
+    renderPVRowsForPage(currentPagePV);
+  }
+  function setupPVPagination() {
+    currentPagePV = 1;
+    renderPVRowsForPage(currentPagePV);
+  }
+  // Status and Claim buttons removed - functionality is redundant:
+  // - Claim is automatically done when selecting a table row (line 816)
+  // - Claim is also done automatically in Verify flow (line 946)
+  // - Status button only displayed status without performing any action
+  const btnAp = el('pv-appearance');
+  if(btnAp){ btnAp.onclick = async ()=>{ try{ const appearance = { page:Number(el('ap-page').value||1), x:Number(el('ap-x').value||0), y:Number(el('ap-y').value||0), width:Number(el('ap-w').value||0), height:Number(el('ap-h').value||0), reason:el('ap-reason').value||'', location:el('ap-location').value||'' }; const js = await callPV(`/api/validasi/${encodeURIComponent(noVal())}/appearance`, { body:{ appearance } }); log('Koordinat TTE tersimpan', js);}catch(e){ log('Gagal simpan appearance: '+e.message);} }; }
+  // Button handlers - now in PANEL (not dropdown)
+  // Functions handleVerify, handleApprove, handleReject are defined above
+  async function gateActions(){
+    try{
+      const [authRes, certRes] = await Promise.all([
+        fetch('/api/pv/auth-status', { credentials:'include' }),
+        fetch('/api/pv/cert/verified', { credentials:'include' })
+      ]);
+      const authJs = await authRes.json().catch(()=>({}));
+      const certJs = await certRes.json().catch(()=>({}));
+      const hasSig = !!(authJs && authJs.success && authJs.has_signature);
+      const certOk = !!(certJs && certJs.success && certJs.verified);
+      
+      // Get currently selected no_validasi from panel input
+      const currentNoVal = el('pv-no-validasi')?.value?.trim() || null;
+      
+      // Set badge
+      if(authBadge){
+        authBadge.classList.remove('ok','warn');
+        if(hasSig && certOk){ authBadge.textContent = 'Auth siap'; authBadge.classList.add('ok'); }
+        else { authBadge.textContent = 'Auth belum siap'; authBadge.classList.add('warn'); }
+      }
+      
+      // Gate PANEL buttons
+      // Verify gated by: auth + document selected
+      // Approve/Reject gated by: auth + verify completed for this document
+      const canVerify = hasSig && certOk && currentNoVal;
+      const canAct = hasSig && certOk && lastVerifiedNoVal && currentNoVal === lastVerifiedNoVal;
+      
+      // Update PANEL buttons
+      const btnVerify = el('pv-verify-btn');
+      const btnApprove = el('pv-approve-btn');
+      const btnReject = el('pv-reject-btn');
+      const actionStatus = el('pv-action-status');
+      
+      if(btnVerify) {
+        btnVerify.disabled = !canVerify;
+        btnVerify.style.opacity = canVerify ? '1' : '0.5';
+        btnVerify.style.cursor = canVerify ? 'pointer' : 'not-allowed';
+      }
+      
+      if(btnApprove) {
+        btnApprove.disabled = !canAct;
+        btnApprove.style.opacity = canAct ? '1' : '0.5';
+        btnApprove.style.cursor = canAct ? 'pointer' : 'not-allowed';
+      }
+      
+      if(btnReject) {
+        btnReject.disabled = !canAct;
+        btnReject.style.opacity = canAct ? '1' : '0.5';
+        btnReject.style.cursor = canAct ? 'pointer' : 'not-allowed';
+      }
+      
+      // Update action status message
+      if(actionStatus) {
+        if(!currentNoVal) {
+          actionStatus.innerHTML = '⬅️ Pilih dokumen dari tabel untuk mengaktifkan tombol.';
+        } else if(!hasSig || !certOk) {
+          actionStatus.innerHTML = '⚠️ Pastikan tanda tangan dan sertifikat sudah di-setup.';
+        } else if(canAct) {
+          actionStatus.innerHTML = `✅ Verifikasi berhasil! Silakan Setujui atau Tolak dokumen <strong>${currentNoVal}</strong>.`;
+        } else {
+          actionStatus.innerHTML = `📋 Dokumen terpilih: <strong>${currentNoVal}</strong>. Klik <strong>Verify</strong> untuk memulai validasi.`;
+        }
+      }
+      
+    }catch(_){
+      if(authBadge){ authBadge.textContent = 'Auth belum siap'; authBadge.classList.remove('ok'); authBadge.classList.add('warn'); }
+      // Disable all panel buttons
+      ['pv-verify-btn', 'pv-approve-btn', 'pv-reject-btn'].forEach(id => {
+        const btn = el(id);
+        if(btn) { btn.disabled = true; btn.style.opacity = '0.5'; btn.style.cursor = 'not-allowed'; }
+      });
+    }
+  }
+  
+  // PANEL button event listeners
+  const btnVerifyPanel = el('pv-verify-btn');
+  const btnApprovePanel = el('pv-approve-btn');
+  const btnRejectPanel = el('pv-reject-btn');
+  
+  if(btnVerifyPanel) {
+    btnVerifyPanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnVerifyPanel.disabled) { alert('Button Verify tidak aktif. Pastikan sertifikat sudah dipilih.'); return; }
+      try {
+        await handleVerify(nv);
+      } catch(err) {
+        alert('Gagal verifikasi: ' + err.message);
+      }
+    });
+  }
+  
+  if(btnApprovePanel) {
+    btnApprovePanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnApprovePanel.disabled) { alert('Lakukan Verify terlebih dahulu!'); return; }
+      await handleApprove(nv);
+    });
+  }
+  
+  if(btnRejectPanel) {
+    btnRejectPanel.addEventListener('click', async () => {
+      const nv = el('pv-no-validasi')?.value?.trim();
+      if(!nv) { alert('Pilih dokumen dari tabel terlebih dahulu!'); return; }
+      if(btnRejectPanel.disabled) { alert('Lakukan Verify terlebih dahulu!'); return; }
+      await handleReject(nv);
+    });
+  }
+  
+  // Initial gate
+  gateActions();
+  
+  // Expose gateActions globally for dropdown button updates
+  window.gateActions = gateActions;
+
+  // Preview: menggunakan generator PDF validasi key (generatepdfvalidasi_key.js)
+  const btnPreview = el('pv-preview-btn');
+  if (btnPreview) {
+    btnPreview.addEventListener('click', async ()=>{
+      const msg = el('pv-preview-msg');
+      if (msg) msg.textContent = 'Membuka preview...';
+      try {
+        const nv = noVal();
+        if (!nv) throw new Error('Pilih no_validasi terlebih dahulu.');
+        
+        // Ambil nobooking langsung dari baris tabel yang dipilih (tanpa memanggil status/signing)
+        let nobooking = '';
+        const row = document.querySelector(`tr[data-novalidasi="${nv}"]`);
+        if (row) {
+          nobooking = row.getAttribute('data-nobooking') || '';
+        }
+        
+        if (!nobooking) {
+          throw new Error('No Booking tidak ditemukan untuk nomor validasi ini.');
+        }
+        
+        // Gunakan endpoint PDF validasi key (generatepdfvalidasi_key.js)
+        const pdfUrl = `/api/ppat/generate-pdf-validasi/${encodeURIComponent(nobooking)}`;
+        const w = window.open(pdfUrl, '_blank');
+        if (!w || w.closed || typeof w.closed === 'undefined') {
+          // Popup terblokir, fallback ke anchor
+          const a = document.createElement('a');
+          a.href = pdfUrl;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+        if (msg) msg.textContent = '';
+      } catch (e){ 
+        if (msg) msg.textContent = e.message;
+        alert('Gagal membuka preview: ' + e.message);
+      }
+    });
+  }
+})();
+</script>
+<!--script pengedit pdf-->
+<script type="module">
+  import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
+  initNotifications();
+</script>
+</body>
+</html>

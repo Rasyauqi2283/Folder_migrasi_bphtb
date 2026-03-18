@@ -1,0 +1,3 @@
+# Place ground truth JSON here: sample_001.json, sample_002.json, ...
+# Each JSON keys: nik, nama, ttl (object with tempat, tanggal), alamat, rtRw, kelurahan, kecamatan,
+# jenisKelamin, golonganDarah, agama, statusPerkawinan, pekerjaan, kewarganegaraan, berlakuHingga

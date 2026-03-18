@@ -1,0 +1,172 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.3.0">
+  <diagram id="Activity_54_LTB_Queue_Management" name="Activity 54: LTB Queue Management">
+    <mxGraphModel dx="1737" dy="937" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_ltb" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;fontStyle=1;fontSize=14;" value="LTB" vertex="1">
+          <mxGeometry height="800" width="430" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_ltb" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="100" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_open_dashboard" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Membuka Dashboard LTB" vertex="1">
+          <mxGeometry height="50" width="220" x="207.5" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_view_queue" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Daftar Antrian&#xa;(Queue Status, Scheduled For,&#xa;Requested At)" vertex="1">
+          <mxGeometry height="50" width="175" x="230" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_check_quota" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Cek Kuota Hari Ini&#xa;(GET /api/ppat/quota)" vertex="1">
+          <mxGeometry height="40" width="180" x="25" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_process_queue" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Proses Antrian&#xa;(POST /api/ppat/process-pending-queue)" vertex="1">
+          <mxGeometry height="45" width="217.5" x="190" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="ltb_view_result" parent="swimlane_ltb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Hasil&#xa;(processed count,&#xa;status updates)" vertex="1">
+          <mxGeometry height="80" width="220" x="90" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_ltb" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="50" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="800" width="670" x="470" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_business_hours" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cek Jam Kerja&#xa;(currentHour &gt;= 9 &amp;&amp; currentHour &lt; 16)?" vertex="1">
+          <mxGeometry height="80" width="250" x="60" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_return_outside_hours" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Return: Outside Business Hours&#xa;(processed: 0)" vertex="1">
+          <mxGeometry height="60" width="250" x="60" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_start_trans" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Memulai Database Transaction (BEGIN)" vertex="1">
+          <mxGeometry height="50" width="250" x="360" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_pending_queue" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Get Pending Queue untuk Hari Ini&#xa;(SELECT FROM ppat_send_queue&#xa;WHERE scheduled_for=today AND status=&#39;queued&#39;&#xa;ORDER BY requested_at ASC LIMIT 10)" vertex="1">
+          <mxGeometry height="100" width="250" x="360" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_pending" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Ada Berkas di Antrian?" vertex="1">
+          <mxGeometry height="70" width="250" x="360" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_process_loop" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Loop: Proses Setiap Berkas&#xa;(For each item in pending.rows)" vertex="1">
+          <mxGeometry height="40" width="230" x="70" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_queue_status" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Update ppat_send_queue&#xa;(status=&#39;sent&#39;, sent_at=now())" vertex="1">
+          <mxGeometry height="40" width="230" x="70" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_booking_status" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Update pat_1_bookingsspd&#xa;(trackstatus=&#39;Diolah&#39;)" vertex="1">
+          <mxGeometry height="40" width="220" x="75" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_insert_ltb" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Insert ke ltb_1_terima_berkas_sspd&#xa;(Generate no_registrasi,&#xa;status=&#39;Diterima&#39;)" vertex="1">
+          <mxGeometry height="50" width="200" x="85" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_increment_processed" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="Increment processed counter" vertex="1">
+          <mxGeometry height="40" width="220" x="350" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_return_result" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Return JSON Response&#xa;{success, processed, message}" vertex="1">
+          <mxGeometry height="60" width="250" x="335" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_open_dashboard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="ltb_open_dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_view_queue" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="ltb_view_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_check_quota" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="ltb_check_quota" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ltb_process_queue" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="ltb_process_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_check_business_hours" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="273" />
+              <mxPoint x="500" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_check_business_hours" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_return_outside_hours" value="Outside Hours">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="sys_check_business_hours" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_start_trans" value="Within Hours">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="280" />
+              <mxPoint x="830" y="300" />
+              <mxPoint x="955" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_start_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_get_pending_queue" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="sys_get_pending_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_pending" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_check_pending" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_commit" value="Tidak Ada">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1065" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="sys_check_pending" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="sys_process_loop" value="Ada">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="510" />
+              <mxPoint x="655" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="sys_process_loop" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_queue_status" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="sys_update_queue_status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_booking_status" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="sys_update_booking_status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_insert_ltb" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="1" source="sys_insert_ltb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="sys_increment_processed" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="sys_increment_processed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="sys_commit" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="670" />
+              <mxPoint x="1023" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="sys_commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_return_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge18" edge="1" parent="1" source="sys_return_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="ltb_view_result" value="Response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="780" />
+              <mxPoint x="420" y="510" />
+              <mxPoint x="240" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge19" edge="1" parent="1" source="ltb_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge20" edge="1" parent="1" source="sys_return_outside_hours" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="ltb_view_result" value="Response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="180" y="430" />
+              <mxPoint x="180" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="MYtkAoccRTgdYgD_QPZ8-1" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="LTB Queue Management Process - ITERASI 3" vertex="1">
+          <mxGeometry height="825" width="1100" x="40" y="15" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_commit" parent="MYtkAoccRTgdYgD_QPZ8-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="COMMIT Transaction" vertex="1">
+          <mxGeometry height="30" width="120" x="960" y="665" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

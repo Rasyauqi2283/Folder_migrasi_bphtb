@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FAQ & Informasi</title>
+    <link rel="stylesheet" href="design-n-script/design_css/design_table/table_design_usercomplete.css" />
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 1100px; margin: 20px auto; padding: 0 12px; }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .faq-list { margin-top: 16px; }
+        .faq-item { border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+        .faq-item h3 { margin: 0 0 8px 0; }
+        .hidden { display: none; }
+        .editor-wrap { border: 1px solid #ccc; border-radius: 6px; padding: 10px; margin-top: 10px; }
+        .actions { display: flex; gap: 8px; }
+        .btn { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background: #f8f8f8; cursor: pointer; }
+        .btn.primary { background: #2d72d9; color: #fff; border-color: #2d72d9; }
+        .btn.danger { background: #d92d2d; color: #fff; border-color: #d92d2d; }
+    </style>
+    <!-- TinyMCE CDN -->
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="toolbar">
+            <h2>FAQ & Informasi</h2>
+            <div id="adminActions" class="actions hidden">
+                <button id="btnNew" class="btn primary">Tulis Konten Baru</button>
+                <button id="btnSave" class="btn primary hidden">Simpan</button>
+                <button id="btnCancel" class="btn hidden">Batal</button>
+            </div>
+        </div>
+
+        <div id="editorArea" class="editor-wrap hidden">
+            <label>Judul</label>
+            <input id="faqTitle" type="text" style="width:100%;padding:8px;margin:6px 0;" placeholder="Judul konten..." />
+            <textarea id="faqEditor"></textarea>
+        </div>
+
+        <div id="faqList" class="faq-list"></div>
+    </div>
+
+    <script src="/script-backend/faq_page.js"></script>
+</body>
+</html>

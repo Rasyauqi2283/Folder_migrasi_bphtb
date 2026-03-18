@@ -1,0 +1,196 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_18_Upload_Tanda_Tangan_Sekali_Iterasi2" name="Activity 18: Upload Tanda Tangan Sekali (Iterasi 2)">
+    <mxGraphModel dx="1895" dy="1022" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_ppat" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="PPAT/PPATS" vertex="1">
+          <mxGeometry height="940" width="390" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_ppat" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="170" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_check_user" parent="swimlane_ppat" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cek User Verified?" vertex="1">
+          <mxGeometry height="80" width="150" x="120" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_open_modal" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" value="Membuka Modal Upload Tanda Tangan Reusable" vertex="1">
+          <mxGeometry height="70" width="230" x="80" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_choose_file" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memilih File Tanda Tangan&#xa;(JPG/PNG, maks 2MB)" vertex="1">
+          <mxGeometry height="70" width="230" x="80" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_confirm" parent="swimlane_ppat" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Konfirmasi Upload?" vertex="1">
+          <mxGeometry height="80" width="150" x="120" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_view_result" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat Hasil Upload&#xa;(Tanda Tangan Tersimpan untuk Selamanya)" vertex="1">
+          <mxGeometry height="70" width="230" x="80" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_ppat" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="200" y="680" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="940" width="600" x="430" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_file" parent="swimlane_system" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi File&#xa;(Ukuran, Format)" vertex="1">
+          <mxGeometry height="80" width="200" x="50" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_preview" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menampilkan Preview Tanda Tangan" vertex="1">
+          <mxGeometry height="50" width="200" x="300" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Upload Tanda Tangan Sekali - Iterasi 2" vertex="1">
+          <mxGeometry height="960" width="1000" x="30" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_not_verified" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: User Belum Verified" vertex="1">
+          <mxGeometry height="50" width="160" x="430" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_existing" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Cek Tanda Tangan&#xa;Sudah Ada?" vertex="1">
+          <mxGeometry height="80" width="200" x="430" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_warning_replace" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Warning: Tanda Tangan Akan&#xa;Menggantikan yang Lama" vertex="1">
+          <mxGeometry height="70" width="200" x="790" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="title_box" source="sys_check_existing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_warning_replace" value="Sudah Ada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_invalid" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: File Tidak Valid" vertex="1">
+          <mxGeometry height="50" width="160" x="780" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_modal" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menampilkan Modal Upload Tanda Tangan Reusable" vertex="1">
+          <mxGeometry height="60" width="200" x="510" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_cancel" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Batal Upload" vertex="1">
+          <mxGeometry height="50" width="150" x="20" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_process" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Memproses Image&#xa;(Resize, Optimize)" vertex="1">
+          <mxGeometry height="60" width="200" x="700" y="600" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_user" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Data User&#xa;(userid dari session)" vertex="1">
+          <mxGeometry height="60" width="200" x="460" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="title_box" source="sys_get_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="sys_process" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="630" />
+              <mxPoint x="630" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_save_storage" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Menyimpan ke Secure Storage&#xa;(Path: /signatures/userid/)" vertex="1">
+          <mxGeometry height="70" width="200" x="440" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="title_box" source="sys_process" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="sys_save_storage" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="720" />
+              <mxPoint x="660" y="720" />
+              <mxPoint x="660" y="695" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_update_user" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" value="Update a_2_verified_users&#xa;SET tanda_tangan_path = path&#xa;(Untuk Digunakan Berulang Kali)" vertex="1">
+          <mxGeometry height="90" width="200" x="640" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="title_box" source="sys_save_storage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_user" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_show_success" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses&#xa;(Tanda Tangan Tersimpan Permanen)" vertex="1">
+          <mxGeometry height="70" width="200" x="460" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="edge18" edge="1" parent="title_box" source="sys_update_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="sys_show_success" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="940" />
+              <mxPoint x="560" y="940" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_check_user" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="ppat_check_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_error_not_verified" value="Tidak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="ppat_check_user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_check_existing" value="Ya">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="230" />
+              <mxPoint x="430" y="230" />
+              <mxPoint x="430" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="sys_check_existing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="ppat_open_modal" value="Belum Ada">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="270" />
+              <mxPoint x="235" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_warning_replace" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ppat_open_modal" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="ppat_open_modal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_show_modal" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_show_modal" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="390" />
+              <mxPoint x="430" y="390" />
+              <mxPoint x="430" y="400" />
+              <mxPoint x="350" y="400" />
+            </Array>
+            <mxPoint x="350" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="ppat_choose_file" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;entryX=0;entryY=0.5;exitDx=0;exitDy=0;" target="sys_validate_file" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_validate_file" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="sys_error_invalid" value="Tidak Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="sys_validate_file" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_preview" value="Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="sys_preview" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ppat_confirm" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="430" y="550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="ppat_confirm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="ppat_cancel" value="Batal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="ppat_confirm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_user" value="Konfirmasi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge19" edge="1" parent="1" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ppat_view_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge20" edge="1" parent="1" source="ppat_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge21" edge="1" parent="1" source="sys_error_invalid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ppat_choose_file" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="415" />
+              <mxPoint x="790" y="420" />
+              <mxPoint x="430" y="420" />
+              <mxPoint x="430" y="425" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

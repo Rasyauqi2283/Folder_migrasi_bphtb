@@ -1,0 +1,121 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.10">
+  <diagram id="Activity_25_Verifikasi_Digital_Signature_Iterasi2" name="Activity 25: Verifikasi Digital Signature (Iterasi 2)">
+    <mxGraphModel dx="1489" dy="803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_pv" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="Peneliti Validasi (Pejabat)" vertex="1">
+          <mxGeometry height="620" width="400" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_pv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_open_verify" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Membuka Menu Verifikasi&#xa;Digital Signature" vertex="1">
+          <mxGeometry height="60" width="250" x="75" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_input_passphrase" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Menginput Passphrase&#xa;(Untuk Verifikasi Sertifikat)" vertex="1">
+          <mxGeometry height="60" width="250" x="75" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_view_verify_result" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Melihat Hasil Verifikasi&#xa;(Status: Verified/Invalid)" vertex="1">
+          <mxGeometry height="60" width="250" x="75" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_pv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="220" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="620" width="630" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Verifikasi Digital Signature - Iterasi 2" vertex="1">
+          <mxGeometry height="640" width="1030" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_cert" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Mengambil Sertifikat Digital&#xa;(serial_number, passphrase_alg,&#xa;passphrase_salt, passphrase_hash&#xa;dari pv_local_certs)" vertex="1">
+          <mxGeometry height="70" width="200" x="430" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_cert_exists" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Sertifikat&#xa;Ditemukan?" vertex="1">
+          <mxGeometry height="80" width="200" x="430" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="title_box" source="sys_get_cert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_cert_exists" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_signature" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Tanda Tangan&#xa;Sudah Upload?" vertex="1">
+          <mxGeometry height="80" width="200" x="690" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="title_box" source="sys_check_cert_exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_check_signature" value="Ya">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_no_signature" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Tanda Tangan Belum Upload" vertex="1">
+          <mxGeometry height="50" width="200" x="820" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="title_box" source="sys_check_signature" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_error_no_signature" value="Tidak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_verify_passphrase" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Verifikasi Passphrase&#xa;(scrypt: derive key dari passphrase,&#xa;compare dengan passphrase_hash&#xa;menggunakan timingSafeEqual)" vertex="1">
+          <mxGeometry height="80" width="210" x="630" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="title_box" source="sys_check_signature" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_verify_passphrase" value="Ya">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_error_no_cert" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Sertifikat Tidak Ditemukan" vertex="1">
+          <mxGeometry height="50" width="200" x="430" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="title_box" source="sys_check_cert_exists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="sys_error_no_cert" value="Tidak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_check_passphrase" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Passphrase&#xa;Valid?" vertex="1">
+          <mxGeometry height="80" width="200" x="460" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="title_box" source="sys_verify_passphrase" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_check_passphrase" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_set_session" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Set Session&#xa;(req.session.pv_local_cert =&#xa;{serial_number, verified_at})" vertex="1">
+          <mxGeometry height="60" width="180" x="750" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="title_box" source="sys_check_passphrase" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_set_session" value="Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_success" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses&#xa;(Sertifikat Digital Terverifikasi)" vertex="1">
+          <mxGeometry height="50" width="225" x="445" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="title_box" source="sys_set_session" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_show_success" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="560" />
+              <mxPoint x="720" y="560" />
+              <mxPoint x="720" y="605" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sys_error_invalid_pass" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Passphrase Salah" vertex="1">
+          <mxGeometry height="30" width="150" x="420" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="title_box" source="sys_check_passphrase" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="sys_error_invalid_pass" value="Tidak Valid">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="445" />
+              <mxPoint x="495" y="445" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_open_verify" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="pv_open_verify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_input_passphrase" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="pv_input_passphrase" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_cert" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="pv_view_verify_result" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="pv_view_verify_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

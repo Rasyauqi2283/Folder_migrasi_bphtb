@@ -1,0 +1,128 @@
+# 📊 TABEL ACTIVITY DIAGRAM ITERASI 2 (VERSI SANGAT RINGKAS - UPDATE TERBARU)
+
+## 💡 Rekomendasi: Gunakan Versi Ini Jika Versi Ringkas Masih Tidak Muat
+
+**Kolom dikurangi menjadi 3 kolom** dengan menggabungkan semua informasi ke dalam deskripsi lengkap.
+
+**Catatan:** Activity Diagram yang dijelaskan rinci di proses pengembangan (Activity 18, 19, 20) tidak dimasukkan ke tabel ini. Tabel ini hanya berisi Activity Diagram yang diletakkan di lampiran.
+
+**Format Lampiran:** Nomor lampiran dimulai dari Lampiran 85 (melanjutkan dari Iterasi 1 yang berakhir di Lampiran 84)
+
+---
+
+## Tabel 1: Activity Diagram - Proses Prioritas Tinggi Iterasi 2 (Activity 21-25)
+
+| No | Nama Activity Diagram                                   | Deskripsi Lengkap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 21 | Generate Sertifikat Digital Lokal (Iterasi 2)           | **Aktor:** Peneliti Validasi (Pejabat), Sistem. **Alur:** Generate sertifikat digital lokal dengan algoritma ECDSA-P256, enkripsi passphrase menggunakan scrypt (N=16384, r=8, p=1), generate serial number (8 bytes random hex uppercase), calculate fingerprint SHA-256, revoke sertifikat lama jika ada, insert ke pv_local_certs dengan status 'active' dan validitas 365 hari. **Database:** pv_local_certs, a_2_verified_users                                                                                                                                                                                                                                                                              |
+| 22 | Generate QR Code (Iterasi 2)                            | **Aktor:** Peneliti Validasi (Pejabat), Sistem. **Alur:** Generate QR code ganda (publik dan internal) dengan format payload: NIP/tanggal/special_parafv//E-BPHTB BAPPENDA KAB BOGOR\|nomor_validasi. Proses meliputi mengambil data user (NIP, special_parafv), tanggal sertifikat, nomor validasi, membangun payload, generate QR code image (256x256), save ke /penting_F_simpan/qr_code_place/, update database. **Database:** pat_7_validasi_surat, pv_1_paraf_validate, a_2_verified_users, pv_local_certs                                                                                                                                                                                            |
+| 23 | Display QR Code di Dokumen (Iterasi 2)                  | **Aktor:** Sistem. **Alur:** Menampilkan QR code di dokumen PDF validasi. Proses meliputi mengambil data QR code dari database, load QR code image dari /penting_F_simpan/qr_code_place/, membangun PDF validasi menggunakan PDFKit, embed QR code ke PDF (posisi kanan bawah, size 100x100, margin 50px), menambahkan info tanda tangan (NIP, special_parafv di bawah QR Code), menyimpan PDF ke /penting_F_simpan/pdf_validasi/, update database. **Database:** pat_7_validasi_surat, pv_1_paraf_validate, file PDF                                                                                                                                                                                       |
+| 24 | Integrasi Bank dengan LTB Parallel Workflow (Iterasi 2) | **Aktor:** PPAT/PPATS, LTB, Bank (Produk Online Terintegrasi), Sistem. **Alur:** Parallel workflow antara Bank dan LTB. PPAT mengirim booking ke LTB & Bank secara bersamaan. LTB dan Bank bekerja secara paralel (LTB: verifikasi berkas, generate no. registrasi; Bank: verifikasi pembayaran, update transaction). Sistem menunggu kedua proses selesai, kemudian melakukan sinkronisasi data (update ltb_1_terima_berkas_sspd dengan data Bank, update pat_2_bphtb_perhitungan dan pat_4_objek_pajak), update status booking, dan mengirim notifikasi ke semua pihak. **Database:** bank_1_cek_hasil_transaksi, ltb_1_terima_berkas_sspd, pat_2_bphtb_perhitungan, pat_4_objek_pajak, pat_1_bookingsspd |
+| 25 | Verifikasi Digital Signature (Iterasi 2)                | **Aktor:** Peneliti Validasi (Pejabat), Sistem. **Alur:** Verifikasi digital signature dari sertifikat lokal. Proses meliputi mengambil sertifikat dari pv_local_certs (serial_number, passphrase_alg, passphrase_salt, passphrase_hash), cek tanda tangan sudah upload, input passphrase, verifikasi passphrase menggunakan scrypt dan timingSafeEqual, set session (req.session.pv_local_cert), dan menampilkan hasil verifikasi. **Database:** pv_local_certs, a_2_verified_users                                                                                                                                                                                                                        |
+
+**Lokasi di Lampiran:** 
+- Activity 21: Lampiran 88-89
+- Activity 22: Lampiran 90-91
+- Activity 23: Lampiran 92-93
+- Activity 24: Lampiran 94-95
+- Activity 25: Lampiran 96-97
+
+---
+
+## Tabel 2: Activity Diagram - Proses Prioritas Sedang Iterasi 2 (Activity 26-32)
+
+| No | Nama Activity Diagram                                     | Deskripsi Lengkap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 26 | PPAT Auto Fill Signature (Iterasi 2)                      | **Aktor:** PPAT/PPATS, Sistem. **Alur:** Sistem otomatis mengisi tanda tangan dari database ke booking baru. Proses meliputi mengambil tanda tangan reusable dari a_2_verified_users.tanda_tangan_path berdasarkan userid PPAT, cek tanda tangan ada, auto fill signature ke pat_6_sign (copy tanda_tangan_path ke signature_path, signature_type), update pat_1_bookingsspd jika diperlukan, dan menampilkan tanda tangan otomatis terisi. **Database:** pat_6_sign, a_2_verified_users, pat_1_bookingsspd                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 27 | Generate Nomor Validasi (Iterasi 2)                       | **Aktor:** Sistem. **Alur:** Generate nomor validasi dengan format 7acak-3acak (contoh: A1B2C3D-E4F). Proses meliputi generate bagian 1 (7 karakter acak alphanumeric: A-Z, 0-9), generate bagian 2 (3 karakter acak alphanumeric), menggabungkan format dengan separator "-", cek unik di database (pat_7_validasi_surat), regenerate jika duplikat, dan insert ke pat_7_validasi_surat dengan nomor_validasi, nobooking, status, created_at. **Database:** pat_7_validasi_surat                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 28 | Select Reusable Signature - Peneliti Validasi (Iterasi 2) | **Aktor:** Peneliti Validasi (Pejabat), Sistem. **Alur:** Memilih tanda tangan reusable untuk proses validasi. Proses meliputi mengambil tanda tangan reusable dari a_2_verified_users.tanda_tangan_path berdasarkan userid Peneliti Validasi, cek tanda tangan ada, load tanda tangan image dari secure storage, update pv_1_paraf_validate dengan tanda_tangan_path=reusable_path, dan menampilkan preview tanda tangan. **Database:** pv_1_paraf_validate, a_2_verified_users                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 29 | Real-time Notifications (Iterasi 2)                       | **Aktor:** Admin, Sistem. **Alur:** Sistem notifikasi real-time menggunakan long polling. Proses meliputi Admin mengakses menu real-time notifications, sistem memulai long polling connection (client-side: polling setiap 5 detik, server-side: hold connection), mengambil notifikasi dari database (sys_notifications: status='unread', filter berdasarkan userid/divisi), push notifikasi ke client secara real-time, Admin menyusun dan mengirim notifikasi baru (pilih penerima, tulis pesan), insert ke sys_notifications untuk setiap penerima, trigger long polling update, dan mengirim email (opsional). **Database:** sys_notifications, pat_1_bookingsspd                                                                                                                                                                                                                                                           |
+| 30 | Bank Cek Validasi Pembayaran Detail (Iterasi 2)           | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Detail verifikasi pembayaran oleh Bank. Proses meliputi melihat daftar booking yang memerlukan verifikasi pembayaran, memilih booking, melihat detail booking (data wajib pajak, objek pajak, perhitungan BPHTB), menginput data pembayaran (nomor bukti, tanggal, BPHTB yang dibayar), melakukan verifikasi, validasi data pembayaran, insert/update bank_1_cek_hasil_transaksi (status_verifikasi='Terverifikasi', nama_pengecek, verified_by, verified_at), update pat_2_bphtb_perhitungan dengan bphtb_yangtelah_dibayar, update pat_4_objek_pajak dengan nomor_bukti_pembayaran dan tanggal_pembayaran, dan menampilkan hasil verifikasi. **Database:** bank_1_cek_hasil_transaksi, pat_2_bphtb_perhitungan, pat_4_objek_pajak, pat_1_bookingsspd                                                                                                            |
+| 31 | Bank Hasil Transaksi (Iterasi 2)                          | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Melihat hasil transaksi pembayaran yang telah diverifikasi. Proses meliputi melihat daftar hasil transaksi (bank_1_cek_hasil_transaksi: status_verifikasi='Terverifikasi', filter berdasarkan userid Bank), memilih transaksi, melihat detail transaksi (status verifikasi, nomor bukti pembayaran, tanggal pembayaran, BPHTB yang dibayar, nama pengecek, verified_at), JOIN dengan pat_1_bookingsspd untuk info booking, dan export laporan ke Excel/PDF (opsional). **Database:** bank_1_cek_hasil_transaksi, pat_1_bookingsspd                                                                                                                                                                                                                                                                                                                                |
+| 32 | Sinkronisasi Bank-LTB (Iterasi 2)                         | **Aktor:** Sistem. **Alur:** Sinkronisasi data antara Bank dan LTB. Proses meliputi mengambil data dari Bank (bank_1_cek_hasil_transaksi: status_verifikasi='Terverifikasi', nomor_bukti_pembayaran, tanggal_pembayaran, bphtb_yangtelah_dibayar), mengambil data dari LTB (ltb_1_terima_berkas_sspd: status proses, no_registrasi), update ltb_1_terima_berkas_sspd dengan status_proses='Bank Verified', bank_verified_at=NOW(), bank_verification_status='Terverifikasi', update pat_2_bphtb_perhitungan dengan bphtb_yangtelah_dibayar dari Bank, update pat_4_objek_pajak dengan nomor_bukti_pembayaran dan tanggal_pembayaran dari Bank, update pat_1_bookingsspd dengan trackstatus='Verified by LTB & Bank', bank_verified=TRUE, mengirim notifikasi ke LTB dan Bank, dan commit transaction. **Database:** bank_1_cek_hasil_transaksi, ltb_1_terima_berkas_sspd, pat_2_bphtb_perhitungan, pat_4_objek_pajak, pat_1_bookingsspd |
+
+**Lokasi di Lampiran:** 
+- Activity 26: Lampiran 98-99
+- Activity 27: Lampiran 100-101
+- Activity 28: Lampiran 102-103
+- Activity 29: Lampiran 104-105
+- Activity 30: Lampiran 106-107
+- Activity 31: Lampiran 108-109
+- Activity 32: Lampiran 110-111
+
+---
+
+## Tabel 3: Activity Diagram - Proses Bank (Activity 39-45)
+
+| No | Nama Activity Diagram                | Deskripsi Lengkap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 39 | Bank Login (Iterasi 2)               | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank login sebagai produk online terintegrasi. Proses meliputi Bank mengakses halaman login, menginput userid dan password, sistem validasi kredensial (cek di a_2_verified_users dengan role='Bank'), autentikasi berhasil, set session (req.session.userid, req.session.role), redirect ke dashboard Bank, dan menampilkan notifikasi login berhasil. **Database:** a_2_verified_users                                                                                                                                                                                                                                                                                                                                                                   |
+| 40 | Bank View Dashboard (Iterasi 2)      | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank mengakses dan melihat dashboard Bank. Proses meliputi Bank login ke sistem, mengakses dashboard Bank, sistem mengambil data statistik (total booking pending, total booking terverifikasi, total booking ditolak), menampilkan daftar booking pending verifikasi (bank_1_cek_hasil_transaksi: status_verifikasi='Pending'), menampilkan grafik/statistik pembayaran, dan refresh data real-time. **Database:** bank_1_cek_hasil_transaksi, pat_1_bookingsspd                                                                                                                                                                                                                                                                                          |
+| 41 | Bank View Booking List (Iterasi 2)   | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank melihat daftar booking yang memerlukan verifikasi pembayaran. Proses meliputi Bank mengakses menu "Daftar Booking", sistem mengambil data booking dari bank_1_cek_hasil_transaksi dengan status_verifikasi='Pending' (filter berdasarkan userid Bank), menampilkan daftar booking (nobooking, nama_wajib_pajak, tanggal_booking, status), filter dan search booking, dan menampilkan jumlah total booking pending. **Database:** bank_1_cek_hasil_transaksi, pat_1_bookingsspd                                                                                                                                                                                                                                                                        |
+| 42 | Bank View Booking Detail (Iterasi 2) | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank melihat detail booking yang akan diverifikasi. Proses meliputi Bank memilih booking dari daftar, sistem mengambil data lengkap booking (pat_1_bookingsspd: data wajib pajak, pat_4_objek_pajak: data objek pajak, pat_2_bphtb_perhitungan: perhitungan BPHTB), menampilkan detail booking lengkap, menampilkan dokumen pendukung (jika ada), dan menampilkan status booking saat ini. **Database:** pat_1_bookingsspd, pat_4_objek_pajak, pat_2_bphtb_perhitungan                                                                                                                                                                                                                                                                                     |
+| 43 | Bank Input Payment Data (Iterasi 2)  | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank menginput data pembayaran untuk verifikasi. Proses meliputi Bank membuka form input pembayaran untuk booking yang dipilih, menginput data pembayaran (nomor_bukti_pembayaran, tanggal_pembayaran, bphtb_yangtelah_dibayar, catatan_bank), sistem validasi input (format tanggal, jumlah pembayaran, nomor bukti tidak kosong), preview data yang diinput, dan menyimpan data ke temporary storage (belum commit). **Database:** (temporary storage)                                                                                                                                                                                                                                                                                                   |
+| 44 | Bank Verify Payment (Iterasi 2)      | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank melakukan verifikasi pembayaran. Proses meliputi Bank mereview data pembayaran yang telah diinput, melakukan verifikasi (cek nomor bukti pembayaran, validasi tanggal pembayaran, validasi jumlah BPHTB yang dibayar), sistem validasi data pembayaran, cek apakah data pembayaran sesuai dengan perhitungan BPHTB, dan menampilkan hasil verifikasi (berhasil/gagal dengan alasan). **Database:** pat_2_bphtb_perhitungan                                                                                                                                                                                                                                                                                                                            |
+| 45 | Bank Save Verification (Iterasi 2)   | **Aktor:** Bank (Produk Online Terintegrasi), Sistem. **Alur:** Bank menyimpan hasil verifikasi pembayaran ke database. Proses meliputi Bank menekan tombol simpan verifikasi, sistem memulai database transaction, insert/update bank_1_cek_hasil_transaksi (nobooking, userid, nomor_bukti_pembayaran, tanggal_pembayaran, bphtb_yangtelah_dibayar, status_verifikasi='Terverifikasi', nama_pengecek, verified_by, verified_at), update pat_2_bphtb_perhitungan dengan bphtb_yangtelah_dibayar, update pat_4_objek_pajak dengan nomor_bukti_pembayaran dan tanggal_pembayaran, trigger sinkronisasi dengan LTB (Activity 32), commit transaction, dan menampilkan status: Verifikasi Pembayaran Berhasil. **Database:** bank_1_cek_hasil_transaksi, pat_2_bphtb_perhitungan, pat_4_objek_pajak, ltb_1_terima_berkas_sspd |
+
+**Lokasi di Lampiran:** 
+- Activity 39: Lampiran 112-113
+- Activity 40: Lampiran 114-115
+- Activity 41: Lampiran 116-117
+- Activity 42: Lampiran 118-119
+- Activity 43: Lampiran 120-121
+- Activity 44: Lampiran 122-123
+- Activity 45: Lampiran 124-125
+
+---
+
+## 💡 Tips untuk Word
+
+**Cara menggunakan tabel versi sangat ringkas ini:**
+
+1. **Copy Tabel 1** → Paste ke Word → Format sebagai tabel Word
+2. **Copy Tabel 2** → Paste di halaman baru atau setelah Tabel 1 → Format sebagai tabel Word
+3. **Copy Tabel 3** → Paste di halaman baru atau setelah Tabel 2 → Format sebagai tabel Word
+4. **Atur format tabel di Word:**
+   - **Font:** Times New Roman 10pt (atau sesuai style TA)
+   - **AutoFit:** AutoFit to Window
+   - **Column Width:**
+     - Kolom 1 (No): 1 cm
+     - Kolom 2 (Nama): 4 cm
+     - Kolom 3 (Deskripsi Lengkap): 12 cm
+   - **Row Height:** Auto (atau atur minimum 1 cm)
+   - **Text Wrapping:** Wrap text untuk semua kolom
+   - **Cell Alignment:** Top untuk kolom deskripsi
+   - **Cell Padding:** 0.1 cm untuk semua sisi
+5. **Jika masih tidak muat:**
+   - Kurangi font menjadi 9pt
+   - Atau gunakan landscape orientation untuk halaman tabel
+   - Atau buat 2 kolom saja (No + Deskripsi Lengkap)
+
+---
+
+## 📝 Catatan
+
+- **Total Activity Diagram Iterasi 2:** 22 diagram
+  - **3 Activity Diagram yang dijelaskan rinci di proses pengembangan:** Activity 18, 19, 20 (TIDAK masuk tabel ini, dijelaskan di Bab Hasil & Pembahasan - Lampiran 85-87 hanya tampilan website)
+  - **19 Activity Diagram yang diletakkan di lampiran:**
+    - Activity 21-32: 12 diagram (masuk Tabel 1 & 2) - Lampiran 88-111
+    - Activity 39-45: 7 diagram (masuk Tabel 3) - Lampiran 112-125
+  - **Total Lampiran Iterasi 2:** 41 Lampiran (Lampiran 85-125)
+  - **Activity lama yang sudah dipisah:**
+    - Activity_Bank_Integration_Iterasi2.xml (sudah dipisah menjadi Activity 39-45 dan Activity 24, 30-32)
+    - Activity_Peneliti_Validasi_Iterasi2.xml (sudah dijelaskan sebagai bagian dari proses final validation, fitur-fitur sudah dipisah ke Activity 21, 22, 23, 25, 27, 28)
+- **Format:** Semua Activity Diagram menggunakan format Swimlane untuk menunjukkan pembagian tanggung jawab antar aktor
+- **Lokasi File:** `DIAGRAMS/Iterasi_Diagrams/Iterasi_2/Activity_Diagrams/`
+- **Format File:** XML (Draw.io format)
+
+---
+
+## 📋 RINGKASAN LAMPIRAN ITERASI 2
+
+- **Lampiran Iterasi 1:** Lampiran 1-84 (Total 84 Lampiran)
+- **Lampiran Iterasi 2:** Lampiran 85-125 (Total 41 Lampiran)
+- **Total Lampiran Gabungan:** Lampiran 1-125 (Total 125 Lampiran)
+
+---
+
+*Tabel ini disusun untuk dokumentasi Activity Diagram Iterasi 2 dalam Tugas Akhir - Versi Sangat Ringkas untuk Word (Update: Format disamakan dengan Iterasi 1, Lampiran dimulai dari 85, Total 22 Activity Diagram)*

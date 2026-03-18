@@ -1,0 +1,119 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.10">
+  <diagram id="Activity_22_PPAT_View_Generated_PDF_Permohonan_Validasi" name="Activity 22: PPAT View Generated PDF Permohonan Validasi (Swimlane)">
+    <mxGraphModel dx="1158" dy="624" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_ppat" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="PPAT/PPATS" vertex="1">
+          <mxGeometry height="700" width="330" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_ppat" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="120" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_open_booking" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Membuka Halaman Booking" vertex="1">
+          <mxGeometry height="50" width="240" x="30" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_select_booking" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Memilih Booking yang Akan Dilihat PDF Permohonan Validasi" vertex="1">
+          <mxGeometry height="70" width="240" x="30" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_click_view_permohonan" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menekan Tombol Lihat PDF Permohonan Validasi" vertex="1">
+          <mxGeometry height="70" width="240" x="30" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_view_pdf" parent="swimlane_ppat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Melihat PDF Permohonan Validasi di Browser&#xa;(PDF Viewer / Download)" vertex="1">
+          <mxGeometry height="70" width="240" x="30" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_choose_action" parent="swimlane_ppat" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Pilih Aksi?&#xa;(View / Download)" vertex="1">
+          <mxGeometry height="80" width="150" x="75" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="700" width="580" x="370" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_stream_pdf" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Stream PDF ke Browser&#xa;(doc.pipe(res))" vertex="1">
+          <mxGeometry height="50" width="250" x="20" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_open_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="ppat_open_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_select_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="ppat_select_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_validate_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="sys_get_booking_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="ppat_click_view_permohonan" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="670" y="320" />
+              <mxPoint x="250" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="1" source="ppat_click_view_permohonan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_init_pdfkit" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_set_headers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_stream_pdf" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="sys_stream_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="ppat_view_pdf" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="360" y="545" />
+              <mxPoint x="360" y="495" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="ppat_view_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_choose_action" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="ppat_choose_action" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="ppat_download_pdf" value="Download">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="ppat_choose_action" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="View">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_process" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="View Generated PDF Permohonan Validasi Process" vertex="1">
+          <mxGeometry height="720" width="910" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ppat_download_pdf" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Download PDF Permohonan Validasi" vertex="1">
+          <mxGeometry height="30" width="200" x="10" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_process" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="270" y="670" as="geometry" />
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="swimlane_process" source="ppat_download_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_no_booking" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Booking Tidak Ditemukan" vertex="1">
+          <mxGeometry height="40" width="180" x="370" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate_booking" parent="swimlane_process" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Booking Exists?&#xa;(Cek nobooking)" vertex="1">
+          <mxGeometry height="90" width="250" x="335" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="swimlane_process" source="sys_validate_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" target="sys_error_no_booking" value="Tidak Ada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_booking_data" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Data Booking&#xa;dari Database (pat_1_bookingsspd,&#xa;a_2_verified_users, pat_4_objek_pajak,&#xa;pat_5_penghitungan_njop, pat_8_validasi_tambahan,&#xa;p_1_verifikasi, pat_6_sign)" vertex="1">
+          <mxGeometry height="110" width="250" x="630" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="swimlane_process" source="sys_validate_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_get_booking_data" value="Ada">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_init_pdfkit" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Inisialisasi PDFKit Document&#xa;(A4, margin: 30)" vertex="1">
+          <mxGeometry height="50" width="210" x="375" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_pdf" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Generate PDF dengan PDFKit&#xa;(Header Formulir, Data Pemohon,&#xa;Data Wajib Pajak, Data Objek Pajak,&#xa;Daftar Dokumen Lampiran,&#xa;Tanda Tangan Pemohon)" vertex="1">
+          <mxGeometry height="110" width="250" x="630" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="swimlane_process" source="sys_init_pdfkit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_generate_pdf" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_set_headers" parent="swimlane_process" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Set HTTP Headers&#xa;(Content-Type: application/pdf,&#xa;Content-Disposition: inline)" vertex="1">
+          <mxGeometry height="80" width="250" x="650" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="swimlane_process" source="sys_generate_pdf" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_set_headers" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

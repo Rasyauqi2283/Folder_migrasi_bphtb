@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_Diagram_Complex_Part3" name="Activity Diagram Kompleks Iterasi 1 - Part 3">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#2e7d32;strokeColor=#1b5e20;strokeWidth=2;" value="Lanjut dari Part 2" vertex="1">
+          <mxGeometry height="40" width="40" x="330" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_pv" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="Peneliti Validasi" vertex="1">
+          <mxGeometry height="500" width="700" x="50" y="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv1" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Peneliti Validasi Receive" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv2" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Final Validation" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv3" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Manual Signature" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv4" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Drop Gambar Tanda Tangan" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="270" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv5" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Update pv_1_paraf_validate" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="350" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pv6" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Send to LSB" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_lsb" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="LSB" vertex="1">
+          <mxGeometry height="500" width="700" x="50" y="620" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lsb1" parent="swimlane_lsb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="LSB Receive from PV" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lsb2" parent="swimlane_lsb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Manual Handover" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lsb3" parent="swimlane_lsb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Update lsb_1_serah_berkas" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lsb4" parent="swimlane_lsb" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#4a148c;strokeWidth=2;" value="Update pat_1_bookingsspd" vertex="1">
+          <mxGeometry height="50" width="200" x="250" y="270" as="geometry" />
+        </mxCell>
+        <mxCell id="end1" parent="swimlane_lsb" style="ellipse;whiteSpace=wrap;html=1;fillColor=#2e7d32;strokeColor=#1b5e20;strokeWidth=2;" value="Selesai - Berhasil" vertex="1">
+          <mxGeometry height="40" width="40" x="330" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="db1" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=2;" value="pv_1_paraf_validate" vertex="1">
+          <mxGeometry height="80" width="120" x="850" y="400" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db2" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=2;" value="lsb_1_serah_berkas" vertex="1">
+          <mxGeometry height="80" width="120" x="850" y="800" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db3" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=2;" value="pat_1_bookingsspd" vertex="1">
+          <mxGeometry height="80" width="120" x="1050" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" target="pv1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv1" target="pv2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge3" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv2" target="pv3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge4" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv3" target="pv4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge5" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv4" target="pv5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge6" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv5" target="pv6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge7" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="pv6" target="lsb1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge8" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="lsb1" target="lsb2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge9" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="lsb2" target="lsb3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge10" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="lsb3" target="lsb4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge11" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" source="lsb4" target="end1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="db_edge1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#01579b;dashed=1;" edge="1" source="pv5" target="db1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db_edge2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#01579b;dashed=1;" edge="1" source="lsb3" target="db2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db_edge3" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;strokeColor=#01579b;dashed=1;" edge="1" source="lsb4" target="db3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

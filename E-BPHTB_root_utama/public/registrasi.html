@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrasi Pengguna</title>
+  <link rel="icon" href="asset/TitleE-bphtb.png" type="image/png">
+  <!---->
+  <link rel="stylesheet" href="design-n-script/design_css/asset_pelengkap.css">
+  <!---->
+  <link rel="stylesheet" href="design-n-script/design_css/registrasi-design.css">
+
+  <style>
+/* ===== KTP Preview (Glass-Morphism) ===== */
+.ktp-preview {
+  margin-top: 15px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+  animation: slideDown 0.3s ease-out;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== HEADER ===== */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  background: rgba(0,200,255,0.25);
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+  backdrop-filter: blur(12px);
+}
+
+.preview-header h4 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+/* Tombol hapus (X) */
+.remove-preview {
+  background: none;
+  border: none;
+  color: #f1f5f9;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+.remove-preview:hover {
+  background-color: rgba(255,255,255,0.2);
+}
+
+/* ===== CONTENT ===== */
+.preview-content {
+  padding: 16px;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.preview-content img {
+  max-width: 200px;
+  max-height: 120px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.preview-info {
+  flex: 1;
+}
+
+.preview-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #e2e8f0;      /* teks lembut putih-abu */
+}
+
+.preview-info strong {
+  color: #fff;         /* highlight info penting */
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .preview-content {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .preview-content img {
+    max-width: 100%;
+    max-height: 150px;
+  }
+}
+
+/* ===== Upload Status Styles ===== */
+.upload-status {
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+}
+
+.upload-status.loading {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+.upload-status.success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.upload-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-content i {
+  font-size: 16px;
+}
+
+  </style>
+
+  <script>
+    function showError(inputId, message) {
+        const input = document.getElementById(inputId);
+        const errorDiv = document.getElementById(inputId + 'Error');
+        
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block'; // tampilkan
+            errorDiv.className = 'error-message';
+        }
+        
+        if (input) {
+            input.classList.add('error');
+        }
+    }
+    
+    // === Modal open/close ===
+    function openModal() {
+        const modal = document.getElementById('modalOverlay');
+        if (modal) {
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        } else {
+            console.error('Modal overlay not found!');
+        }
+    }
+    
+    function closeModal(e) {
+        const modal = document.getElementById('modalOverlay');
+        if (modal) {
+            modal.classList.remove('show');
+            document.body.style.overflow = ''; // Restore scroll
+        }
+        // Prevent event bubbling
+        if (e) {
+            e.stopPropagation();
+        }
+    }
+    
+    // Make functions globally available
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    
+    // Close modal dengan ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('modalOverlay');
+            if (modal && modal.classList.contains('show')) {
+                closeModal();
+            }
+        }
+    });
+
+    // KTP Preview Functions
+    function showKTPPreview(file) {
+        const preview = document.getElementById('ktpPreview');
+        const previewImage = document.getElementById('ktpPreviewImage');
+        const fileName = document.getElementById('ktpFileName');
+        const fileSize = document.getElementById('ktpFileSize');
+        const fileType = document.getElementById('ktpFileType');
+
+        if (file && file.type.startsWith('image/')) {
+            // Show preview container
+            preview.style.display = 'block';
+
+            // Create file reader
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Update file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileType.textContent = file.type.toUpperCase();
+
+            // Scroll to preview
+            preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function removeKTPPreview() {
+        const preview = document.getElementById('ktpPreview');
+        const fileInput = document.getElementById('fotoktp');
+        
+        // Hide preview
+        preview.style.display = 'none';
+        
+        // Clear file input
+        fileInput.value = '';
+        
+        // Clear preview image
+        document.getElementById('ktpPreviewImage').src = '';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // File input change event
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('fotoktp');
+        const autoFill = document.getElementById("autoFillSuggestion");
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            
+            console.log("📁 [FILE_INPUT] File input changed:", {
+                hasFile: !!file,
+                fileName: file?.name,
+                fileSize: file?.size,
+                fileType: file?.type,
+                filesLength: e.target.files.length
+            });
+
+            if (file) {
+                // Validasi tipe
+                const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('Format file tidak didukung. Gunakan PNG, JPEG, atau JPG.');
+                    fileInput.value = '';
+                    autoFill.style.display = "none";
+                    return;
+                }
+
+                // Validasi ukuran (max 3MB)
+                const maxSize = 3 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert('Ukuran file terlalu besar. Maksimal 3MB.');
+                    fileInput.value = '';
+                    autoFill.style.display = "none";
+                    return;
+                }
+
+                // Tampilkan preview & auto fill suggestion
+                showKTPPreview(file);
+                autoFill.style.display = "block";
+                
+                // Auto upload KTP setelah file dipilih
+                setTimeout(() => {
+                    if (window.uploadKTPFile) {
+                        window.uploadKTPFile(file).catch(error => {
+                            console.error("Auto upload KTP failed:", error);
+                        });
+                    }
+                }, 500);
+            } else {
+                removeKTPPreview();
+                autoFill.style.display = "none";
+            }
+        });
+    });
+    </script>    
+</head>
+<body>
+  <div class="container">
+    <h1>Pendaftaran Akun BPHTB Online</h1>
+    <p id="verse-label" style="margin-bottom:1em; color:#94a3b8; font-size:0.95em;"></p>
+    <div class="form-group">
+        <div class="file-input">
+            <label for="fotoktp">KTP</label>
+            <input type="file" id="fotoktp" name="fotoktp" accept="image/png, image/jpeg, image/jpg" required>
+            
+            <!-- Preview Container -->
+            <div id="ktpPreview" class="ktp-preview" style="display: none;">
+                <div class="preview-header">
+                    <h4>Preview KTP</h4>
+                    <button type="button" class="remove-preview" onclick="removeKTPPreview()">×</button>
+                </div>
+                <div class="preview-content">
+                    <img id="ktpPreviewImage" src="" alt="Preview KTP">
+                    <div class="preview-info">
+                        <p><strong>File:</strong> <span id="ktpFileName"></span></p>
+                        <p><strong>Ukuran:</strong> <span id="ktpFileSize"></span></p>
+                        <p><strong>Format:</strong> <span id="ktpFileType"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="autoFillSuggestion" class="auto-fill-suggestion" 
+             style="display: none; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; margin-top: 15px; overflow: hidden;">
+            <!-- Konten diisi secara dinamis oleh registrasi.js -->
+        </div>
+        <small onclick="openModal()">panduan foto KTP!</small>
+        <small>pastikan nik dan nama lengkap sesuai dengan ktp yang didaftarkan</small>
+    </div>
+    <form id="registration-form" enctype="multipart/form-data">
+        <div class="form-row">
+            <div class="form-column">
+              <div class="form-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="nama" name="nama" placeholder="Nama Lengkap" required>
+                <div class="validation-zone"><div id="namaError" class="error-message">Nama lengkap minimal 2 karakter</div></div>
+              </div>
+              <div class="form-group">
+                <i class="fas fa-id-card"></i>
+                <input type="number" id="nik" name="nik" pattern="\d{16}$" maxlength="16" 
+                       placeholder="Isi NIK sesuai KTP" oninput="validateNIK(this)">
+                <div class="validation-zone validation-zone-double"><div id="nikError" class="error-message">NIK harus 16 digit</div><small id="nikCounter" style="color: #666; font-size: 0.8em;">0/16 digit</small></div>
+            </div>
+                <div class="form-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="number" id="telepon" name="telepon" pattern="^08\d{11}$" maxlength="13" placeholder="Pastikan no. telepon sesuai/cont: 08**" required>
+                    <div class="validation-zone validation-zone-double"><div id="teleponError" class="error-message">Nomor telepon tidak valid</div><small id="teleponInfo" style="color: #666; font-size: 0.8em;">Contoh: 08123456789</small></div>
+                </div>
+            </div>
+            <div class="form-column">
+                <div class="form-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" name="email" placeholder="Email" required>
+                    <div class="validation-zone"><div id="emailError" class="error-message">Format email tidak valid</div></div>
+                </div>
+                <div class="form-group">
+                    <p class="password-helper">Buat kata sandi mu disini, penting: buat berbeda dengan sandi pada email anda</p>
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" name="password" placeholder="Kata Sandi" required>
+                    <i class="fas fa-eye toggle-password" data-target="password"></i>
+                    <div class="validation-zone"><div id="passwordError" class="error-message">Password tidak memenuhi kriteria</div></div>
+                </div>
+                <div class="form-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="repeatpassword" name="repeatpassword" placeholder="Ulangi Kata Sandi" required>
+                    <i class="fas fa-eye toggle-password" data-target="repeatpassword"></i>
+                    <div class="validation-zone"><div id="repeatpasswordError" class="error-message">Konfirmasi password tidak cocok</div></div>
+                </div>            
+            </div>
+        </div>
+
+        <!-- Jalur pendaftaran: WP | Karyawan (NIP) | PU (PPAT/PPATS) -->
+        <input type="hidden" id="verse" name="verse" value="WP">
+
+        <!-- Karyawan: wajib isi NIP -->
+        <div id="karyawan-fields" style="display:none;">
+          <div class="form-group">
+            <i class="fas fa-id-badge"></i>
+            <input type="text" id="nip" name="nip" placeholder="NIP (wajib untuk Karyawan)" maxlength="20">
+            <div class="validation-zone"><div id="nipError" class="error-message">NIP wajib diisi untuk pendaftaran Karyawan</div></div>
+          </div>
+        </div>
+
+        <!-- PU (PPAT/PPATS): wajib special_field, pejabat_umum, divisi -->
+        <div id="pu-fields" style="display:none;">
+          <div class="form-group">
+            <label for="divisi_pu">Jenis akun:</label>
+            <select id="divisi_pu" name="divisi_pu">
+              <option value="">Pilih...</option>
+              <option value="PPAT">PPAT</option>
+              <option value="PPATS">PPATS</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <i class="fas fa-stamp"></i>
+            <input type="text" id="special_field" name="special_field" placeholder="Nama PPAT / Gelar (contoh: Dr. Ahmad, S.H.)" maxlength="255">
+            <div class="validation-zone"><div id="specialFieldError" class="error-message">Nama PPAT/Gelar wajib diisi</div></div>
+          </div>
+          <div class="form-group">
+            <i class="fas fa-user-tie"></i>
+            <input type="text" id="pejabat_umum" name="pejabat_umum" placeholder="Pejabat Umum (PPAT / Notaris)" maxlength="50">
+            <div class="validation-zone"><div id="pejabatUmumError" class="error-message">Pejabat Umum wajib diisi</div></div>
+          </div>
+        </div>
+
+        <!--kolom khusus-->
+        <div>
+          <label for="gender">Saya adalah:</label>
+          <select id="gender" name="gender">
+            <option value="" disabled selected>Pilih salah satu...</option>
+            <option value="Perempuan">Perempuan</option>
+            <option value="Laki-laki">Laki-laki</option>
+          </select>
+        </div>
+
+        <div class="form-group buttons">
+            <button type="button" class="cancel" onclick="history.back()">Kembali</button>
+            <button type="submit" class="submit" id="submitBtn">Submit</button>
+        </div>
+        <p id="message"></p>
+    </form>
+</div>
+<!---->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-content" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h2 style="margin: 0; color: #fff;">Panduan Foto KTP</h2>
+          <button onclick="closeModal(event)" style="background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='none'">×</button>
+      </div>
+      <img src="asset/Panduan_FOTOKTP.png" alt="Panduan Foto KTP" class="guide-image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+  </div>
+</div>
+  <!--script backend-->
+  <script src="design-n-script/script-backend/register-backend.js"></script>
+  <script>
+    // Baca verse dari URL (?verse=wp|karyawan|pu) dan tampilkan field yang sesuai
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const verse = (params.get('verse') || 'wp').toLowerCase();
+      const v = (verse === 'pu' || verse === 'karyawan') ? verse : 'wp';
+      const verseEl = document.getElementById('verse');
+      const labelEl = document.getElementById('verse-label');
+      if (verseEl) verseEl.value = v === 'wp' ? 'WP' : v === 'karyawan' ? 'Karyawan' : 'PU';
+      if (labelEl) {
+        if (v === 'wp') labelEl.textContent = 'Pendaftaran sebagai Wajib Pajak (WP).';
+        else if (v === 'karyawan') labelEl.textContent = 'Pendaftaran Karyawan (LTB, LSB, Peneliti, Peneliti Validasi, Bank) — isi NIP.';
+        else labelEl.textContent = 'Pendaftaran PPAT/PPATS — isi data pejabat pembuat akta.';
+      }
+      const karyawanFields = document.getElementById('karyawan-fields');
+      const puFields = document.getElementById('pu-fields');
+      if (karyawanFields) karyawanFields.style.display = v === 'karyawan' ? 'block' : 'none';
+      if (puFields) puFields.style.display = v === 'pu' ? 'block' : 'none';
+    })();
+  </script>
+  <script src="registrasi.js"></script>
+</body>
+</html>

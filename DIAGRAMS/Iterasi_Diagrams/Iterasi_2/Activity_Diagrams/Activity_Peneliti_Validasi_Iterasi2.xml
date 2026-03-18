@@ -1,0 +1,241 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36" version="29.2.9">
+  <diagram id="Activity_Peneliti_Validasi_Iterasi2" name="Activity: Peneliti Validasi Final Validation - Iterasi 2">
+    <mxGraphModel dx="1489" dy="803" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="swimlane_pv" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" value="Peneliti Validasi (Pejabat)" vertex="1">
+          <mxGeometry height="1190" width="400" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" parent="swimlane_pv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=none;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="30" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_view_notif" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Melihat Notifikasi dari Clear to Paraf" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_open_booking" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Membuka Booking dari Clear to Paraf" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_view_docs" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Melihat Dokumen yang Sudah Diparaf" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_final_validation" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Melakukan Final Validation" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_select_reusable_sign" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;strokeWidth=2;" value="Pilih Tanda Tangan Reusable&lt;br&gt;(dari a_2_verified_users)" vertex="1">
+          <mxGeometry height="60" width="300" x="80" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_generate_cert" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate Sertifikat Digital Lokal" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_generate_qr" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate QR Code" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_generate_no_validasi" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate Nomor Validasi&lt;br&gt;(7acak-3acak)" vertex="1">
+          <mxGeometry height="60" width="300" x="80" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_click_send" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Menekan Tombol Kirim ke LSB" vertex="1">
+          <mxGeometry height="50" width="300" x="80" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="pv_view_result" parent="swimlane_pv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;" value="Melihat Status:&#xa;Dikirim ke LSB dengan Nomor Validasi" vertex="1">
+          <mxGeometry height="70" width="300" x="80" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="end" parent="swimlane_pv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="220" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="swimlane_system" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=14;" value="Sistem" vertex="1">
+          <mxGeometry height="1190" width="700" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_start_trans" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Memulai Database Transaction" vertex="1">
+          <mxGeometry height="50" width="250" x="420" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_qr" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate QR Code&lt;br&gt;(qr_payload, qr_image_path)" vertex="1">
+          <mxGeometry height="60" width="250" x="80" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_no_validasi" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate Nomor Validasi&lt;br&gt;(7acak-3acak)" vertex="1">
+          <mxGeometry height="60" width="250" x="80" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_insert_validasi_surat" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Insert ke pat_7_validasi_surat&lt;br&gt;(nomor_validasi, nobooking, status)" vertex="1">
+          <mxGeometry height="70" width="250" x="420" y="800" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_insert_lsb" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Insert ke lsb_1_serah_berkas&#xa;(nobooking, status=&#39;Pending Handover&#39;)" vertex="1">
+          <mxGeometry height="70" width="250" x="420" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_booking" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update pat_1_bookingsspd&#xa;SET trackstatus=&#39;Dikirim ke LSB&#39;,&#xa;nomor_validasi=generated_no" vertex="1">
+          <mxGeometry height="80" width="250" x="420" y="1000" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_commit" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Commit Transaction" vertex="1">
+          <mxGeometry height="50" width="200" x="80" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_send_notif" parent="swimlane_system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengirim Notifikasi ke LSB&#xa;dan Email ke PPAT" vertex="1">
+          <mxGeometry height="60" width="250" x="420" y="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" edge="1" parent="1" source="start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_view_notif" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" edge="1" parent="1" source="pv_view_notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_data" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" edge="1" parent="1" source="sys_get_data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;exitDx=0;exitDy=0;" target="pv_open_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" edge="1" parent="1" source="pv_open_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_view_docs" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" edge="1" parent="1" source="pv_view_docs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_final_validation" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" edge="1" parent="1" source="pv_final_validation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_validate" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" edge="1" parent="1" source="sys_validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="pv_select_reusable_sign" value="Valid">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="610" y="330" />
+              <mxPoint x="610" y="430" />
+              <mxPoint x="440" y="430" />
+              <mxPoint x="440" y="455" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge9" edge="1" parent="1" source="pv_select_reusable_sign" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_get_reusable_sign" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="470" />
+              <mxPoint x="690" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge10" edge="1" parent="1" source="sys_get_reusable_sign" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.154;exitY=1.026;entryX=1;entryY=0.25;exitDx=0;exitDy=0;exitPerimeter=0;entryDx=0;entryDy=0;" target="pv_generate_cert" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="402" />
+              <mxPoint x="750" y="500" />
+              <mxPoint x="470" y="500" />
+              <mxPoint x="470" y="533" />
+              <mxPoint x="420" y="533" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge11" edge="1" parent="1" source="pv_generate_cert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_generate_local_cert" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" edge="1" parent="1" source="sys_generate_local_cert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_generate_qr" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="755" y="580" />
+              <mxPoint x="440" y="580" />
+              <mxPoint x="440" y="585" />
+              <mxPoint x="270" y="585" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge13" edge="1" parent="1" source="pv_generate_qr" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_generate_qr" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" edge="1" parent="1" source="sys_generate_qr" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_generate_no_validasi" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="590" />
+              <mxPoint x="440" y="670" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge15" edge="1" parent="1" source="pv_generate_no_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_generate_no_validasi" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" edge="1" parent="1" source="sys_generate_no_validasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="pv_click_send" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="645" y="745" />
+              <mxPoint x="270" y="745" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge17" edge="1" parent="1" source="pv_click_send" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_start_trans" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge20" edge="1" parent="1" source="sys_update_pv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="sys_insert_validasi_surat" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge21" edge="1" parent="1" source="sys_insert_validasi_surat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_insert_lsb" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge22" edge="1" parent="1" source="sys_insert_lsb" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_booking" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge23" edge="1" parent="1" source="sys_update_booking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="sys_commit" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="1050" />
+              <mxPoint x="620" y="1050" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge24" edge="1" parent="1" source="sys_commit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="sys_send_notif" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="760" y="1085" />
+              <mxPoint x="760" y="1130" />
+              <mxPoint x="985" y="1130" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge25" edge="1" parent="1" source="sys_send_notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_show_success" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge26" edge="1" parent="1" source="sys_show_success" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" target="pv_view_result" value="">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="1150" />
+              <mxPoint x="460" y="875" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge27" edge="1" parent="1" source="pv_view_result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="end" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="title_box" parent="1" style="swimlane;whiteSpace=wrap;html=1;fontStyle=1;fontSize=14;startSize=23;" value="Peneliti Validasi Final Validation Process - Iterasi 2" vertex="1">
+          <mxGeometry height="1210" width="1100" x="40" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_error_validation" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Error: Validasi Gagal" vertex="1">
+          <mxGeometry height="50" width="160" x="710" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_data" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Mengambil Data dari pv_1_paraf_validate&#xa;(Status: Pending)" vertex="1">
+          <mxGeometry height="60" width="250" x="440" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_validate" parent="title_box" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Validasi Data&#xa;(Cek kelengkapan validasi final)" vertex="1">
+          <mxGeometry height="80" width="200" x="540" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" edge="1" parent="title_box" source="sys_validate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" target="sys_error_validation" value="Tidak Valid">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_get_reusable_sign" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;strokeWidth=2;" value="Mengambil Tanda Tangan Reusable&lt;br&gt;dari a_2_verified_users.tanda_tangan_path" vertex="1">
+          <mxGeometry height="60" width="250" x="670" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_generate_local_cert" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Generate Sertifikat Digital Lokal&lt;br&gt;(pv_local_certs)" vertex="1">
+          <mxGeometry height="60" width="250" x="590" y="495" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_create_signing_request" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#f57c00;strokeWidth=2;" value="Insert ke pv_2_signing_requests&lt;br&gt;(document_id, signer_userid, status)" vertex="1">
+          <mxGeometry height="50" width="220" x="410" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_update_pv" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Update pv_1_paraf_validate&#xa;SET status=&#39;Validated&#39;,&#xa;no_validasi=generated_no,&#xa;created_at=NOW()" vertex="1">
+          <mxGeometry height="80" width="250" x="530" y="870" as="geometry" />
+        </mxCell>
+        <mxCell id="edge19" edge="1" parent="title_box" source="sys_create_signing_request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="sys_update_pv" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="sys_show_success" parent="title_box" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Menampilkan Pesan Sukses&#xa;dengan Nomor Validasi" vertex="1">
+          <mxGeometry height="60" width="250" x="445" y="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="tWkNWddWtLWXBMvAvu_s-1" edge="1" parent="1" source="sys_start_trans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="sys_create_signing_request">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="985" y="825" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
