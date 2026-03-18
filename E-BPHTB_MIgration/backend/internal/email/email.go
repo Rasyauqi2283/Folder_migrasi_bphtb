@@ -125,7 +125,7 @@ func sendViaSMTP(to, subject, text, html string) error {
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
 	if host == "" {
-		host = "smtp.gmail.com"
+		host = "bphtb@bappenda.go.id"
 	}
 	if port == "" {
 		port = "587"
