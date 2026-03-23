@@ -137,22 +137,25 @@ type LoginUser struct {
 	Gender           *string
 	PpatKhusus       *string
 	AlamatPu         *string
+	NpwpBadan        *string
+	Nib              *string
+	NibDocPath       *string
 }
 
 // GetByIdentifierForLogin fetches user from a_2_verified_users by email, userid, or username.
 func (r *UserRepo) GetByIdentifierForLogin(ctx context.Context, identifier string) (*LoginUser, error) {
 	var u LoginUser
 	err := r.pool.QueryRow(ctx,
-		`SELECT userid, password, nama, email, divisi, fotoprofil, statuspengguna,
+		`SELECT userid, password, nama, email, divisi, COALESCE(fotoprofil, ''), COALESCE(statuspengguna, 'offline'),
 			username, nip, special_field, special_parafv, pejabat_umum,
-			tanda_tangan_mime, tanda_tangan_path, telepon, gender, ppat_khusus, alamat_pu
+			tanda_tangan_mime, tanda_tangan_path, telepon, gender, ppat_khusus, alamat_pu, npwp_badan, nib, nib_doc_path
 		 FROM a_2_verified_users
 		 WHERE (email = $1 OR userid = $1 OR username = $1) AND verifiedstatus = 'complete'`,
 		identifier,
 	).Scan(
 		&u.Userid, &u.Password, &u.Nama, &u.Email, &u.Divisi, &u.Fotoprofil, &u.Statuspengguna,
 		&u.Username, &u.NIP, &u.SpecialField, &u.SpecialParafv, &u.PejabatUmum,
-		&u.TandaTanganMime, &u.TandaTanganPath, &u.Telepon, &u.Gender, &u.PpatKhusus, &u.AlamatPu,
+		&u.TandaTanganMime, &u.TandaTanganPath, &u.Telepon, &u.Gender, &u.PpatKhusus, &u.AlamatPu, &u.NpwpBadan, &u.Nib, &u.NibDocPath,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

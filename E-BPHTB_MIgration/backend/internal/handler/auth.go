@@ -854,22 +854,29 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Compute is_profile_complete (same logic as Node)
+	// Compute is_profile_complete with role-based requirements.
+	// Do not force optional fields for roles that do not own those fields.
+	hasText := func(s *string) bool { return s != nil && strings.TrimSpace(*s) != "" }
 	var isProfileComplete bool
 	switch user.Divisi {
-	case "Wajib Pajak":
-		isProfileComplete = user.Username != nil && *user.Username != ""
+	case "Wajib Pajak", "Wajib Pajak P":
+		isProfileComplete = hasText(user.Username)
+	case "Wajib Pajak B":
+		isProfileComplete = hasText(user.Username) &&
+			hasText(user.NpwpBadan) &&
+			hasText(user.Nib) &&
+			hasText(user.NibDocPath)
 	case "PPAT", "PPATS":
-		isProfileComplete = user.Username != nil && *user.Username != "" &&
-			user.SpecialField != nil && *user.SpecialField != "" &&
-			user.PejabatUmum != nil && *user.PejabatUmum != ""
+		isProfileComplete = hasText(user.Username) &&
+			hasText(user.SpecialField) &&
+			hasText(user.PejabatUmum)
 	case "Peneliti Validasi":
-		isProfileComplete = user.Username != nil && *user.Username != "" &&
-			user.NIP != nil && *user.NIP != "" &&
-			user.SpecialParafv != nil && *user.SpecialParafv != ""
+		// NIP is optional for some employee records.
+		isProfileComplete = hasText(user.Username) &&
+			hasText(user.SpecialParafv)
 	default:
-		isProfileComplete = user.NIP != nil && *user.NIP != "" &&
-			user.Username != nil && *user.Username != ""
+		// LTB/LSB/Peneliti/BANK/CS: do not block login by optional profile fields.
+		isProfileComplete = true
 	}
 
 	if err := h.repo.UpdateLoginStatus(ctx, user.Userid); err != nil {
@@ -907,6 +914,26 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	gender := ""
 	if user.Gender != nil {
 		gender = *user.Gender
+	}
+	ppatKhusus := ""
+	if user.PpatKhusus != nil {
+		ppatKhusus = *user.PpatKhusus
+	}
+	alamatPU := ""
+	if user.AlamatPu != nil {
+		alamatPU = *user.AlamatPu
+	}
+	npwpBadan := ""
+	if user.NpwpBadan != nil {
+		npwpBadan = *user.NpwpBadan
+	}
+	nib := ""
+	if user.Nib != nil {
+		nib = *user.Nib
+	}
+	nibDocPath := ""
+	if user.NibDocPath != nil {
+		nibDocPath = *user.NibDocPath
 	}
 	tandaTanganMime := ""
 	if user.TandaTanganMime != nil {
@@ -950,11 +977,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"special_field":       specialField,
 		"special_parafv":      specialParafv,
 		"pejabat_umum":        pejabatUmum,
+		"ppat_khusus":         ppatKhusus,
 		"is_profile_complete": isProfileComplete,
 		"statuspengguna":      "online",
 		"tanda_tangan_mime":   tandaTanganMime,
 		"tanda_tangan_path":   tandaTanganPath,
 		"gender":              gender,
+		"alamat_pu":           alamatPU,
+		"npwp_badan":          npwpBadan,
+		"nib":                 nib,
+		"nib_doc_path":        nibDocPath,
 	})
 }
 
@@ -1155,6 +1187,11 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	verifiedStatus := "verified_pending"
 	if verseOut == "WP" {
 		if isWPBadan {
+			divisiOut = "Wajib Pajak B"
+		} else {
+			divisiOut = "Wajib Pajak P"
+		}
+		if isWPBadan {
 			verifiedStatus = "pending"
 		} else {
 			verifiedStatus = "complete"
@@ -1170,6 +1207,11 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	defer tx.Rollback(r.Context())
 
 	if verseOut == "WP" {
+		if isWPBadan {
+			divisiOut = "Wajib Pajak B"
+		} else {
+			divisiOut = "Wajib Pajak P"
+		}
 		useridOut, err = idgen.GenerateUserID(r.Context(), tx, "Wajib Pajak")
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
