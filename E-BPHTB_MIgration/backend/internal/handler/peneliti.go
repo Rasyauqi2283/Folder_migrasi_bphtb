@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"ebphtb/backend/internal/repository"
@@ -37,7 +38,7 @@ func (h *PenelitiHandler) requirePeneliti(r *http.Request) (userid string, ok bo
 	if err != nil || u == nil {
 		return "", false
 	}
-	if strings.TrimSpace(u.Divisi) != "Peneliti" {
+	if !strings.EqualFold(strings.TrimSpace(u.Divisi), "Peneliti") {
 		return "", false
 	}
 	return userid, true
@@ -96,4 +97,135 @@ func (h *PenelitiHandler) GetBerkasTillVerif(w http.ResponseWriter, r *http.Requ
 		"success": true, "data": data,
 		"metadata": map[string]interface{}{"count": len(data), "generatedAt": ""},
 	})
+}
+
+// UpdateBerdasarkanPemilihan handles POST /api/peneliti_update-berdasarkan-pemilihan.
+func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	var body struct {
+		Data *struct {
+			Nobooking                 string  `json:"nobooking"`
+			Pemilihan                 string  `json:"pemilihan"`
+			NomorSTPD                 *string `json:"nomorstpd"`
+			TanggalSTPD               *string `json:"tanggalstpd"`
+			AngkaPersen               *string `json:"angkapersen"`
+			KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
+			IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+			PersetujuanVerif          bool    `json:"persetujuanVerif"`
+		} `json:"data"`
+		Nobooking                 string  `json:"nobooking"`
+		Pemilihan                 string  `json:"pemilihan"`
+		NomorSTPD                 *string `json:"nomorstpd"`
+		TanggalSTPD               *string `json:"tanggalstpd"`
+		AngkaPersen               *string `json:"angkapersen"`
+		KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
+		IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+		PersetujuanVerif          bool    `json:"persetujuanVerif"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+
+	src := body.Data
+	if src == nil {
+		src = &struct {
+			Nobooking                 string  `json:"nobooking"`
+			Pemilihan                 string  `json:"pemilihan"`
+			NomorSTPD                 *string `json:"nomorstpd"`
+			TanggalSTPD               *string `json:"tanggalstpd"`
+			AngkaPersen               *string `json:"angkapersen"`
+			KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
+			IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+			PersetujuanVerif          bool    `json:"persetujuanVerif"`
+		}{
+			Nobooking: body.Nobooking, Pemilihan: body.Pemilihan, NomorSTPD: body.NomorSTPD, TanggalSTPD: body.TanggalSTPD,
+			AngkaPersen: body.AngkaPersen, KeteranganDihitungSendiri: body.KeteranganDihitungSendiri, IsiKeteranganLainnya: body.IsiKeteranganLainnya, PersetujuanVerif: body.PersetujuanVerif,
+		}
+	}
+	if strings.TrimSpace(src.Nobooking) == "" || strings.TrimSpace(src.Pemilihan) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking dan pemilihan wajib"})
+		return
+	}
+
+	var angkaPtr *float64
+	if src.AngkaPersen != nil && strings.TrimSpace(*src.AngkaPersen) != "" {
+		v, err := strconv.ParseFloat(strings.TrimSpace(*src.AngkaPersen), 64)
+		if err != nil {
+			penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "angkapersen tidak valid"})
+			return
+		}
+		angkaPtr = &v
+	}
+	err := h.repo.SaveVerificationByPemilihan(r.Context(), userid, repository.PenelitiVerificationUpdateInput{
+		Nobooking: strings.TrimSpace(src.Nobooking), Pemilihan: strings.TrimSpace(src.Pemilihan), NomorSTPD: src.NomorSTPD, TanggalSTPD: src.TanggalSTPD,
+		AngkaPersen: angkaPtr, KeteranganDihitungSendiri: src.KeteranganDihitungSendiri, IsiKeteranganLainnya: src.IsiKeteranganLainnya, PersetujuanVerif: src.PersetujuanVerif,
+	})
+	if err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data verifikasi berhasil disimpan"})
+}
+
+// SendToParaf handles POST /api/peneliti_send-to-paraf.
+func (h *PenelitiHandler) SendToParaf(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	var body struct {
+		Nobooking string `json:"nobooking"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Nobooking) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	if err := h.repo.SendToParaf(r.Context(), userid, strings.TrimSpace(body.Nobooking)); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Berhasil dikirim ke paraf kasie"})
+}
+
+// RejectWithReason handles POST /api/peneliti_reject-with-reason.
+func (h *PenelitiHandler) RejectWithReason(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	if _, ok := h.requirePeneliti(r); !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	var body struct {
+		Nobooking string `json:"nobooking"`
+		Reason    string `json:"reason"`
+		Alasan    string `json:"alasan"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	reason := strings.TrimSpace(body.Reason)
+	if reason == "" {
+		reason = strings.TrimSpace(body.Alasan)
+	}
+	if strings.TrimSpace(body.Nobooking) == "" || reason == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking dan alasan wajib"})
+		return
+	}
+	if err := h.repo.RejectWithReason(r.Context(), strings.TrimSpace(body.Nobooking), reason); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data berhasil ditolak"})
 }

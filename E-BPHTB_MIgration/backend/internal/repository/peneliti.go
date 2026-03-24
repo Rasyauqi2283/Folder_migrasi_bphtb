@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -33,6 +35,13 @@ type PenelitiBerkasFromLtbRow struct {
 	CreatorUserid    *string `json:"creator_userid"`
 	TandaParafPath   *string `json:"tanda_paraf_path"`
 	SignerUserid     *string `json:"signer_userid"`
+	Pemilihan        *string `json:"pemilihan"`
+	NomorStpd        *string `json:"nomorstpd"`
+	TanggalStpd      *string `json:"tanggalstpd"`
+	AngkaPersen      *string `json:"angkapersen"`
+	KeteranganSendiri *string `json:"keterangandihitungsendiri"`
+	KeteranganLainnya *string `json:"isiketeranganlainnya"`
+	Persetujuan      *string `json:"persetujuan"`
 }
 
 // GetBerkasFromLtb returns data for Peneliti "berkas dari LTB" (p_1_verifikasi + pat + bank + ltb gates).
@@ -48,7 +57,8 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			v.tanda_tangan_path AS peneliti_tanda_tangan_path,
 			creator.userid::text AS creator_userid,
 			pc.tanda_paraf_path,
-			au.nama AS signer_userid
+			au.nama AS signer_userid,
+			p.pemilihan, p.nomorstpd, p.tanggalstpd::text, p.angkapersen::text, p.keterangandihitungsendiri, p.isiketeranganlainnya, p.persetujuan
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -75,12 +85,161 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 		var row PenelitiBerkasFromLtbRow
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Trackstatus, &row.Status,
 			&row.Noppbb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath,
-			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid); err != nil {
+			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid,
+			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan); err != nil {
 			continue
 		}
 		out = append(out, row)
 	}
 	return out, nil
+}
+
+type PenelitiVerificationUpdateInput struct {
+	Nobooking                 string
+	Pemilihan                 string
+	NomorSTPD                 *string
+	TanggalSTPD               *string
+	AngkaPersen               *float64
+	KeteranganDihitungSendiri *string
+	IsiKeteranganLainnya      *string
+	PersetujuanVerif          bool
+}
+
+func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, penelitiUserid string, in PenelitiVerificationUpdateInput) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	valid := map[string]bool{
+		"penghitung_wajib_pajak": true,
+		"stpd_kurangbayar":       true,
+		"dihitungsendiri":        true,
+		"lainnyapenghitungwp":    true,
+	}
+	if !valid[in.Pemilihan] {
+		return fmt.Errorf("jenis pemilihan tidak valid")
+	}
+	if in.Pemilihan == "stpd_kurangbayar" && (in.NomorSTPD == nil || strings.TrimSpace(*in.NomorSTPD) == "" || in.TanggalSTPD == nil || strings.TrimSpace(*in.TanggalSTPD) == "") {
+		return fmt.Errorf("nomor dan tanggal STPD wajib diisi")
+	}
+	if in.Pemilihan == "dihitungsendiri" && (in.AngkaPersen == nil || *in.AngkaPersen < 0 || *in.AngkaPersen > 100 || in.KeteranganDihitungSendiri == nil || strings.TrimSpace(*in.KeteranganDihitungSendiri) == "") {
+		return fmt.Errorf("persentase 0-100 dan keterangan wajib diisi")
+	}
+	if in.Pemilihan == "lainnyapenghitungwp" && (in.IsiKeteranganLainnya == nil || strings.TrimSpace(*in.IsiKeteranganLainnya) == "") {
+		return fmt.Errorf("keterangan lainnya wajib diisi")
+	}
+
+	var ttdPath, ttdMime *string
+	_ = r.pool.QueryRow(ctx, `SELECT tanda_tangan_path, tanda_tangan_mime FROM a_2_verified_users WHERE userid = $1`, penelitiUserid).Scan(&ttdPath, &ttdMime)
+	persetujuanText := "false"
+	if in.PersetujuanVerif {
+		persetujuanText = "true"
+	}
+
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE p_1_verifikasi
+		SET
+			pemilihan = $1,
+			nomorstpd = $2,
+			tanggalstpd = $3::date,
+			angkapersen = $4,
+			keterangandihitungsendiri = $5,
+			isiketeranganlainnya = $6,
+			persetujuan = $7,
+			nama_pengirim = $8,
+			tanda_tangan_path = COALESCE($9, tanda_tangan_path),
+			ttd_peneliti_mime = COALESCE($10, ttd_peneliti_mime)
+		WHERE nobooking = $11
+	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("data tidak ditemukan")
+	}
+	return nil
+}
+
+func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobooking string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var pemilihan, persetujuan *string
+	var noReg *string
+	var creatorUserid, namaWP, namaOP, pengirimLTB string
+	err = tx.QueryRow(ctx, `
+		SELECT
+			p.pemilihan, p.persetujuan, p.no_registrasi,
+			COALESCE(b.userid, ''),
+			COALESCE(p.namawajibpajak, ''),
+			COALESCE(p.namapemilikobjekpajak, ''),
+			COALESCE(p.pengirim_ltb, '')
+		FROM p_1_verifikasi p
+		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
+		WHERE p.nobooking = $1
+		FOR UPDATE OF p
+	`, nobooking).Scan(&pemilihan, &persetujuan, &noReg, &creatorUserid, &namaWP, &namaOP, &pengirimLTB)
+	if err != nil {
+		return err
+	}
+	if pemilihan == nil || strings.TrimSpace(*pemilihan) == "" {
+		return fmt.Errorf("data verifikasi belum lengkap: pemilihan wajib diisi")
+	}
+	if persetujuan == nil || strings.ToLower(strings.TrimSpace(*persetujuan)) != "true" {
+		return fmt.Errorf("data verifikasi belum lengkap: persetujuan wajib")
+	}
+
+	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET trackstatus='Diverifikasi', status='Dikerjakan' WHERE nobooking = $1`, nobooking); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diverifikasi', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE p_3_clear_to_paraf
+		SET userid = $2, namawajibpajak = $3, namapemilikobjekpajak = $4, status = 'Dikerjakan', trackstatus = 'Diverifikasi', keterangan = $5, no_registrasi = $6, pemverifikasi = $7
+		WHERE nobooking = $1
+	`, nobooking, creatorUserid, namaWP, namaOP, pengirimLTB, noReg, penelitiUserid)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO p_3_clear_to_paraf (nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, no_registrasi, pemverifikasi)
+			VALUES ($1,$2,$3,$4,'Dikerjakan','Diverifikasi',$5,$6,$7)
+		`, nobooking, creatorUserid, namaWP, namaOP, pengirimLTB, noReg, penelitiUserid)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya) WHERE nobooking = $1`, nobooking, reason); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE ltb_1_terima_berkas_sspd SET status='Ditolak', trackstatus='Ditolak', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Ditolak', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // PenelitiBerkasTillVerifRow one row for GET /api/peneliti/get-berkas-till-verif (paraf kasie).

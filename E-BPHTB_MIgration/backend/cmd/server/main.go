@@ -337,6 +337,9 @@ func main() {
 	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
 	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)
 	mux.HandleFunc("GET /api/peneliti/get-berkas-till-verif", penelitiHandler.GetBerkasTillVerif)
+	mux.HandleFunc("POST /api/peneliti_update-berdasarkan-pemilihan", penelitiHandler.UpdateBerdasarkanPemilihan)
+	mux.HandleFunc("POST /api/peneliti_send-to-paraf", penelitiHandler.SendToParaf)
+	mux.HandleFunc("POST /api/peneliti_reject-with-reason", penelitiHandler.RejectWithReason)
 
 	lsbHandler := handler.NewLSBHandler(lsbRepo, userRepo)
 	mux.HandleFunc("GET /api/LSB_berkas-complete", lsbHandler.BerkasComplete)
