@@ -148,6 +148,9 @@ func (r *LtbRepo) GetDocumentsByBooking(ctx context.Context, nobooking string) (
 		WHERE nobooking = $1
 	`, nobooking).Scan(&akta, &sertifikat, &pelengkap)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return []LtbDocument{}, nil
+		}
 		return nil, err
 	}
 	var out []LtbDocument

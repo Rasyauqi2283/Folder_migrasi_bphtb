@@ -28,6 +28,7 @@ interface ApiResponse {
 interface DocItem {
   url: string;
   name: string;
+  directUrl?: string;
 }
 
 const thStyle: React.CSSProperties = {
@@ -149,26 +150,34 @@ export default function LTBTerimaBerkasSSPDPage() {
     }
   };
 
-  const submitSend = async () => {
-    if (!selectedBooking || !pbbCheckNo.trim()) {
+  const runPemeriksaan = async () => {
+    if (!pbbCheckNo.trim()) {
       setMessage("No PBB pemeriksaan wajib diisi.");
+      return;
+    }
+    setMessage(`Pemeriksaan No PBB "${pbbCheckNo.trim()}" siap diproses. Integrasi API pusat dapat disambungkan pada tahap berikutnya.`);
+  };
+
+  const sendToPeneliti = async (nobooking: string) => {
+    if (!pbbCheckNo.trim()) {
+      setMessage("Isi No PBB pemeriksaan terlebih dulu sebelum kirim ke Peneliti.");
       return;
     }
     setActionLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(selectedBooking)}/send`, {
+      const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(nobooking)}/send`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pbb_check_no: pbbCheckNo.trim() }),
       });
       const data = await res.json().catch(() => ({ success: false }));
-      if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal mengirim ke verifikasi");
-      setMessage("Berkas berhasil dikirim ke proses verifikasi.");
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal kirim ke role Peneliti");
+      setMessage(`Booking ${nobooking} berhasil dikirim ke role Peneliti.`);
       await load(currentPage);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Gagal mengirim ke verifikasi");
+      setMessage(e instanceof Error ? e.message : "Gagal kirim ke role Peneliti");
     } finally {
       setActionLoading(false);
     }
@@ -235,19 +244,19 @@ export default function LTBTerimaBerkasSSPDPage() {
         />
         <button
           type="button"
-          disabled={!canAct || !pbbCheckNo.trim()}
-          onClick={submitSend}
+          disabled={!pbbCheckNo.trim()}
+          onClick={runPemeriksaan}
           style={{
             padding: "10px 18px",
             borderRadius: 8,
             border: "none",
-            background: canAct && pbbCheckNo.trim() ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#9ca3af",
+            background: pbbCheckNo.trim() ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#9ca3af",
             color: "#fff",
             fontWeight: 600,
-            cursor: canAct && pbbCheckNo.trim() ? "pointer" : "not-allowed",
+            cursor: pbbCheckNo.trim() ? "pointer" : "not-allowed",
           }}
         >
-          Kirim
+          Pemeriksaan
         </button>
         <input
           type="text"
@@ -354,12 +363,27 @@ export default function LTBTerimaBerkasSSPDPage() {
                   <td style={tdStyle}>{r.tanggal_terima || "—"}</td>
                   <td style={tdStyle}>{r.trackstatus || "—"}</td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <input
-                      type="radio"
-                      checked={selectedBooking === r.nobooking}
-                      onChange={() => setSelectedBooking(r.nobooking || "")}
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <button
+                      type="button"
+                      disabled={!r.nobooking || actionLoading}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!r.nobooking) return;
+                        sendToPeneliti(r.nobooking);
+                      }}
+                      style={{
+                        padding: "7px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: actionLoading ? "not-allowed" : "pointer",
+                        opacity: actionLoading ? 0.8 : 1,
+                      }}
+                    >
+                      {actionLoading ? "..." : "Kirim ke Peneliti"}
+                    </button>
                   </td>
                 </tr>
               ))
@@ -466,9 +490,25 @@ export default function LTBTerimaBerkasSSPDPage() {
               <p style={{ color: "var(--color_font_main_muted)" }}>Dokumen tidak tersedia.</p>
             ) : (
               <ul style={{ margin: 0, paddingLeft: 20 }}>
-                {docs.map((d, idx) => (
+                {[
+                  ...docs,
+                  {
+                    url: "",
+                    name: "SSPD BPHTB (Generated PDF)",
+                    directUrl: `${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(selectedBooking || "")}`,
+                  },
+                  {
+                    url: "",
+                    name: "Permohonan Validasi (Generated PDF)",
+                    directUrl: `${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(selectedBooking || "")}`,
+                  },
+                ].map((d, idx) => (
                   <li key={`${d.url}-${idx}`} style={{ marginBottom: 6 }}>
-                    <a href={`${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(d.url)}`} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={d.directUrl || `${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(d.url)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {d.name || "Dokumen"}
                     </a>
                   </li>
