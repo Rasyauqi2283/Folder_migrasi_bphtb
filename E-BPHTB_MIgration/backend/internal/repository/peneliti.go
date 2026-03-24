@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -45,6 +46,24 @@ type PenelitiBerkasFromLtbRow struct {
 	LockedByUserID   *string `json:"locked_by_user_id"`
 	LockedByNama     *string `json:"locked_by_nama"`
 	LockedAt         *string `json:"locked_at"`
+	VerifiedAt       *string `json:"verified_at"`
+	VerifiedBy       *string `json:"verified_by"`
+	VerifiedByNama   *string `json:"verified_by_nama"`
+}
+
+type RejectionEmailInfo struct {
+	Nobooking   string
+	ToEmail     string
+	ToName      string
+	CreatorName string
+}
+
+func jakartaNow() time.Time {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		return time.Now().UTC().Add(7 * time.Hour)
+	}
+	return time.Now().In(loc)
 }
 
 // GetBerkasFromLtb returns data for Peneliti "berkas dari LTB" (p_1_verifikasi + pat + bank + ltb gates).
@@ -62,7 +81,8 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			pc.tanda_paraf_path,
 			au.nama AS signer_userid,
 			p.pemilihan, p.nomorstpd, p.tanggalstpd::text, p.angkapersen::text, p.keterangandihitungsendiri, p.isiketeranganlainnya, p.persetujuan,
-			p.locked_by_user_id, p.locked_by_nama, p.locked_at::text
+			p.locked_by_user_id, p.locked_by_nama, p.locked_at::text,
+			p.verified_at::text, p.verified_by, p.verified_by_nama
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -91,7 +111,7 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			&row.Noppbb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath,
 			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid,
 			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan,
-			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt); err != nil {
+			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt, &row.VerifiedAt, &row.VerifiedBy, &row.VerifiedByNama); err != nil {
 			continue
 		}
 		out = append(out, row)
@@ -113,9 +133,9 @@ func (r *PenelitiRepo) LockDocument(ctx context.Context, nobooking, userid, nama
 	}
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE p_1_verifikasi
-		SET locked_by_user_id = $2, locked_by_nama = $3, locked_at = NOW()
+		SET locked_by_user_id = $2, locked_by_nama = $3, locked_at = $4
 		WHERE nobooking = $1
-	`, nobooking, userid, nama)
+	`, nobooking, userid, nama, jakartaNow())
 	if err != nil {
 		return err
 	}
@@ -161,6 +181,8 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 
 	var ttdPath, ttdMime *string
 	_ = r.pool.QueryRow(ctx, `SELECT tanda_tangan_path, tanda_tangan_mime FROM a_2_verified_users WHERE userid = $1`, penelitiUserid).Scan(&ttdPath, &ttdMime)
+	penelitiNama := penelitiUserid
+	_ = r.pool.QueryRow(ctx, `SELECT COALESCE(nama,'') FROM a_2_verified_users WHERE userid = $1`, penelitiUserid).Scan(&penelitiNama)
 	persetujuanText := "false"
 	if in.PersetujuanVerif {
 		persetujuanText = "true"
@@ -178,10 +200,14 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 			persetujuan = $7,
 			nama_pengirim = $8,
 			tanda_tangan_path = COALESCE($9, tanda_tangan_path),
-			ttd_peneliti_mime = COALESCE($10, ttd_peneliti_mime)
+			ttd_peneliti_mime = COALESCE($10, ttd_peneliti_mime),
+			verified_at = $12,
+			verified_by = $8,
+			verified_by_nama = $13,
+			locked_at = $12
 		WHERE nobooking = $11
 		  AND (COALESCE(locked_by_user_id, '') = '' OR locked_by_user_id = $8)
-	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking)
+	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking, jakartaNow(), penelitiNama)
 	if err != nil {
 		return err
 	}
@@ -256,25 +282,36 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	return tx.Commit(ctx)
 }
 
-func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason string) error {
+func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason string) (*RejectionEmailInfo, error) {
 	if r.pool == nil {
-		return fmt.Errorf("database not configured")
+		return nil, fmt.Errorf("database not configured")
 	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback(ctx)
+	var info RejectionEmailInfo
+	if err = tx.QueryRow(ctx, `
+		SELECT p.nobooking, COALESCE(u.email,''), COALESCE(u.nama,''), COALESCE(c.nama,'')
+		FROM p_1_verifikasi p
+		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
+		LEFT JOIN a_2_verified_users u ON u.userid = b.userid
+		LEFT JOIN a_2_verified_users c ON c.userid = p.nama_pengirim
+		WHERE p.nobooking = $1
+	`, nobooking).Scan(&info.Nobooking, &info.ToEmail, &info.ToName, &info.CreatorName); err != nil {
+		return nil, err
+	}
 	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya), locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1`, nobooking, reason); err != nil {
-		return err
+		return nil, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE ltb_1_terima_berkas_sspd SET status='Ditolak', trackstatus='Ditolak', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
-		return err
+	if _, err = tx.Exec(ctx, `UPDATE ltb_1_terima_berkas_sspd SET status='Ditolak', trackstatus='Ditolak', updated_at=$2 WHERE nobooking = $1`, nobooking, jakartaNow()); err != nil {
+		return nil, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Ditolak', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
-		return err
+	if _, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Ditolak', updated_at=$2 WHERE nobooking = $1`, nobooking, jakartaNow()); err != nil {
+		return nil, err
 	}
-	return tx.Commit(ctx)
+	return &info, tx.Commit(ctx)
 }
 
 func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, nobooking string) error {

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	mail "ebphtb/backend/internal/email"
 	"ebphtb/backend/internal/repository"
 )
 
@@ -117,12 +118,12 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 		return
 	}
 	userid, ok := h.requirePeneliti(r)
-	if err := h.requireSignature(userid, r); err != nil {
-		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
-		return
-	}
 	if !ok {
 		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
 		return
 	}
 	var body struct {
@@ -230,12 +231,12 @@ func (h *PenelitiHandler) SendToParaf(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userid, ok := h.requirePeneliti(r)
-	if err := h.requireSignature(userid, r); err != nil {
-		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
-		return
-	}
 	if !ok {
 		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
 		return
 	}
 	var body struct {
@@ -259,8 +260,13 @@ func (h *PenelitiHandler) RejectWithReason(w http.ResponseWriter, r *http.Reques
 		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
 		return
 	}
-	if _, ok := h.requirePeneliti(r); !ok {
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
 		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
 		return
 	}
 	var body struct {
@@ -277,9 +283,21 @@ func (h *PenelitiHandler) RejectWithReason(w http.ResponseWriter, r *http.Reques
 		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking dan alasan wajib"})
 		return
 	}
-	if err := h.repo.RejectWithReason(r.Context(), strings.TrimSpace(body.Nobooking), reason); err != nil {
+	info, err := h.repo.RejectWithReason(r.Context(), strings.TrimSpace(body.Nobooking), reason)
+	if err != nil {
 		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
 		return
+	}
+	if info != nil && strings.TrimSpace(info.ToEmail) != "" {
+		toName := info.ToName
+		if strings.TrimSpace(toName) == "" {
+			toName = "Pengguna"
+		}
+		go func(emailTo, targetName, nb, rsn string) {
+			if err := mail.SendPenelitiRejectionNotification(emailTo, targetName, nb, rsn); err != nil {
+				log.Printf("[PENELITI] RejectWithReason email notify failed: %v", err)
+			}
+		}(info.ToEmail, toName, info.Nobooking, reason)
 	}
 	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data berhasil ditolak"})
 }

@@ -119,6 +119,28 @@ func SendWpSignInvitation(to, wpNama, puNama, nobooking string) error {
 	return sendViaSMTP(to, subject, text, html)
 }
 
+// SendPenelitiRejectionNotification mengirim email saat dokumen ditolak oleh Peneliti.
+func SendPenelitiRejectionNotification(to, targetName, nobooking, reason string) error {
+	subject := "Dokumen Anda Ditolak - BAPPENDA BPHTB"
+	text := fmt.Sprintf("Halo %s,\n\nDokumen dengan No. Booking %s ditolak oleh Peneliti.\nAlasan: %s\n\nSilakan perbaiki data lalu ajukan kembali.\n\nTerima kasih,\nTim BAPPENDA BPHTB", targetName, nobooking, reason)
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+<h2 style="color: #b91c1c;">Dokumen Ditolak</h2>
+<p>Halo <strong>%s</strong>,</p>
+<p>Dokumen Anda dengan No. Booking berikut ditolak oleh Peneliti:</p>
+<div style="background-color: #fef2f2; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #ef4444;">
+  <p style="margin: 0;"><strong>No. Booking:</strong> <code>%s</code></p>
+  <p style="margin: 8px 0 0;"><strong>Alasan:</strong> %s</p>
+</div>
+<p>Silakan lakukan perbaikan data dan ajukan ulang dokumen.</p>
+<p>Terima kasih,<br>Tim BAPPENDA BPHTB</p>
+</div>`, targetName, nobooking, reason)
+	if !canSendEmail() {
+		log.Printf("[EMAIL] Rejection notification skipped (email not configured) to %s", to)
+		return nil
+	}
+	return sendViaSMTP(to, subject, text, html)
+}
+
 func sendViaSMTP(to, subject, text, html string) error {
 	user := os.Getenv("EMAIL_USER")
 	pass := os.Getenv("EMAIL_PASS")

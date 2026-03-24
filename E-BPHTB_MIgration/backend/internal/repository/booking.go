@@ -2,9 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -282,7 +285,9 @@ type SSPDPDFData struct {
 	PathTtdWp                                                                     string
 }
 
-// GetBookingForSSPDPDF returns data for generating SSPD PDF (Badan) by userid and nobooking.
+// GetBookingForSSPDPDF returns data for generating SSPD PDF (Badan) by nobooking.
+// It first tries strict owner query (userid+nobooking), then falls back to nobooking-only
+// for reviewer roles (Peneliti/Kasie) that need read-only PDF access.
 func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobooking string) (*SSPDPDFData, error) {
 	if r.pool == nil {
 		return nil, nil
@@ -310,6 +315,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 		LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
 		WHERE pb.userid = $1 AND pb.nobooking = $2
 	`
+	qByBookingOnly := strings.Replace(q, `WHERE pb.userid = $1 AND pb.nobooking = $2`, `WHERE pb.nobooking = $1`, 1)
 	var d SSPDPDFData
 	err := r.pool.QueryRow(ctx, q, userid, nobooking).Scan(
 		&d.Nobooking, &d.Noppbb, &d.Userid, &d.JenisWajibPajak, &d.Namawajibpajak, &d.Alamatwajibpajak,
@@ -326,6 +332,23 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 		&d.LuasxnjopTanah, &d.LuasxnjopBangunan, &d.TotalNjoppbb,
 		&d.PathTtdWp,
 	)
+	if err != nil && (errors.Is(err, pgx.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "no rows")) {
+		err = r.pool.QueryRow(ctx, qByBookingOnly, nobooking).Scan(
+			&d.Nobooking, &d.Noppbb, &d.Userid, &d.JenisWajibPajak, &d.Namawajibpajak, &d.Alamatwajibpajak,
+			&d.Namapemilikobjekpajak, &d.Alamatpemilikobjekpajak, &d.Tanggal, &d.Tahunajb,
+			&d.Kabupatenkotawp, &d.Kecamatanwp, &d.Kelurahandesawp, &d.Rtrwwp, &d.Npwpwp, &d.Kodeposwp,
+			&d.Kabupatenkotaop, &d.Kecamatanop, &d.Kelurahandesaop, &d.Rtrwop, &d.Npwpop, &d.Kodeposop,
+			&d.Trackstatus,
+			&d.Nilaiperolehanobjekpajaktidakkenapajak, &d.BphtbYangtelahDibayar,
+			&d.HargaTransaksi, &d.Letaktanahdanbangunan, &d.RtRwobjekpajak, &d.StatusKepemilikan,
+			&d.Keterangan, &d.NomorSertifikat, &d.TanggalPerolehan, &d.TanggalPembayaran,
+			&d.NomorBuktiPembayaran,
+			&d.NamaPembuat, &d.SpecialField, &d.TandaTanganPath,
+			&d.LuasTanah, &d.NjopTanah, &d.LuasBangunan, &d.NjopBangunan,
+			&d.LuasxnjopTanah, &d.LuasxnjopBangunan, &d.TotalNjoppbb,
+			&d.PathTtdWp,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -22,6 +22,9 @@ interface VerifikasiItem {
   locked_by_user_id?: string;
   locked_by_nama?: string;
   locked_at?: string;
+  verified_at?: string;
+  verified_by?: string;
+  verified_by_nama?: string;
   [key: string]: unknown;
 }
 
@@ -89,11 +92,11 @@ export default function PenelitiVerifikasiSspdPage() {
     persetujuanVerif: boolean;
   }>>({});
 
-  const rowKey = (r: VerifikasiItem, idx = 0) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}::${idx}`;
-  const mergeAppendOnly = (existing: VerifikasiItem[], incoming: VerifikasiItem[]) => {
-    const seen = new Set(existing.map((r, idx) => rowKey(r, idx)));
-    const onlyNew = incoming.filter((r, idx) => !seen.has(rowKey(r, idx)));
-    return onlyNew.length > 0 ? [...existing, ...onlyNew] : existing;
+  const rowKey = (r: VerifikasiItem) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}`;
+  const mergeIncremental = (existing: VerifikasiItem[], incoming: VerifikasiItem[]) => {
+    const byKey = new Map(existing.map((r) => [rowKey(r), r]));
+    for (const r of incoming) byKey.set(rowKey(r), { ...(byKey.get(rowKey(r)) ?? {}), ...r });
+    return Array.from(byKey.values());
   };
 
   const load = useCallback(async (options?: { silent?: boolean; appendOnly?: boolean }) => {
@@ -109,7 +112,7 @@ export default function PenelitiVerifikasiSspdPage() {
       if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
       if (!json.success) throw new Error(json.message || "Gagal memuat data");
       const incoming = Array.isArray(json.data) ? json.data : [];
-      if (appendOnly) setData((prev) => mergeAppendOnly(prev, incoming));
+      if (appendOnly) setData((prev) => mergeIncremental(prev, incoming));
       else setData(incoming);
     } catch (e) {
       if (!silent) {
@@ -272,6 +275,14 @@ export default function PenelitiVerifikasiSspdPage() {
       alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
       return;
     }
+    const previous = data;
+    setData((prev) =>
+      prev.map((r) =>
+        String(r.nobooking ?? "") === nobooking
+          ? { ...r, locked_by_user_id: myUserid, locked_by_nama: myUserid, locked_at: new Date().toISOString() }
+          : r
+      )
+    );
     setActionLoading(nobooking);
     try {
       const res = await fetch(`${getApiBase()}/api/peneliti/lock-document`, {
@@ -282,9 +293,9 @@ export default function PenelitiVerifikasiSspdPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal mengambil dokumen");
-      await load();
       alert("Dokumen berhasil diambil untuk diperiksa.");
     } catch (e) {
+      setData(previous);
       alert(e instanceof Error ? e.message : "Gagal mengambil dokumen");
     } finally {
       setActionLoading(null);
@@ -308,6 +319,10 @@ export default function PenelitiVerifikasiSspdPage() {
       creator_userid: item.creator_userid ?? item.userid ?? "-",
       pemilihan: item.pemilihan ?? "-",
       persetujuan: item.persetujuan ?? "-",
+      riwayat_terakhir_diperiksa:
+        item.verified_at
+          ? `Terakhir diperiksa oleh ${String(item.verified_by_nama || item.verified_by || "-")} pada ${String(item.verified_at)} WIB`
+          : "-",
     };
     setOverlayData(baseData);
     setOverlayOpen(true);
@@ -323,7 +338,9 @@ export default function PenelitiVerifikasiSspdPage() {
   };
 
   const reject = async (nobooking: string) => {
-    const reason = prompt("Alasan penolakan:");
+    const confirmReject = window.confirm("Apakah Anda yakin menolak dokumen ini?");
+    if (!confirmReject) return;
+    const reason = prompt("Masukkan alasan penolakan (singkat):");
     if (!reason?.trim()) return;
     setActionLoading(nobooking);
     try {
