@@ -40,7 +40,7 @@ func (h *BankHandler) requireBankUser(r *http.Request) (userid string, ok bool) 
 		return "", false
 	}
 	d := strings.TrimSpace(u.Divisi)
-	if d != "BANK" && d != "Administrator" {
+	if !strings.EqualFold(d, "BANK") && !strings.EqualFold(d, "Administrator") {
 		return "", false
 	}
 	return userid, true

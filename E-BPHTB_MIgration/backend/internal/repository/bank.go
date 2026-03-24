@@ -76,7 +76,7 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 	}
 
 	countSQL := `
-		SELECT COUNT(*) FROM bank_1_cek_hasil_transaksi bk
+		SELECT COUNT(DISTINCT bk.id) FROM bank_1_cek_hasil_transaksi bk
 		LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
 		LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
@@ -99,9 +99,9 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 	limitParam := argIdx + 1
 	offsetParam := argIdx + 2
 	listSQL := `
-		SELECT bk.id, bk.nobooking, COALESCE(p.namawajibpajak, '') AS namawajibpajak,
+		SELECT DISTINCT ON (bk.id) bk.id, bk.nobooking, COALESCE(p.namawajibpajak, '') AS namawajibpajak,
 			COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran) AS nomor_bukti_pembayaran,
-			COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar) AS nominal,
+			COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar)::float8 AS nominal,
 			COALESCE(bk.tanggal_pembayaran, p4.tanggal_pembayaran) AS tanggal_pembayaran,
 			COALESCE(bk.status_verifikasi, 'Pending') AS status_verifikasi,
 			COALESCE(bk.status_dibank, 'Dicheck') AS status_dibank,
@@ -112,7 +112,7 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 		LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
 		LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
 		` + whereClause + `
-		ORDER BY bk.id DESC
+		ORDER BY bk.id DESC, p2.calculationid DESC NULLS LAST
 		LIMIT $` + fmt.Sprint(limitParam) + ` OFFSET $` + fmt.Sprint(offsetParam)
 	rowsResult, err := r.pool.Query(ctx, listSQL, args...)
 	if err != nil {
@@ -154,10 +154,6 @@ func (r *BankRepo) UpsertBankVerification(ctx context.Context, nobooking, status
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = p.nobooking
 		WHERE p.nobooking = $1`, nobooking).Scan(&src.Userid, &src.BphtbYangtelah, &src.NomorBukti, &src.TanggalPerolehan, &src.TanggalPembayaran)
 
-	var namaPengecek *string
-	if verifiedByUserid != "" {
-		_ = r.pool.QueryRow(ctx, "SELECT nama FROM a_2_verified_users WHERE userid = $1", verifiedByUserid).Scan(&namaPengecek)
-	}
 	cat := ptrString(catatan)
 	noReg := ptrString(noRegistrasi)
 	statusDibank := "Dicheck"
@@ -170,15 +166,15 @@ func (r *BankRepo) UpsertBankVerification(ctx context.Context, nobooking, status
 	if err == nil && exID != 0 {
 		_, err = r.pool.Exec(ctx, `
 			UPDATE bank_1_cek_hasil_transaksi SET
-				status_verifikasi = $1, catatan_bank = $2, verified_by = $3, nama_pengecek = $4, verified_at = NOW(),
-				bphtb_yangtelah_dibayar = COALESCE($5, bphtb_yangtelah_dibayar),
-				nomor_bukti_pembayaran = COALESCE($6, nomor_bukti_pembayaran),
-				tanggal_perolehan = COALESCE($7, tanggal_perolehan),
-				tanggal_pembayaran = COALESCE($8, tanggal_pembayaran),
-				no_registrasi = COALESCE($9, no_registrasi),
-				status_dibank = $10
-			WHERE nobooking = $11`,
-			statusVerifikasi, cat, ptrString(verifiedByUserid), namaPengecek,
+				status_verifikasi = $1, catatan_bank = $2, verified_by = $3, verified_at = NOW(),
+				bphtb_yangtelah_dibayar = COALESCE($4::int, bphtb_yangtelah_dibayar),
+				nomor_bukti_pembayaran = COALESCE($5, nomor_bukti_pembayaran),
+				tanggal_perolehan = COALESCE($6, tanggal_perolehan),
+				tanggal_pembayaran = COALESCE($7, tanggal_pembayaran),
+				no_registrasi = COALESCE($8, no_registrasi),
+				status_dibank = $9
+			WHERE nobooking = $10`,
+			statusVerifikasi, cat, ptrString(verifiedByUserid),
 			src.BphtbYangtelah, src.NomorBukti, src.TanggalPerolehan, src.TanggalPembayaran, noReg,
 			statusDibank, nobooking)
 		return err
@@ -189,8 +185,8 @@ func (r *BankRepo) UpsertBankVerification(ctx context.Context, nobooking, status
 		verifiedAt = &t
 	}
 	_, err = r.pool.Exec(ctx, `
-		INSERT INTO bank_1_cek_hasil_transaksi (nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, catatan_bank, verified_by, nama_pengecek, verified_at, no_registrasi, status_dibank)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-		nobooking, src.Userid, src.BphtbYangtelah, src.NomorBukti, src.TanggalPerolehan, src.TanggalPembayaran, statusVerifikasi, cat, ptrString(verifiedByUserid), namaPengecek, verifiedAt, noReg, statusDibank)
+		INSERT INTO bank_1_cek_hasil_transaksi (nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, catatan_bank, verified_by, verified_at, no_registrasi, status_dibank)
+		VALUES ($1,$2,$3::int,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+		nobooking, src.Userid, src.BphtbYangtelah, src.NomorBukti, src.TanggalPerolehan, src.TanggalPembayaran, statusVerifikasi, cat, ptrString(verifiedByUserid), verifiedAt, noReg, statusDibank)
 	return err
 }

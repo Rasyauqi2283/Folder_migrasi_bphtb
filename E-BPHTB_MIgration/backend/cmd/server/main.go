@@ -304,18 +304,21 @@ func main() {
 
 	// PPAT/PU: seluruh layanan di atas dilayani Go. Tidak ada proxy ke Node untuk /api/ppat/* maupun /api/ppat_*.
 
-	// Bank, Peneliti, LSB, Paraf (Peneliti Validasi) — handler Go (sama seperti Admin, PU, LTB)
+	// Bank, LTB, Peneliti, LSB, Paraf (Peneliti Validasi) — handler Go (sama seperti Admin, PU)
 	var bankRepo *repository.BankRepo
+	var ltbRepo *repository.LtbRepo
 	var penelitiRepo *repository.PenelitiRepo
 	var lsbRepo *repository.LSBRepo
 	var parafRepo *repository.ParafRepo
 	if pool != nil {
 		bankRepo = repository.NewBankRepo(pool)
+		ltbRepo = repository.NewLtbRepo(pool)
 		penelitiRepo = repository.NewPenelitiRepo(pool)
 		lsbRepo = repository.NewLSBRepo(pool)
 		parafRepo = repository.NewParafRepo(pool)
 	} else {
 		bankRepo = repository.NewBankRepo(nil)
+		ltbRepo = repository.NewLtbRepo(nil)
 		penelitiRepo = repository.NewPenelitiRepo(nil)
 		lsbRepo = repository.NewLSBRepo(nil)
 		parafRepo = repository.NewParafRepo(nil)
@@ -324,6 +327,9 @@ func main() {
 	mux.HandleFunc("GET /api/bank/transaksi", bankHandler.ListTransaksi)
 	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/approve", bankHandler.Approve)
 	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/reject", bankHandler.Reject)
+
+	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo)
+	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd", ltbHandler.ListTerimaBerkas)
 
 	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
 	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)
