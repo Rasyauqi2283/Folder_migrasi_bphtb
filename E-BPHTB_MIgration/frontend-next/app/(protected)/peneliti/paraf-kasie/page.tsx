@@ -17,6 +17,9 @@ interface ParafItem {
   tanggal_masuk?: string;
   locked_by_user_id?: string;
   locked_by_nama?: string;
+  akta_tanah_path?: string;
+  sertifikat_tanah_path?: string;
+  pelengkap_path?: string;
   [key: string]: unknown;
 }
 
@@ -60,6 +63,12 @@ const tdStyle: React.CSSProperties = {
   color: "var(--color_font_main)",
   verticalAlign: "middle",
 };
+const sectionCardStyle: React.CSSProperties = {
+  border: "1px solid var(--border_color)",
+  borderRadius: 10,
+  padding: 12,
+  background: "var(--card_bg)",
+};
 
 export default function PenelitiParafKasiePage() {
   const [data, setData] = useState<ParafItem[]>([]);
@@ -75,11 +84,22 @@ export default function PenelitiParafKasiePage() {
   const [myUserid, setMyUserid] = useState("");
   const [hasSignature, setHasSignature] = useState(true);
 
-  const rowKey = (r: ParafItem, idx = 0) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}::${idx}`;
-  const mergeAppendOnly = (existing: ParafItem[], incoming: ParafItem[]) => {
-    const seen = new Set(existing.map((r, idx) => rowKey(r, idx)));
-    const onlyNew = incoming.filter((r, idx) => !seen.has(rowKey(r, idx)));
-    return onlyNew.length > 0 ? [...existing, ...onlyNew] : existing;
+  const showVal = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return s === "" ? "-" : s;
+  };
+  const resolveFileUrl = (rawPath?: string) => {
+    const p = String(rawPath ?? "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    const normalized = p.startsWith("/") ? p : `/${p}`;
+    return `${getApiBase()}${normalized}`;
+  };
+  const rowKey = (r: ParafItem) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}`;
+  const mergeIncremental = (existing: ParafItem[], incoming: ParafItem[]) => {
+    const byKey = new Map(existing.map((r) => [rowKey(r), r]));
+    for (const r of incoming) byKey.set(rowKey(r), { ...(byKey.get(rowKey(r)) ?? {}), ...r });
+    return Array.from(byKey.values());
   };
 
   const load = useCallback(async (options?: { silent?: boolean; appendOnly?: boolean }) => {
@@ -95,7 +115,7 @@ export default function PenelitiParafKasiePage() {
       if (!res.ok) throw new Error((json as ApiResponse).message || `HTTP ${res.status}`);
       if (!(json as ApiResponse).success) throw new Error((json as ApiResponse).message || "Gagal memuat data");
       const arr: ParafItem[] = Array.isArray((json as ApiResponse).data) ? ((json as ApiResponse).data ?? []) : [];
-      if (appendOnly) setData((prev) => mergeAppendOnly(prev, arr));
+      if (appendOnly) setData((prev) => mergeIncremental(prev, arr));
       else setData(arr);
     } catch (e) {
       if (!silent) {
@@ -167,11 +187,37 @@ export default function PenelitiParafKasiePage() {
     }
   };
   const openCheckDataOverlay = (row: ParafItem) => {
-    setOverlayData(row as Record<string, unknown>);
+    const cloned = { ...(row as Record<string, unknown>) };
+    delete cloned.akta_tanah_path;
+    delete cloned.sertifikat_tanah_path;
+    delete cloned.pelengkap_path;
+    setOverlayData(cloned);
     setOverlayOpen(true);
   };
   const openViewDocument = (nobooking: string) => {
-    window.open(`${getApiBase()}/api/ppat_generate-pdf-badan?nobooking=${encodeURIComponent(nobooking)}`, "_blank", "noopener,noreferrer");
+    window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(nobooking)}`, "_blank", "noopener,noreferrer");
+  };
+  const reject = async (nobooking: string) => {
+    const confirmReject = window.confirm("Apakah Anda yakin menolak dokumen ini?");
+    if (!confirmReject) return;
+    const reason = prompt("Masukkan alasan penolakan (singkat):");
+    if (!reason?.trim()) return;
+    setActionLoading(nobooking);
+    try {
+      const res = await fetch(`${getApiBase()}/api/peneliti_reject-with-reason`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nobooking, alasan: reason.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal tolak");
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal tolak");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   return (
@@ -293,31 +339,68 @@ export default function PenelitiParafKasiePage() {
                       <td style={tdStyle}>
                         {r.tanda_paraf_path || r.signer_userid ? <span style={{ color: "#10b981", fontWeight: 600 }}>Sudah</span> : <span style={{ color: "#f59e0b", fontWeight: 600 }}>Belum</span>}
                       </td>
-                      <td style={{ ...tdStyle, textAlign: "center" }}>
-                        <button
-                          type="button"
-                          disabled={!!actionLoading || isLockedByOther}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            berikanParaf(r.nobooking!);
-                          }}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer", fontSize: 13 }}
-                        >
-                          {actionLoading === r.nobooking ? "..." : "Berikan Paraf"}
-                        </button>
-                        {isLockedByOther && <div style={{ fontSize: 12, color: "#b45309", marginTop: 6 }}>🔒 Sedang diperiksa oleh {String(r.locked_by_nama || r.locked_by_user_id || "-")}</div>}
-                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_muted)" }}>Buka detail</td>
                     </tr>
                     {expandedBooking === r.nobooking && (
                       <tr>
                         <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button type="button" onClick={() => openViewDocument(String(r.nobooking ?? ""))} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}>
-                              View Document
-                            </button>
-                            <button type="button" onClick={() => openCheckDataOverlay(r)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}>
-                              Check Data Ini
-                            </button>
+                          <div style={{ display: "grid", gap: 10 }}>
+                            <div style={sectionCardStyle}>
+                              <strong style={{ display: "block", marginBottom: 8 }}>Aksi Dokumen</strong>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  disabled={!!actionLoading || isLockedByOther}
+                                  onClick={() => berikanParaf(String(r.nobooking ?? ""))}
+                                  style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
+                                >
+                                  {actionLoading === r.nobooking ? "..." : "Berikan Paraf"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!actionLoading || isLockedByOther}
+                                  onClick={() => reject(String(r.nobooking ?? ""))}
+                                  style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
+                                >
+                                  Tolak
+                                </button>
+                                <button type="button" onClick={() => openViewDocument(String(r.nobooking ?? ""))} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}>
+                                  View Document
+                                </button>
+                                <button type="button" onClick={() => openCheckDataOverlay(r)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}>
+                                  Check Data Ini
+                                </button>
+                              </div>
+                              {isLockedByOther && <div style={{ fontSize: 12, color: "#b45309", marginTop: 8 }}>🔒 Sedang diperiksa oleh {showVal(r.locked_by_nama || r.locked_by_user_id)}</div>}
+                            </div>
+
+                            <div style={sectionCardStyle}>
+                              <strong style={{ display: "block", marginBottom: 8 }}>Dokumen Pendukung</strong>
+                              <div style={{ display: "grid", gap: 8 }}>
+                                {[
+                                  { label: "Akta Tanah", value: String(r.akta_tanah_path ?? "") },
+                                  { label: "Sertifikat Tanah", value: String(r.sertifikat_tanah_path ?? "") },
+                                  { label: "Pelengkap", value: String(r.pelengkap_path ?? "") },
+                                ].map((doc) => {
+                                  const hasFile = !!String(doc.value).trim();
+                                  const url = resolveFileUrl(doc.value);
+                                  return (
+                                    <div key={doc.label} style={{ display: "grid", gridTemplateColumns: "180px 1fr auto", alignItems: "center", gap: 8 }}>
+                                      <strong>{doc.label}</strong>
+                                      <span style={{ color: "var(--color_font_muted)" }}>{showVal(doc.value)}</span>
+                                      <button
+                                        type="button"
+                                        disabled={!hasFile}
+                                        onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
+                                        style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border_color)", background: hasFile ? "var(--card_bg)" : "#eee", cursor: hasFile ? "pointer" : "not-allowed" }}
+                                      >
+                                        Lihat
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>

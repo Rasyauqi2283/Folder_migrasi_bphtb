@@ -326,6 +326,40 @@ func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, noboo
 	if path == nil || strings.TrimSpace(*path) == "" {
 		return fmt.Errorf("anda belum mendaftarkan tanda tangan/paraf di profil. akses ditolak")
 	}
+	var (
+		noReg, noppbb, namaWP, namaOP, akta, sertif, pelengkap, pemilihan, persetujuan *string
+	)
+	if err = r.pool.QueryRow(ctx, `
+		SELECT p.no_registrasi, b.noppbb::text, p.namawajibpajak, p.namapemilikobjekpajak,
+			b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path, p.pemilihan, p.persetujuan
+		FROM p_1_verifikasi p
+		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
+		WHERE p.nobooking = $1
+	`, nobooking).Scan(&noReg, &noppbb, &namaWP, &namaOP, &akta, &sertif, &pelengkap, &pemilihan, &persetujuan); err != nil {
+		return err
+	}
+	missing := make([]string, 0, 10)
+	req := map[string]*string{
+		"no_registrasi": noReg,
+		"noppbb": noppbb,
+		"namawajibpajak": namaWP,
+		"namapemilikobjekpajak": namaOP,
+		"akta_tanah_path": akta,
+		"sertifikat_tanah_path": sertif,
+		"pelengkap_path": pelengkap,
+		"pemilihan": pemilihan,
+	}
+	for k, v := range req {
+		if v == nil || strings.TrimSpace(*v) == "" {
+			missing = append(missing, k)
+		}
+	}
+	if persetujuan == nil || strings.ToLower(strings.TrimSpace(*persetujuan)) != "true" {
+		missing = append(missing, "persetujuan")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("data belum lengkap untuk paraf: %s", strings.Join(missing, ", "))
+	}
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE p_3_clear_to_paraf
 		SET tanda_paraf_path = $2, persetujuan = 'true', pemverifikasi = COALESCE($3, pemverifikasi), trackstatus='Terverifikasi'
@@ -350,6 +384,9 @@ type PenelitiBerkasTillVerifRow struct {
 	Tahunajb         *string `json:"tahunajb"`
 	Namawajibpajak   *string `json:"namawajibpajak"`
 	Namapemilikobjekpajak *string `json:"namapemilikobjekpajak"`
+	AktaTanahPath    *string `json:"akta_tanah_path"`
+	SertifikatTanahPath *string `json:"sertifikat_tanah_path"`
+	PelengkapPath    *string `json:"pelengkap_path"`
 	Status           string  `json:"status"`
 	Persetujuan      *string `json:"persetujuan"`
 	TandaParafPath   *string `json:"tanda_paraf_path"`
@@ -371,6 +408,7 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 		SELECT DISTINCT ON (pc.no_registrasi)
 			pc.no_registrasi, pc.nobooking, COALESCE(pc.userid,'') AS userid, COALESCE(pc.trackstatus,'') AS trackstatus,
 			b.noppbb::text, b.tahunajb::text, b.namawajibpajak, b.namapemilikobjekpajak,
+			b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path,
 			COALESCE(pc.status,'') AS status,
 			CASE
 				WHEN LOWER(TRIM(COALESCE(pc.persetujuan::text, ''))) IN ('true','t','1','yes','y') THEN 'true'
@@ -401,7 +439,7 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 	for rows.Next() {
 		var row PenelitiBerkasTillVerifRow
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Userid, &row.Trackstatus,
-			&row.Noppbb, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.Status,
+			&row.Noppbb, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath, &row.Status,
 			&row.Persetujuan, &row.TandaParafPath, &row.TanggalMasuk, &row.TandaTanganPath, &row.StempelBookingPath, &row.SignerUserid, &row.PemverifikasiNama, &row.LockedByUserID, &row.LockedByNama); err != nil {
 			continue
 		}
