@@ -95,10 +95,9 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 		totalPages = 1
 	}
 
-	args = append(args, limit, offset)
-	limitParam := argIdx + 1
-	offsetParam := argIdx + 2
-	listSQL := `
+	// LIMIT/OFFSET disisipkan sebagai bilangan bulat (bukan placeholder) agar jumlah argumen
+	// selalu sama dengan $1..$n di WHERE — menghindari SQLSTATE 42P18 di Postgres/pgx.
+	listSQL := fmt.Sprintf(`
 		SELECT DISTINCT ON (bk.id) bk.id, bk.nobooking, COALESCE(p.namawajibpajak, '') AS namawajibpajak,
 			COALESCE(bk.nomor_bukti_pembayaran, p4.nomor_bukti_pembayaran) AS nomor_bukti_pembayaran,
 			COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar)::float8 AS nominal,
@@ -111,9 +110,9 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
 		LEFT JOIN pat_4_objek_pajak p4 ON p4.nobooking = bk.nobooking
 		LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = bk.nobooking
-		` + whereClause + `
+		%s
 		ORDER BY bk.id DESC, p2.calculationid DESC NULLS LAST
-		LIMIT $` + fmt.Sprint(limitParam) + ` OFFSET $` + fmt.Sprint(offsetParam)
+		LIMIT %d OFFSET %d`, whereClause, limit, offset)
 	rowsResult, err := r.pool.Query(ctx, listSQL, args...)
 	if err != nil {
 		return nil, 0, 0, err
