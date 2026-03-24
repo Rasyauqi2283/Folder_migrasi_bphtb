@@ -25,6 +25,9 @@ interface VerifikasiItem {
   verified_at?: string;
   verified_by?: string;
   verified_by_nama?: string;
+  akta_tanah_path?: string;
+  sertifikat_tanah_path?: string;
+  pelengkap_path?: string;
   [key: string]: unknown;
 }
 
@@ -69,7 +72,26 @@ const tdStyle: React.CSSProperties = {
   verticalAlign: "middle",
 };
 
+const sectionCardStyle: React.CSSProperties = {
+  border: "1px solid var(--border_color)",
+  borderRadius: 10,
+  padding: 12,
+  background: "var(--card_bg)",
+};
+
 export default function PenelitiVerifikasiSspdPage() {
+  const showVal = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return s === "" ? "-" : s;
+  };
+
+  const resolveFileUrl = (rawPath?: string) => {
+    const p = String(rawPath ?? "").trim();
+    if (!p) return "";
+    if (/^https?:\/\//i.test(p)) return p;
+    const normalized = p.startsWith("/") ? p : `/${p}`;
+    return `${getApiBase()}${normalized}`;
+  };
   const [data, setData] = useState<VerifikasiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -311,14 +333,17 @@ export default function PenelitiVerifikasiSspdPage() {
     const nobooking = String(item.nobooking ?? "").trim();
     if (!nobooking) return;
     const baseData: Record<string, unknown> = {
-      nobooking: item.nobooking ?? "-",
-      no_registrasi: item.no_registrasi ?? "-",
-      noppbb: item.noppbb ?? "-",
-      namawajibpajak: item.namawajibpajak ?? "-",
-      namapemilikobjekpajak: item.namapemilikobjekpajak ?? "-",
-      creator_userid: item.creator_userid ?? item.userid ?? "-",
-      pemilihan: item.pemilihan ?? "-",
-      persetujuan: item.persetujuan ?? "-",
+      nobooking: showVal(item.nobooking),
+      no_registrasi: showVal(item.no_registrasi),
+      noppbb: showVal(item.noppbb),
+      namawajibpajak: showVal(item.namawajibpajak),
+      namapemilikobjekpajak: showVal(item.namapemilikobjekpajak),
+      creator_userid: showVal(item.creator_userid ?? item.userid),
+      pemilihan: showVal(item.pemilihan),
+      persetujuan: showVal(item.persetujuan),
+      akta_tanah_path: showVal(item.akta_tanah_path),
+      sertifikat_tanah_path: showVal(item.sertifikat_tanah_path),
+      pelengkap_path: showVal(item.pelengkap_path),
       riwayat_terakhir_diperiksa:
         item.verified_at
           ? `Terakhir diperiksa oleh ${String(item.verified_by_nama || item.verified_by || "-")} pada ${String(item.verified_at)} WIB`
@@ -513,84 +538,140 @@ export default function PenelitiVerifikasiSspdPage() {
                     <tr key={`${r.nobooking ?? idx}-detail`}>
                       <td colSpan={7} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
                         <div style={{ display: "grid", gap: 10 }}>
-                          <strong>Card Verifikasi Kelengkapan Data</strong>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <button
-                              type="button"
-                              disabled={!!actionLoading || isLockedByOther}
-                              onClick={() => lockDocument(String(r.nobooking ?? ""))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #4f46e5, #4338ca)", color: "white", fontWeight: 600, cursor: (actionLoading || isLockedByOther) ? "not-allowed" : "pointer" }}
-                            >
-                              Ambil Dokumen Ini / Mulai Periksa
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openViewDocument(String(r.nobooking ?? ""))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}
-                            >
-                              View Document
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openCheckDataOverlay(r)}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}
-                            >
-                              Check Data Ini
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!!actionLoading || isLockedByOther}
-                              onClick={() => reject(r.nobooking!)}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
-                            >
-                              Tolak
-                            </button>
-                          </div>
-                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                            <select
-                              value={verificationForms[r.nobooking || ""]?.pemilihan || ""}
-                              onChange={(e) => patchForm(r.nobooking || "", { pemilihan: e.target.value })}
-                              style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 260 }}
-                            >
-                              <option value="">Pilih kelengkapan/pemilihan</option>
-                              <option value="penghitung_wajib_pajak">Sesuai (Penghitungan Wajib Pajak)</option>
-                              <option value="stpd_kurangbayar">Tidak Sesuai (STPD Kurang Bayar)</option>
-                              <option value="dihitungsendiri">Ada (Pengurangan dihitung sendiri)</option>
-                              <option value="lainnyapenghitungwp">Tidak Ada (Lainnya)</option>
-                            </select>
-                            <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <input
-                                type="checkbox"
-                                checked={verificationForms[r.nobooking || ""]?.persetujuanVerif || false}
-                                onChange={(e) => patchForm(r.nobooking || "", { persetujuanVerif: e.target.checked })}
-                              />
-                              Setujui Paraf
-                            </label>
-                          </div>
-                          {(verificationForms[r.nobooking || ""]?.pemilihan === "stpd_kurangbayar") && (
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                              <input type="text" placeholder="Nomor STPD" value={verificationForms[r.nobooking || ""]?.nomorstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { nomorstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
-                              <input type="date" value={verificationForms[r.nobooking || ""]?.tanggalstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { tanggalstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
+                          <div style={sectionCardStyle}>
+                            <strong style={{ display: "block", marginBottom: 8 }}>Aksi Dokumen</strong>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                type="button"
+                                disabled={!!actionLoading || isLockedByOther}
+                                onClick={() => lockDocument(String(r.nobooking ?? ""))}
+                                style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #4f46e5, #4338ca)", color: "white", fontWeight: 600, cursor: (actionLoading || isLockedByOther) ? "not-allowed" : "pointer" }}
+                              >
+                                Ambil Dokumen Ini / Mulai Periksa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openViewDocument(String(r.nobooking ?? ""))}
+                                style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}
+                              >
+                                View Document
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openCheckDataOverlay(r)}
+                                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}
+                              >
+                                Check Data Ini
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!!actionLoading || isLockedByOther}
+                                onClick={() => reject(r.nobooking!)}
+                                style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
+                              >
+                                Tolak
+                              </button>
                             </div>
-                          )}
-                          {(verificationForms[r.nobooking || ""]?.pemilihan === "dihitungsendiri") && (
-                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                              <input type="number" min={0} max={100} step={0.01} placeholder="Persentase (0-100)" value={verificationForms[r.nobooking || ""]?.angkapersen || ""} onChange={(e) => patchForm(r.nobooking || "", { angkapersen: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
-                              <input type="text" placeholder="Keterangan dihitung sendiri" value={verificationForms[r.nobooking || ""]?.keterangandihitungSendiri || ""} onChange={(e) => patchForm(r.nobooking || "", { keterangandihitungSendiri: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320 }} />
+                          </div>
+
+                          <div style={sectionCardStyle}>
+                            <strong style={{ display: "block", marginBottom: 8 }}>Dokumen Pendukung</strong>
+                            <div style={{ display: "grid", gap: 8 }}>
+                              {[
+                                { label: "Akta Tanah", value: String(r.akta_tanah_path ?? "") },
+                                { label: "Sertifikat Tanah", value: String(r.sertifikat_tanah_path ?? "") },
+                                { label: "Pelengkap", value: String(r.pelengkap_path ?? "") },
+                              ].map((doc) => {
+                                const url = resolveFileUrl(doc.value);
+                                const hasFile = !!String(doc.value).trim();
+                                return (
+                                  <div key={doc.label} style={{ display: "grid", gridTemplateColumns: "180px 1fr auto", alignItems: "center", gap: 8 }}>
+                                    <strong>{doc.label}</strong>
+                                    <span style={{ color: "var(--color_font_muted)" }}>{showVal(doc.value)}</span>
+                                    <button
+                                      type="button"
+                                      disabled={!hasFile}
+                                      onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
+                                      style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border_color)", background: hasFile ? "var(--card_bg)" : "#eee", cursor: hasFile ? "pointer" : "not-allowed" }}
+                                    >
+                                      Lihat
+                                    </button>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          )}
-                          {(verificationForms[r.nobooking || ""]?.pemilihan === "lainnyapenghitungwp") && (
-                            <input type="text" placeholder="Isi keterangan lainnya..." value={verificationForms[r.nobooking || ""]?.isiketeranganlainnya || ""} onChange={(e) => patchForm(r.nobooking || "", { isiketeranganlainnya: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320 }} />
-                          )}
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => saveVerification(r.nobooking || "")}
-                              disabled={!!actionLoading || isLockedByOther}
-                              style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #10b981, #059669)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
-                            >
-                              {actionLoading === r.nobooking ? "..." : "Simpan Verifikasi"}
-                            </button>
+                          </div>
+
+                          <div style={sectionCardStyle}>
+                            <strong style={{ display: "block", marginBottom: 8 }}>Card Verifikasi Kelengkapan Data</strong>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                              <select
+                                value={verificationForms[r.nobooking || ""]?.pemilihan || ""}
+                                onChange={(e) => patchForm(r.nobooking || "", { pemilihan: e.target.value })}
+                                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 260 }}
+                              >
+                                <option value="">Pilih kelengkapan/pemilihan</option>
+                                <option value="penghitung_wajib_pajak">Sesuai (Penghitungan Wajib Pajak)</option>
+                                <option value="stpd_kurangbayar">Tidak Sesuai (STPD Kurang Bayar)</option>
+                                <option value="dihitungsendiri">Ada (Pengurangan dihitung sendiri)</option>
+                                <option value="lainnyapenghitungwp">Tidak Ada (Lainnya)</option>
+                              </select>
+                              <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={verificationForms[r.nobooking || ""]?.persetujuanVerif || false}
+                                  onChange={(e) => patchForm(r.nobooking || "", { persetujuanVerif: e.target.checked })}
+                                />
+                                Setujui Paraf
+                              </label>
+                            </div>
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "stpd_kurangbayar") && (
+                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+                                <input type="text" placeholder="Nomor STPD" value={verificationForms[r.nobooking || ""]?.nomorstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { nomorstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
+                                <input type="date" value={verificationForms[r.nobooking || ""]?.tanggalstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { tanggalstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
+                              </div>
+                            )}
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "dihitungsendiri") && (
+                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+                                <input type="number" min={0} max={100} step={0.01} placeholder="Persentase (0-100)" value={verificationForms[r.nobooking || ""]?.angkapersen || ""} onChange={(e) => patchForm(r.nobooking || "", { angkapersen: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
+                                <input type="text" placeholder="Keterangan dihitung sendiri" value={verificationForms[r.nobooking || ""]?.keterangandihitungSendiri || ""} onChange={(e) => patchForm(r.nobooking || "", { keterangandihitungSendiri: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320 }} />
+                              </div>
+                            )}
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "lainnyapenghitungwp") && (
+                              <input type="text" placeholder="Isi keterangan lainnya..." value={verificationForms[r.nobooking || ""]?.isiketeranganlainnya || ""} onChange={(e) => patchForm(r.nobooking || "", { isiketeranganlainnya: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320, marginTop: 8 }} />
+                            )}
+                            <div style={{ marginTop: 10 }}>
+                              <button
+                                type="button"
+                                onClick={() => saveVerification(r.nobooking || "")}
+                                disabled={!!actionLoading || isLockedByOther}
+                                style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #10b981, #059669)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
+                              >
+                                {actionLoading === r.nobooking ? "..." : "Simpan Verifikasi"}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={sectionCardStyle}>
+                            <strong style={{ display: "block", marginBottom: 8 }}>Ringkasan Data</strong>
+                            <div style={{ display: "grid", gap: 6 }}>
+                              {[
+                                ["No. Booking", showVal(r.nobooking)],
+                                ["No. Registrasi", showVal(r.no_registrasi)],
+                                ["NOP PBB", showVal(r.noppbb)],
+                                ["Nama Wajib Pajak", showVal(r.namawajibpajak)],
+                                ["Pemilik Objek Pajak", showVal(r.namapemilikobjekpajak)],
+                                ["Dikunci Oleh", showVal(r.locked_by_nama || r.locked_by_user_id)],
+                                ["Waktu Lock", showVal(r.locked_at)],
+                                ["Verifier Terakhir", showVal(r.verified_by_nama || r.verified_by)],
+                                ["Waktu Verifikasi", showVal(r.verified_at)],
+                              ].map(([k, v]) => (
+                                <div key={String(k)} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 8 }}>
+                                  <strong>{k}</strong>
+                                  <span>{String(v)}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       </td>
