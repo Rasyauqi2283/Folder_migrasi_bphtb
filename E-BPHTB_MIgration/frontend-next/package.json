@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "driver.js": "^1.4.0",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

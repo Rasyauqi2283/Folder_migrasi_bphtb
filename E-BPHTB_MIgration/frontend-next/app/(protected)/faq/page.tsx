@@ -11,6 +11,7 @@ import {
   FAQ_DIVISI_OPTIONS,
   normalizeFAQItem,
 } from "../../components/faq/faqTypes";
+import { faqTourAutoRunStorageKey, startFaqGuidedTour } from "../../components/faq/faqTourRunner";
 
 export default function FAQPage() {
   const { user } = useAuth();
@@ -57,6 +58,43 @@ export default function FAQPage() {
   useEffect(() => {
     loadFaq();
   }, [loadFaq]);
+
+  const runTour = useCallback((markFirstVisitDone: boolean) => {
+    const uid = user?.userid?.trim();
+    if (!uid) return;
+    startFaqGuidedTour({
+      isAdmin: !!isAdmin,
+      divisi: user?.divisi,
+      userId: uid,
+      markFirstVisitDone,
+    });
+  }, [user?.userid, user?.divisi, isAdmin]);
+
+  /* Sekali otomatis per akun (browser); lewati jika sudah pernah | "BANTUAN VISUAL" tidak menulis flag */
+  useEffect(() => {
+    if (typeof window === "undefined" || loading) return;
+    const uid = user?.userid?.trim();
+    if (!uid) return;
+    try {
+      if (localStorage.getItem(faqTourAutoRunStorageKey(uid))) return;
+    } catch {
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      startFaqGuidedTour({
+        isAdmin: !!isAdmin,
+        divisi: user?.divisi,
+        userId: uid,
+        markFirstVisitDone: true,
+      });
+    }, 720);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [loading, user?.userid, user?.divisi, isAdmin]);
 
   const viewerDivisi = user?.divisi;
 
@@ -190,8 +228,11 @@ export default function FAQPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-1">
-      <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div
+        id="tour-faq-header"
+        className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+      >
+        <div className="min-w-0">
           <h1 className="m-0 text-2xl font-bold tracking-tight" style={{ color: "var(--color_font_main)" }}>
             Tanya Jawab (FAQ)
           </h1>
@@ -199,9 +240,18 @@ export default function FAQPage() {
             Pilih kartu untuk membuka jawaban. Konten dapat dibatasi per divisi (pengaturan admin).
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => runTour(false)}
+          className="shrink-0 rounded-xl border border-slate-300 bg-white/90 px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-white hover:shadow-md"
+          style={{ borderColor: "var(--border_color)" }}
+        >
+          Bantuan visual
+        </button>
       </div>
 
       <div
+        id="tour-faq-search-wrap"
         className="mb-6 rounded-2xl border border-slate-200/90 bg-white/70 p-3 shadow-lg backdrop-blur-md sm:p-4 dark:border-slate-600/40 dark:bg-slate-900/35"
         style={{ boxShadow: "var(--shadow_card)" }}
       >
@@ -234,7 +284,7 @@ export default function FAQPage() {
       </div>
 
       {isAdmin && (
-        <section className="mb-8 p-5" style={cardShell}>
+        <section id="tour-faq-admin-panel" className="mb-8 p-5" style={cardShell}>
           <h2 className="mb-4 text-lg font-semibold" style={{ color: "var(--color_accent)" }}>
             {editingId ? "Edit FAQ" : "Tambah FAQ"}
           </h2>
@@ -243,6 +293,7 @@ export default function FAQPage() {
               Pertanyaan
             </label>
             <input
+              id="tour-faq-question"
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -258,6 +309,7 @@ export default function FAQPage() {
               Jawaban (HTML didukung)
             </label>
             <textarea
+              id="tour-faq-answer"
               value={answerHtml}
               onChange={(e) => setAnswerHtml(e.target.value)}
               placeholder="Jawaban... (bisa pakai tag HTML)"
@@ -271,6 +323,7 @@ export default function FAQPage() {
             />
 
             <fieldset
+              id="tour-faq-roles"
               className="rounded-xl p-4"
               style={{
                 border: "1px solid var(--border_color)",
@@ -328,7 +381,7 @@ export default function FAQPage() {
               </div>
             </fieldset>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div id="tour-faq-publish-actions" className="flex flex-wrap items-center gap-2">
               <input
                 type="file"
                 accept="image/*"
@@ -373,7 +426,7 @@ export default function FAQPage() {
         </section>
       )}
 
-      <section style={cardShell}>
+      <section id="tour-faq-list-section" style={cardShell}>
         <div
           className="border-b px-5 py-3 font-semibold"
           style={{ borderColor: "var(--border_color)", color: "var(--color_accent)" }}
