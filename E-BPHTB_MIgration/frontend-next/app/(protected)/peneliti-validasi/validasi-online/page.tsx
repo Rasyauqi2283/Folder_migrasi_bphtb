@@ -17,12 +17,25 @@ interface DocItem {
   akta_tanah_path?: string;
   sertifikat_tanah_path?: string;
   pelengkap_path?: string;
+  pemverifikasi?: string;
+  pemverifikasi_nama?: string;
+  pemparaf?: string;
+  pemparaf_nama?: string;
   [key: string]: unknown;
 }
 
 function toHref(p: string): string {
   if (!p) return "";
   return p.startsWith("/") ? p : "/" + p;
+}
+
+function actorLabel(nama?: string, userid?: string): string {
+  const n = String(nama ?? "").trim();
+  const u = String(userid ?? "").trim();
+  if (n && u) return `${n} (${u})`;
+  if (n) return n;
+  if (u) return u;
+  return "-";
 }
 
 function transformRow(r: DocItem): DocItem & { status_display: string; pembuat_gelar: string } {
@@ -388,6 +401,8 @@ export default function PenelitiValidasiValidasiOnlinePage() {
                               <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>No. Booking:</strong> {nb || "N/A"}</p>
                               <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>Nama Wajib Pajak:</strong> {d.namawajibpajak ?? "N/A"}</p>
                               <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>Nama Pemilik Objek Pajak:</strong> {d.namapemilikobjekpajak ?? "N/A"}</p>
+                              <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>Pemverifikasi:</strong> {actorLabel(d.pemverifikasi_nama, d.pemverifikasi)}</p>
+                              <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>Pemparaf (Kasie):</strong> {actorLabel(d.pemparaf_nama, d.pemparaf)}</p>
                               {d.keterangan && <p style={{ margin: "6px 0" }}><strong style={{ color: "#e5e7eb" }}>Keterangan:</strong> {d.keterangan}</p>}
                             </div>
                             <div>

@@ -39,6 +39,10 @@ type ParafBerkasRow struct {
 	PcPersetujuan           *string `json:"pc_persetujuan"`
 	TandaParafPath          *string `json:"tanda_paraf_path"`
 	SignerUserid            *string `json:"signer_userid"`
+	Pemverifikasi           *string `json:"pemverifikasi"`
+	PemverifikasiNama       *string `json:"pemverifikasi_nama"`
+	Pemparaf                *string `json:"pemparaf"`
+	PemparafNama            *string `json:"pemparaf_nama"`
 }
 
 const parafBaseSelect = `
@@ -46,7 +50,9 @@ const parafBaseSelect = `
 		b.akta_tanah_path, b.sertifikat_tanah_path, b.pelengkap_path, pc.no_registrasi,
 		pv.status, pv.trackstatus, pv.status_tertampil, pv.keterangan, pv.updated_at::text,
 		uc.special_field AS namapembuat, vu.tanda_tangan_path AS peneliti_tanda_tangan_path,
-		pvs.stempel_booking_path, pc.persetujuan::text AS pc_persetujuan, pc.tanda_paraf_path, au.userid AS signer_userid
+		pvs.stempel_booking_path, pc.persetujuan::text AS pc_persetujuan, pc.tanda_paraf_path, au.userid AS signer_userid,
+		pc.pemverifikasi, pemverif_user.nama AS pemverifikasi_nama,
+		pv.pemparaf, pemparaf_user.nama AS pemparaf_nama
 	FROM pv_1_paraf_validate pv
 	JOIN pat_1_bookingsspd b ON pv.nobooking = b.nobooking
 	JOIN p_3_clear_to_paraf pc ON pv.nobooking = pc.nobooking
@@ -54,6 +60,8 @@ const parafBaseSelect = `
 	LEFT JOIN a_2_verified_users vu ON vu.userid = $1
 	LEFT JOIN p_2_verif_sign pvs ON pvs.nobooking = pv.nobooking
 	LEFT JOIN a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
+	LEFT JOIN a_2_verified_users pemverif_user ON pemverif_user.userid = pc.pemverifikasi
+	LEFT JOIN a_2_verified_users pemparaf_user ON pemparaf_user.userid = pv.pemparaf
 `
 
 // GetBerkasPending returns rows where status_tertampil IS NULL or 'Menunggu'.
@@ -96,7 +104,8 @@ func (r *ParafRepo) queryParafRows(ctx context.Context, q, userid string) ([]Par
 		if err := rows.Scan(&row.Nobooking, &row.NoValidasi, &row.Noppbb, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak,
 			&row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath, &row.NoRegistrasi,
 			&row.Status, &row.Trackstatus, &row.StatusTertampil, &row.Keterangan, &row.UpdatedAt,
-			&row.Namapembuat, &row.PenelitiTandaTanganPath, &row.StempelBookingPath, &row.PcPersetujuan, &row.TandaParafPath, &row.SignerUserid); err != nil {
+			&row.Namapembuat, &row.PenelitiTandaTanganPath, &row.StempelBookingPath, &row.PcPersetujuan, &row.TandaParafPath, &row.SignerUserid,
+			&row.Pemverifikasi, &row.PemverifikasiNama, &row.Pemparaf, &row.PemparafNama); err != nil {
 			continue
 		}
 		out = append(out, row)
