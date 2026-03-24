@@ -103,6 +103,23 @@ export default function PenelitiParafKasiePage() {
     const s = String(v ?? "").trim();
     return s === "" ? "-" : s;
   };
+  const toWibText = (v: unknown) => {
+    const raw = String(v ?? "").trim();
+    if (!raw) return "-";
+    if (raw.includes("WIB")) return raw;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(d).replace(/\./g, ":") + " WIB";
+  };
   const resolveFileUrl = (rawPath?: string) => {
     const p = String(rawPath ?? "").trim();
     if (!p) return "";
@@ -205,6 +222,7 @@ export default function PenelitiParafKasiePage() {
   };
   const openCheckDataOverlay = (row: ParafItem) => {
     const cloned = { ...(row as Record<string, unknown>) };
+    if (cloned.tanggal_masuk != null) cloned.tanggal_masuk = toWibText(cloned.tanggal_masuk);
     delete cloned.akta_tanah_path;
     delete cloned.sertifikat_tanah_path;
     delete cloned.pelengkap_path;

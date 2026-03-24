@@ -1,8 +1,10 @@
 package repository
 
 import (
+	"crypto/rand"
 	"context"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -36,6 +38,10 @@ type PenelitiBerkasFromLtbRow struct {
 	CreatorUserid    *string `json:"creator_userid"`
 	TandaParafPath   *string `json:"tanda_paraf_path"`
 	SignerUserid     *string `json:"signer_userid"`
+	Pemverifikasi    *string `json:"pemverifikasi"`
+	PemverifikasiNama *string `json:"pemverifikasi_nama"`
+	Pemparaf         *string `json:"pemparaf"`
+	PemparafNama     *string `json:"pemparaf_nama"`
 	Pemilihan        *string `json:"pemilihan"`
 	NomorStpd        *string `json:"nomorstpd"`
 	TanggalStpd      *string `json:"tanggalstpd"`
@@ -66,6 +72,38 @@ func jakartaNow() time.Time {
 	return time.Now().In(loc)
 }
 
+func randomAlphaNum(n int) (string, error) {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var b strings.Builder
+	b.Grow(n)
+	max := big.NewInt(int64(len(chars)))
+	for i := 0; i < n; i++ {
+		v, err := rand.Int(rand.Reader, max)
+		if err != nil {
+			return "", err
+		}
+		b.WriteByte(chars[v.Int64()])
+	}
+	return b.String(), nil
+}
+
+func suffixFromUser(userid string) string {
+	up := strings.ToUpper(strings.TrimSpace(userid))
+	var out strings.Builder
+	for _, r := range up {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			out.WriteRune(r)
+		}
+		if out.Len() >= 3 {
+			break
+		}
+	}
+	for out.Len() < 3 {
+		out.WriteByte('X')
+	}
+	return out.String()
+}
+
 // GetBerkasFromLtb returns data for Peneliti "berkas dari LTB" (p_1_verifikasi + pat + bank + ltb gates).
 func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid string) ([]PenelitiBerkasFromLtbRow, error) {
 	if r.pool == nil {
@@ -80,9 +118,15 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			creator.userid::text AS creator_userid,
 			pc.tanda_paraf_path,
 			au.nama AS signer_userid,
+			pc.pemverifikasi,
+			pemverif_user.nama AS pemverifikasi_nama,
+			pv1.pemparaf,
+			pemparaf_user.nama AS pemparaf_nama,
 			p.pemilihan, p.nomorstpd, p.tanggalstpd::text, p.angkapersen::text, p.keterangandihitungsendiri, p.isiketeranganlainnya, p.persetujuan,
-			p.locked_by_user_id, p.locked_by_nama, p.locked_at::text,
-			p.verified_at::text, p.verified_by, p.verified_by_nama
+			p.locked_by_user_id, p.locked_by_nama,
+			CASE WHEN p.locked_at IS NULL THEN NULL ELSE to_char((p.locked_at AT TIME ZONE 'Asia/Jakarta'), 'YYYY-MM-DD HH24:MI:SS') || ' WIB' END AS locked_at_wib,
+			CASE WHEN p.verified_at IS NULL THEN NULL ELSE to_char((p.verified_at AT TIME ZONE 'Asia/Jakarta'), 'YYYY-MM-DD HH24:MI:SS') || ' WIB' END AS verified_at_wib,
+			p.verified_by, p.verified_by_nama
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -91,6 +135,9 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 		LEFT JOIN ltb_1_terima_berkas_sspd ltb ON ltb.nobooking = p.nobooking
 		LEFT JOIN p_3_clear_to_paraf pc ON pc.nobooking = p.nobooking
 		LEFT JOIN a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
+		LEFT JOIN a_2_verified_users pemverif_user ON pemverif_user.userid = pc.pemverifikasi
+		LEFT JOIN pv_1_paraf_validate pv1 ON pv1.nobooking = p.nobooking
+		LEFT JOIN a_2_verified_users pemparaf_user ON pemparaf_user.userid = pv1.pemparaf
 		WHERE p.trackstatus IN ('Dilanjutkan') AND p.status = 'Diajukan'
 		  AND p.no_registrasi IS NOT NULL AND p.no_registrasi <> ''
 		  AND COALESCE(ltb.status, 'Diajukan') IN ('Diajukan','Dilanjutkan','Diterima')
@@ -109,7 +156,7 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 		var row PenelitiBerkasFromLtbRow
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Trackstatus, &row.Status,
 			&row.Noppbb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath,
-			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid,
+			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid, &row.Pemverifikasi, &row.PemverifikasiNama, &row.Pemparaf, &row.PemparafNama,
 			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan,
 			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt, &row.VerifiedAt, &row.VerifiedBy, &row.VerifiedByNama); err != nil {
 			continue
@@ -360,7 +407,13 @@ func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, noboo
 	if len(missing) > 0 {
 		return fmt.Errorf("data belum lengkap untuk paraf: %s", strings.Join(missing, ", "))
 	}
-	tag, err := r.pool.Exec(ctx, `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	now := jakartaNow()
+	tag, err := tx.Exec(ctx, `
 		UPDATE p_3_clear_to_paraf
 		SET tanda_paraf_path = $2, persetujuan = 'true', pemverifikasi = COALESCE($3, pemverifikasi), trackstatus='Terverifikasi'
 		WHERE nobooking = $1
@@ -371,7 +424,62 @@ func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, noboo
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("data tidak ditemukan")
 	}
-	return nil
+	var (
+		p3Userid, p3NoReg, p3Ket *string
+		existingNoValidasi       *string
+	)
+	if err = tx.QueryRow(ctx, `
+		SELECT pc.userid, pc.no_registrasi, pc.keterangan
+		FROM p_3_clear_to_paraf pc WHERE pc.nobooking = $1
+	`, nobooking).Scan(&p3Userid, &p3NoReg, &p3Ket); err != nil {
+		return err
+	}
+	_ = tx.QueryRow(ctx, `SELECT no_validasi FROM pv_1_paraf_validate WHERE nobooking = $1`, nobooking).Scan(&existingNoValidasi)
+	noValidasi := ""
+	if existingNoValidasi != nil && strings.TrimSpace(*existingNoValidasi) != "" {
+		noValidasi = strings.TrimSpace(*existingNoValidasi)
+	} else {
+		suffix := suffixFromUser(kasieUserid)
+		for i := 0; i < 8; i++ {
+			prefix, gErr := randomAlphaNum(8)
+			if gErr != nil {
+				return gErr
+			}
+			candidate := prefix + "-" + suffix
+			var exists int
+			eErr := tx.QueryRow(ctx, `SELECT 1 FROM pv_1_paraf_validate WHERE no_validasi = $1 LIMIT 1`, candidate).Scan(&exists)
+			if eErr != nil {
+				noValidasi = candidate
+				break
+			}
+		}
+		if noValidasi == "" {
+			return fmt.Errorf("gagal membuat no_validasi unik")
+		}
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO pv_1_paraf_validate
+			(nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, keterangan, no_validasi, pemverifikasi, pemparaf, status_tertampil, no_registrasi, updated_at)
+		VALUES
+			($1,$2,$3,$4,'Menunggu','Terverifikasi',$5,$6,$7,$8,'Menunggu',$9,$10)
+		ON CONFLICT (nobooking) DO UPDATE
+		SET userid = EXCLUDED.userid,
+			namawajibpajak = EXCLUDED.namawajibpajak,
+			namapemilikobjekpajak = EXCLUDED.namapemilikobjekpajak,
+			status = EXCLUDED.status,
+			trackstatus = EXCLUDED.trackstatus,
+			keterangan = EXCLUDED.keterangan,
+			no_validasi = COALESCE(NULLIF(pv_1_paraf_validate.no_validasi, ''), EXCLUDED.no_validasi),
+			pemverifikasi = EXCLUDED.pemverifikasi,
+			pemparaf = EXCLUDED.pemparaf,
+			status_tertampil = EXCLUDED.status_tertampil,
+			no_registrasi = EXCLUDED.no_registrasi,
+			updated_at = EXCLUDED.updated_at
+	`, nobooking, p3Userid, namaWP, namaOP, p3Ket, noValidasi, kasieUserid, kasieUserid, p3NoReg, now)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // PenelitiBerkasTillVerifRow one row for GET /api/peneliti/get-berkas-till-verif (paraf kasie).
@@ -415,7 +523,8 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 				WHEN LOWER(TRIM(COALESCE(pc.persetujuan::text, ''))) IN ('false','f','0','no','n') THEN 'false'
 				ELSE COALESCE(pc.persetujuan::text,'')
 			END AS persetujuan,
-			pc.tanda_paraf_path, pc.created_at::text AS tanggal_masuk,
+			pc.tanda_paraf_path,
+			CASE WHEN pc.created_at IS NULL THEN NULL ELSE to_char((pc.created_at AT TIME ZONE 'Asia/Jakarta'), 'YYYY-MM-DD HH24:MI:SS') || ' WIB' END AS tanggal_masuk_wib,
 			v.tanda_tangan_path, pvs.stempel_booking_path, au.nama AS signer_userid,
 			pemverifikasi_user.nama AS pemverifikasi_nama,
 			pv.locked_by_user_id, pv.locked_by_nama

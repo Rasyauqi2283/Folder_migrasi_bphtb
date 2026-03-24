@@ -25,6 +25,10 @@ interface VerifikasiItem {
   verified_at?: string;
   verified_by?: string;
   verified_by_nama?: string;
+  pemverifikasi?: string;
+  pemverifikasi_nama?: string;
+  pemparaf?: string;
+  pemparaf_nama?: string;
   akta_tanah_path?: string;
   sertifikat_tanah_path?: string;
   pelengkap_path?: string;
@@ -104,6 +108,23 @@ export default function PenelitiVerifikasiSspdPage() {
   const showVal = (v: unknown) => {
     const s = String(v ?? "").trim();
     return s === "" ? "-" : s;
+  };
+  const toWibText = (v: unknown) => {
+    const raw = String(v ?? "").trim();
+    if (!raw) return "-";
+    if (raw.includes("WIB")) return raw;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return raw;
+    return new Intl.DateTimeFormat("id-ID", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(d).replace(/\./g, ":") + " WIB";
   };
 
   const resolveFileUrl = (rawPath?: string) => {
@@ -362,9 +383,11 @@ export default function PenelitiVerifikasiSspdPage() {
       creator_userid: showVal(item.creator_userid ?? item.userid),
       pemilihan: showVal(item.pemilihan),
       persetujuan: showVal(item.persetujuan),
+      pemverifikasi: showVal(item.pemverifikasi_nama || item.pemverifikasi),
+      pemparaf: showVal(item.pemparaf_nama || item.pemparaf),
       riwayat_terakhir_diperiksa:
         item.verified_at
-          ? `Terakhir diperiksa oleh ${String(item.verified_by_nama || item.verified_by || "-")} pada ${String(item.verified_at)} WIB`
+          ? `Terakhir diperiksa oleh ${String(item.verified_by_nama || item.verified_by || "-")} pada ${toWibText(item.verified_at)}`
           : "-",
     };
     setOverlayData(baseData);
