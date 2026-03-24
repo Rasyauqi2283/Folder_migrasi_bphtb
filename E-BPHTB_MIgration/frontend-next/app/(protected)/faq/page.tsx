@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBase } from "../../../lib/api";
-import { FAQAnswerModal, FAQBubbleTile } from "./FAQBubble";
+import { FAQAnswerModal, FAQBubbleTile } from "../../components/faq/FAQBubble";
 import {
   type FAQItem,
   faqMatchesSearch,
   faqVisibleForUser,
   FAQ_DIVISI_OPTIONS,
   normalizeFAQItem,
-} from "./faqTypes";
+} from "../../components/faq/faqTypes";
 
 export default function FAQPage() {
   const { user } = useAuth();
