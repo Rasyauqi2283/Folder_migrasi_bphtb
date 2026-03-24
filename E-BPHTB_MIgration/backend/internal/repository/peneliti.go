@@ -372,7 +372,11 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 			pc.no_registrasi, pc.nobooking, COALESCE(pc.userid,'') AS userid, COALESCE(pc.trackstatus,'') AS trackstatus,
 			b.noppbb::text, b.tahunajb::text, b.namawajibpajak, b.namapemilikobjekpajak,
 			COALESCE(pc.status,'') AS status,
-			CASE WHEN pc.persetujuan = true THEN 'true' WHEN pc.persetujuan = false THEN 'false' ELSE COALESCE(pc.persetujuan::text,'') END AS persetujuan,
+			CASE
+				WHEN LOWER(TRIM(COALESCE(pc.persetujuan::text, ''))) IN ('true','t','1','yes','y') THEN 'true'
+				WHEN LOWER(TRIM(COALESCE(pc.persetujuan::text, ''))) IN ('false','f','0','no','n') THEN 'false'
+				ELSE COALESCE(pc.persetujuan::text,'')
+			END AS persetujuan,
 			pc.tanda_paraf_path, pc.created_at::text AS tanggal_masuk,
 			v.tanda_tangan_path, pvs.stempel_booking_path, au.nama AS signer_userid,
 			pemverifikasi_user.nama AS pemverifikasi_nama,
