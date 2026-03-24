@@ -227,54 +227,189 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 	return &RekapDiserahkanResult{Rows: list, Total: total, TotalNominal: totalNominal, Page: page, Limit: limit, TotalPages: totalPages}, nil
 }
 
+// SendNowResult holds atomic write results after send-now.
+type SendNowResult struct {
+	Nobooking   string                 `json:"nobooking"`
+	Trackstatus string                 `json:"trackstatus"`
+	NoRegistrasi string                `json:"no_registrasi"`
+	LTB         map[string]interface{} `json:"ltb"`
+	Bank        map[string]interface{} `json:"bank"`
+}
+
 // SendNow moves a booking to "Diolah": updates trackstatus, quota and queue. Optionally inserts into ltb_1 and bank_1 if tables exist.
-func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) error {
+func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*SendNowResult, error) {
 	if r.pool == nil {
-		return nil
+		return nil, nil
 	}
 	today := time.Now().Format("2006-01-02")
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
 	// Ensure quota row exists (check error so transaction is not left aborted)
 	_, err = tx.Exec(ctx, `INSERT INTO ppat_daily_quota (quota_date, used_count, limit_count) VALUES ($1, 0, 80) ON CONFLICT (quota_date) DO NOTHING`, today)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var usedCount, limitCount int
 	err = tx.QueryRow(ctx, `SELECT used_count, limit_count FROM ppat_daily_quota WHERE quota_date = $1 FOR UPDATE`, today).Scan(&usedCount, &limitCount)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if usedCount >= limitCount {
-		return ErrPpatQuotaFull
+		return nil, ErrPpatQuotaFull
 	}
 
 	var currentStatus string
 	err = tx.QueryRow(ctx, `SELECT trackstatus FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2`, nobooking, userid).Scan(&currentStatus)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if currentStatus != "Draft" && currentStatus != "Pending" {
-		return ErrPpatBookingNotSendable
+		return nil, ErrPpatBookingNotSendable
 	}
 
 	_, err = tx.Exec(ctx, `INSERT INTO ppat_send_queue (nobooking, userid, scheduled_for, status, sent_at) VALUES ($1,$2,$3,'sent', now()) ON CONFLICT (nobooking) DO UPDATE SET status='sent', sent_at=now(), scheduled_for=$3`, nobooking, userid, today)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = tx.Exec(ctx, `UPDATE ppat_daily_quota SET used_count = used_count + 1, updated_at = now() WHERE quota_date = $1`, today)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking = $1 AND userid = $2`, nobooking, userid)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit(ctx)
+
+	// Fetch booking snapshot used for relation tables.
+	var namaWP, namaOP *string
+	var jenisWP *string
+	var bphtbDibayar *float64
+	var noBukti, tglPerolehan, tglPembayaran *string
+	err = tx.QueryRow(ctx, `
+		SELECT
+			p.namawajibpajak,
+			p.namapemilikobjekpajak,
+			p.jenis_wajib_pajak::text,
+			bp.bphtb_yangtelah_dibayar::float8,
+			o.nomor_bukti_pembayaran,
+			o.tanggal_perolehan::text,
+			o.tanggal_pembayaran::text
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2
+	`, nobooking, userid).Scan(&namaWP, &namaOP, &jenisWP, &bphtbDibayar, &noBukti, &tglPerolehan, &tglPembayaran)
+	if err != nil {
+		return nil, err
+	}
+
+	year := time.Now().Year()
+	prefix := fmt.Sprintf("%dO", year)
+	likePattern := prefix + "%"
+	var nextSeq int
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE(MAX(CAST(right(no_registrasi, 6) AS integer)), 0) + 1
+		FROM ltb_1_terima_berkas_sspd
+		WHERE no_registrasi LIKE $1
+	`, likePattern).Scan(&nextSeq)
+	if err != nil {
+		return nil, err
+	}
+	noRegistrasi := fmt.Sprintf("%s%06d", prefix, nextSeq)
+
+	// Upsert LTB relation row.
+	cmd, err := tx.Exec(ctx, `
+		UPDATE ltb_1_terima_berkas_sspd
+		SET
+			userid = $2,
+			namawajibpajak = COALESCE($3, namawajibpajak),
+			namapemilikobjekpajak = COALESCE($4, namapemilikobjekpajak),
+			status = 'Diterima',
+			trackstatus = 'Diolah',
+			jenis_wajib_pajak = COALESCE($5::jenis_wajib_pajak, jenis_wajib_pajak),
+			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $6),
+			updated_at = now()
+		WHERE nobooking = $1
+	`, nobooking, userid, namaWP, namaOP, jenisWP, noRegistrasi)
+	if err != nil {
+		return nil, err
+	}
+	if cmd.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO ltb_1_terima_berkas_sspd (
+				nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, jenis_wajib_pajak, no_registrasi, updated_at
+			) VALUES (
+				$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diolah', $5::jenis_wajib_pajak, $6, now()
+			)
+		`, nobooking, userid, namaWP, namaOP, jenisWP, noRegistrasi)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Upsert Bank relation row.
+	cmd, err = tx.Exec(ctx, `
+		UPDATE bank_1_cek_hasil_transaksi
+		SET
+			userid = $2,
+			bphtb_yangtelah_dibayar = COALESCE($3::int, bphtb_yangtelah_dibayar),
+			nomor_bukti_pembayaran = COALESCE($4, nomor_bukti_pembayaran),
+			tanggal_perolehan = COALESCE($5, tanggal_perolehan),
+			tanggal_pembayaran = COALESCE($6, tanggal_pembayaran),
+			status_verifikasi = COALESCE(NULLIF(status_verifikasi, ''), 'Pending'),
+			status_dibank = COALESCE(NULLIF(status_dibank, ''), 'Dicheck'),
+			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $7)
+		WHERE nobooking = $1
+	`, nobooking, userid, bphtbDibayar, noBukti, tglPerolehan, tglPembayaran, noRegistrasi)
+	if err != nil {
+		return nil, err
+	}
+	if cmd.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO bank_1_cek_hasil_transaksi (
+				nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, status_dibank, no_registrasi
+			) VALUES (
+				$1, $2, $3::int, $4, $5, $6, 'Pending', 'Dicheck', $7
+			)
+		`, nobooking, userid, bphtbDibayar, noBukti, tglPerolehan, tglPembayaran, noRegistrasi)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return &SendNowResult{
+		Nobooking:   nobooking,
+		Trackstatus: "Diolah",
+		NoRegistrasi: noRegistrasi,
+		LTB: map[string]interface{}{
+			"nobooking":             nobooking,
+			"userid":                userid,
+			"namawajibpajak":        namaWP,
+			"namapemilikobjekpajak": namaOP,
+			"status":                "Diterima",
+			"trackstatus":           "Diolah",
+			"no_registrasi":         noRegistrasi,
+		},
+		Bank: map[string]interface{}{
+			"nobooking":              nobooking,
+			"userid":                 userid,
+			"bphtb_yangtelah_dibayar": bphtbDibayar,
+			"nomor_bukti_pembayaran": noBukti,
+			"tanggal_perolehan":      tglPerolehan,
+			"tanggal_pembayaran":     tglPembayaran,
+			"status_verifikasi":      "Pending",
+			"status_dibank":          "Dicheck",
+			"no_registrasi":          noRegistrasi,
+		},
+	}, nil
 }
 
 // ErrPpatQuotaFull is returned when daily quota is exceeded.

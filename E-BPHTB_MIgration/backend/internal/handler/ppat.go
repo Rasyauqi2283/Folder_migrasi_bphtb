@@ -242,7 +242,7 @@ func (h *PpatHandler) SendNow(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-	err := h.repo.SendNow(ctx, userid, nobooking)
+	res, err := h.repo.SendNow(ctx, userid, nobooking)
 	if err != nil {
 		if errors.Is(err, repository.ErrPpatQuotaFull) {
 			ppatJSONError(w, http.StatusConflict, "Kuota hari ini penuh")
@@ -257,7 +257,11 @@ func (h *PpatHandler) SendNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "OK"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "OK",
+		"data":    res,
+	})
 }
 
 // CreateBookingBadan handles POST /api/ppat_create-booking-and-bphtb.
