@@ -362,9 +362,6 @@ export default function PenelitiVerifikasiSspdPage() {
       creator_userid: showVal(item.creator_userid ?? item.userid),
       pemilihan: showVal(item.pemilihan),
       persetujuan: showVal(item.persetujuan),
-      akta_tanah_path: showVal(item.akta_tanah_path),
-      sertifikat_tanah_path: showVal(item.sertifikat_tanah_path),
-      pelengkap_path: showVal(item.pelengkap_path),
       riwayat_terakhir_diperiksa:
         item.verified_at
           ? `Terakhir diperiksa oleh ${String(item.verified_by_nama || item.verified_by || "-")} pada ${String(item.verified_at)} WIB`
@@ -376,7 +373,11 @@ export default function PenelitiVerifikasiSspdPage() {
       const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json?.success && json?.data) {
-        setOverlayData({ ...baseData, ...json.data });
+        const merged = { ...baseData, ...json.data } as Record<string, unknown>;
+        delete merged.akta_tanah_path;
+        delete merged.sertifikat_tanah_path;
+        delete merged.pelengkap_path;
+        setOverlayData(merged);
       }
     } catch {
       // Keep fallback data already shown in overlay.
@@ -674,27 +675,6 @@ export default function PenelitiVerifikasiSspdPage() {
                             </div>
                           </div>
 
-                          <div style={sectionCardStyle}>
-                            <strong style={{ display: "block", marginBottom: 8 }}>Ringkasan Data</strong>
-                            <div style={{ display: "grid", gap: 6 }}>
-                              {[
-                                ["No. Booking", showVal(r.nobooking)],
-                                ["No. Registrasi", showVal(r.no_registrasi)],
-                                ["NOP PBB", showVal(r.noppbb)],
-                                ["Nama Wajib Pajak", showVal(r.namawajibpajak)],
-                                ["Pemilik Objek Pajak", showVal(r.namapemilikobjekpajak)],
-                                ["Dikunci Oleh", showVal(r.locked_by_nama || r.locked_by_user_id)],
-                                ["Waktu Lock", showVal(r.locked_at)],
-                                ["Verifier Terakhir", showVal(r.verified_by_nama || r.verified_by)],
-                                ["Waktu Verifikasi", showVal(r.verified_at)],
-                              ].map(([k, v]) => (
-                                <div key={String(k)} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 8 }}>
-                                  <strong style={lightSurfaceText}>{k}</strong>
-                                  <span style={lightSurfaceText}>{String(v)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
                         </div>
                       </td>
                     </tr>
