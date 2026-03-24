@@ -1,3 +1,5 @@
+@tailwind utilities;
+
 :root {
   color-scheme: dark;
   --rasya-dark: #0f0f12;

@@ -43,6 +43,61 @@ func (h *FAQHandler) isAdmin(r *http.Request) bool {
 	return div == "administrator" || div == "admin" || div == "a"
 }
 
+func (h *FAQHandler) viewerDivisi(r *http.Request) string {
+	userid := adminUseridFromCookie(r)
+	if userid == "" || h.user == nil || h.user.Pool() == nil {
+		return ""
+	}
+	user, err := h.user.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || user == nil {
+		return ""
+	}
+	return strings.TrimSpace(user.Divisi)
+}
+
+// faqVisibleForViewer returns true if FAQ is visible to the viewer's divisi.
+// Empty allowed means all roles. Entries "all" or "*" mean public to any logged-in role.
+func faqVisibleForViewer(allowed []string, viewerDiv string) bool {
+	if len(allowed) == 0 {
+		return true
+	}
+	v := strings.ToLower(strings.TrimSpace(viewerDiv))
+	for _, a := range allowed {
+		al := strings.ToLower(strings.TrimSpace(a))
+		if al == "" {
+			continue
+		}
+		if al == "all" || al == "*" {
+			return true
+		}
+		if v != "" && al == v {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeFAQRoles(in []string) []string {
+	if len(in) == 0 {
+		return []string{}
+	}
+	seen := make(map[string]struct{})
+	var out []string
+	for _, s := range in {
+		t := strings.TrimSpace(s)
+		if t == "" {
+			continue
+		}
+		k := strings.ToLower(t)
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
 func (h *FAQHandler) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	if !h.isAdmin(r) {
 		faqJSON(w, http.StatusUnauthorized, map[string]interface{}{"success": false, "message": "Unauthorized"})
@@ -64,6 +119,7 @@ func (h *FAQHandler) GetList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	publicOnly := !h.isAdmin(r)
+	viewerDiv := h.viewerDivisi(r)
 	list, err := h.faq.List(r.Context(), publicOnly)
 	if err != nil {
 		faqJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
@@ -71,17 +127,25 @@ func (h *FAQHandler) GetList(w http.ResponseWriter, r *http.Request) {
 	}
 	data := make([]map[string]interface{}, 0, len(list))
 	for _, row := range list {
+		if publicOnly && !faqVisibleForViewer(row.AllowedRoles, viewerDiv) {
+			continue
+		}
 		var expiresAt interface{}
 		if row.ExpiresAt != nil {
 			expiresAt = row.ExpiresAt.Format(time.RFC3339)
 		}
+		roles := row.AllowedRoles
+		if roles == nil {
+			roles = []string{}
+		}
 		data = append(data, map[string]interface{}{
-			"id":          row.ID,
-			"question":    row.Question,
-			"answer_html": row.AnswerHTML,
-			"created_at":  row.CreatedAt.Format(time.RFC3339),
-			"updated_at":  row.UpdatedAt.Format(time.RFC3339),
-			"expires_at":  expiresAt,
+			"id":             row.ID,
+			"question":       row.Question,
+			"answer_html":    row.AnswerHTML,
+			"created_at":     row.CreatedAt.Format(time.RFC3339),
+			"updated_at":     row.UpdatedAt.Format(time.RFC3339),
+			"expires_at":     expiresAt,
+			"allowed_roles":  roles,
 		})
 	}
 	faqJSON(w, http.StatusOK, map[string]interface{}{"success": true, "data": data})
@@ -97,10 +161,11 @@ func (h *FAQHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Question   string `json:"question"`
-		AnswerHTML string `json:"answer_html"`
-		TTLType    string `json:"ttl_type"`
-		TTLValue   *int   `json:"ttl_value"`
+		Question      string   `json:"question"`
+		AnswerHTML    string   `json:"answer_html"`
+		TTLType       string   `json:"ttl_type"`
+		TTLValue      *int     `json:"ttl_value"`
+		AllowedRoles  []string `json:"allowed_roles"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		faqJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Invalid JSON"})
@@ -124,7 +189,8 @@ func (h *FAQHandler) Create(w http.ResponseWriter, r *http.Request) {
 			expiresAt = &t
 		}
 	}
-	id, err := h.faq.Create(r.Context(), question, answerHTML, expiresAt)
+	roles := normalizeFAQRoles(body.AllowedRoles)
+	id, err := h.faq.Create(r.Context(), question, answerHTML, expiresAt, roles)
 	if err != nil {
 		faqJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
 		return
@@ -152,10 +218,11 @@ func (h *FAQHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Question   string `json:"question"`
-		AnswerHTML string `json:"answer_html"`
-		TTLType    string `json:"ttl_type"`
-		TTLValue   *int   `json:"ttl_value"`
+		Question      string   `json:"question"`
+		AnswerHTML    string   `json:"answer_html"`
+		TTLType       string   `json:"ttl_type"`
+		TTLValue      *int     `json:"ttl_value"`
+		AllowedRoles  []string `json:"allowed_roles"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		faqJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Invalid JSON"})
@@ -179,7 +246,8 @@ func (h *FAQHandler) Update(w http.ResponseWriter, r *http.Request) {
 			expiresAt = &t
 		}
 	}
-	if err := h.faq.Update(r.Context(), id, question, answerHTML, expiresAt); err != nil {
+	roles := normalizeFAQRoles(body.AllowedRoles)
+	if err := h.faq.Update(r.Context(), id, question, answerHTML, expiresAt, roles); err != nil {
 		faqJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
 		return
 	}

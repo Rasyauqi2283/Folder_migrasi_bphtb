@@ -1,17 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { getApiBase } from "../../../lib/api";
-
-interface FAQItem {
-  id: number;
-  question: string;
-  answer_html: string;
-  created_at: string;
-  updated_at: string;
-  expires_at: string | null;
-}
+import { FAQAnswerModal, FAQBubbleTile } from "./FAQBubble";
+import {
+  type FAQItem,
+  faqMatchesSearch,
+  faqVisibleForUser,
+  FAQ_DIVISI_OPTIONS,
+  normalizeFAQItem,
+} from "./faqTypes";
 
 export default function FAQPage() {
   const { user } = useAuth();
@@ -22,8 +21,11 @@ export default function FAQPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [question, setQuestion] = useState("");
   const [answerHtml, setAnswerHtml] = useState("");
+  const [allowedRoles, setAllowedRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedFaqId, setSelectedFaqId] = useState<number | null>(null);
 
   const loadFaq = useCallback(async () => {
     setLoading(true);
@@ -35,7 +37,12 @@ export default function FAQPage() {
         throw new Error(data?.message || "Gagal memuat FAQ");
       }
       if (data?.success && Array.isArray(data?.data)) {
-        setList(data.data);
+        const parsed: FAQItem[] = [];
+        for (const row of data.data) {
+          const it = normalizeFAQItem(row);
+          if (it) parsed.push(it);
+        }
+        setList(parsed);
       } else {
         setList([]);
       }
@@ -51,16 +58,47 @@ export default function FAQPage() {
     loadFaq();
   }, [loadFaq]);
 
+  const viewerDivisi = user?.divisi;
+
+  const visibleForUi = useMemo(
+    () => list.filter((item) => faqVisibleForUser(item, viewerDivisi, !!isAdmin)),
+    [list, viewerDivisi, isAdmin]
+  );
+
+  const filteredBubbles = useMemo(
+    () => visibleForUi.filter((item) => faqMatchesSearch(item, search)),
+    [visibleForUi, search]
+  );
+
+  const selectedItem = useMemo(
+    () => (selectedFaqId == null ? null : filteredBubbles.find((x) => x.id === selectedFaqId) ?? null),
+    [selectedFaqId, filteredBubbles]
+  );
+
+  useEffect(() => {
+    if (selectedFaqId != null && !filteredBubbles.some((x) => x.id === selectedFaqId)) {
+      setSelectedFaqId(null);
+    }
+  }, [selectedFaqId, filteredBubbles]);
+
   const clearForm = () => {
     setEditingId(null);
     setQuestion("");
     setAnswerHtml("");
+    setAllowedRoles([]);
   };
 
   const handleEdit = (item: FAQItem) => {
     setEditingId(item.id);
     setQuestion(item.question);
     setAnswerHtml(item.answer_html);
+    setAllowedRoles([...(item.allowed_roles ?? [])]);
+  };
+
+  const toggleRole = (value: string) => {
+    setAllowedRoles((prev) =>
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]
+    );
   };
 
   const handleSave = async () => {
@@ -70,15 +108,20 @@ export default function FAQPage() {
       alert("Pertanyaan dan jawaban wajib diisi.");
       return;
     }
+    const base = getApiBase();
     setSaving(true);
     try {
-      const url = editingId ? `/api/faq/${editingId}` : "/api/faq";
+      const url = editingId ? `${base}/api/faq/${editingId}` : `${base}/api/faq`;
       const method = editingId ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ question: q, answer_html: a }),
+        body: JSON.stringify({
+          question: q,
+          answer_html: a,
+          allowed_roles: allowedRoles,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -105,6 +148,7 @@ export default function FAQPage() {
         throw new Error(data?.message || "Gagal menghapus");
       }
       if (editingId === id) clearForm();
+      if (selectedFaqId === id) setSelectedFaqId(null);
       loadFaq();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Gagal menghapus");
@@ -136,85 +180,171 @@ export default function FAQPage() {
     }
   };
 
-  const cardStyle: React.CSSProperties = {
-    background: "var(--card_bg)",
+  const cardShell: CSSProperties = {
     borderRadius: 12,
-    boxShadow: "var(--card_shadow)",
     border: "1px solid var(--border_color)",
+    background: "var(--card_bg)",
+    boxShadow: "var(--shadow_card)",
     overflow: "hidden",
   };
 
-  const listContainerStyle: React.CSSProperties = {
-    maxHeight: "60vh",
-    overflowY: "auto",
-    scrollbarWidth: "none",
-    msOverflowStyle: "none",
-    paddingRight: 8,
-  };
-
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 700 }}>Tanya Jawab (FAQ)</h1>
+    <div className="mx-auto max-w-5xl px-1">
+      <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="m-0 text-2xl font-bold tracking-tight" style={{ color: "var(--color_font_main)" }}>
+            Tanya Jawab (FAQ)
+          </h1>
+          <p className="mt-1 text-sm" style={{ color: "var(--color_font_main_muted)" }}>
+            Pilih kartu untuk membuka jawaban. Konten dapat dibatasi per divisi (pengaturan admin).
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="mb-6 rounded-2xl border border-slate-200/90 bg-white/70 p-3 shadow-lg backdrop-blur-md sm:p-4 dark:border-slate-600/40 dark:bg-slate-900/35"
+        style={{ boxShadow: "var(--shadow_card)" }}
+      >
+        <label htmlFor="faq-search" className="sr-only">
+          Cari FAQ
+        </label>
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            aria-hidden
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </span>
+          <input
+            id="faq-search"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari kata kunci di pertanyaan atau jawaban…"
+            className="w-full rounded-xl border border-slate-200/90 bg-white/90 py-3 pl-11 pr-4 text-sm text-slate-900 shadow-inner outline-none ring-blue-500/30 transition placeholder:text-slate-400 focus:ring-2"
+          />
+        </div>
       </div>
 
       {isAdmin && (
-        <section style={{ ...cardStyle, marginBottom: "1.5rem", padding: "1.25rem" }}>
-          <h2 style={{ margin: "0 0 1rem", fontSize: "1.1rem", color: "var(--color_accent)" }}>
+        <section className="mb-8 p-5" style={cardShell}>
+          <h2 className="mb-4 text-lg font-semibold" style={{ color: "var(--color_accent)" }}>
             {editingId ? "Edit FAQ" : "Tambah FAQ"}
           </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <label style={{ fontWeight: 600, fontSize: "0.9rem" }}>Pertanyaan</label>
+          <div className="flex flex-col gap-3">
+            <label className="text-sm font-semibold" style={{ color: "var(--color_font_main)" }}>
+              Pertanyaan
+            </label>
             <input
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Pertanyaan..."
-              className="faq-input"
+              className="faq-input rounded-lg px-3 py-2.5"
               style={{
-                padding: "10px 12px",
                 border: "1px solid var(--border_color)",
-                borderRadius: 8,
-                fontSize: "1rem",
                 background: "#fff",
-                color: "#1e293b",
+                color: "var(--color_font_main)",
               }}
             />
-            <label style={{ fontWeight: 600, fontSize: "0.9rem" }}>Jawaban (HTML didukung)</label>
+            <label className="text-sm font-semibold" style={{ color: "var(--color_font_main)" }}>
+              Jawaban (HTML didukung)
+            </label>
             <textarea
               value={answerHtml}
               onChange={(e) => setAnswerHtml(e.target.value)}
               placeholder="Jawaban... (bisa pakai tag HTML)"
               rows={6}
-              className="faq-input"
+              className="faq-input rounded-lg px-3 py-2.5"
               style={{
-                padding: "10px 12px",
                 border: "1px solid var(--border_color)",
-                borderRadius: 8,
-                fontSize: "1rem",
-                resize: "vertical",
                 background: "#fff",
-                color: "#1e293b",
+                color: "var(--color_font_main)",
               }}
             />
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+
+            <fieldset
+              className="rounded-xl p-4"
+              style={{
+                border: "1px solid var(--border_color)",
+                background: "var(--surface_light)",
+              }}
+            >
+              <legend className="px-1 text-sm font-semibold" style={{ color: "var(--color_font_main)" }}>
+                Siapa yang dapat melihat FAQ ini?
+              </legend>
+              <p className="mb-3 text-xs" style={{ color: "var(--color_font_main_muted)" }}>
+                Kosongkan semua centang agar FAQ tampil untuk <strong>semua divisi</strong>. Centang satu atau lebih
+                untuk membatasi hanya ke divisi tersebut.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAllowedRoles(FAQ_DIVISI_OPTIONS.map((o) => o.value))}
+                  className="rounded-lg px-2 py-1 text-xs font-medium"
+                  style={{
+                    border: "1px solid var(--border_color)",
+                    background: "#fff",
+                    color: "var(--color_font_main)",
+                  }}
+                >
+                  Pilih semua
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllowedRoles([])}
+                  className="rounded-lg px-2 py-1 text-xs font-medium"
+                  style={{
+                    border: "1px solid var(--border_color)",
+                    background: "#fff",
+                    color: "var(--color_font_main)",
+                  }}
+                >
+                  Semua divisi (kosongkan)
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {FAQ_DIVISI_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-white/80 px-2 py-1.5 text-sm hover:border-slate-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={allowedRoles.includes(opt.value)}
+                      onChange={() => toggleRole(opt.value)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                    />
+                    <span style={{ color: "var(--color_font_main)" }}>{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
                 disabled={uploading}
-                style={{ display: "none" }}
+                className="hidden"
                 id="faq-image-upload"
               />
               <label
                 htmlFor="faq-image-upload"
+                className="inline-flex cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-medium"
                 style={{
-                  padding: "8px 14px",
-                  background: "var(--surface_light)",
-                  border: "1px solid var(--border_color)",
-                  borderRadius: 8,
                   cursor: uploading ? "not-allowed" : "pointer",
-                  fontSize: "0.9rem",
+                  border: "1px solid var(--border_color)",
+                  background: "var(--surface_light)",
+                  color: "var(--color_font_main)",
                 }}
               >
                 {uploading ? "Mengunggah..." : "Sisipkan gambar"}
@@ -223,15 +353,8 @@ export default function FAQPage() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                style={{
-                  padding: "8px 18px",
-                  background: "var(--accent)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  cursor: saving ? "not-allowed" : "pointer",
-                }}
+                className="rounded-lg px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                style={{ background: "var(--accent)" }}
               >
                 {saving ? "Menyimpan..." : editingId ? "Perbarui" : "Simpan"}
               </button>
@@ -239,14 +362,8 @@ export default function FAQPage() {
                 <button
                   type="button"
                   onClick={clearForm}
-                  style={{
-                    padding: "8px 14px",
-                    background: "transparent",
-                    border: "1px solid var(--border_color)",
-                    borderRadius: 8,
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                  }}
+                  className="rounded-lg bg-transparent px-4 py-2 text-sm"
+                  style={{ border: "1px solid var(--border_color)" }}
                 >
                   Batal
                 </button>
@@ -256,82 +373,59 @@ export default function FAQPage() {
         </section>
       )}
 
-      <section style={cardStyle}>
+      <section style={cardShell}>
         <div
-          style={{
-            padding: "1rem 1.25rem",
-            borderBottom: "1px solid var(--border_color)",
-            fontWeight: 600,
-            color: "var(--color_accent)",
-          }}
+          className="border-b px-5 py-3 font-semibold"
+          style={{ borderColor: "var(--border_color)", color: "var(--color_accent)" }}
         >
           Daftar FAQ
+          {!loading && !error && (
+            <span className="ml-2 text-sm font-normal" style={{ color: "var(--color_font_main_muted)" }}>
+              ({filteredBubbles.length} ditampilkan)
+            </span>
+          )}
         </div>
-        <div style={{ padding: "1rem" }}>
+        <div className="p-4 sm:p-5">
           {loading ? (
-            <p style={{ margin: 0, color: "var(--color_font_muted)", textAlign: "center", padding: "2rem" }}>
+            <p className="py-12 text-center" style={{ color: "var(--color_font_muted)" }}>
               Memuat...
             </p>
           ) : error ? (
-            <p style={{ margin: 0, color: "var(--color_logout)", textAlign: "center", padding: "2rem" }}>
+            <p className="py-12 text-center" style={{ color: "var(--color_logout)" }}>
               {error}
             </p>
-          ) : list.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--color_font_muted)", textAlign: "center", padding: "2rem" }}>
-              Belum ada konten FAQ.
+          ) : filteredBubbles.length === 0 ? (
+            <p className="py-12 text-center" style={{ color: "var(--color_font_muted)" }}>
+              {visibleForUi.length === 0
+                ? "Tidak ada FAQ untuk divisi Anda, atau belum ada konten."
+                : "Tidak ada FAQ yang cocok dengan pencarian."}
             </p>
           ) : (
-            <div style={listContainerStyle} className="faq-list-scroll">
-              {list.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    padding: "1rem",
-                    marginBottom: "0.75rem",
-                    background: "var(--surface_light)",
-                    borderRadius: 8,
-                    border: "1px solid var(--border_color)",
-                  }}
-                >
-                  <div style={{ fontWeight: 600, marginBottom: 6, color: "var(--color_font_main)" }}>
-                    {item.question}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "0.95rem",
-                      color: "var(--color_font_main_muted)",
-                      lineHeight: 1.5,
-                    }}
-                    dangerouslySetInnerHTML={{ __html: item.answer_html }}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredBubbles.map((item) => (
+                <div key={item.id} className="flex min-h-[140px] flex-col">
+                  <FAQBubbleTile
+                    item={item}
+                    onSelect={setSelectedFaqId}
+                    showRoleBadges={!!isAdmin}
                   />
                   {isAdmin && (
-                    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={() => handleEdit(item)}
-                        style={{
-                          padding: "4px 10px",
-                          fontSize: "0.85rem",
-                          background: "var(--accent)",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
-                          cursor: "pointer",
-                        }}
+                        className="rounded-md px-3 py-1 text-xs font-medium text-white"
+                        style={{ background: "var(--accent)" }}
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
+                        className="rounded-md border px-3 py-1 text-xs font-medium"
                         style={{
-                          padding: "4px 10px",
-                          fontSize: "0.85rem",
-                          background: "transparent",
+                          borderColor: "var(--color_logout)",
                           color: "var(--color_logout)",
-                          border: "1px solid var(--color_logout)",
-                          borderRadius: 6,
-                          cursor: "pointer",
                         }}
                       >
                         Hapus
@@ -344,6 +438,12 @@ export default function FAQPage() {
           )}
         </div>
       </section>
+
+      <FAQAnswerModal
+        item={selectedItem}
+        onClose={() => setSelectedFaqId(null)}
+      />
+
       <style dangerouslySetInnerHTML={{ __html: `.faq-input::placeholder { color: #64748b; }` }} />
     </div>
   );
