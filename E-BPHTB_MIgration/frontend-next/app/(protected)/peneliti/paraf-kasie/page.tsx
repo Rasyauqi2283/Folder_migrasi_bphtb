@@ -69,6 +69,21 @@ const sectionCardStyle: React.CSSProperties = {
   padding: 12,
   background: "var(--card_bg)",
 };
+const lightButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border_color)",
+  background: "#f3f4f6",
+  color: "#111827",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+const inputReadableStyle: React.CSSProperties = {
+  background: "#ffffff",
+  color: "#111827",
+  border: "1px solid var(--border_color)",
+  borderRadius: 8,
+};
 
 export default function PenelitiParafKasiePage() {
   const [data, setData] = useState<ParafItem[]>([]);
@@ -165,6 +180,8 @@ export default function PenelitiParafKasiePage() {
   const slice = filtered.slice(start, start + PAGE_SIZE);
 
   const berikanParaf = async (nobooking: string) => {
+    const confirmApply = window.confirm("Dokumen akan dikirim ke tahap Peneliti Validasi dan tidak bisa diubah lagi. Lanjutkan berikan paraf?");
+    if (!confirmApply) return;
     if (!hasSignature) {
       alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
       return;
@@ -242,8 +259,7 @@ export default function PenelitiParafKasiePage() {
             onKeyDown={(e) => e.key === "Enter" && setPage(1)}
             style={{
               padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...inputReadableStyle,
               minWidth: 220,
             }}
           />
@@ -252,10 +268,7 @@ export default function PenelitiParafKasiePage() {
             onClick={() => load()}
             style={{
               padding: "8px 16px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
-              background: "var(--card_bg)",
-              cursor: "pointer",
+              ...lightButtonStyle,
             }}
           >
             Muat ulang
@@ -367,7 +380,7 @@ export default function PenelitiParafKasiePage() {
                                 <button type="button" onClick={() => openViewDocument(String(r.nobooking ?? ""))} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}>
                                   View Document
                                 </button>
-                                <button type="button" onClick={() => openCheckDataOverlay(r)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}>
+                                <button type="button" onClick={() => openCheckDataOverlay(r)} style={lightButtonStyle}>
                                   Check Data Ini
                                 </button>
                               </div>
@@ -392,7 +405,12 @@ export default function PenelitiParafKasiePage() {
                                         type="button"
                                         disabled={!hasFile}
                                         onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
-                                        style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border_color)", background: hasFile ? "var(--card_bg)" : "#eee", cursor: hasFile ? "pointer" : "not-allowed" }}
+                                        style={{
+                                          ...lightButtonStyle,
+                                          padding: "6px 10px",
+                                          opacity: hasFile ? 1 : 0.65,
+                                          cursor: hasFile ? "pointer" : "not-allowed",
+                                        }}
                                       >
                                         Lihat
                                       </button>
@@ -420,11 +438,9 @@ export default function PenelitiParafKasiePage() {
             disabled={currentPage <= 1}
             onClick={() => setPage((p) => p - 1)}
             style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...lightButtonStyle,
               cursor: currentPage <= 1 ? "not-allowed" : "pointer",
-              background: "var(--card_bg)",
+              opacity: currentPage <= 1 ? 0.65 : 1,
             }}
           >
             Prev
@@ -437,11 +453,9 @@ export default function PenelitiParafKasiePage() {
             disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => p + 1)}
             style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...lightButtonStyle,
               cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
-              background: "var(--card_bg)",
+              opacity: currentPage >= totalPages ? 0.65 : 1,
             }}
           >
             Next
@@ -464,14 +478,14 @@ export default function PenelitiParafKasiePage() {
               <div style={{ display: "grid", gap: 8 }}>
                 {Object.entries(overlayData).map(([k, v]) => (
                   <div key={k} style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 8, fontSize: 14 }}>
-                    <strong>{k}</strong>
-                    <span>{v == null || String(v) === "" ? "-" : String(v)}</span>
+                    <strong style={{ color: "#111827" }}>{k}</strong>
+                    <span style={{ color: "#111827" }}>{v == null || String(v) === "" ? "-" : String(v)}</span>
                   </div>
                 ))}
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-              <button type="button" onClick={() => setOverlayOpen(false)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}>
+              <button type="button" onClick={() => setOverlayOpen(false)} style={lightButtonStyle}>
                 Tutup
               </button>
             </div>
