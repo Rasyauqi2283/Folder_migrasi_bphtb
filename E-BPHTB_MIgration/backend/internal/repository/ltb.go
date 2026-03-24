@@ -214,7 +214,7 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 		FROM ltb_1_terima_berkas_sspd l
 		LEFT JOIN pat_1_bookingsspd p ON p.nobooking = l.nobooking
 		WHERE l.nobooking = $1
-		FOR UPDATE
+		FOR UPDATE OF l
 	`, nobooking).Scan(&noReg, &bookingUser, &namaWP, &namaOP)
 	if err != nil {
 		if err == pgx.ErrNoRows {
