@@ -25,6 +25,11 @@ interface ApiResponse {
   message?: string;
 }
 
+interface DocItem {
+  url: string;
+  name: string;
+}
+
 const thStyle: React.CSSProperties = {
   padding: "12px 10px",
   textAlign: "center",
@@ -47,6 +52,15 @@ export default function LTBTerimaBerkasSSPDPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<string>("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showDocsModal, setShowDocsModal] = useState(false);
+  const [docs, setDocs] = useState<DocItem[]>([]);
+  const [docsLoading, setDocsLoading] = useState(false);
+  const [pbbCheckNo, setPbbCheckNo] = useState("");
   const searchRef = useRef(search);
   searchRef.current = search;
 
@@ -64,6 +78,12 @@ export default function LTBTerimaBerkasSSPDPage() {
         if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
         const list = data.rows || [];
         setRows(list);
+        if (!selectedBooking && list.length > 0 && list[0].nobooking) {
+          setSelectedBooking(list[0].nobooking);
+        }
+        if (selectedBooking && !list.some((r) => r.nobooking === selectedBooking)) {
+          setSelectedBooking(list[0]?.nobooking || "");
+        }
         setTotalRecords(typeof data.total === "number" ? data.total : list.length);
         setTotalPages(typeof data.totalPages === "number" ? data.totalPages : Math.max(1, Math.ceil((data.total ?? list.length) / PAGE_SIZE)));
       } catch (e) {
@@ -72,7 +92,7 @@ export default function LTBTerimaBerkasSSPDPage() {
       } finally {
         setLoading(false);
       }
-  }, [currentPage]);
+  }, [currentPage, selectedBooking]);
 
   useEffect(() => {
     load(currentPage);
@@ -81,6 +101,77 @@ export default function LTBTerimaBerkasSSPDPage() {
   const handleSearch = () => {
     setCurrentPage(1);
     load(1);
+  };
+
+  const selectedRow = rows.find((r) => r.nobooking === selectedBooking);
+  const canAct = Boolean(selectedBooking) && !actionLoading;
+
+  const openDocuments = async () => {
+    if (!selectedBooking) return;
+    setDocs([]);
+    setDocsLoading(true);
+    setShowDocsModal(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(selectedBooking)}/documents`, { credentials: "include" });
+      const data = await res.json().catch(() => ({ success: false }));
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal mengambil dokumen");
+      const list = Array.isArray(data.documents) ? data.documents : [];
+      setDocs(list);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Gagal mengambil dokumen");
+      setShowDocsModal(false);
+    } finally {
+      setDocsLoading(false);
+    }
+  };
+
+  const submitReject = async () => {
+    if (!selectedBooking || !rejectReason.trim()) return;
+    setActionLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(selectedBooking)}/reject`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      });
+      const data = await res.json().catch(() => ({ success: false }));
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal menolak berkas");
+      setShowRejectModal(false);
+      setRejectReason("");
+      setMessage("Berkas berhasil ditolak.");
+      await load(currentPage);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Gagal menolak berkas");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const submitSend = async () => {
+    if (!selectedBooking || !pbbCheckNo.trim()) {
+      setMessage("No PBB pemeriksaan wajib diisi.");
+      return;
+    }
+    setActionLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(selectedBooking)}/send`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pbb_check_no: pbbCheckNo.trim() }),
+      });
+      const data = await res.json().catch(() => ({ success: false }));
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal mengirim ke verifikasi");
+      setMessage("Berkas berhasil dikirim ke proses verifikasi.");
+      await load(currentPage);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Gagal mengirim ke verifikasi");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -93,37 +184,70 @@ export default function LTBTerimaBerkasSSPDPage() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}>
         <button
           type="button"
-          disabled
-          title="Menyusul"
+          disabled={!canAct}
+          onClick={openDocuments}
           style={{
             padding: "10px 20px",
             borderRadius: 8,
             border: "none",
-            background: "linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%)",
+            background: canAct ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" : "linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%)",
             color: "#fff",
             fontWeight: 600,
-            cursor: "not-allowed",
-            opacity: 0.85,
+            cursor: canAct ? "pointer" : "not-allowed",
+            opacity: canAct ? 1 : 0.85,
           }}
         >
           View Dokumen
         </button>
         <button
           type="button"
-          disabled
-          title="Menyusul"
+          disabled={!canAct}
+          onClick={() => {
+            setRejectReason("");
+            setShowRejectModal(true);
+          }}
           style={{
             padding: "10px 20px",
             borderRadius: 8,
             border: "none",
-            background: "linear-gradient(135deg, #fca5a5 0%, #f87171 100%)",
+            background: canAct ? "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)" : "linear-gradient(135deg, #fca5a5 0%, #f87171 100%)",
             color: "#fff",
             fontWeight: 600,
-            cursor: "not-allowed",
-            opacity: 0.85,
+            cursor: canAct ? "pointer" : "not-allowed",
+            opacity: canAct ? 1 : 0.85,
           }}
         >
           Tolak
+        </button>
+        <input
+          type="text"
+          placeholder="Tulis disini No pbb yang ada di data untuk diperiksa"
+          value={pbbCheckNo}
+          onChange={(e) => setPbbCheckNo(e.target.value)}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid var(--border_color)",
+            minWidth: 320,
+            background: "var(--card_bg)",
+            color: "var(--color_font_main)",
+          }}
+        />
+        <button
+          type="button"
+          disabled={!canAct || !pbbCheckNo.trim()}
+          onClick={submitSend}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 8,
+            border: "none",
+            background: canAct && pbbCheckNo.trim() ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "#9ca3af",
+            color: "#fff",
+            fontWeight: 600,
+            cursor: canAct && pbbCheckNo.trim() ? "pointer" : "not-allowed",
+          }}
+        >
+          Kirim
         </button>
         <input
           type="text"
@@ -171,6 +295,16 @@ export default function LTBTerimaBerkasSSPDPage() {
           Muat ulang
         </button>
       </div>
+      {selectedRow?.nobooking && (
+        <p style={{ marginTop: -6, marginBottom: 12, color: "var(--color_font_main_muted)", fontSize: 13 }}>
+          Booking terpilih: <strong>{selectedRow.nobooking}</strong>
+        </p>
+      )}
+      {message && (
+        <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg_grey)", color: "var(--color_font_main)" }}>
+          {message}
+        </div>
+      )}
 
       <div style={{ overflowX: "auto", border: "1px solid var(--border_color)", borderRadius: 12, background: "var(--card_bg)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -207,7 +341,11 @@ export default function LTBTerimaBerkasSSPDPage() {
               </tr>
             ) : (
               rows.map((r, idx) => (
-                <tr key={r.nobooking || String(idx)}>
+                <tr
+                  key={r.nobooking || String(idx)}
+                  onClick={() => setSelectedBooking(r.nobooking || "")}
+                  style={{ background: selectedBooking === r.nobooking ? "rgba(37,99,235,0.12)" : "transparent", cursor: "pointer" }}
+                >
                   <td style={tdStyle}>{r.no_registrasi || "—"}</td>
                   <td style={tdStyle}>{r.nobooking || "—"}</td>
                   <td style={tdStyle}>{r.noppbb || "—"}</td>
@@ -215,7 +353,14 @@ export default function LTBTerimaBerkasSSPDPage() {
                   <td style={tdStyle}>{r.namapemilikobjekpajak || "—"}</td>
                   <td style={tdStyle}>{r.tanggal_terima || "—"}</td>
                   <td style={tdStyle}>{r.trackstatus || "—"}</td>
-                  <td style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_main_muted)" }}>—</td>
+                  <td style={{ ...tdStyle, textAlign: "center" }}>
+                    <input
+                      type="radio"
+                      checked={selectedBooking === r.nobooking}
+                      onChange={() => setSelectedBooking(r.nobooking || "")}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
                 </tr>
               ))
             )}
@@ -274,6 +419,70 @@ export default function LTBTerimaBerkasSSPDPage() {
           ← Kembali ke Dashboard LTB
         </Link>
       </p>
+
+      {showRejectModal && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
+          onClick={() => setShowRejectModal(false)}
+        >
+          <div
+            style={{ background: "var(--card_bg)", padding: 20, borderRadius: 12, width: "90%", maxWidth: 460, border: "1px solid var(--border_color)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 8 }}>Alasan Penolakan</h3>
+            <p style={{ marginTop: 0, marginBottom: 10, color: "var(--color_font_main_muted)", fontSize: 13 }}>Booking: {selectedBooking || "-"}</p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              placeholder="Tulis alasan penolakan..."
+              style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border_color)", padding: 10, resize: "vertical", marginBottom: 12 }}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setShowRejectModal(false)} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}>
+                Batal
+              </button>
+              <button type="button" onClick={submitReject} disabled={!rejectReason.trim() || actionLoading} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "#ef4444", color: "#fff", cursor: rejectReason.trim() ? "pointer" : "not-allowed" }}>
+                Tolak
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDocsModal && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
+          onClick={() => setShowDocsModal(false)}
+        >
+          <div
+            style={{ background: "var(--card_bg)", padding: 20, borderRadius: 12, width: "90%", maxWidth: 560, border: "1px solid var(--border_color)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 12 }}>Dokumen Booking: {selectedBooking || "-"}</h3>
+            {docsLoading ? (
+              <p style={{ color: "var(--color_font_main_muted)" }}>Memuat dokumen...</p>
+            ) : docs.length === 0 ? (
+              <p style={{ color: "var(--color_font_main_muted)" }}>Dokumen tidak tersedia.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {docs.map((d, idx) => (
+                  <li key={`${d.url}-${idx}`} style={{ marginBottom: 6 }}>
+                    <a href={`${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(d.url)}`} target="_blank" rel="noopener noreferrer">
+                      {d.name || "Dokumen"}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
+              <button type="button" onClick={() => setShowDocsModal(false)} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

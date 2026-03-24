@@ -82,3 +82,101 @@ func (h *LtbHandler) ListTerimaBerkas(w http.ResponseWriter, r *http.Request) {
 		"success": true, "page": page, "limit": limit, "total": total, "totalPages": totalPages, "rows": rows,
 	})
 }
+
+// GetDocuments handles GET /api/ltb/terima-berkas-sspd/{nobooking}/documents.
+func (h *LtbHandler) GetDocuments(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	if _, ok := h.requireLTBUser(r); !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	documents, err := h.repo.GetDocumentsByBooking(r.Context(), nobooking)
+	if err != nil {
+		log.Printf("[LTB] GetDocuments: %v", err)
+		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true, "documents": documents})
+}
+
+// Reject handles POST /api/ltb/terima-berkas-sspd/{nobooking}/reject.
+func (h *LtbHandler) Reject(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Reason) == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Alasan tolak wajib diisi"})
+		return
+	}
+	err := h.repo.RejectBerkas(r.Context(), nobooking, userid, body.Reason)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Data tidak ditemukan"})
+			return
+		}
+		log.Printf("[LTB] Reject: %v", err)
+		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// SendToVerifikasi handles POST /api/ltb/terima-berkas-sspd/{nobooking}/send.
+func (h *LtbHandler) SendToVerifikasi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	var body struct {
+		PBBCheckNo string `json:"pbb_check_no"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.PBBCheckNo) == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "No PBB pemeriksaan wajib diisi"})
+		return
+	}
+	err := h.repo.SendToVerifikasi(r.Context(), nobooking, userid, body.PBBCheckNo)
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "not found") {
+			ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Data tidak ditemukan"})
+			return
+		}
+		log.Printf("[LTB] SendToVerifikasi: %v", err)
+		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}

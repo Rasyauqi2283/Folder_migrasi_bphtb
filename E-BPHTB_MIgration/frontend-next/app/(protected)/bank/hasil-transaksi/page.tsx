@@ -63,10 +63,24 @@ export default function BankHasilTransaksiPage() {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
 
+  const rowKey = (r: BankRow, idx = 0) => `${r.nobooking || ""}::${r.no_registrasi || ""}::${idx}`;
+  const mergeAppendOnly = (existing: BankRow[], incoming: BankRow[]) => {
+    const seen = new Set(existing.map((r, idx) => rowKey(r, idx)));
+    const onlyNew = incoming.filter((r, idx) => !seen.has(rowKey(r, idx)));
+    return onlyNew.length > 0 ? [...existing, ...onlyNew] : existing;
+  };
+
   const load = useCallback(
-    async (page = currentPage) => {
-      setLoading(true);
-      setError(null);
+    async (
+      page = currentPage,
+      options?: { silent?: boolean; appendOnly?: boolean }
+    ) => {
+      const silent = !!options?.silent;
+      const appendOnly = !!options?.appendOnly;
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const params = new URLSearchParams();
         params.set("tab", currentTab);
@@ -78,14 +92,20 @@ export default function BankHasilTransaksiPage() {
         const data: ApiResponse = await res.json().catch(() => ({ success: false }));
         if (!res.ok) throw new Error((data as ApiResponse).message || `HTTP ${res.status}`);
         const list = data.rows || [];
-        setRows(list);
-        setTotalRecords(typeof data.total === "number" ? data.total : list.length);
+        if (appendOnly) {
+          setRows((prev) => mergeAppendOnly(prev, list));
+        } else {
+          setRows(list);
+        }
+        setTotalRecords((prev) => (typeof data.total === "number" ? data.total : appendOnly ? prev : list.length));
         setTotalPages(typeof data.totalPages === "number" ? data.totalPages : Math.max(1, Math.ceil((data.total ?? list.length) / PAGE_SIZE)));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Gagal memuat data");
-        setRows([]);
+        if (!silent) {
+          setError(e instanceof Error ? e.message : "Gagal memuat data");
+          setRows([]);
+        }
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [currentTab, currentPage, statusFilter, search]
@@ -97,9 +117,10 @@ export default function BankHasilTransaksiPage() {
 
   useEffect(() => {
     if (!realTimeEnabled) return;
-    const t = setInterval(() => load(currentPage), 10000);
+    const canAppendQueue = currentTab === "pending" && currentPage === 1 && !statusFilter.trim() && !search.trim();
+    const t = setInterval(() => load(1, { silent: true, appendOnly: canAppendQueue }), 10000);
     return () => clearInterval(t);
-  }, [realTimeEnabled, load, currentPage]);
+  }, [realTimeEnabled, load, currentPage, currentTab, statusFilter, search]);
 
   const handleSearch = () => {
     setCurrentPage(1);

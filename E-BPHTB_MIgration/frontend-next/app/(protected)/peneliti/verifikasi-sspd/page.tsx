@@ -67,20 +67,35 @@ export default function PenelitiVerifikasiSspdPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const rowKey = (r: VerifikasiItem, idx = 0) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}::${idx}`;
+  const mergeAppendOnly = (existing: VerifikasiItem[], incoming: VerifikasiItem[]) => {
+    const seen = new Set(existing.map((r, idx) => rowKey(r, idx)));
+    const onlyNew = incoming.filter((r, idx) => !seen.has(rowKey(r, idx)));
+    return onlyNew.length > 0 ? [...existing, ...onlyNew] : existing;
+  };
+
+  const load = useCallback(async (options?: { silent?: boolean; appendOnly?: boolean }) => {
+    const silent = !!options?.silent;
+    const appendOnly = !!options?.appendOnly;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const res = await fetch(`${getApiBase()}/api/peneliti_get-berkas-fromltb`, { credentials: "include" });
       const json: ApiResponse = await res.json().catch(() => ({ success: false }));
       if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
       if (!json.success) throw new Error(json.message || "Gagal memuat data");
-      setData(Array.isArray(json.data) ? json.data : []);
+      const incoming = Array.isArray(json.data) ? json.data : [];
+      if (appendOnly) setData((prev) => mergeAppendOnly(prev, incoming));
+      else setData(incoming);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal memuat data");
-      setData([]);
+      if (!silent) {
+        setError(e instanceof Error ? e.message : "Gagal memuat data");
+        setData([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -90,7 +105,7 @@ export default function PenelitiVerifikasiSspdPage() {
 
   useEffect(() => {
     if (!realTimeEnabled) return;
-    const t = setInterval(load, 10000);
+    const t = setInterval(() => load({ silent: true, appendOnly: true }), 10000);
     return () => clearInterval(t);
   }, [realTimeEnabled, load]);
 

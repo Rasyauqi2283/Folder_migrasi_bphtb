@@ -330,6 +330,9 @@ func main() {
 
 	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo)
 	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd", ltbHandler.ListTerimaBerkas)
+	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd/{nobooking}/documents", ltbHandler.GetDocuments)
+	mux.HandleFunc("POST /api/ltb/terima-berkas-sspd/{nobooking}/reject", ltbHandler.Reject)
+	mux.HandleFunc("POST /api/ltb/terima-berkas-sspd/{nobooking}/send", ltbHandler.SendToVerifikasi)
 
 	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
 	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)
