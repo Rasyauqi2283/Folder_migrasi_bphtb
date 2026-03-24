@@ -79,6 +79,27 @@ const sectionCardStyle: React.CSSProperties = {
   background: "var(--card_bg)",
 };
 
+const lightSurfaceText: React.CSSProperties = {
+  color: "#111827",
+};
+
+const lightButtonStyle: React.CSSProperties = {
+  padding: "8px 12px",
+  borderRadius: 8,
+  border: "1px solid var(--border_color)",
+  background: "#f3f4f6",
+  color: "#111827",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const inputReadableStyle: React.CSSProperties = {
+  background: "#ffffff",
+  color: "#111827",
+  border: "1px solid var(--border_color)",
+  borderRadius: 8,
+};
+
 export default function PenelitiVerifikasiSspdPage() {
   const showVal = (v: unknown) => {
     const s = String(v ?? "").trim();
@@ -407,8 +428,7 @@ export default function PenelitiVerifikasiSspdPage() {
             onKeyDown={(e) => e.key === "Enter" && setPage(1)}
             style={{
               padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...inputReadableStyle,
               minWidth: 220,
             }}
           />
@@ -417,10 +437,7 @@ export default function PenelitiVerifikasiSspdPage() {
             onClick={() => load()}
             style={{
               padding: "8px 16px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
-              background: "var(--card_bg)",
-              cursor: "pointer",
+              ...lightButtonStyle,
             }}
           >
             Muat ulang
@@ -559,7 +576,7 @@ export default function PenelitiVerifikasiSspdPage() {
                               <button
                                 type="button"
                                 onClick={() => openCheckDataOverlay(r)}
-                                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}
+                                style={lightButtonStyle}
                               >
                                 Check Data Ini
                               </button>
@@ -587,12 +604,17 @@ export default function PenelitiVerifikasiSspdPage() {
                                 return (
                                   <div key={doc.label} style={{ display: "grid", gridTemplateColumns: "180px 1fr auto", alignItems: "center", gap: 8 }}>
                                     <strong>{doc.label}</strong>
-                                    <span style={{ color: "var(--color_font_muted)" }}>{showVal(doc.value)}</span>
+                                    <span style={{ color: "#374151" }}>{showVal(doc.value)}</span>
                                     <button
                                       type="button"
                                       disabled={!hasFile}
                                       onClick={() => url && window.open(url, "_blank", "noopener,noreferrer")}
-                                      style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border_color)", background: hasFile ? "var(--card_bg)" : "#eee", cursor: hasFile ? "pointer" : "not-allowed" }}
+                                      style={{
+                                        ...lightButtonStyle,
+                                        padding: "6px 10px",
+                                        opacity: hasFile ? 1 : 0.65,
+                                        cursor: hasFile ? "pointer" : "not-allowed",
+                                      }}
                                     >
                                       Lihat
                                     </button>
@@ -608,7 +630,7 @@ export default function PenelitiVerifikasiSspdPage() {
                               <select
                                 value={verificationForms[r.nobooking || ""]?.pemilihan || ""}
                                 onChange={(e) => patchForm(r.nobooking || "", { pemilihan: e.target.value })}
-                                style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 260 }}
+                                style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 260 }}
                               >
                                 <option value="">Pilih kelengkapan/pemilihan</option>
                                 <option value="penghitung_wajib_pajak">Sesuai (Penghitungan Wajib Pajak)</option>
@@ -627,18 +649,18 @@ export default function PenelitiVerifikasiSspdPage() {
                             </div>
                             {(verificationForms[r.nobooking || ""]?.pemilihan === "stpd_kurangbayar") && (
                               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                                <input type="text" placeholder="Nomor STPD" value={verificationForms[r.nobooking || ""]?.nomorstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { nomorstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
-                                <input type="date" value={verificationForms[r.nobooking || ""]?.tanggalstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { tanggalstpd: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
+                                <input type="text" placeholder="Nomor STPD" value={verificationForms[r.nobooking || ""]?.nomorstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { nomorstpd: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
+                                <input type="date" value={verificationForms[r.nobooking || ""]?.tanggalstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { tanggalstpd: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
                               </div>
                             )}
                             {(verificationForms[r.nobooking || ""]?.pemilihan === "dihitungsendiri") && (
                               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                                <input type="number" min={0} max={100} step={0.01} placeholder="Persentase (0-100)" value={verificationForms[r.nobooking || ""]?.angkapersen || ""} onChange={(e) => patchForm(r.nobooking || "", { angkapersen: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)" }} />
-                                <input type="text" placeholder="Keterangan dihitung sendiri" value={verificationForms[r.nobooking || ""]?.keterangandihitungSendiri || ""} onChange={(e) => patchForm(r.nobooking || "", { keterangandihitungSendiri: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320 }} />
+                                <input type="number" min={0} max={100} step={0.01} placeholder="Persentase (0-100)" value={verificationForms[r.nobooking || ""]?.angkapersen || ""} onChange={(e) => patchForm(r.nobooking || "", { angkapersen: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
+                                <input type="text" placeholder="Keterangan dihitung sendiri" value={verificationForms[r.nobooking || ""]?.keterangandihitungSendiri || ""} onChange={(e) => patchForm(r.nobooking || "", { keterangandihitungSendiri: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 320 }} />
                               </div>
                             )}
                             {(verificationForms[r.nobooking || ""]?.pemilihan === "lainnyapenghitungwp") && (
-                              <input type="text" placeholder="Isi keterangan lainnya..." value={verificationForms[r.nobooking || ""]?.isiketeranganlainnya || ""} onChange={(e) => patchForm(r.nobooking || "", { isiketeranganlainnya: e.target.value })} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border_color)", minWidth: 320, marginTop: 8 }} />
+                              <input type="text" placeholder="Isi keterangan lainnya..." value={verificationForms[r.nobooking || ""]?.isiketeranganlainnya || ""} onChange={(e) => patchForm(r.nobooking || "", { isiketeranganlainnya: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 320, marginTop: 8 }} />
                             )}
                             <div style={{ marginTop: 10 }}>
                               <button
@@ -667,8 +689,8 @@ export default function PenelitiVerifikasiSspdPage() {
                                 ["Waktu Verifikasi", showVal(r.verified_at)],
                               ].map(([k, v]) => (
                                 <div key={String(k)} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 8 }}>
-                                  <strong>{k}</strong>
-                                  <span>{String(v)}</span>
+                                  <strong style={lightSurfaceText}>{k}</strong>
+                                  <span style={lightSurfaceText}>{String(v)}</span>
                                 </div>
                               ))}
                             </div>
@@ -692,11 +714,9 @@ export default function PenelitiVerifikasiSspdPage() {
             disabled={currentPage <= 1}
             onClick={() => setPage((p) => p - 1)}
             style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...lightButtonStyle,
               cursor: currentPage <= 1 ? "not-allowed" : "pointer",
-              background: "var(--card_bg)",
+              opacity: currentPage <= 1 ? 0.65 : 1,
             }}
           >
             Prev
@@ -709,11 +729,9 @@ export default function PenelitiVerifikasiSspdPage() {
             disabled={currentPage >= totalPages}
             onClick={() => setPage((p) => p + 1)}
             style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              border: "1px solid var(--border_color)",
+              ...lightButtonStyle,
               cursor: currentPage >= totalPages ? "not-allowed" : "pointer",
-              background: "var(--card_bg)",
+              opacity: currentPage >= totalPages ? 0.65 : 1,
             }}
           >
             Next
@@ -753,7 +771,7 @@ export default function PenelitiVerifikasiSspdPage() {
               <button
                 type="button"
                 onClick={() => setOverlayOpen(false)}
-                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}
+                style={lightButtonStyle}
               >
                 Tutup
               </button>
