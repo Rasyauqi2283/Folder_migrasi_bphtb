@@ -42,6 +42,9 @@ type PenelitiBerkasFromLtbRow struct {
 	KeteranganSendiri *string `json:"keterangandihitungsendiri"`
 	KeteranganLainnya *string `json:"isiketeranganlainnya"`
 	Persetujuan      *string `json:"persetujuan"`
+	LockedByUserID   *string `json:"locked_by_user_id"`
+	LockedByNama     *string `json:"locked_by_nama"`
+	LockedAt         *string `json:"locked_at"`
 }
 
 // GetBerkasFromLtb returns data for Peneliti "berkas dari LTB" (p_1_verifikasi + pat + bank + ltb gates).
@@ -58,7 +61,8 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			creator.userid::text AS creator_userid,
 			pc.tanda_paraf_path,
 			au.nama AS signer_userid,
-			p.pemilihan, p.nomorstpd, p.tanggalstpd::text, p.angkapersen::text, p.keterangandihitungsendiri, p.isiketeranganlainnya, p.persetujuan
+			p.pemilihan, p.nomorstpd, p.tanggalstpd::text, p.angkapersen::text, p.keterangandihitungsendiri, p.isiketeranganlainnya, p.persetujuan,
+			p.locked_by_user_id, p.locked_by_nama, p.locked_at::text
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -86,12 +90,39 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Trackstatus, &row.Status,
 			&row.Noppbb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath,
 			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid,
-			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan); err != nil {
+			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan,
+			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt); err != nil {
 			continue
 		}
 		out = append(out, row)
 	}
 	return out, nil
+}
+
+func (r *PenelitiRepo) LockDocument(ctx context.Context, nobooking, userid, nama string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	var currentLock *string
+	err := r.pool.QueryRow(ctx, `SELECT locked_by_user_id FROM p_1_verifikasi WHERE nobooking = $1`, nobooking).Scan(&currentLock)
+	if err != nil {
+		return err
+	}
+	if currentLock != nil && strings.TrimSpace(*currentLock) != "" && strings.TrimSpace(*currentLock) != strings.TrimSpace(userid) {
+		return fmt.Errorf("dokumen sedang diperiksa oleh user lain")
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE p_1_verifikasi
+		SET locked_by_user_id = $2, locked_by_nama = $3, locked_at = NOW()
+		WHERE nobooking = $1
+	`, nobooking, userid, nama)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("data tidak ditemukan")
+	}
+	return nil
 }
 
 type PenelitiVerificationUpdateInput struct {
@@ -149,6 +180,7 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 			tanda_tangan_path = COALESCE($9, tanda_tangan_path),
 			ttd_peneliti_mime = COALESCE($10, ttd_peneliti_mime)
 		WHERE nobooking = $11
+		  AND (COALESCE(locked_by_user_id, '') = '' OR locked_by_user_id = $8)
 	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking)
 	if err != nil {
 		return err
@@ -169,12 +201,12 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	}
 	defer tx.Rollback(ctx)
 
-	var pemilihan, persetujuan *string
+	var pemilihan, persetujuan, lockedBy *string
 	var noReg *string
 	var creatorUserid, namaWP, namaOP, pengirimLTB string
 	err = tx.QueryRow(ctx, `
 		SELECT
-			p.pemilihan, p.persetujuan, p.no_registrasi,
+			p.pemilihan, p.persetujuan, p.no_registrasi, p.locked_by_user_id,
 			COALESCE(b.userid, ''),
 			COALESCE(p.namawajibpajak, ''),
 			COALESCE(p.namapemilikobjekpajak, ''),
@@ -183,7 +215,7 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
 		WHERE p.nobooking = $1
 		FOR UPDATE OF p
-	`, nobooking).Scan(&pemilihan, &persetujuan, &noReg, &creatorUserid, &namaWP, &namaOP, &pengirimLTB)
+	`, nobooking).Scan(&pemilihan, &persetujuan, &noReg, &lockedBy, &creatorUserid, &namaWP, &namaOP, &pengirimLTB)
 	if err != nil {
 		return err
 	}
@@ -193,8 +225,11 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	if persetujuan == nil || strings.ToLower(strings.TrimSpace(*persetujuan)) != "true" {
 		return fmt.Errorf("data verifikasi belum lengkap: persetujuan wajib")
 	}
+	if lockedBy != nil && strings.TrimSpace(*lockedBy) != "" && strings.TrimSpace(*lockedBy) != strings.TrimSpace(penelitiUserid) {
+		return fmt.Errorf("dokumen ini dikunci oleh peneliti lain")
+	}
 
-	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET trackstatus='Diverifikasi', status='Dikerjakan' WHERE nobooking = $1`, nobooking); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET trackstatus='Diverifikasi', status='Dikerjakan', locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1`, nobooking); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diverifikasi', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
@@ -230,7 +265,7 @@ func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason s
 		return err
 	}
 	defer tx.Rollback(ctx)
-	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya) WHERE nobooking = $1`, nobooking, reason); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya), locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1`, nobooking, reason); err != nil {
 		return err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE ltb_1_terima_berkas_sspd SET status='Ditolak', trackstatus='Ditolak', updated_at=NOW() WHERE nobooking = $1`, nobooking); err != nil {
@@ -240,6 +275,32 @@ func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason s
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, nobooking string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	var path *string
+	err := r.pool.QueryRow(ctx, `SELECT tanda_tangan_path FROM a_2_verified_users WHERE userid = $1`, kasieUserid).Scan(&path)
+	if err != nil {
+		return err
+	}
+	if path == nil || strings.TrimSpace(*path) == "" {
+		return fmt.Errorf("anda belum mendaftarkan tanda tangan/paraf di profil. akses ditolak")
+	}
+	tag, err := r.pool.Exec(ctx, `
+		UPDATE p_3_clear_to_paraf
+		SET tanda_paraf_path = $2, persetujuan = 'true', pemverifikasi = COALESCE($3, pemverifikasi), trackstatus='Terverifikasi'
+		WHERE nobooking = $1
+	`, nobooking, path, kasieUserid)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("data tidak ditemukan")
+	}
+	return nil
 }
 
 // PenelitiBerkasTillVerifRow one row for GET /api/peneliti/get-berkas-till-verif (paraf kasie).
@@ -260,6 +321,8 @@ type PenelitiBerkasTillVerifRow struct {
 	StempelBookingPath *string `json:"stempel_booking_path"`
 	SignerUserid     *string `json:"signer_userid"`
 	PemverifikasiNama *string `json:"pemverifikasi_nama"`
+	LockedByUserID   *string `json:"locked_by_user_id"`
+	LockedByNama     *string `json:"locked_by_nama"`
 }
 
 // GetBerkasTillVerif returns data for Peneliti paraf kasie (p_3_clear_to_paraf).
@@ -275,13 +338,15 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 			CASE WHEN pc.persetujuan = true THEN 'true' WHEN pc.persetujuan = false THEN 'false' ELSE COALESCE(pc.persetujuan::text,'') END AS persetujuan,
 			pc.tanda_paraf_path, pc.created_at::text AS tanggal_masuk,
 			v.tanda_tangan_path, pvs.stempel_booking_path, au.nama AS signer_userid,
-			pemverifikasi_user.nama AS pemverifikasi_nama
+			pemverifikasi_user.nama AS pemverifikasi_nama,
+			pv.locked_by_user_id, pv.locked_by_nama
 		FROM p_3_clear_to_paraf pc
 		LEFT JOIN pat_1_bookingsspd b ON pc.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
 		LEFT JOIN p_2_verif_sign pvs ON pvs.nobooking = pc.nobooking
 		LEFT JOIN a_2_verified_users au ON au.tanda_tangan_path = pc.tanda_paraf_path
 		LEFT JOIN a_2_verified_users pemverifikasi_user ON pc.pemverifikasi = pemverifikasi_user.userid
+		LEFT JOIN p_1_verifikasi pv ON pv.nobooking = pc.nobooking
 		WHERE pc.trackstatus IN ('Diverifikasi','Diverifikasi ') AND pc.status IN ('Dikerjakan')
 		ORDER BY pc.no_registrasi ASC
 		LIMIT 1000
@@ -296,7 +361,7 @@ func (r *PenelitiRepo) GetBerkasTillVerif(ctx context.Context, penelitiUserid st
 		var row PenelitiBerkasTillVerifRow
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Userid, &row.Trackstatus,
 			&row.Noppbb, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.Status,
-			&row.Persetujuan, &row.TandaParafPath, &row.TanggalMasuk, &row.TandaTanganPath, &row.StempelBookingPath, &row.SignerUserid, &row.PemverifikasiNama); err != nil {
+			&row.Persetujuan, &row.TandaParafPath, &row.TanggalMasuk, &row.TandaTanganPath, &row.StempelBookingPath, &row.SignerUserid, &row.PemverifikasiNama, &row.LockedByUserID, &row.LockedByNama); err != nil {
 			continue
 		}
 		out = append(out, row)

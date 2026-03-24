@@ -44,6 +44,17 @@ func (h *PenelitiHandler) requirePeneliti(r *http.Request) (userid string, ok bo
 	return userid, true
 }
 
+func (h *PenelitiHandler) requireSignature(userid string, r *http.Request) error {
+	u, err := h.userRepo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || u == nil {
+		return err
+	}
+	if u.TandaTanganPath == nil || strings.TrimSpace(*u.TandaTanganPath) == "" || u.TandaTanganMime == nil || strings.TrimSpace(*u.TandaTanganMime) == "" {
+		return http.ErrNoCookie
+	}
+	return nil
+}
+
 func penelitiJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -106,6 +117,10 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 		return
 	}
 	userid, ok := h.requirePeneliti(r)
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
+		return
+	}
 	if !ok {
 		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
 		return
@@ -173,6 +188,41 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data verifikasi berhasil disimpan"})
 }
 
+// LockDocument handles POST /api/peneliti/lock-document.
+func (h *PenelitiHandler) LockDocument(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
+		return
+	}
+	var body struct {
+		Nobooking string `json:"nobooking"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Nobooking) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	u, _ := h.userRepo.GetByIdentifierForLogin(r.Context(), userid)
+	nama := userid
+	if u != nil && strings.TrimSpace(u.Nama) != "" {
+		nama = strings.TrimSpace(u.Nama)
+	}
+	if err := h.repo.LockDocument(r.Context(), strings.TrimSpace(body.Nobooking), userid, nama); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Dokumen berhasil diambil untuk diperiksa"})
+}
+
 // SendToParaf handles POST /api/peneliti_send-to-paraf.
 func (h *PenelitiHandler) SendToParaf(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -180,6 +230,10 @@ func (h *PenelitiHandler) SendToParaf(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userid, ok := h.requirePeneliti(r)
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
+		return
+	}
 	if !ok {
 		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
 		return
@@ -228,4 +282,34 @@ func (h *PenelitiHandler) RejectWithReason(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data berhasil ditolak"})
+}
+
+// BerikanParafKasie handles POST /api/peneliti/berikan-paraf-kasie.
+func (h *PenelitiHandler) BerikanParafKasie(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	if err := h.requireSignature(userid, r); err != nil {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak."})
+		return
+	}
+	var body struct {
+		Nobooking string `json:"nobooking"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Nobooking) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	if err := h.repo.BerikanParafKasie(r.Context(), userid, strings.TrimSpace(body.Nobooking)); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Paraf berhasil diberikan"})
 }

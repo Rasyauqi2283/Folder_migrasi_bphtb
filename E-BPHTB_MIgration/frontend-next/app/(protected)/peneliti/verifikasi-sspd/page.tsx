@@ -19,6 +19,9 @@ interface VerifikasiItem {
   keterangandihitungsendiri?: string;
   isiketeranganlainnya?: string;
   persetujuan?: string;
+  locked_by_user_id?: string;
+  locked_by_nama?: string;
+  locked_at?: string;
   [key: string]: unknown;
 }
 
@@ -72,6 +75,10 @@ export default function PenelitiVerifikasiSspdPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [overlayData, setOverlayData] = useState<Record<string, unknown> | null>(null);
+  const [myUserid, setMyUserid] = useState<string>("");
+  const [hasSignature, setHasSignature] = useState<boolean>(true);
   const [verificationForms, setVerificationForms] = useState<Record<string, {
     pemilihan: string;
     nomorstpd: string;
@@ -119,6 +126,21 @@ export default function PenelitiVerifikasiSspdPage() {
   }, [load]);
 
   useEffect(() => {
+    fetch(`${getApiBase()}/api/v1/auth/profile`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        const uid = String(j?.user?.userid ?? "");
+        const signPath = String(j?.user?.tanda_tangan_path ?? "");
+        const signMime = String(j?.user?.tanda_tangan_mime ?? "");
+        setMyUserid(uid);
+        setHasSignature(!!signPath.trim() && !!signMime.trim());
+      })
+      .catch(() => {
+        setHasSignature(false);
+      });
+  }, []);
+
+  useEffect(() => {
     if (!realTimeEnabled) return;
     const t = setInterval(() => load({ silent: true, appendOnly: true }), 10000);
     return () => clearInterval(t);
@@ -139,6 +161,10 @@ export default function PenelitiVerifikasiSspdPage() {
   const slice = filtered.slice(start, start + PAGE_SIZE);
 
   const sendToParaf = async (nobooking: string) => {
+    if (!hasSignature) {
+      alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
+      return;
+    }
     setActionLoading(nobooking);
     try {
       const res = await fetch(`${getApiBase()}/api/peneliti_send-to-paraf`, {
@@ -202,6 +228,10 @@ export default function PenelitiVerifikasiSspdPage() {
   };
 
   const saveVerification = async (nobooking: string) => {
+    if (!hasSignature) {
+      alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
+      return;
+    }
     const f = verificationForms[nobooking];
     if (!f || !f.pemilihan) {
       alert("Pilih jenis kelengkapan/pemilihan terlebih dahulu.");
@@ -234,6 +264,61 @@ export default function PenelitiVerifikasiSspdPage() {
       alert(e instanceof Error ? e.message : "Gagal simpan verifikasi");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const lockDocument = async (nobooking: string) => {
+    if (!hasSignature) {
+      alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
+      return;
+    }
+    setActionLoading(nobooking);
+    try {
+      const res = await fetch(`${getApiBase()}/api/peneliti/lock-document`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nobooking }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal mengambil dokumen");
+      await load();
+      alert("Dokumen berhasil diambil untuk diperiksa.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal mengambil dokumen");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const openViewDocument = (nobooking: string) => {
+    if (!nobooking) return;
+    window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(nobooking)}`, "_blank", "noopener,noreferrer");
+  };
+
+  const openCheckDataOverlay = async (item: VerifikasiItem) => {
+    const nobooking = String(item.nobooking ?? "").trim();
+    if (!nobooking) return;
+    const baseData: Record<string, unknown> = {
+      nobooking: item.nobooking ?? "-",
+      no_registrasi: item.no_registrasi ?? "-",
+      noppbb: item.noppbb ?? "-",
+      namawajibpajak: item.namawajibpajak ?? "-",
+      namapemilikobjekpajak: item.namapemilikobjekpajak ?? "-",
+      creator_userid: item.creator_userid ?? item.userid ?? "-",
+      pemilihan: item.pemilihan ?? "-",
+      persetujuan: item.persetujuan ?? "-",
+    };
+    setOverlayData(baseData);
+    setOverlayOpen(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.success && json?.data) {
+        setOverlayData({ ...baseData, ...json.data });
+      }
+    } catch {
+      // Keep fallback data already shown in overlay.
     }
   };
 
@@ -361,9 +446,16 @@ export default function PenelitiVerifikasiSspdPage() {
                 </td>
               </tr>
             ) : (
-              slice.map((r, idx) => (
+              slice.map((r, idx) => {
+                const lockedBy = String(r.locked_by_user_id ?? "");
+                const isLockedByOther = !!lockedBy && !!myUserid && lockedBy !== myUserid;
+                return (
                 <Fragment key={r.nobooking ?? String(idx)}>
-                  <tr key={`${r.nobooking ?? idx}-main`} style={{ borderBottom: "1px solid var(--border_color)" }}>
+                  <tr
+                    key={`${r.nobooking ?? idx}-main`}
+                    style={{ borderBottom: "1px solid var(--border_color)", cursor: "pointer", opacity: isLockedByOther ? 0.65 : 1 }}
+                    onClick={() => setExpandedBooking((prev) => (prev === r.nobooking ? null : String(r.nobooking ?? "")))}
+                  >
                     <td style={{ ...tdStyle, textAlign: "center" }}>{start + idx + 1}</td>
                     <td style={tdStyle}>{r.no_registrasi ?? "-"}</td>
                     <td style={tdStyle}>{r.nobooking ?? "-"}</td>
@@ -374,25 +466,11 @@ export default function PenelitiVerifikasiSspdPage() {
                       <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <button
                           type="button"
-                          disabled={!!actionLoading}
-                          onClick={() => openVerificationForm(r)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                            color: "white",
-                            fontWeight: 600,
-                            cursor: actionLoading ? "not-allowed" : "pointer",
-                            fontSize: 13,
+                          disabled={!!actionLoading || isLockedByOther}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            sendToParaf(r.nobooking!);
                           }}
-                        >
-                          {expandedBooking === r.nobooking ? "Tutup Detail" : "Detail Verifikasi"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!!actionLoading}
-                          onClick={() => sendToParaf(r.nobooking!)}
                           style={{
                             padding: "6px 12px",
                             borderRadius: 8,
@@ -406,23 +484,11 @@ export default function PenelitiVerifikasiSspdPage() {
                         >
                           {actionLoading === r.nobooking ? "..." : "Kirim ke Paraf"}
                         </button>
-                        <button
-                          type="button"
-                          disabled={!!actionLoading}
-                          onClick={() => reject(r.nobooking!)}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            border: "none",
-                            background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                            color: "white",
-                            fontWeight: 600,
-                            cursor: actionLoading ? "not-allowed" : "pointer",
-                            fontSize: 13,
-                          }}
-                        >
-                          Tolak
-                        </button>
+                        {isLockedByOther && (
+                          <span style={{ fontSize: 12, color: "#b45309", fontWeight: 600 }}>
+                            🔒 Sedang diperiksa oleh {String(r.locked_by_nama || r.locked_by_user_id || "-")}
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -431,6 +497,38 @@ export default function PenelitiVerifikasiSspdPage() {
                       <td colSpan={7} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
                         <div style={{ display: "grid", gap: 10 }}>
                           <strong>Card Verifikasi Kelengkapan Data</strong>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              disabled={!!actionLoading || isLockedByOther}
+                              onClick={() => lockDocument(String(r.nobooking ?? ""))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #4f46e5, #4338ca)", color: "white", fontWeight: 600, cursor: (actionLoading || isLockedByOther) ? "not-allowed" : "pointer" }}
+                            >
+                              Ambil Dokumen Ini / Mulai Periksa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openViewDocument(String(r.nobooking ?? ""))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}
+                            >
+                              View Document
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openCheckDataOverlay(r)}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}
+                            >
+                              Check Data Ini
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!!actionLoading || isLockedByOther}
+                              onClick={() => reject(r.nobooking!)}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
+                            >
+                              Tolak
+                            </button>
+                          </div>
                           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                             <select
                               value={verificationForms[r.nobooking || ""]?.pemilihan || ""}
@@ -471,7 +569,7 @@ export default function PenelitiVerifikasiSspdPage() {
                             <button
                               type="button"
                               onClick={() => saveVerification(r.nobooking || "")}
-                              disabled={!!actionLoading}
+                              disabled={!!actionLoading || isLockedByOther}
                               style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #10b981, #059669)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer" }}
                             >
                               {actionLoading === r.nobooking ? "..." : "Simpan Verifikasi"}
@@ -482,7 +580,8 @@ export default function PenelitiVerifikasiSspdPage() {
                     </tr>
                   )}
                 </Fragment>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -529,6 +628,41 @@ export default function PenelitiVerifikasiSspdPage() {
           ← Kembali ke Dashboard Peneliti
         </Link>
       </p>
+
+      {overlayOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 }}
+          onClick={() => setOverlayOpen(false)}
+        >
+          <div
+            style={{ background: "var(--card_bg)", width: "92%", maxWidth: 720, maxHeight: "86vh", overflow: "auto", borderRadius: 12, border: "1px solid var(--border_color)", padding: 18 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 10 }}>Check Data Ini</h3>
+            {!overlayData ? (
+              <p>Memuat data...</p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {Object.entries(overlayData).map(([k, v]) => (
+                  <div key={k} style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 8, fontSize: 14 }}>
+                    <strong>{k}</strong>
+                    <span>{v == null || String(v) === "" ? "-" : String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => setOverlayOpen(false)}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

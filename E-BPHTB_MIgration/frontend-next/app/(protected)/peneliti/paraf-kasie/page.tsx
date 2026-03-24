@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Fragment, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { getApiBase } from "../../../../lib/api";
 
@@ -15,6 +15,8 @@ interface ParafItem {
   signer_userid?: string;
   pemverifikasi_nama?: string;
   tanggal_masuk?: string;
+  locked_by_user_id?: string;
+  locked_by_nama?: string;
   [key: string]: unknown;
 }
 
@@ -67,6 +69,11 @@ export default function PenelitiParafKasiePage() {
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
+  const [expandedBooking, setExpandedBooking] = useState<string | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [overlayData, setOverlayData] = useState<Record<string, unknown> | null>(null);
+  const [myUserid, setMyUserid] = useState("");
+  const [hasSignature, setHasSignature] = useState(true);
 
   const rowKey = (r: ParafItem, idx = 0) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}::${idx}`;
   const mergeAppendOnly = (existing: ParafItem[], incoming: ParafItem[]) => {
@@ -105,6 +112,19 @@ export default function PenelitiParafKasiePage() {
   }, [load]);
 
   useEffect(() => {
+    fetch(`${getApiBase()}/api/v1/auth/profile`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        const uid = String(j?.user?.userid ?? "");
+        const signPath = String(j?.user?.tanda_tangan_path ?? "");
+        const signMime = String(j?.user?.tanda_tangan_mime ?? "");
+        setMyUserid(uid);
+        setHasSignature(!!signPath.trim() && !!signMime.trim());
+      })
+      .catch(() => setHasSignature(false));
+  }, []);
+
+  useEffect(() => {
     if (!realTimeEnabled) return;
     const t = setInterval(() => load({ silent: true, appendOnly: true }), 10000);
     return () => clearInterval(t);
@@ -124,10 +144,14 @@ export default function PenelitiParafKasiePage() {
   const start = (currentPage - 1) * PAGE_SIZE;
   const slice = filtered.slice(start, start + PAGE_SIZE);
 
-  const sendToParafValidate = async (nobooking: string) => {
+  const berikanParaf = async (nobooking: string) => {
+    if (!hasSignature) {
+      alert("Anda belum mendaftarkan tanda tangan/paraf di profil. Akses ditolak.");
+      return;
+    }
     setActionLoading(nobooking);
     try {
-      const res = await fetch(`${getApiBase()}/api/peneliti_send-to-ParafValidate`, {
+      const res = await fetch(`${getApiBase()}/api/peneliti/berikan-paraf-kasie`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -137,31 +161,17 @@ export default function PenelitiParafKasiePage() {
       if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal kirim");
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Gagal kirim ke Peneliti Validasi");
+      alert(e instanceof Error ? e.message : "Gagal memberikan paraf");
     } finally {
       setActionLoading(null);
     }
   };
-
-  const reject = async (nobooking: string) => {
-    const reason = prompt("Alasan penolakan:");
-    if (!reason?.trim()) return;
-    setActionLoading(nobooking);
-    try {
-      const res = await fetch(`${getApiBase()}/api/peneliti_reject-with-reason`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nobooking, alasan: reason.trim() }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal tolak");
-      await load();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Gagal tolak");
-    } finally {
-      setActionLoading(null);
-    }
+  const openCheckDataOverlay = (row: ParafItem) => {
+    setOverlayData(row as Record<string, unknown>);
+    setOverlayOpen(true);
+  };
+  const openViewDocument = (nobooking: string) => {
+    window.open(`${getApiBase()}/api/ppat_generate-pdf-badan?nobooking=${encodeURIComponent(nobooking)}`, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -268,61 +278,53 @@ export default function PenelitiParafKasiePage() {
                 </td>
               </tr>
             ) : (
-              slice.map((r, idx) => (
-                <tr key={r.nobooking ?? idx} style={{ borderBottom: "1px solid var(--border_color)" }}>
-                  <td style={{ ...tdStyle, textAlign: "center" }}>{start + idx + 1}</td>
-                  <td style={tdStyle}>{r.no_registrasi ?? "-"}</td>
-                  <td style={tdStyle}>{r.noppbb ?? "-"}</td>
-                  <td style={tdStyle}>{r.namawajibpajak ?? "-"}</td>
-                  <td style={tdStyle}>{r.namapemilikobjekpajak ?? "-"}</td>
-                  <td style={tdStyle}>{r.userid ?? "-"}</td>
-                  <td style={tdStyle}>
-                    {r.tanda_paraf_path || r.signer_userid ? (
-                      <span style={{ color: "#10b981", fontWeight: 600 }}>Sudah</span>
-                    ) : (
-                      <span style={{ color: "#f59e0b", fontWeight: 600 }}>Belum</span>
+              slice.map((r, idx) => {
+                const lockedBy = String(r.locked_by_user_id ?? "");
+                const isLockedByOther = !!lockedBy && !!myUserid && lockedBy !== myUserid;
+                return (
+                  <Fragment key={r.nobooking ?? idx}>
+                    <tr style={{ borderBottom: "1px solid var(--border_color)", cursor: "pointer", opacity: isLockedByOther ? 0.65 : 1 }} onClick={() => setExpandedBooking((p) => (p === r.nobooking ? null : String(r.nobooking ?? "")))}>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>{start + idx + 1}</td>
+                      <td style={tdStyle}>{r.no_registrasi ?? "-"}</td>
+                      <td style={tdStyle}>{r.noppbb ?? "-"}</td>
+                      <td style={tdStyle}>{r.namawajibpajak ?? "-"}</td>
+                      <td style={tdStyle}>{r.namapemilikobjekpajak ?? "-"}</td>
+                      <td style={tdStyle}>{r.userid ?? "-"}</td>
+                      <td style={tdStyle}>
+                        {r.tanda_paraf_path || r.signer_userid ? <span style={{ color: "#10b981", fontWeight: 600 }}>Sudah</span> : <span style={{ color: "#f59e0b", fontWeight: 600 }}>Belum</span>}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: "center" }}>
+                        <button
+                          type="button"
+                          disabled={!!actionLoading || isLockedByOther}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            berikanParaf(r.nobooking!);
+                          }}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", color: "white", fontWeight: 600, cursor: actionLoading ? "not-allowed" : "pointer", fontSize: 13 }}
+                        >
+                          {actionLoading === r.nobooking ? "..." : "Berikan Paraf"}
+                        </button>
+                        {isLockedByOther && <div style={{ fontSize: 12, color: "#b45309", marginTop: 6 }}>🔒 Sedang diperiksa oleh {String(r.locked_by_nama || r.locked_by_user_id || "-")}</div>}
+                      </td>
+                    </tr>
+                    {expandedBooking === r.nobooking && (
+                      <tr>
+                        <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button type="button" onClick={() => openViewDocument(String(r.nobooking ?? ""))} style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2563eb, #1d4ed8)", color: "white", fontWeight: 600, cursor: "pointer" }}>
+                              View Document
+                            </button>
+                            <button type="button" onClick={() => openCheckDataOverlay(r)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", color: "var(--color_font_main)", fontWeight: 600, cursor: "pointer" }}>
+                              Check Data Ini
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: "center" }}>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        disabled={!!actionLoading}
-                        onClick={() => sendToParafValidate(r.nobooking!)}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-                          color: "white",
-                          fontWeight: 600,
-                          cursor: actionLoading ? "not-allowed" : "pointer",
-                          fontSize: 13,
-                        }}
-                      >
-                        {actionLoading === r.nobooking ? "..." : "Kirim ke Peneliti Validasi"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={!!actionLoading}
-                        onClick={() => reject(r.nobooking!)}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                          color: "white",
-                          fontWeight: 600,
-                          cursor: actionLoading ? "not-allowed" : "pointer",
-                          fontSize: 13,
-                        }}
-                      >
-                        Tolak
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                  </Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -369,6 +371,30 @@ export default function PenelitiParafKasiePage() {
           ← Kembali ke Dashboard Peneliti
         </Link>
       </p>
+      {overlayOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 }} onClick={() => setOverlayOpen(false)}>
+          <div style={{ background: "var(--card_bg)", width: "92%", maxWidth: 720, maxHeight: "86vh", overflow: "auto", borderRadius: 12, border: "1px solid var(--border_color)", padding: 18 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: 10 }}>Check Data Ini</h3>
+            {!overlayData ? (
+              <p>Memuat data...</p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {Object.entries(overlayData).map(([k, v]) => (
+                  <div key={k} style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 8, fontSize: 14 }}>
+                    <strong>{k}</strong>
+                    <span>{v == null || String(v) === "" ? "-" : String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
+              <button type="button" onClick={() => setOverlayOpen(false)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg)", cursor: "pointer" }}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
