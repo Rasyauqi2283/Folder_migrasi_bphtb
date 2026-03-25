@@ -172,6 +172,19 @@ func main() {
 	mux.HandleFunc("DELETE /api/users/{userid}", usersHandler.DeleteUser)
 	mux.HandleFunc("PUT /api/users/{userid}/status-ppat", usersHandler.PutStatusPpat)
 
+	var csTicketRepo *repository.CsTicketRepo
+	if pool != nil {
+		csTicketRepo = repository.NewCsTicketRepo(pool)
+	} else {
+		csTicketRepo = repository.NewCsTicketRepo(nil)
+	}
+	supportHandler := handler.NewSupportHandler(csTicketRepo, userRepo)
+	mux.HandleFunc("POST /api/public/support/tickets", supportHandler.CreatePublicTicket)
+	mux.HandleFunc("GET /api/cs/support/tickets/unread-count", supportHandler.UnreadCountCS)
+	mux.HandleFunc("GET /api/cs/support/tickets/{ticket_id}", supportHandler.GetTicketCS)
+	mux.HandleFunc("POST /api/cs/support/tickets/{ticket_id}/reply", supportHandler.ReplyTicketCS)
+	mux.HandleFunc("GET /api/cs/support/tickets", supportHandler.ListTicketsCS)
+
 	// KTP Preview — handler Go (return JSON ekstraksi OCR, bukan gambar)
 	mux.HandleFunc("GET /api/admin/ktp-preview/{id}", usersHandler.KTPPreview)
 
@@ -252,6 +265,38 @@ func main() {
 		ppatRepo = repository.NewPpatRepo(pool)
 	} else {
 		ppatRepo = repository.NewPpatRepo(nil)
+	}
+
+	// CS support tickets (public landing + CS dashboard)
+	if pool != nil {
+		_, err := pool.Exec(context.Background(), `
+			CREATE TABLE IF NOT EXISTS cs_tickets (
+				id              bigserial PRIMARY KEY,
+				ticket_id       varchar(32) NOT NULL UNIQUE,
+				submitter_name  varchar(255) NOT NULL,
+				user_email      varchar(255) NOT NULL,
+				subject         text NOT NULL,
+				message         text NOT NULL,
+				status          varchar(32) NOT NULL DEFAULT 'open',
+				unread_by_cs    boolean NOT NULL DEFAULT true,
+				created_at      timestamptz NOT NULL DEFAULT now(),
+				updated_at      timestamptz NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS idx_cs_tickets_created ON cs_tickets (created_at DESC);
+			CREATE INDEX IF NOT EXISTS idx_cs_tickets_unread ON cs_tickets (unread_by_cs) WHERE unread_by_cs = true;
+			CREATE TABLE IF NOT EXISTS cs_ticket_replies (
+				id              bigserial PRIMARY KEY,
+				ticket_id       varchar(32) NOT NULL REFERENCES cs_tickets(ticket_id) ON DELETE CASCADE,
+				body            text NOT NULL,
+				author_type     varchar(16) NOT NULL DEFAULT 'cs',
+				created_by_userid varchar(100),
+				created_at      timestamptz NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS idx_cs_ticket_replies_ticket ON cs_ticket_replies (ticket_id, created_at);
+		`)
+		if err != nil {
+			log.Printf("[BOOT] ensure cs_tickets: %v", err)
+		}
 	}
 
 	// Ensure WP sign request table exists (idempotent)

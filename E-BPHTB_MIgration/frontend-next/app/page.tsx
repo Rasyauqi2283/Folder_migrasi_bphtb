@@ -2,6 +2,7 @@ import Link from "next/link";
 import LandingHeader from "./components/LandingHeader";
 import LandingBanners from "./components/LandingBanners";
 import LandingAmbientEffect from "./components/LandingAmbientEffect";
+import LandingSupport from "./components/LandingSupport";
 import RasproLogo from "./components/RasproLogo";
 import BackendHealth from "./components/BackendHealth";
 import styles from "./landing-stripe.module.css";
@@ -9,6 +10,7 @@ import styles from "./landing-stripe.module.css";
 export default function HomePage() {
   return (
     <div className="landing-page">
+      <LandingSupport />
       <LandingAmbientEffect />
       <LandingHeader />
       <main className={`landing-main ${styles.landingMain}`}>

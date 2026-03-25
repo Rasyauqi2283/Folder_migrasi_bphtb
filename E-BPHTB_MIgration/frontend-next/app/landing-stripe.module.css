@@ -333,3 +333,192 @@
 .card:hover::before {
   opacity: 1;
 }
+
+/* --------------------------------------------------------------------------
+   Public support — floating button + modal
+   -------------------------------------------------------------------------- */
+.supportFab {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 90;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(15, 118, 110, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.supportFab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(15, 118, 110, 0.55);
+}
+
+.supportBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.supportModal {
+  width: 100%;
+  max-width: 480px;
+  max-height: min(90vh, 640px);
+  overflow-y: auto;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 1.35rem 1.5rem 1.5rem;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+  color: #0f172a;
+}
+
+.supportModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.supportModalTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.supportClose {
+  border: none;
+  background: transparent;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0 0.25rem;
+}
+
+.supportLead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.supportForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.supportLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.supportInput,
+.supportTextarea {
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.supportTextarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.supportFieldError {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
+.supportErrorBanner {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.supportActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.supportPrimaryBtn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: #0d9488;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supportPrimaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.supportSecondaryBtn {
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supportSuccess {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.supportSuccess p {
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.supportTicketCode {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.supportMuted {
+  font-size: 0.85rem;
+  color: #64748b !important;
+}
+
+@media (max-width: 480px) {
+  .supportFab {
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    text-align: center;
+  }
+}

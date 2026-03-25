@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -139,6 +140,67 @@ func SendPenelitiRejectionNotification(to, targetName, nobooking, reason string)
 		return nil
 	}
 	return sendViaSMTP(to, subject, text, html)
+}
+
+// SendSupportTicketConfirmation mengirim email konfirmasi nomor tiket ke pengunjung landing page.
+func SendSupportTicketConfirmation(to, nama, ticketID, subject, pesan string) error {
+	sub := "[E-BPHTB Support] Tiket Anda #" + ticketID
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+<h2 style="color: #0f766e;">Tiket bantuan telah diterima</h2>
+<p>Halo <strong>%s</strong>,</p>
+<p>Terima kasih telah menghubungi kami. Tim Customer Service akan meninjau pesan Anda dan membalas melalui email ini.</p>
+<div style="background: #f0fdfa; border-left: 4px solid #14b8a6; padding: 16px; margin: 16px 0;">
+  <p style="margin:0;"><strong>Nomor tiket:</strong> <code style="font-size:1.1em;">%s</code></p>
+  <p style="margin:8px 0 0;"><strong>Subjek:</strong> %s</p>
+</div>
+<div style="background:#f8fafc; padding:12px; border-radius:8px; margin:12px 0;">
+  <p style="margin:0 0 8px; color:#64748b; font-size:12px;">Isi laporan Anda:</p>
+  <p style="margin:0; white-space:pre-wrap;">%s</p>
+</div>
+<p style="color:#64748b; font-size:13px;">Simpan nomor tiket ini jika Anda perlu menindaklanjuti dengan CS.</p>
+<p>Salam,<br><strong>Tim BAPPENDA BPHTB</strong><br><span style="color:#94a3b8;">Pesan otomatis — mohon tidak membalas langsung ke alamat ini jika tidak diperlukan.</span></p>
+</div>`, escapeHTML(nama), escapeHTML(ticketID), escapeHTML(subject), escapeHTML(pesan))
+
+	text := fmt.Sprintf("Halo %s,\n\nTiket Anda: %s\nSubjek: %s\n\n%s\n\n— Tim BAPPENDA BPHTB", nama, ticketID, subject, pesan)
+	if !canSendEmail() {
+		log.Printf("[EMAIL] Support ticket confirmation skipped (SMTP not configured) to %s ticket=%s", to, ticketID)
+		return nil
+	}
+	return sendViaSMTP(to, sub, text, html)
+}
+
+// SendSupportTicketReply mengirim balasan CS ke pengguna (thread: keluhan awal + balasan).
+func SendSupportTicketReply(to, ticketID, subject, originalMessage, replyBody string) error {
+	sub := "[E-BPHTB Support] Balasan untuk Tiket Anda #" + ticketID
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+<h2 style="color: #0f766e;">Balasan dari Customer Service</h2>
+<p style="color:#64748b; font-size:14px;">Tiket: <strong>%s</strong> · Subjek: %s</p>
+<div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin:12px 0; background:#fafafa;">
+  <p style="margin:0 0 8px; color:#64748b; font-size:12px;">Pesan Anda sebelumnya:</p>
+  <p style="margin:0; white-space:pre-wrap;">%s</p>
+</div>
+<div style="border-left:4px solid #14b8a6; padding:12px 16px; margin:16px 0; background:#f0fdfa;">
+  <p style="margin:0 0 8px; font-weight:600;">Balasan tim kami:</p>
+  <p style="margin:0; white-space:pre-wrap;">%s</p>
+</div>
+<p style="color:#64748b; font-size:13px;">Jika masih ada kendala, balas email ini dengan menyebutkan nomor tiket.</p>
+<p>Salam,<br><strong>Tim BAPPENDA BPHTB — Customer Service</strong></p>
+</div>`, escapeHTML(ticketID), escapeHTML(subject), escapeHTML(originalMessage), escapeHTML(replyBody))
+
+	text := fmt.Sprintf("Tiket %s\nSubjek: %s\n\n--- Pesan Anda ---\n%s\n\n--- Balasan CS ---\n%s\n", ticketID, subject, originalMessage, replyBody)
+	if !canSendEmail() {
+		log.Printf("[EMAIL] Support ticket reply skipped (SMTP not configured) to %s ticket=%s", to, ticketID)
+		return nil
+	}
+	return sendViaSMTP(to, sub, text, html)
+}
+
+func escapeHTML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	return s
 }
 
 func sendViaSMTP(to, subject, text, html string) error {
