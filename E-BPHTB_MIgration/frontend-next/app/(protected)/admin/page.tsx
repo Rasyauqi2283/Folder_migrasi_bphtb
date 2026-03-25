@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import GreetingCard from "../../components/GreetingCard";
 import { getApiBase } from "../../../lib/api";
+import QuotaCalendar from "../../components/QuotaCalendar";
 
 interface Stats {
   pending: number;
@@ -32,6 +33,22 @@ interface ValidationStats {
     tinggalVerifikasi: ValidationStatItem;
     belumTerurus: ValidationStatItem;
   };
+}
+
+type QuotaPayload = {
+  success: boolean;
+  mode: "online" | "offline" | string;
+  limit: number;
+  used: number;
+  date?: string;
+  tz?: string;
+};
+
+function quotaColor(used: number, limit: number) {
+  const ratio = limit > 0 ? used / limit : 0;
+  if (ratio >= 1) return { bar: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Kuota penuh" };
+  if (ratio >= 0.8) return { bar: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "Mendekati limit" };
+  return { bar: "#10b981", bg: "rgba(16,185,129,0.12)", label: "Aman" };
 }
 
 const CARD_STYLES = {
@@ -128,6 +145,7 @@ function CalendarWidget() {
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [stats, setStats] = useState<Stats>({
     pending: 0,
     complete: 0,
@@ -137,6 +155,25 @@ export default function AdminDashboardPage() {
   const [taxSummary, setTaxSummary] = useState<TaxSummary | null>(null);
   const [validationStats, setValidationStats] = useState<ValidationStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quotaOnline, setQuotaOnline] = useState<QuotaPayload | null>(null);
+  const [quotaErr, setQuotaErr] = useState<string | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+
+  const selectedDateParam = useMemo(() => {
+    try {
+      return selectedDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    } catch {
+      return "";
+    }
+  }, [selectedDate]);
+
+  const selectedDateLabel = useMemo(() => {
+    try {
+      return selectedDate.toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    } catch {
+      return selectedDateParam || "—";
+    }
+  }, [selectedDate, selectedDateParam]);
 
   useEffect(() => {
     const load = async () => {
@@ -200,6 +237,38 @@ export default function AdminDashboardPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedDateParam) return;
+      setQuotaLoading(true);
+      setQuotaErr(null);
+      try {
+        const res = await fetch(`${getApiBase()}/api/admin/quota-today?mode=online&date=${encodeURIComponent(selectedDateParam)}`, {
+          credentials: "include",
+        }).catch(() => null);
+        if (cancelled) return;
+        if (!res?.ok) {
+          setQuotaErr("Gagal memuat kuota harian");
+          return;
+        }
+        const q = (await res.json().catch(() => null)) as QuotaPayload | null;
+        if (q?.success && typeof q.used === "number" && typeof q.limit === "number") {
+          setQuotaOnline(q);
+        } else {
+          setQuotaErr("Gagal memuat kuota harian");
+        }
+      } catch {
+        if (!cancelled) setQuotaErr("Gagal memuat kuota harian");
+      } finally {
+        if (!cancelled) setQuotaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDateParam]);
+
   const cards = [
     { label: "Verifikasi Data User", value: stats.pending, sub: "User menunggu verifikasi", href: "/admin/data-user/pending", icon: "👤", iconClass: "orange" },
     { label: "Data User", value: stats.complete, sub: "Total user terverifikasi", href: "/admin/data-user/complete", icon: "👥", iconClass: "green" },
@@ -220,13 +289,117 @@ export default function AdminDashboardPage() {
         pageLabel={user?.divisi || "Admin"}
         subtitle="Ringkasan aktivitas dan statistik administrasi Anda"
         gender={user?.gender ?? undefined}
-        rightContent={<CalendarWidget />}
+        rightContent={<QuotaCalendar value={selectedDate} onChange={setSelectedDate} />}
       />
 
       {/* Summary cards - design serupa HTML */}
       {loading ? (
         <p style={{ color: "var(--color_font_main_muted)", marginBottom: 24 }}>Memuat...</p>
       ) : (
+        <>
+          {/* Kuota harian (Online + Offline placeholder) */}
+          <div
+            style={{
+              ...CARD_STYLES.wrapper,
+              cursor: "default",
+              marginBottom: 20,
+              borderLeft: "4px solid var(--accent)",
+              background: "var(--card_bg_grey)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>Kuota Harian Sistem</div>
+                <div style={{ fontSize: 13, color: "var(--color_font_main_muted)" }}>
+                  Menampilkan data untuk <strong>{selectedDateLabel}</strong>. Online (80/hari) dan Offline (40/hari — Coming Soon)
+                </div>
+              </div>
+              {quotaOnline && quotaOnline.used >= quotaOnline.limit && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 999,
+                    background: "rgba(239,68,68,0.14)",
+                    border: "1px solid rgba(239,68,68,0.35)",
+                    color: "#b91c1c",
+                    fontWeight: 900,
+                    fontSize: 12,
+                  }}
+                >
+                  Kuota online hari ini penuh — sistem tidak menerima booking online baru
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+              {/* Online */}
+              <div
+                style={{
+                  border: "1px solid var(--border_color)",
+                  borderRadius: 12,
+                  padding: 14,
+                  background: "rgba(10,19,34,0.04)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 800 }}>Online</div>
+                  <div style={{ fontSize: 12, color: "var(--color_font_main_muted)" }}>{quotaOnline?.date ? `Tanggal: ${quotaOnline.date}` : ""}</div>
+                </div>
+                {quotaLoading ? (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ height: 28, width: 160, borderRadius: 10, background: "rgba(148,163,184,0.18)" }} />
+                    <div style={{ marginTop: 10, height: 10, borderRadius: 999, background: "rgba(148,163,184,0.14)" }} />
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 10, fontSize: 26, fontWeight: 900 }}>
+                    {(quotaOnline?.used ?? 0).toLocaleString("id-ID")}/{(quotaOnline?.limit ?? 80).toLocaleString("id-ID")}
+                  </div>
+                )}
+                {quotaErr && <div style={{ marginTop: 6, fontSize: 12, color: "#b91c1c", fontWeight: 800 }}>{quotaErr}</div>}
+                {(() => {
+                  const used = quotaOnline?.used ?? 0;
+                  const limit = quotaOnline?.limit ?? 80;
+                  const c = quotaColor(used, limit);
+                  const pct = Math.min(100, Math.max(0, limit > 0 ? (used / limit) * 100 : 0));
+                  return (
+                    <>
+                      <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: "var(--color_font_main_muted)" }}>
+                        Status: <span style={{ color: c.bar }}>{c.label}</span>
+                      </div>
+                      <div style={{ marginTop: 8, height: 10, borderRadius: 999, background: c.bg, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: c.bar, borderRadius: 999 }} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Offline placeholder */}
+              <div
+                style={{
+                  border: "1px dashed var(--border_color)",
+                  borderRadius: 12,
+                  padding: 14,
+                  background: "rgba(148,163,184,0.06)",
+                  opacity: 0.7,
+                }}
+                aria-disabled
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 800 }}>Offline</div>
+                  <div style={{ fontSize: 12, color: "var(--color_font_main_muted)", fontWeight: 900 }}>Coming Soon</div>
+                </div>
+                <div style={{ marginTop: 10, fontSize: 26, fontWeight: 900 }}>0/40</div>
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--color_font_main_muted)" }}>
+                  Slot offline akan tersedia dengan limitasi 40/hari.
+                </div>
+                <div style={{ marginTop: 10, height: 10, borderRadius: 999, background: "rgba(148,163,184,0.12)", overflow: "hidden" }}>
+                  <div style={{ width: "0%", height: "100%", background: "rgba(148,163,184,0.55)", borderRadius: 999 }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
         <div
           style={{
             display: "grid",
@@ -274,6 +447,7 @@ export default function AdminDashboardPage() {
             </Link>
           ))}
         </div>
+        </>
       )}
 
       {/* Nilai Transaksi Pajak - card gold */}

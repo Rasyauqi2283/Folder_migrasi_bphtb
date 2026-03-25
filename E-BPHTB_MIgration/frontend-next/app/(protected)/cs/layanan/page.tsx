@@ -23,6 +23,9 @@ interface ReplyRow {
   created_at: string;
 }
 
+const CS_REPLY_FOOTER =
+  "(Balas pesan ini untuk menerima jawaban lanjutan apabila permasalahan belum terselesaikan, terimakasih!. Apabila tidak dijawab dalam jangka waktu 2 hari ticket akan dinyatakan hangus dan perlu memperbarui ticket kembali)";
+
 function fmtTime(iso: string) {
   try {
     return new Date(iso).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" });
@@ -296,7 +299,20 @@ export default function CsLayananPage() {
                         <div style={{ fontSize: 11, color: "var(--color_font_main_muted)", marginBottom: 4 }}>
                           {r.author_type === "cs" ? "CS" : r.author_type} · {fmtTime(r.created_at)}
                         </div>
-                        {r.body}
+                        <div style={{ whiteSpace: "pre-wrap" }}>{r.body}</div>
+                        {r.author_type === "cs" && (
+                          <div
+                            style={{
+                              marginTop: 10,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              color: "var(--color_font_main)",
+                              opacity: 0.95,
+                            }}
+                          >
+                            {CS_REPLY_FOOTER}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

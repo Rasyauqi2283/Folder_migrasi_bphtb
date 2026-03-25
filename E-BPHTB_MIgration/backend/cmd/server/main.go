@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -171,6 +172,25 @@ func main() {
 	mux.HandleFunc("PUT /api/users/{userid}", usersHandler.PutUser)
 	mux.HandleFunc("DELETE /api/users/{userid}", usersHandler.DeleteUser)
 	mux.HandleFunc("PUT /api/users/{userid}/status-ppat", usersHandler.PutStatusPpat)
+
+	var systemStatusRepo *repository.SystemStatusRepo
+	if pool != nil {
+		systemStatusRepo = repository.NewSystemStatusRepo(pool)
+	} else {
+		systemStatusRepo = repository.NewSystemStatusRepo(nil)
+	}
+	systemStatusHandler := handler.NewSystemStatusHandler(systemStatusRepo)
+	mux.HandleFunc("GET /api/system/status", systemStatusHandler.GetSystemStatus)
+
+	var quotaRepo *repository.QuotaRepo
+	if pool != nil {
+		quotaRepo = repository.NewQuotaRepo(pool)
+	} else {
+		quotaRepo = repository.NewQuotaRepo(nil)
+	}
+	quotaHandler := handler.NewQuotaHandler(quotaRepo)
+	mux.HandleFunc("GET /api/admin/quota-today", quotaHandler.GetAdminQuotaToday)
+	mux.HandleFunc("GET /api/peneliti/quota-today", quotaHandler.GetPenelitiQuotaToday)
 
 	var csTicketRepo *repository.CsTicketRepo
 	if pool != nil {
@@ -494,8 +514,19 @@ func main() {
 		}
 	}
 	log.Printf("CORS allowed origins: %v", corsOrigins)
-	h := corsMiddleware(corsOrigins, mux)
-	server := &http.Server{Addr: addr, Handler: h}
+	// CORS must be outermost so OPTIONS preflight isn't blocked by the gate.
+	gated := handler.SystemGateMiddleware(systemStatusRepo, mux)
+	var inFlight atomic.Int64
+	tracked := handler.InFlightMiddleware(&inFlight, gated)
+	h := corsMiddleware(corsOrigins, tracked)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	go func() {
 		log.Printf("Backend Go listening on %s (migrasi penuh, tidak ada proxy Node)", addr)
@@ -508,9 +539,25 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	// Give the server time to drain in-flight requests.
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+
+	log.Printf("In-flight requests before shutdown: %d", inFlight.Load())
 	if err := server.Shutdown(ctx); err != nil {
 		log.Printf("Server shutdown: %v", err)
 	}
+
+	// Best-effort wait for handlers to return (Shutdown should already wait,
+	// but this improves observability and catches custom long-running handlers).
+	drainDeadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(drainDeadline) {
+		n := inFlight.Load()
+		if n <= 0 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	log.Printf("In-flight requests after shutdown: %d", inFlight.Load())
 }

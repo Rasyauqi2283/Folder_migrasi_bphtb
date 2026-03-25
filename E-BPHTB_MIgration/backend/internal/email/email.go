@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const supportReplyFooterPlain = "(Balas pesan ini untuk menerima jawaban lanjutan apabila permasalahan belum terselesaikan, terimakasih!. Apabila tidak dijawab dalam jangka waktu 2 hari ticket akan dinyatakan hangus dan perlu memperbarui ticket kembali)"
+
 // canSendEmail returns true if EMAIL_USER and EMAIL_PASS are set (SMTP dipakai untuk dev & production).
 func canSendEmail() bool {
 	return os.Getenv("EMAIL_USER") != "" && os.Getenv("EMAIL_PASS") != ""
@@ -172,6 +174,7 @@ func SendSupportTicketConfirmation(to, nama, ticketID, subject, pesan string) er
 // SendSupportTicketReply mengirim balasan CS ke pengguna (thread: keluhan awal + balasan).
 func SendSupportTicketReply(to, ticketID, subject, originalMessage, replyBody string) error {
 	sub := "[E-BPHTB Support] Balasan untuk Tiket Anda #" + ticketID
+	replyWithFooter := strings.TrimRight(replyBody, " \n\r\t") + "\n\n" + supportReplyFooterPlain
 	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
 <h2 style="color: #0f766e;">Balasan dari Customer Service</h2>
 <p style="color:#64748b; font-size:14px;">Tiket: <strong>%s</strong> · Subjek: %s</p>
@@ -182,12 +185,13 @@ func SendSupportTicketReply(to, ticketID, subject, originalMessage, replyBody st
 <div style="border-left:4px solid #14b8a6; padding:12px 16px; margin:16px 0; background:#f0fdfa;">
   <p style="margin:0 0 8px; font-weight:600;">Balasan tim kami:</p>
   <p style="margin:0; white-space:pre-wrap;">%s</p>
+  <p style="margin:10px 0 0; white-space:pre-wrap; font-size:13px; color:#0f172a; font-weight:800;">%s</p>
 </div>
 <p style="color:#64748b; font-size:13px;">Jika masih ada kendala, balas email ini dengan menyebutkan nomor tiket.</p>
 <p>Salam,<br><strong>Tim BAPPENDA BPHTB — Customer Service</strong></p>
-</div>`, escapeHTML(ticketID), escapeHTML(subject), escapeHTML(originalMessage), escapeHTML(replyBody))
+</div>`, escapeHTML(ticketID), escapeHTML(subject), escapeHTML(originalMessage), escapeHTML(replyBody), escapeHTML(supportReplyFooterPlain))
 
-	text := fmt.Sprintf("Tiket %s\nSubjek: %s\n\n--- Pesan Anda ---\n%s\n\n--- Balasan CS ---\n%s\n", ticketID, subject, originalMessage, replyBody)
+	text := fmt.Sprintf("Tiket %s\nSubjek: %s\n\n--- Pesan Anda ---\n%s\n\n--- Balasan CS ---\n%s\n", ticketID, subject, originalMessage, replyWithFooter)
 	if !canSendEmail() {
 		log.Printf("[EMAIL] Support ticket reply skipped (SMTP not configured) to %s ticket=%s", to, ticketID)
 		return nil
@@ -209,10 +213,17 @@ func sendViaSMTP(to, subject, text, html string) error {
 	host := os.Getenv("SMTP_HOST")
 	port := os.Getenv("SMTP_PORT")
 	if host == "" {
-		host = "bphtb@bappenda.go.id"
+		// Fallback ringan: gunakan domain dari EMAIL_USER → smtp.<domain>.
+		// Tetap disarankan mengisi SMTP_HOST secara eksplisit di environment.
+		if at := strings.LastIndex(user, "@"); at > -1 && at < len(user)-1 {
+			host = "smtp." + strings.TrimSpace(user[at+1:])
+		}
 	}
 	if port == "" {
 		port = "587"
+	}
+	if host == "" {
+		return fmt.Errorf("SMTP_HOST belum dikonfigurasi")
 	}
 	addr := host + ":" + port
 	auth := smtp.PlainAuth("", user, pass, host)

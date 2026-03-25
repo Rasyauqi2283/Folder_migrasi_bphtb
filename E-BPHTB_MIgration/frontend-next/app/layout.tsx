@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeInit } from "./components/ThemeInit";
+import SystemAlert from "./components/SystemAlert";
 
 export const metadata: Metadata = {
   title: "E-BPHTB | Selamat Datang",
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="id">
       <body>
         <ThemeInit />
+        <SystemAlert />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
