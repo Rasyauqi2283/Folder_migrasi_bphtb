@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import RasproLogo from "./RasproLogo";
 
 export default function Footer() {
   const waveGradId1 = useId();
@@ -50,6 +51,22 @@ export default function Footer() {
         <div className="footer-wave-strip footer-wave-strip--slow">{waveStrip(waveGradId2)}</div>
       </div>
       <p style={{ margin: 0, position: "relative", zIndex: 1 }}>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+
+      <div
+        className="app-footer-right"
+        style={{
+          position: "absolute",
+          right: 14,
+          bottom: 8,
+          zIndex: 2,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          pointerEvents: "auto",
+        }}
+      >
+        <RasproLogo size="sm" theme="dark" asLink hrefExternal />
+      </div>
     </footer>
   );
 }

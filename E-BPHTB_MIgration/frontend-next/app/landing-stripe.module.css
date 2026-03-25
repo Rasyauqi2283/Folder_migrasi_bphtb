@@ -339,7 +339,8 @@
    -------------------------------------------------------------------------- */
 .supportFab {
   position: fixed;
-  bottom: 1.25rem;
+  /* keep FAB above landing footer / brand */
+  bottom: calc(1.25rem + 56px);
   right: 1.25rem;
   z-index: 90;
   padding: 0.75rem 1.1rem;
@@ -516,9 +517,6 @@
 
 @media (max-width: 480px) {
   .supportFab {
-    left: 0.75rem;
-    right: 0.75rem;
-    width: auto;
-    text-align: center;
+    display: none;
   }
 }

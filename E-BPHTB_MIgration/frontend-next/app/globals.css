@@ -418,6 +418,13 @@ html[data-theme="emerald"] {
   to { transform: rotate(360deg); }
 }
 
+/* Portrait / HP: footer kanan bawah — tampilkan logo saja, sembunyikan teks */
+@media (max-width: 640px) {
+  .app-footer-right .raspro-text {
+    display: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }

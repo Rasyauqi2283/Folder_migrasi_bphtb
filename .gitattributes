@@ -1,10 +1,12 @@
-# Default: normalize text files and keep LF in repository.
-* text=auto eol=lf
+# Default: normalize text files (LF in repo).
+* text=auto
 
-# Source code and configs (force LF to avoid CRLF warnings)
+# Source code and configs
+# - Keep LF in repo, but allow CRLF checkout on Windows to avoid warnings
 *.go text eol=lf
 *.ts text eol=lf
-*.tsx text eol=lf
+*.tsx text eol=crlf
+*.css text eol=crlf
 *.js text eol=lf
 *.jsx text eol=lf
 *.mjs text eol=lf
