@@ -1,2 +1,22 @@
-# Normalize line endings: simpan sebagai LF di repo, checkout mengikuti OS
-* text=auto
+# Default: normalize text files and keep LF in repository.
+* text=auto eol=lf
+
+# Source code and configs (force LF to avoid CRLF warnings)
+*.go text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.sql text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.env text eol=lf
+
+# Windows scripts
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf

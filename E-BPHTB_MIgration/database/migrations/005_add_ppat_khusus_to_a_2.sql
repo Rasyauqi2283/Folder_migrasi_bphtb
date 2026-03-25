@@ -1,2 +1,0 @@
--- Migration 005: DEPRECATED - jangan dijalankan
--- Kolom ppat_khusus sudah ada sebagai ppatk_khusus (typo). Gunakan migration 006 untuk rename.
