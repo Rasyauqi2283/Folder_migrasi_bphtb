@@ -32,7 +32,7 @@ func isOutsideOperationalHours(now time.Time) bool {
 	if h < 8 {
 		return true
 	}
-	if h >= 18 {
+	if h >= 23 {
 		return true
 	}
 	return false

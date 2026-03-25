@@ -31,6 +31,10 @@ func SystemGateMiddleware(repo *repository.SystemStatusRepo, next http.Handler) 
 		if p == "/api/system/status" && r.Method == http.MethodGet {
 			return true
 		}
+		// Allow admins to toggle maintenance even when system is offline/outside hours.
+		if p == "/api/admin/system/maintenance-mode" && r.Method == http.MethodPut {
+			return true
+		}
 		return false
 	}
 

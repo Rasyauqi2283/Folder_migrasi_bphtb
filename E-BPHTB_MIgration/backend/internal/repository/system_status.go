@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -26,6 +27,13 @@ type MaintenanceStatus struct {
 	ScheduledAt *time.Time
 	EtaDoneAt   *time.Time
 	UpdatedAt   *time.Time
+}
+
+type SetMaintenanceModeArgs struct {
+	Online      bool
+	Message     *string
+	ScheduledAt *time.Time
+	EtaDoneAt   *time.Time
 }
 
 // GetMaintenanceMode returns maintenance flag from system_status key 'maintenance_mode'.
@@ -60,6 +68,31 @@ func (r *SystemStatusRepo) GetMaintenanceMode(ctx context.Context) (*Maintenance
 		EtaDoneAt:   etaDoneAt,
 		UpdatedAt:   updatedAt,
 	}, nil
+}
+
+// SetMaintenanceMode upserts system_status key 'maintenance_mode'.
+func (r *SystemStatusRepo) SetMaintenanceMode(ctx context.Context, args *SetMaintenanceModeArgs) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	if args == nil {
+		args = &SetMaintenanceModeArgs{Online: true}
+	}
+	val := "online"
+	if !args.Online {
+		val = "offline"
+	}
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO system_status (key, value, message, scheduled_at, eta_done_at, updated_at)
+		VALUES ('maintenance_mode', $1, $2, $3, $4, now())
+		ON CONFLICT (key) DO UPDATE SET
+			value = EXCLUDED.value,
+			message = EXCLUDED.message,
+			scheduled_at = EXCLUDED.scheduled_at,
+			eta_done_at = EXCLUDED.eta_done_at,
+			updated_at = now()
+	`, val, args.Message, args.ScheduledAt, args.EtaDoneAt)
+	return err
 }
 
 func ptrToStr(s *string) string {

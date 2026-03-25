@@ -181,6 +181,8 @@ func main() {
 	}
 	systemStatusHandler := handler.NewSystemStatusHandler(systemStatusRepo)
 	mux.HandleFunc("GET /api/system/status", systemStatusHandler.GetSystemStatus)
+	adminSystemStatus := handler.NewAdminSystemStatusHandler(userRepo, systemStatusRepo)
+	mux.HandleFunc("PUT /api/admin/system/maintenance-mode", adminSystemStatus.PutMaintenanceMode)
 
 	var quotaRepo *repository.QuotaRepo
 	if pool != nil {

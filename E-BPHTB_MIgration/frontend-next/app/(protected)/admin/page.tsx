@@ -44,6 +44,10 @@ type QuotaPayload = {
   tz?: string;
 };
 
+type SystemStatusPayload =
+  | { success: true; online: true; message?: string | null; scheduled_at?: string; eta_done_at?: string }
+  | { success: false; online: false; message: string; scheduled_at?: string; eta_done_at?: string; reason?: string };
+
 function quotaColor(used: number, limit: number) {
   const ratio = limit > 0 ? used / limit : 0;
   if (ratio >= 1) return { bar: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Kuota penuh" };
@@ -159,6 +163,12 @@ export default function AdminDashboardPage() {
   const [quotaErr, setQuotaErr] = useState<string | null>(null);
   const [quotaLoading, setQuotaLoading] = useState(false);
 
+  const [sysLoading, setSysLoading] = useState(false);
+  const [sysErr, setSysErr] = useState<string | null>(null);
+  const [sysOnline, setSysOnline] = useState<boolean | null>(null);
+  const [sysMessage, setSysMessage] = useState<string>("");
+  const [sysEta, setSysEta] = useState<string>(""); // datetime-local
+
   const selectedDateParam = useMemo(() => {
     try {
       return selectedDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
@@ -174,6 +184,67 @@ export default function AdminDashboardPage() {
       return selectedDateParam || "—";
     }
   }, [selectedDate, selectedDateParam]);
+
+  const loadSystemStatus = async () => {
+    setSysErr(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/system/status`, { cache: "no-store", credentials: "include" });
+      const json = (await res.json().catch(() => null)) as SystemStatusPayload | null;
+      if (json && typeof (json as any).online === "boolean") {
+        setSysOnline((json as any).online);
+        const msg = typeof (json as any).message === "string" ? (json as any).message : "";
+        setSysMessage(msg);
+        const eta = typeof (json as any).eta_done_at === "string" ? (json as any).eta_done_at : "";
+        if (eta) {
+          // convert RFC3339 -> datetime-local (best-effort)
+          try {
+            const d = new Date(eta);
+            const pad = (n: number) => String(n).padStart(2, "0");
+            const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            setSysEta(local);
+          } catch {
+            setSysEta("");
+          }
+        }
+        return;
+      }
+      setSysErr("Gagal membaca status sistem");
+    } catch {
+      setSysErr("Gagal membaca status sistem");
+    }
+  };
+
+  useEffect(() => {
+    loadSystemStatus();
+  }, []);
+
+  const saveMaintenance = async (online: boolean) => {
+    setSysLoading(true);
+    setSysErr(null);
+    try {
+      const body: any = { online, message: sysMessage?.trim() || null };
+      if (sysEta?.trim()) {
+        const d = new Date(sysEta);
+        if (!Number.isNaN(d.getTime())) body.eta_done_at = d.toISOString();
+      }
+      const res = await fetch(`${getApiBase()}/api/admin/system/maintenance-mode`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success) {
+        setSysErr(typeof json?.message === "string" ? json.message : "Gagal menyimpan status maintenance");
+        return;
+      }
+      await loadSystemStatus();
+    } catch {
+      setSysErr("Gagal menyimpan status maintenance");
+    } finally {
+      setSysLoading(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -297,6 +368,95 @@ export default function AdminDashboardPage() {
         <p style={{ color: "var(--color_font_main_muted)", marginBottom: 24 }}>Memuat...</p>
       ) : (
         <>
+          {/* Maintenance toggle (Admin) */}
+          <div
+            style={{
+              ...CARD_STYLES.wrapper,
+              cursor: "default",
+              marginBottom: 20,
+              borderLeft: sysOnline === false ? "4px solid #ef4444" : "4px solid #10b981",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 6 }}>Mode Pemeliharaan</div>
+                <div style={{ fontSize: 13, color: "var(--color_font_main_muted)" }}>
+                  Status:{" "}
+                  <span style={{ fontWeight: 900, color: sysOnline === false ? "#b91c1c" : "#047857" }}>
+                    {sysOnline === null ? "—" : sysOnline ? "ONLINE" : "OFFLINE (Maintenance)"}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  disabled={sysLoading}
+                  onClick={() => saveMaintenance(true)}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(16,185,129,0.35)",
+                    background: "rgba(16,185,129,0.12)",
+                    fontWeight: 900,
+                    cursor: sysLoading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Set ONLINE
+                </button>
+                <button
+                  type="button"
+                  disabled={sysLoading}
+                  onClick={() => saveMaintenance(false)}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(239,68,68,0.35)",
+                    background: "rgba(239,68,68,0.12)",
+                    fontWeight: 900,
+                    cursor: sysLoading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Set OFFLINE
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(220px, 320px)", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--color_font_main_muted)", marginBottom: 6 }}>Pesan banner / maintenance</div>
+                <input
+                  value={sysMessage}
+                  onChange={(e) => setSysMessage(e.target.value)}
+                  placeholder="Contoh: Sistem akan diperbarui pada pukul 18:05. Mohon simpan pekerjaan Anda."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border_color)",
+                    background: "var(--card_bg)",
+                  }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 900, color: "var(--color_font_main_muted)", marginBottom: 6 }}>Perkiraan selesai (opsional)</div>
+                <input
+                  type="datetime-local"
+                  value={sysEta}
+                  onChange={(e) => setSysEta(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border_color)",
+                    background: "var(--card_bg)",
+                  }}
+                />
+              </div>
+            </div>
+
+            {sysErr && <div style={{ marginTop: 10, fontSize: 12, color: "#b91c1c", fontWeight: 900 }}>{sysErr}</div>}
+          </div>
+
           {/* Kuota harian (Online + Offline placeholder) */}
           <div
             style={{

@@ -68,9 +68,9 @@ export default function SystemAlert() {
 
         if (res.status === 503 && isDownStatus(json)) {
           setDown(json);
-          if (pathname !== "/maintenance") {
-            router.replace("/maintenance");
-          }
+          // Allow admin to stay on admin pages to toggle maintenance back ON.
+          const isAdminRoute = pathname.startsWith("/admin");
+          if (!isAdminRoute && pathname !== "/maintenance") router.replace("/maintenance");
           return;
         }
 

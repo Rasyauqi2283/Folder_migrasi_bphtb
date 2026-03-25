@@ -229,9 +229,8 @@ CREATE TABLE public.a_1_unverified_users (
     telepon character varying(15) NOT NULL,
     email character varying(255) NOT NULL,
     password text NOT NULL,
-    foto text,
     otp character varying(6),
-    verifiedstatus character varying(50) NOT NULL,
+    foto text,
     fotoprofil text,
     gender character varying(50),
     verse character varying(50),
@@ -240,6 +239,7 @@ CREATE TABLE public.a_1_unverified_users (
     pejabat_umum character varying(20),
     divisi character varying(20),
     ktp_ocr_json text,
+    verifiedstatus character varying(50) NOT NULL,
     created_at timestamp with time zone DEFAULT now()
 );
 
@@ -275,29 +275,28 @@ CREATE TABLE public.a_2_verified_users (
     telepon character varying(15) NOT NULL,
     email character varying(255) NOT NULL,
     password text NOT NULL,
-    foto text,
+    fotoprofil text,
     otp character varying(6),
     verifiedstatus character varying(50) NOT NULL,
-    fotoprofil text,
+    gender text,
     userid character varying(255) NOT NULL,
     divisi character varying(255) NOT NULL,
     username character varying(255),
-    statuspengguna character varying(50) DEFAULT 'offline'::character varying,
     nip character varying(20),
     special_parafv text,
     special_field character varying(255),
     ppat_khusus character varying(100),
     pejabat_umum character varying(50),
     status_ppat character varying(100),
-    tanda_tangan_path text,
-    tanda_tangan_mime text,
-    last_active timestamp without time zone,
-    gender text,
-    verse character varying(50),
     alamat_pu text,
     npwp_badan text,
     nib text,
-    nib_doc_path text
+    nib_doc_path text,
+    verse character varying(50),
+    statuspengguna character varying(50) DEFAULT 'offline'::character varying,
+    last_active timestamp without time zone,
+    tanda_tangan_path text,
+    tanda_tangan_mime text
 );
 
 
@@ -358,24 +357,6 @@ ALTER SEQUENCE public.api_idempotency_id_seq OWNED BY public.api_idempotency.id;
 
 
 --
--- Name: backup_jenis_wajib_pajak; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.backup_jenis_wajib_pajak (
-    id integer
-);
-
-
---
--- Name: backup_jenis_wajib_pajak_ppatk; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.backup_jenis_wajib_pajak_ppatk (
-    bookingid integer
-);
-
-
---
 -- Name: bank_1_cek_hasil_transaksi; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -383,6 +364,7 @@ CREATE TABLE public.bank_1_cek_hasil_transaksi (
     id integer NOT NULL,
     nobooking character varying(150) NOT NULL,
     userid character varying(50) NOT NULL,
+    no_registrasi character varying(100),
     bphtb_yangtelah_dibayar integer,
     nomor_bukti_pembayaran character varying(255),
     tanggal_perolehan character varying(100),
@@ -391,7 +373,6 @@ CREATE TABLE public.bank_1_cek_hasil_transaksi (
     catatan_bank text,
     verified_by character varying(100),
     verified_at timestamp with time zone,
-    no_registrasi character varying(100),
     status_dibank character varying(100) DEFAULT 'Dicheck'::character varying
 );
 
@@ -420,7 +401,7 @@ ALTER SEQUENCE public.bank_1_cek_hasil_transaksi_id_seq OWNED BY public.bank_1_c
 -- Name: banners; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.banners (
+CREATE TABLE public.a_4_banners (
     id bigint NOT NULL,
     image_path text NOT NULL,
     link_url text,
@@ -455,7 +436,7 @@ ALTER SEQUENCE public.banners_id_seq OWNED BY public.banners.id;
 -- Name: cek_ktp_ocr; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.cek_ktp_ocr (
+CREATE TABLE public.a_3_cek_ktp_ocr (
     id integer NOT NULL,
     ktp_ocr_json text,
     nik character varying(20)
@@ -496,7 +477,7 @@ CREATE TABLE public.daily_counter (
 -- Name: faq; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.faq (
+CREATE TABLE public.a_5_faq (
     id bigint NOT NULL,
     question text NOT NULL,
     answer_html text NOT NULL,
@@ -562,7 +543,7 @@ ALTER SEQUENCE public.faqs_id_seq OWNED BY public.faqs.id;
 -- Name: file_lengkap_tertandatangani; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.file_lengkap_tertandatangani (
+CREATE TABLE public.pat_3_file_lengkap_tertandatangani (
     id integer NOT NULL,
     nobooking character varying(50) NOT NULL,
     userid character varying(50) NOT NULL,
@@ -598,7 +579,7 @@ ALTER SEQUENCE public.file_lengkap_tertandatangani_id_seq OWNED BY public.file_l
 
 
 --
--- Name: lsb_1_serah_berkas; Type: TABLE; Schema: public; Owner: -
+-- Name: lsb_1_serah_berkas; Type: TABLE; Schema: public; Owner: LSB
 --
 
 CREATE TABLE public.lsb_1_serah_berkas (
@@ -623,7 +604,7 @@ COMMENT ON TABLE public.lsb_1_serah_berkas IS 'LSB_1 penyerahan dari tim LSB ke 
 
 
 --
--- Name: lsb_serah_berkas_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: lsb_serah_berkas_id_seq; Type: SEQUENCE; Schema: public; Owner: LSB
 --
 
 CREATE SEQUENCE public.lsb_serah_berkas_id_seq
@@ -643,25 +624,25 @@ ALTER SEQUENCE public.lsb_serah_berkas_id_seq OWNED BY public.lsb_1_serah_berkas
 
 
 --
--- Name: ltb_1_terima_berkas_sspd; Type: TABLE; Schema: public; Owner: -
+-- Name: ltb_1_terima_berkas_sspd; Type: TABLE; Schema: public; Owner: LTB
 --
 
 CREATE TABLE public.ltb_1_terima_berkas_sspd (
     id integer NOT NULL,
     nobooking character varying(255),
+    userid character varying(50) NOT NULL,
+    no_registrasi character varying(20),
     tanggal_terima character varying(50) DEFAULT to_char((now() AT TIME ZONE 'Asia/Jakarta'::text), 'DD-MM-YYYY'::text) NOT NULL,
     status character varying(50) DEFAULT 'Diterima'::character varying,
     pengirim_ltb text,
     trackstatus character varying(50) DEFAULT 'Diproses'::character varying,
-    userid character varying(50) NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     namawajibpajak character varying(255),
     namapemilikobjekpajak character varying(255),
     divisi character varying(255),
     nama character varying(255),
-    jenis_wajib_pajak public.jenis_wajib_pajak,
-    no_registrasi character varying(20)
+    jenis_wajib_pajak public.jenis_wajib_pajak
 );
 
 
@@ -774,6 +755,7 @@ CREATE TABLE public.p_1_verifikasi (
     id integer NOT NULL,
     nobooking character varying(50) NOT NULL,
     userid character varying(50) NOT NULL,
+    no_registrasi character varying(100),
     namawajibpajak character varying(255) NOT NULL,
     namapemilikobjekpajak character varying(255) NOT NULL,
     tanggal_terima character varying(50) DEFAULT to_char((now() AT TIME ZONE 'Asia/Jakarta'::text), 'DD-MM-YYYY'::text) NOT NULL,
@@ -787,7 +769,6 @@ CREATE TABLE public.p_1_verifikasi (
     keterangandihitungsendiri text,
     isiketeranganlainnya text,
     nama_pengirim character varying(255),
-    no_registrasi character varying(100),
     tanda_tangan_path text,
     persetujuan text,
     ttd_peneliti_mime character varying(50)
@@ -815,6 +796,7 @@ CREATE TABLE public.p_3_clear_to_paraf (
     id integer NOT NULL,
     nobooking character varying(255) NOT NULL,
     userid character varying(255) NOT NULL,
+    no_registrasi text,
     namawajibpajak character varying(255) NOT NULL,
     namapemilikobjekpajak character varying(255) NOT NULL,
     tanggal_terima date,
@@ -822,7 +804,6 @@ CREATE TABLE public.p_3_clear_to_paraf (
     trackstatus character varying(50) NOT NULL,
     keterangan text,
     ttd_paraf_mime text,
-    no_registrasi text,
     persetujuan text,
     tanda_paraf_path text,
     pemverifikasi character varying(100)
@@ -1286,8 +1267,10 @@ ALTER SEQUENCE public.pv_1_debug_log_id_seq OWNED BY public.pv_1_debug_log.id;
 --
 
 CREATE TABLE public.pv_1_paraf_validate (
+    id integer NOT NULL,
     nobooking character varying(50) NOT NULL,
     userid character varying(150),
+    no_registrasi character varying(40),
     namawajibpajak text,
     namapemilikobjekpajak text,
     status character varying(100),
@@ -1297,8 +1280,6 @@ CREATE TABLE public.pv_1_paraf_validate (
     pemverifikasi character varying(100),
     pemparaf character varying(100),
     status_tertampil character varying(100),
-    no_registrasi character varying(40),
-    id integer NOT NULL,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     tanda_tangan_validasi_path text,
     CONSTRAINT ck_pv1_no_validasi_format CHECK (((no_validasi)::text ~ '^[A-Z0-9]{8}-[A-Z0-9]{3}$'::text))
@@ -1600,7 +1581,7 @@ ALTER SEQUENCE public.terima_berkas_sspd_id_seq OWNED BY public.ltb_1_terima_ber
 -- Name: ttd_paraf_kasie; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.ttd_paraf_kasie (
+CREATE TABLE public.p_4_ttd_paraf_kasie (
     userid text NOT NULL,
     signfile_path text NOT NULL,
     sign_paraf text,
@@ -2516,4 +2497,93 @@ ALTER TABLE public.pv_1_paraf_validate ENABLE ROW LEVEL SECURITY;
 --
 -- PostgreSQL database dump complete
 --
+
+-- =====================================================================
+-- POST-DUMP PATCHES (idempotent)
+-- Purpose:
+-- - Keep this file usable as a "full schema baseline" for Neon,
+--   while still including newer incremental schema additions that
+--   may have been applied directly on Neon or added after this dump.
+--
+-- NOTE:
+-- - These statements are intentionally idempotent (IF NOT EXISTS / ON CONFLICT)
+-- - Safe to run after the dump, and safe to rerun.
+-- =====================================================================
+
+BEGIN;
+
+-- 1) Data Locking & Audit (Table: p_1_verifikasi)
+ALTER TABLE public.p_1_verifikasi
+  ADD COLUMN IF NOT EXISTS locked_by_user_id varchar(100),
+  ADD COLUMN IF NOT EXISTS locked_by_nama varchar(255),
+  ADD COLUMN IF NOT EXISTS locked_at timestamptz;
+
+ALTER TABLE public.p_1_verifikasi
+  ADD COLUMN IF NOT EXISTS verified_at timestamptz,
+  ADD COLUMN IF NOT EXISTS verified_by varchar(100),
+  ADD COLUMN IF NOT EXISTS verified_by_nama varchar(255);
+
+CREATE INDEX IF NOT EXISTS idx_p1_verifikasi_locked_by_user_id
+  ON public.p_1_verifikasi (locked_by_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_p1_verifikasi_verified_by
+  ON public.p_1_verifikasi (verified_by);
+
+-- 2) Paraf Fix & Audit (Table: p_3_clear_to_paraf)
+ALTER TABLE public.p_3_clear_to_paraf
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.p_3_clear_to_paraf
+  ADD COLUMN IF NOT EXISTS paraf_done_at timestamptz,
+  ADD COLUMN IF NOT EXISTS paraf_done_by varchar(100),
+  ADD COLUMN IF NOT EXISTS paraf_done_by_nama varchar(255);
+
+CREATE INDEX IF NOT EXISTS idx_p3_clear_to_paraf_created_at
+  ON public.p_3_clear_to_paraf (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_p3_clear_to_paraf_done_by
+  ON public.p_3_clear_to_paraf (paraf_done_by);
+
+-- 3) CS Ticketing System (New Tables)
+CREATE TABLE IF NOT EXISTS public.cs_tickets (
+  id              bigserial PRIMARY KEY,
+  ticket_id       varchar(32) NOT NULL UNIQUE,
+  submitter_name  varchar(255) NOT NULL,
+  user_email      varchar(255) NOT NULL,
+  subject         text NOT NULL,
+  message         text NOT NULL,
+  status          varchar(32) NOT NULL DEFAULT 'open',
+  unread_by_cs    boolean NOT NULL DEFAULT true,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cs_tickets_created ON public.cs_tickets (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cs_tickets_unread ON public.cs_tickets (unread_by_cs) WHERE unread_by_cs = true;
+
+CREATE TABLE IF NOT EXISTS public.cs_ticket_replies (
+  id                bigserial PRIMARY KEY,
+  ticket_id         varchar(32) NOT NULL REFERENCES public.cs_tickets(ticket_id) ON DELETE CASCADE,
+  body              text NOT NULL,
+  author_type       varchar(16) NOT NULL DEFAULT 'cs',
+  created_by_userid varchar(100),
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cs_ticket_replies_ticket ON public.cs_ticket_replies (ticket_id, created_at);
+
+-- 4) System Quota (New Table: system_quotas)
+CREATE TABLE IF NOT EXISTS public.system_quotas (
+  category   text PRIMARY KEY,
+  max_limit  integer NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.system_quotas (category, max_limit)
+VALUES
+  ('online', 80),
+  ('offline', 40)
+ON CONFLICT (category) DO NOTHING;
+
+COMMIT;
 
