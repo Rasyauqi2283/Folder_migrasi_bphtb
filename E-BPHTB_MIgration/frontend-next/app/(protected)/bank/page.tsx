@@ -3,8 +3,10 @@
 import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import GreetingCard from "../../components/GreetingCard";
 import { getApiBase } from "../../../lib/api";
+import { runBankMainTourIfRequested } from "../../components/tours/bankDashboardTour";
 
 const CARD_STYLE: React.CSSProperties = {
   background: "var(--card_bg)",
@@ -27,8 +29,20 @@ interface BankSummary {
 
 export default function BankDashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
   const [summary, setSummary] = useState<BankSummary | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const tourGuideMain = searchParams.get("tourGuide");
+  useEffect(() => {
+    if (tourGuideMain !== "bank-main") return;
+    const t = window.setTimeout(() => {
+      runBankMainTourIfRequested(router, pathname || "/bank", searchParams);
+    }, 380);
+    return () => window.clearTimeout(t);
+  }, [router, pathname, searchParams, tourGuideMain]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,17 +80,20 @@ export default function BankDashboardPage() {
 
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-      <GreetingCard
-        nama={user?.nama || user?.userid || "Bank"}
-        pageLabel="Bank"
-        subtitle="Verifikasi pembayaran transaksi BPHTB. Tinjau dan setujui atau tolak."
-        gender={user?.gender ?? undefined}
-      />
+      <div id="bank-tour-greeting">
+        <GreetingCard
+          nama={user?.nama || user?.userid || "Bank"}
+          pageLabel="Bank"
+          subtitle="Verifikasi pembayaran transaksi BPHTB. Tinjau dan setujui atau tolak."
+          gender={user?.gender ?? undefined}
+        />
+      </div>
 
       {loading ? (
         <p style={{ marginTop: 24, color: "var(--color_font_main_muted)" }}>Memuat ringkasan...</p>
       ) : (
         <div
+          id="bank-tour-summary-cards"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -84,7 +101,7 @@ export default function BankDashboardPage() {
             marginTop: 24,
           }}
         >
-          <Link href="/bank/hasil-transaksi" style={CARD_STYLE}>
+          <Link id="bank-tour-card-pending" href="/bank/hasil-transaksi" style={CARD_STYLE}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <div
                 style={{

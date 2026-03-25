@@ -196,7 +196,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
       {/* Header right: profile dropdown, member dropdown */}
       <div className={styles.headerRight}>
         {/* Profile button + dropdown */}
-        <div ref={profileRef} style={{ position: "relative" }}>
+        <div id="header-profile" ref={profileRef} style={{ position: "relative" }}>
           <button
             type="button"
             onClick={() => { setProfileOpen(!profileOpen); setMemberOpen(false); }}

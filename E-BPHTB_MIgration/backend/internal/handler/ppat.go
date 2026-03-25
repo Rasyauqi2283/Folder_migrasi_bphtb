@@ -368,6 +368,72 @@ func (h *PpatHandler) GetBooking(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": data, "jenis_wajib_pajak": data["jenis_wajib_pajak"]})
 }
 
+// BookingHistoryBadan handles GET /api/ppat/booking/history — searchable list for PU callback (Badan Usaha only).
+func (h *PpatHandler) BookingHistoryBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		q = r.URL.Query().Get("search")
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 {
+		limit = 30
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	list, err := h.repo.ListBookingHistoryBadan(ctx, userid, q, limit)
+	if err != nil {
+		log.Printf("[PPAT] BookingHistoryBadan: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memuat riwayat booking")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": list})
+}
+
+// GetBookingCallbackBadan handles GET /api/ppat/booking/{nobooking}/callback — full callback payload for autofill (Badan).
+func (h *PpatHandler) GetBookingCallbackBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := r.PathValue("nobooking")
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	data, err := h.repo.GetBookingBadanCallbackData(ctx, userid, nobooking)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			ppatJSONError(w, http.StatusNotFound, "Booking tidak ditemukan")
+			return
+		}
+		log.Printf("[PPAT] GetBookingCallbackBadan: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memuat data callback")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": data})
+}
+
 // UpdateTrackstatus handles PUT /api/ppat/update-trackstatus/{nobooking}.
 func (h *PpatHandler) UpdateTrackstatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {

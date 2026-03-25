@@ -285,6 +285,8 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/send-now", ppatHandler.SendNow)
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb", ppatHandler.CreateBookingBadan)
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb-perorangan", ppatHandler.CreateBookingPerorangan)
+	mux.HandleFunc("GET /api/ppat/booking/history", ppatHandler.BookingHistoryBadan)
+	mux.HandleFunc("GET /api/ppat/booking/{nobooking}/callback", ppatHandler.GetBookingCallbackBadan)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}", ppatHandler.GetBooking)
 	mux.HandleFunc("PUT /api/ppat/update-trackstatus/{nobooking}", ppatHandler.UpdateTrackstatus)
 	mux.HandleFunc("DELETE /api/ppat/booking/{nobooking}", ppatHandler.DeleteBooking)

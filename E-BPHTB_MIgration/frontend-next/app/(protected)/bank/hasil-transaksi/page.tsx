@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getApiBase } from "../../../../lib/api";
+import { runBankTableTourIfRequested } from "../../../components/tours/bankDashboardTour";
 
 const PAGE_SIZE = 10;
 const TABS = ["pending", "reviewed"] as const;
@@ -63,6 +65,9 @@ export default function BankHasilTransaksiPage() {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const rowKey = (r: BankRow, idx = 0) => `${r.nobooking || ""}::${r.no_registrasi || ""}::${idx}`;
   const mergeAppendOnly = (existing: BankRow[], incoming: BankRow[]) => {
     const seen = new Set(existing.map((r, idx) => rowKey(r, idx)));
@@ -114,6 +119,15 @@ export default function BankHasilTransaksiPage() {
   useEffect(() => {
     load(currentPage);
   }, [currentTab, currentPage, statusFilter, load]);
+
+  const tourGuideTable = searchParams.get("tourGuide");
+  useEffect(() => {
+    if (tourGuideTable !== "bank-table") return;
+    const t = window.setTimeout(() => {
+      runBankTableTourIfRequested(router, searchParams);
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [router, searchParams, tourGuideTable]);
 
   useEffect(() => {
     if (!realTimeEnabled) return;
@@ -186,6 +200,7 @@ export default function BankHasilTransaksiPage() {
 
       {/* Tabs: Pending Review / Sudah di Review (sama seperti legacy) */}
       <div
+        id="bank-tour-tabs"
         style={{
           display: "flex",
           marginBottom: 20,
@@ -334,7 +349,10 @@ export default function BankHasilTransaksiPage() {
         </div>
       </div>
 
-      <div style={{ overflowX: "auto", background: "var(--card_bg)", borderRadius: 16, border: "1px solid var(--border_color)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
+      <div
+        id="bank-tour-table"
+        style={{ overflowX: "auto", background: "var(--card_bg)", borderRadius: 16, border: "1px solid var(--border_color)", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}
+      >
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
           <thead>
             <tr style={{ background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)", border: "none" }}>

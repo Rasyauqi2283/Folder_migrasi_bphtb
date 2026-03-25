@@ -327,6 +327,69 @@ function parseRupiah(s: string): number {
   return raw === "" ? 0 : parseInt(raw, 10);
 }
 
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+/** Pecah NOP PBB terformat ke 7 segmen input */
+function parseNopToDigits(raw: string): string[] {
+  const d = (raw || "").replace(/\D/g, "");
+  const lens = [2, 2, 3, 3, 3, 4, 1] as const;
+  const out: string[] = Array(7).fill("");
+  let pos = 0;
+  for (let i = 0; i < lens.length; i++) {
+    out[i] = d.slice(pos, pos + lens[i]);
+    pos += lens[i];
+  }
+  return out;
+}
+
+/** Pecah NPWP terformat ke 6 segmen input */
+function parseNpwpToDigits(raw: string): string[] {
+  const d = (raw || "").replace(/\D/g, "");
+  const lens = [2, 3, 3, 1, 3, 3] as const;
+  const out: string[] = Array(6).fill("");
+  let pos = 0;
+  for (let i = 0; i < lens.length; i++) {
+    out[i] = d.slice(pos, pos + lens[i]);
+    pos += lens[i];
+  }
+  return out;
+}
+
+function parseDdMmYyyyParts(s: string | undefined): { d: string; m: string; y: string } {
+  const t = (s || "").trim();
+  if (!t) return { d: "", m: "", y: "" };
+  const parts = t.split(/[-./]/).map((x) => x.trim());
+  if (parts.length >= 3) {
+    return { d: parts[0] || "", m: parts[1] || "", y: parts[2] || "" };
+  }
+  return { d: "", m: "", y: "" };
+}
+
+/** Nilai status_kepemilikan di DB → value `<select>` form */
+function statusDbToForm(s: string | undefined): string {
+  const v = (s || "").trim();
+  if (v === "Milik Pribadi" || v === "milik_pribadi") return "milik_pribadi";
+  if (v === "Milik Bersama" || v === "milik_bersama") return "milik_bersama";
+  if (v === "Sewa" || v === "sewa") return "sewa";
+  if (v === "Hak Guna Bangunan" || v === "hgb") return "hgb";
+  return "milik_pribadi";
+}
+
+interface CallbackHistoryRow {
+  id: string;
+  nobooking: string;
+  noppbb: string;
+  namawajibpajak: string;
+  label: string;
+}
+
 export default function TambahBookingBadanPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -352,6 +415,15 @@ export default function TambahBookingBadanPage() {
   const [kelurahanDropdownOpen, setKelurahanDropdownOpen] = useState(false);
   const kecamatanDropdownRef = useRef<HTMLDivElement>(null);
   const kelurahanDropdownRef = useRef<HTMLDivElement>(null);
+  const callbackDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [callbackOpen, setCallbackOpen] = useState(false);
+  const [callbackSearch, setCallbackSearch] = useState("");
+  const debouncedCallbackSearch = useDebouncedValue(callbackSearch, 350);
+  const [callbackItems, setCallbackItems] = useState<CallbackHistoryRow[]>([]);
+  const [callbackListLoading, setCallbackListLoading] = useState(false);
+  const [callbackApplyLoading, setCallbackApplyLoading] = useState(false);
+  const [callbackNotice, setCallbackNotice] = useState<string | null>(null);
 
   const [form, setForm] = useState<Record<string, string | number | undefined>>({
     namawajibpajak: "",
@@ -409,10 +481,137 @@ export default function TambahBookingBadanPage() {
       const target = e.target as Node;
       if (kecamatanDropdownRef.current && !kecamatanDropdownRef.current.contains(target)) setKecamatanDropdownOpen(false);
       if (kelurahanDropdownRef.current && !kelurahanDropdownRef.current.contains(target)) setKelurahanDropdownOpen(false);
+      if (callbackDropdownRef.current && !callbackDropdownRef.current.contains(target)) setCallbackOpen(false);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  useEffect(() => {
+    if (!callbackOpen) return;
+    let cancelled = false;
+    (async () => {
+      setCallbackListLoading(true);
+      try {
+        const base = getBackendBaseUrl();
+        const url = `${base ? base : ""}/api/ppat/booking/history?limit=30&q=${encodeURIComponent(debouncedCallbackSearch)}`;
+        const res = await fetch(url, { credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (json?.success && Array.isArray(json.data)) {
+          setCallbackItems(json.data as CallbackHistoryRow[]);
+        } else {
+          setCallbackItems([]);
+        }
+      } catch {
+        if (!cancelled) setCallbackItems([]);
+      } finally {
+        if (!cancelled) setCallbackListLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [callbackOpen, debouncedCallbackSearch]);
+
+  const applyCallbackFromData = useCallback((d: Record<string, unknown>) => {
+    const str = (k: string) => (d[k] != null ? String(d[k]) : "");
+    const num = (k: string) => {
+      const v = d[k];
+      if (typeof v === "number" && !Number.isNaN(v)) return v;
+      if (typeof v === "string" && v.trim() !== "") return parseFloat(v.replace(/\./g, "").replace(",", "."));
+      return undefined;
+    };
+
+    setNopDigits(parseNopToDigits(str("noppbb")));
+    setNpwpWpDigits(parseNpwpToDigits(str("npwpwp")));
+    setNpwpOpDigits(parseNpwpToDigits(str("npwpop")));
+
+    const jp = str("jenisPerolehan");
+    setJenisPerolehan(jp);
+    setNpoptkp(NPOPTKP_MAP[jp] ?? 80_000_000);
+    const npopt = d.nilaiPerolehanObjekPajakTidakKenaPajak;
+    if (typeof npopt === "number" && !Number.isNaN(npopt)) setNpoptkp(npopt);
+
+    setTanggalOleh(parseDdMmYyyyParts(str("tanggal_perolehan")));
+    setTanggalBayar(parseDdMmYyyyParts(str("tanggal_pembayaran")));
+
+    const hargaRaw = d.hargatransaksi;
+    let hargaStr = "";
+    if (hargaRaw != null && String(hargaRaw).trim() !== "") {
+      const n = typeof hargaRaw === "number" ? hargaRaw : parseRupiah(String(hargaRaw));
+      hargaStr = n > 0 ? String(n) : "";
+    }
+
+    const bphtb = d.bphtb_yangtelah_dibayar;
+    const bphtbVal =
+      typeof bphtb === "number" && !Number.isNaN(bphtb)
+        ? bphtb
+        : typeof bphtb === "string" && bphtb.trim() !== ""
+          ? parseRupiah(bphtb)
+          : undefined;
+
+    setKecamatanSearch("");
+    setForm({
+      namawajibpajak: str("namawajibpajak"),
+      alamatwajibpajak: str("alamatwajibpajak"),
+      namapemilikobjekpajak: str("namapemilikobjekpajak"),
+      alamatpemilikobjekpajak: str("alamatpemilikobjekpajak"),
+      tahunajb: str("tahunajb") || String(today.getFullYear()),
+      kabupatenkotawp: str("kabupatenkotawp"),
+      kecamatanwp: str("kecamatanwp"),
+      kelurahandesawp: str("kelurahandesawp"),
+      rtrwwp: str("rtrwwp"),
+      kodeposwp: str("kodeposwp"),
+      kabupatenkotaop: str("kabupatenkotaop") || "Kabupaten Bogor",
+      kecamatanop: str("kecamatanop"),
+      kelurahandesaop: str("kelurahandesaop"),
+      rtrwop: str("rtrwop"),
+      kodeposop: str("kodeposop"),
+      hargatransaksi: hargaStr,
+      letaktanahdanbangunan: str("letaktanahdanbangunan"),
+      rt_rwobjekpajak: str("rt_rwobjekpajak"),
+      kecamatanlp: str("kecamatanlp"),
+      kelurahandesalp: str("kelurahandesalp"),
+      status_kepemilikan: statusDbToForm(str("status_kepemilikan")),
+      jenisPerolehan: jp,
+      keterangan: str("keterangan"),
+      nomor_sertifikat: str("nomor_sertifikat"),
+      nomor_bukti_pembayaran: "",
+      luas_tanah: num("luas_tanah"),
+      njop_tanah: num("njop_tanah"),
+      luas_bangunan: num("luas_bangunan"),
+      njop_bangunan: num("njop_bangunan"),
+      bphtb_yangtelah_dibayar: bphtbVal,
+    });
+    setOpenObjek(true);
+    setOpenPerhitungan(true);
+    setError(null);
+  }, []);
+
+  const handleCallbackSelect = async (nobooking: string) => {
+    setCallbackOpen(false);
+    setCallbackApplyLoading(true);
+    setCallbackNotice(null);
+    try {
+      const base = getBackendBaseUrl();
+      const url = `${base ? base : ""}/api/ppat/booking/${encodeURIComponent(nobooking)}/callback`;
+      const res = await fetch(url, { credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success || !json?.data) {
+        setError(typeof json?.message === "string" ? json.message : "Gagal memuat data riwayat.");
+        return;
+      }
+      applyCallbackFromData(json.data as Record<string, unknown>);
+      const nopShow = String((json.data as Record<string, unknown>).noppbb ?? "").trim();
+      setCallbackNotice(`Data berhasil dimuat dari riwayat NOP ${nopShow || nobooking}`);
+      window.setTimeout(() => setCallbackNotice(null), 6000);
+    } catch {
+      setError("Gagal memuat data riwayat.");
+    } finally {
+      setCallbackApplyLoading(false);
+    }
+  };
 
   const handleJenisPerolehanChange = useCallback((val: string) => {
     setJenisPerolehan(val);
@@ -529,6 +728,90 @@ export default function TambahBookingBadanPage() {
       {success && (
         <div style={{ padding: 12, marginBottom: 16, background: "#f0fdf4", color: "#166534", borderRadius: 8 }}>{success}</div>
       )}
+      {callbackNotice && (
+        <div style={{ padding: 10, marginBottom: 16, background: "#ecfdf5", color: "#047857", borderRadius: 8, fontSize: 14 }}>
+          {callbackNotice}
+        </div>
+      )}
+
+      <div
+        ref={callbackDropdownRef}
+        style={{
+          marginBottom: 20,
+          padding: 16,
+          background: "var(--card_bg)",
+          border: "1px solid var(--border_color)",
+          borderRadius: 12,
+          position: "relative",
+        }}
+      >
+        <label style={{ ...labelStyle, marginBottom: 8 }}>Callback dari riwayat booking (NOP PBB — Nama Wajib Pajak)</label>
+        <p style={{ ...hintStyle, marginBottom: 10 }}>
+          Pilih booking lama untuk mengisi form otomatis. Tanggal pengajuan hari ini dan nomor bukti pembayaran dikosongkan agar Anda mengisi yang baru.
+        </p>
+        <div style={{ position: "relative" }}>
+          <input
+            style={{ ...inputStyle, marginTop: 0 }}
+            placeholder="Ketik NOP, nama WP, atau no. booking — tunggu sebentar saat mengetik"
+            value={callbackSearch}
+            onChange={(e) => {
+              setCallbackSearch(e.target.value);
+              if (!callbackOpen) setCallbackOpen(true);
+            }}
+            onFocus={() => setCallbackOpen(true)}
+            disabled={callbackApplyLoading}
+          />
+          {callbackOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                maxHeight: 260,
+                overflowY: "auto",
+                background: "var(--card_bg)",
+                border: "1px solid var(--border_color)",
+                borderRadius: 8,
+                boxShadow: "var(--card_shadow)",
+                zIndex: 60,
+              }}
+            >
+              {callbackListLoading ? (
+                <div style={{ padding: 12, color: "var(--color_font_main_muted)", fontSize: 14 }}>Mencari...</div>
+              ) : callbackItems.length === 0 ? (
+                <div style={{ padding: 12, color: "var(--color_font_main_muted)", fontSize: 14 }}>Tidak ada data</div>
+              ) : (
+                callbackItems.map((row) => (
+                  <button
+                    key={row.nobooking}
+                    type="button"
+                    disabled={callbackApplyLoading}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "10px 12px",
+                      textAlign: "left",
+                      border: "none",
+                      background: "transparent",
+                      color: "var(--color_font_main)",
+                      cursor: callbackApplyLoading ? "not-allowed" : "pointer",
+                      fontSize: 14,
+                    }}
+                    onClick={() => handleCallbackSelect(row.nobooking)}
+                  >
+                    {row.label || `${row.noppbb} — ${row.namawajibpajak}`}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+        {callbackApplyLoading && (
+          <p style={{ ...hintStyle, marginTop: 8, marginBottom: 0 }}>Memuat data ke form...</p>
+        )}
+      </div>
 
       <form
         onSubmit={handleSubmit}

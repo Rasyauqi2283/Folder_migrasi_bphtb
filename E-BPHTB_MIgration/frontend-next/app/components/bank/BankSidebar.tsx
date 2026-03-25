@@ -175,6 +175,7 @@ export default function BankSidebar() {
           </div>
 
           <div
+            id="menu-bank-transaksi-section"
             style={{ padding: "2px", cursor: "pointer" }}
             onMouseEnter={() => handleDropdownEnter("transaksi")}
             onMouseLeave={handleDropdownLeave}
@@ -203,6 +204,7 @@ export default function BankSidebar() {
             </div>
             <div className={dropdownContentClasses(openDropdownId === "transaksi")}>
               <Link
+                id="menu-bank-hasil-transaksi"
                 href="/bank/hasil-transaksi"
                 className={dropdownLinkClasses(pathname === "/bank/hasil-transaksi")}
               >

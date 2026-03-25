@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -572,6 +573,140 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
 		"bphtb_yangtelah_dibayar": valFloat(bphtbDibayar),
+	}
+	return out, nil
+}
+
+// ListBookingHistoryBadan returns recent Badan Usaha bookings for callback dropdown (NOP + nama search).
+func (r *PpatRepo) ListBookingHistoryBadan(ctx context.Context, userid string, q string, limit int) ([]map[string]interface{}, error) {
+	if r.pool == nil {
+		return []map[string]interface{}{}, nil
+	}
+	if limit < 1 {
+		limit = 30
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	search := strings.TrimSpace(q)
+	pattern := "%" + search + "%"
+	rows, err := r.pool.Query(ctx, `
+		SELECT p.nobooking, p.noppbb, p.namawajibpajak
+		FROM pat_1_bookingsspd p
+		WHERE p.userid = $1
+		  AND p.jenis_wajib_pajak::text = 'Badan Usaha'
+		  AND COALESCE(p.trackstatus, '') NOT IN ('Dihapus', 'Diserahkan')
+		  AND ($2::text = '' OR p.noppbb ILIKE $3 OR p.namawajibpajak ILIKE $3 OR p.nobooking ILIKE $3)
+		ORDER BY p.created_at DESC
+		LIMIT $4
+	`, userid, search, pattern, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []map[string]interface{}
+	for rows.Next() {
+		var nobooking, noppbb, nama string
+		if err := rows.Scan(&nobooking, &noppbb, &nama); err != nil {
+			continue
+		}
+		label := strings.TrimSpace(noppbb) + " - " + strings.TrimSpace(nama)
+		out = append(out, map[string]interface{}{
+			"id":               nobooking,
+			"nobooking":        nobooking,
+			"noppbb":           noppbb,
+			"namawajibpajak":   nama,
+			"label":            label,
+		})
+	}
+	return out, rows.Err()
+}
+
+// GetBookingBadanCallbackData returns joined pat_1 + pat_2 + pat_4 + pat_5 fields for PU callback autofill (Badan only).
+func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobooking string) (map[string]interface{}, error) {
+	if r.pool == nil {
+		return nil, fmt.Errorf("database not configured")
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT
+			p.noppbb,
+			p.namawajibpajak, p.alamatwajibpajak, p.namapemilikobjekpajak, p.alamatpemilikobjekpajak,
+			p.tahunajb::text,
+			p.kabupatenkotawp, p.kecamatanwp, p.kelurahandesawp, p.rtrwwp, p.kodeposwp,
+			p.kabupatenkotaop, p.kecamatanop, p.kelurahandesaop, p.rtrwop, p.kodeposop,
+			p.npwpwp, p.npwpop,
+			bp.nilaiperolehanobjekpajaktidakkenapajak, bp.bphtb_yangtelah_dibayar,
+			o.harga_transaksi, o.letaktanahdanbangunan, o.rt_rwobjekpajak, o.status_kepemilikan, o.keterangan, o.nomor_sertifikat,
+			o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran, o.jenis_perolehan, o.kelurahandesalp, o.kecamatanlp,
+			pp.luas_tanah, pp.njop_tanah, pp.luas_bangunan, pp.njop_bangunan
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2 AND p.jenis_wajib_pajak::text = 'Badan Usaha'
+	`, nobooking, userid)
+
+	var (
+		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb *string
+		kabwp, kecwp, kelwp, rtrwwp, kodeposwp *string
+		kabop, kecop, kelop, rtrwop, kodeposop *string
+		npwpwp, npwpop *string
+		npoptkp *float64
+		bphtb   *int32
+		harga, letak, rtop, statusKm, ket, nomorSert *string
+		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
+		luasT, njopT, luasB, njopB *float64
+	)
+	err := row.Scan(
+		&noppbb,
+		&namawp, &alamatwp, &namaop, &alamatop,
+		&tahunajb,
+		&kabwp, &kecwp, &kelwp, &rtrwwp, &kodeposwp,
+		&kabop, &kecop, &kelop, &rtrwop, &kodeposop,
+		&npwpwp, &npwpop,
+		&npoptkp, &bphtb,
+		&harga, &letak, &rtop, &statusKm, &ket, &nomorSert,
+		&tglPeroleh, &tglBayar, &nomorBukti, &jenisPerolehan, &kelLp, &kecLp,
+		&luasT, &njopT, &luasB, &njopB,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	val := func(s *string) interface{} {
+		if s == nil {
+			return nil
+		}
+		return *s
+	}
+	valF := func(f *float64) interface{} {
+		if f == nil {
+			return nil
+		}
+		return *f
+	}
+	out := map[string]interface{}{
+		"noppbb": val(noppbb),
+		"namawajibpajak": val(namawp), "alamatwajibpajak": val(alamatwp),
+		"namapemilikobjekpajak": val(namaop), "alamatpemilikobjekpajak": val(alamatop),
+		"tahunajb": val(tahunajb),
+		"kabupatenkotawp": val(kabwp), "kecamatanwp": val(kecwp), "kelurahandesawp": val(kelwp),
+		"rtrwwp": val(rtrwwp), "kodeposwp": val(kodeposwp),
+		"kabupatenkotaop": val(kabop), "kecamatanop": val(kecop), "kelurahandesaop": val(kelop),
+		"rtrwop": val(rtrwop), "kodeposop": val(kodeposop),
+		"npwpwp": val(npwpwp), "npwpop": val(npwpop),
+		"nilaiPerolehanObjekPajakTidakKenaPajak": valF(npoptkp),
+		"hargatransaksi": val(harga), "letaktanahdanbangunan": val(letak),
+		"rt_rwobjekpajak": val(rtop), "status_kepemilikan": val(statusKm),
+		"keterangan": val(ket), "nomor_sertifikat": val(nomorSert),
+		"tanggal_perolehan": val(tglPeroleh), "tanggal_pembayaran": val(tglBayar),
+		"nomor_bukti_pembayaran": val(nomorBukti), "jenisPerolehan": val(jenisPerolehan),
+		"kelurahandesalp": val(kelLp), "kecamatanlp": val(kecLp),
+		"luas_tanah": valF(luasT), "njop_tanah": valF(njopT), "luas_bangunan": valF(luasB), "njop_bangunan": valF(njopB),
+	}
+	if bphtb != nil {
+		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
 	}
 	return out, nil
 }
