@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,12 +20,13 @@ const defaultFotoprofil = "/penting_F_simpan/profile-photo/default-foto-profile.
 
 // UsersHandler handles /api/users/* for admin data user (pending, complete, generate-userid, assign).
 type UsersHandler struct {
-	repo *repository.UserRepo
+	repo          *repository.UserRepo
+	tempUploadsDir string
 }
 
 // NewUsersHandler creates a UsersHandler.
-func NewUsersHandler(repo *repository.UserRepo) *UsersHandler {
-	return &UsersHandler{repo: repo}
+func NewUsersHandler(repo *repository.UserRepo, tempUploadsDir string) *UsersHandler {
+	return &UsersHandler{repo: repo, tempUploadsDir: tempUploadsDir}
 }
 
 // GetPending returns list of users with verifiedstatus IN ('verified_pending','pending').
@@ -51,6 +54,7 @@ func (h *UsersHandler) GetPending(w http.ResponseWriter, r *http.Request) {
 			"id": u.ID, "nama": u.Nama, "email": u.Email, "nik": u.NIK, "telepon": u.Telepon,
 			"userid": nil, "divisi": nil, "ppat_khusus": nil,
 			"gender": nil, "verse": nil, "special_field": nil, "pejabat_umum": nil,
+			"npwp_badan": nil, "nib": nil, "nib_doc_path": nil,
 		}
 		if u.Userid != nil {
 			o["userid"] = *u.Userid
@@ -72,6 +76,15 @@ func (h *UsersHandler) GetPending(w http.ResponseWriter, r *http.Request) {
 		}
 		if u.PejabatUmum != nil {
 			o["pejabat_umum"] = *u.PejabatUmum
+		}
+		if u.NpwpBadan != nil {
+			o["npwp_badan"] = *u.NpwpBadan
+		}
+		if u.Nib != nil {
+			o["nib"] = *u.Nib
+		}
+		if u.NibDocPath != nil {
+			o["nib_doc_path"] = *u.NibDocPath
 		}
 		out = append(out, o)
 	}
@@ -383,6 +396,154 @@ func (h *UsersHandler) KTPPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	jsonResponse(w, http.StatusOK, KTPPreviewResponse{
 		Success: true, KtpOcrJson: ktpJson, Data: parsed,
+	})
+}
+
+func (h *UsersHandler) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
+	userid := getUseridFromCookieOrHeader(r)
+	if userid == "" {
+		jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return false
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonResponse(w, http.StatusServiceUnavailable, map[string]string{"error": "Database tidak tersedia"})
+		return false
+	}
+	u, err := h.repo.GetByIdentifierForLogin(r.Context(), userid)
+	if err != nil || u == nil {
+		jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return false
+	}
+	d := strings.ToLower(strings.TrimSpace(u.Divisi))
+	if d != "admin" && d != "administrator" {
+		jsonResponse(w, http.StatusForbidden, map[string]string{"error": "Admin access required"})
+		return false
+	}
+	return true
+}
+
+// ApproveWPBadan approves WP Badan Usaha registration (verifiedstatus pending -> complete).
+func (h *UsersHandler) ApproveWPBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	idStr := strings.TrimSpace(r.PathValue("id"))
+	var id int
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil || id <= 0 {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "id tidak valid"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	u, err := h.repo.GetPendingByID(ctx, id)
+	if err != nil || u == nil {
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan"})
+		return
+	}
+	if u.Verse == nil || strings.ToUpper(strings.TrimSpace(*u.Verse)) != "WP" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP"})
+		return
+	}
+	if u.Divisi == nil || strings.TrimSpace(*u.Divisi) != "Wajib Pajak B" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP Badan Usaha"})
+		return
+	}
+	if u.Userid == nil || strings.TrimSpace(*u.Userid) == "" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "UserID belum tersedia"})
+		return
+	}
+
+	cmd, err := h.repo.Pool().Exec(ctx, `
+		UPDATE a_2_verified_users
+		SET verifiedstatus='complete', updated_at=now()
+		WHERE id=$1 AND verifiedstatus='pending' AND verse='WP' AND divisi='Wajib Pajak B'
+	`, id)
+	if err != nil {
+		log.Printf("[WP_BADAN] approve update: %v", err)
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyetujui"})
+		return
+	}
+	if cmd.RowsAffected() == 0 {
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan atau sudah diproses"})
+		return
+	}
+
+	go func(emailAddr, nama, userid string) {
+		if sendErr := email.SendUserIDNotification(emailAddr, nama, userid); sendErr != nil {
+			log.Printf("[WP_BADAN] email notification to %s: %v", emailAddr, sendErr)
+		}
+	}(u.Email, u.Nama, strings.TrimSpace(*u.Userid))
+
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "WP Badan Usaha disetujui",
+	})
+}
+
+// RejectWPBadan rejects WP Badan Usaha registration and deletes its pending record.
+func (h *UsersHandler) RejectWPBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	idStr := strings.TrimSpace(r.PathValue("id"))
+	var id int
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil || id <= 0 {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "id tidak valid"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	u, err := h.repo.GetPendingByID(ctx, id)
+	if err != nil || u == nil {
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan"})
+		return
+	}
+	if u.Verse == nil || strings.ToUpper(strings.TrimSpace(*u.Verse)) != "WP" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP"})
+		return
+	}
+	if u.Divisi == nil || strings.TrimSpace(*u.Divisi) != "Wajib Pajak B" {
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP Badan Usaha"})
+		return
+	}
+
+	// Best-effort delete NIB doc file (privacy): file located in TEMP_UPLOADS_DIR/nib_docs/<uploadId>.pdf
+	if h.tempUploadsDir != "" && u.NibDocPath != nil && strings.TrimSpace(*u.NibDocPath) != "" {
+		p := strings.TrimSpace(*u.NibDocPath)
+		// allow both "nib_docs/<id>.pdf" and "/api/uploads/nib/<id>.pdf"
+		base := filepath.Base(p)
+		if strings.HasSuffix(strings.ToLower(base), ".pdf") {
+			fpath := filepath.Join(h.tempUploadsDir, "nib_docs", base)
+			_ = os.Remove(fpath)
+		}
+	}
+
+	cmd, err := h.repo.Pool().Exec(ctx, `
+		DELETE FROM a_2_verified_users
+		WHERE id=$1 AND verifiedstatus='pending' AND verse='WP' AND divisi='Wajib Pajak B'
+	`, id)
+	if err != nil {
+		log.Printf("[WP_BADAN] reject delete: %v", err)
+		jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menolak"})
+		return
+	}
+	if cmd.RowsAffected() == 0 {
+		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan atau sudah diproses"})
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"message": "WP Badan Usaha ditolak",
 	})
 }
 

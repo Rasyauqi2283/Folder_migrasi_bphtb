@@ -10,6 +10,7 @@ const DIVISI_KARYAWAN: Record<string, string> = {
   A: "Admin",
   P: "Peneliti",
   PV: "Peneliti Validasi",
+  CS: "Customer Service"
 };
 
 // Divisi PU (3): PPAT, PPATS, NOTARIS
@@ -38,6 +39,9 @@ interface PendingUser {
   verse?: string | null;
   special_field?: string | null;
   pejabat_umum?: string | null;
+  npwp_badan?: string | null;
+  nib?: string | null;
+  nib_doc_path?: string | null;
 }
 
 const PAGE_SIZE = 10;
@@ -64,6 +68,9 @@ export default function AdminDataUserPendingPage() {
   const [ktpPreviewData, setKtpPreviewData] = useState<Record<string, unknown> | null>(null);
   const [ktpLoading, setKtpLoading] = useState(false);
   const [ktpError, setKtpError] = useState<string | null>(null);
+
+  const [wpActionId, setWpActionId] = useState<number | null>(null);
+  const [wpActionError, setWpActionError] = useState<string | null>(null);
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -94,6 +101,60 @@ export default function AdminDataUserPendingPage() {
   // Filter ketat: hanya verse Karyawan di tabel Karyawan, hanya verse PU di tabel PU
   const karyawanRows = pageUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
   const puRows = pageUsers.filter((u) => (u.verse ?? "").toUpperCase() === "PU");
+  const wpBadanRows = pageUsers.filter((u) => {
+    const verse = (u.verse ?? "").toUpperCase();
+    const div = (u.divisi ?? "").toLowerCase();
+    return verse === "WP" && div.includes("wajib pajak b");
+  });
+
+  const nibDocUrl = (u: PendingUser): string | null => {
+    const raw = (u.nib_doc_path ?? "").trim();
+    if (!raw) return null;
+    if (raw.startsWith("/api/")) return `${getApiBase()}${raw}`;
+    const base = raw.split("/").filter(Boolean).slice(-1)[0];
+    if (!base) return null;
+    return `${getApiBase()}/api/uploads/nib/${encodeURIComponent(base)}`;
+  };
+
+  const approveWPBadan = async (id: number) => {
+    setWpActionError(null);
+    setWpActionId(id);
+    try {
+      const res = await fetch(`${getApiBase()}/api/users/wp-badan/${id}/approve`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || data?.message || "Gagal menyetujui WP Badan Usaha");
+      }
+      await loadPending();
+    } catch (e) {
+      setWpActionError(e instanceof Error ? e.message : "Gagal menyetujui");
+    } finally {
+      setWpActionId(null);
+    }
+  };
+
+  const rejectWPBadan = async (id: number) => {
+    setWpActionError(null);
+    setWpActionId(id);
+    try {
+      const res = await fetch(`${getApiBase()}/api/users/wp-badan/${id}/reject`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || data?.message || "Gagal menolak WP Badan Usaha");
+      }
+      await loadPending();
+    } catch (e) {
+      setWpActionError(e instanceof Error ? e.message : "Gagal menolak");
+    } finally {
+      setWpActionId(null);
+    }
+  };
 
   const renderTable = (tipe: "karyawan" | "pu") => {
     const rows = tipe === "karyawan" ? karyawanRows : puRows;
@@ -296,7 +357,7 @@ export default function AdminDataUserPendingPage() {
         Verifikasi Data User (Pending)
       </h1>
       <p style={{ color: "var(--color_font_main_muted)", margin: "0 0 1rem" }}>
-        User yang belum di-assign UserID dan divisi
+        User yang menunggu tindakan admin (assign untuk Karyawan/PU, approve/reject untuk WP Badan Usaha)
       </p>
 
       {error && (
@@ -491,24 +552,129 @@ export default function AdminDataUserPendingPage() {
         <p style={{ color: "var(--color_font_main_muted)" }}>Memuat...</p>
       ) : (
         <>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
             <div>
               <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
-                Karyawan
+                WP — Badan Usaha
               </h3>
-              {renderTable("karyawan")}
+              {wpActionError && (
+                <p style={{ color: "#dc2626", margin: "0 0 8px" }}>{wpActionError}</p>
+              )}
+              <div
+                style={{
+                  minWidth: 0,
+                  overflowX: "auto",
+                  background: "#1b263b",
+                  borderRadius: 8,
+                  border: "1px solid rgba(65,90,119,0.3)",
+                }}
+              >
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.5)" }}>
+                      <th style={thStyle}>Nama</th>
+                      <th style={thStyle}>Email</th>
+                      <th style={thStyle}>NIK (PJ)</th>
+                      <th style={thStyle}>NPWP Badan</th>
+                      <th style={thStyle}>NIB</th>
+                      <th style={thStyle}>Dokumen</th>
+                      <th style={thStyle}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wpBadanRows.length === 0 ? (
+                      <tr>
+                        <td style={tdStyle} colSpan={7}>
+                          Tidak ada pending WP Badan Usaha pada halaman ini.
+                        </td>
+                      </tr>
+                    ) : (
+                      wpBadanRows.map((u) => {
+                        const url = nibDocUrl(u);
+                        const busy = wpActionId === u.id;
+                        return (
+                          <tr key={u.id} style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
+                            <td style={tdStyle}>{u.nama}</td>
+                            <td style={tdStyle}>{u.email}</td>
+                            <td style={tdStyle}>{u.nik}</td>
+                            <td style={tdStyle}>{u.npwp_badan ?? "—"}</td>
+                            <td style={tdStyle}>{u.nib ?? "—"}</td>
+                            <td style={tdStyle}>
+                              {url ? (
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
+                                >
+                                  Lihat PDF
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td style={tdStyle}>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  onClick={() => approveWPBadan(u.id)}
+                                  disabled={busy}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: busy ? "#6b7280" : "#10b981",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 6,
+                                    cursor: busy ? "wait" : "pointer",
+                                  }}
+                                >
+                                  {busy ? "Memproses..." : "Approve"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => rejectWPBadan(u.id)}
+                                  disabled={busy}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: busy ? "#6b7280" : "#ef4444",
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: 6,
+                                    cursor: busy ? "wait" : "pointer",
+                                  }}
+                                >
+                                  {busy ? "Memproses..." : "Reject"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div>
-              <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
-                PU
-              </h3>
-              {renderTable("pu")}
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+              }}
+            >
+              <div>
+                <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
+                  Karyawan
+                </h3>
+                {renderTable("karyawan")}
+              </div>
+              <div>
+                <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
+                  PU
+                </h3>
+                {renderTable("pu")}
+              </div>
             </div>
           </div>
 

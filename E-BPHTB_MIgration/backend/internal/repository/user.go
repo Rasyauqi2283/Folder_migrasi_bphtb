@@ -282,6 +282,9 @@ type PendingUser struct {
 	Verse        *string
 	SpecialField *string
 	PejabatUmum  *string
+	NpwpBadan    *string
+	Nib          *string
+	NibDocPath   *string
 }
 
 // ListPendingUsers returns users with verifiedstatus IN ('verified_pending','pending').
@@ -291,7 +294,8 @@ func (r *UserRepo) ListPendingUsers(ctx context.Context) ([]PendingUser, error) 
 	}
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, nama, email, nik, telepon, userid, divisi, ppat_khusus,
-		 gender, verse, special_field, pejabat_umum
+		 gender, verse, special_field, pejabat_umum,
+		 npwp_badan, nib, nib_doc_path
 		 FROM a_2_verified_users
 		 WHERE verifiedstatus IN ('verified_pending','pending')
 		 ORDER BY id`,
@@ -304,7 +308,8 @@ func (r *UserRepo) ListPendingUsers(ctx context.Context) ([]PendingUser, error) 
 	for rows.Next() {
 		var u PendingUser
 		err := rows.Scan(&u.ID, &u.Nama, &u.Email, &u.NIK, &u.Telepon, &u.Userid, &u.Divisi, &u.PpatKhusus,
-			&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum)
+			&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum,
+			&u.NpwpBadan, &u.Nib, &u.NibDocPath)
 		if err != nil {
 			return nil, err
 		}
@@ -371,12 +376,14 @@ func (r *UserRepo) GetPendingByEmail(ctx context.Context, email string) (*Pendin
 	var u PendingUser
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, nama, email, nik, telepon, userid, divisi, ppat_khusus,
-		 gender, verse, special_field, pejabat_umum
+		 gender, verse, special_field, pejabat_umum,
+		 npwp_badan, nib, nib_doc_path
 		 FROM a_2_verified_users
 		 WHERE email = $1 AND verifiedstatus = 'verified_pending'`,
 		email,
 	).Scan(&u.ID, &u.Nama, &u.Email, &u.NIK, &u.Telepon, &u.Userid, &u.Divisi, &u.PpatKhusus,
-		&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum)
+		&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum,
+		&u.NpwpBadan, &u.Nib, &u.NibDocPath)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -394,12 +401,14 @@ func (r *UserRepo) GetPendingByID(ctx context.Context, id int) (*PendingUser, er
 	var u PendingUser
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, nama, email, nik, telepon, userid, divisi, ppat_khusus,
-		 gender, verse, special_field, pejabat_umum
+		 gender, verse, special_field, pejabat_umum,
+		 npwp_badan, nib, nib_doc_path
 		 FROM a_2_verified_users
 		 WHERE id = $1 AND verifiedstatus IN ('verified_pending','pending')`,
 		id,
 	).Scan(&u.ID, &u.Nama, &u.Email, &u.NIK, &u.Telepon, &u.Userid, &u.Divisi, &u.PpatKhusus,
-		&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum)
+		&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum,
+		&u.NpwpBadan, &u.Nib, &u.NibDocPath)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

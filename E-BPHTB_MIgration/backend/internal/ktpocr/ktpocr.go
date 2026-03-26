@@ -28,8 +28,9 @@ const (
 
 var supportedExts = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".bmp": true}
 
-// tesseract PSM modes: 4=column, 6=block, 11=sparse
-var tesseractPSMs = []string{"6", "4", "11"}
+// tesseract PSM modes:
+// 6=block, 11=sparse (keep small set for speed in production)
+var tesseractPSMs = []string{"6", "11"}
 
 // preprocessVariant defines method + optional rotation angle (degrees)
 type preprocessVariant struct {
@@ -52,49 +53,24 @@ type ocrCandidate struct {
 	psm     string
 }
 
-// Varian preprocessing untuk gambar jelas, sedikit blur, atau sedikit miring (rotasi ±2.5 dan deblur ±2 ditambah).
+// Varian preprocessing untuk gambar jelas/sedikit miring.
+// Dijaga ringkas untuk kebutuhan produksi (hanya ekstrak NIK/Nama/Alamat).
 var basePreprocessVariants = []preprocessVariant{
 	{method: "raw", rotation: 0},
 	{method: "rotate_only", rotation: -1.5},
 	{method: "rotate_only", rotation: 1.5},
-	{method: "rotate_only", rotation: -2.5},
-	{method: "rotate_only", rotation: 2.5},
 	{method: "otsu", rotation: 0},
-	{method: "otsu", rotation: -1.5},
-	{method: "otsu", rotation: 1.5},
 	{method: "adaptive", rotation: 0},
-	{method: "adaptive", rotation: -1.5},
-	{method: "adaptive", rotation: 1.5},
-	{method: "adaptive", rotation: -2},
-	{method: "adaptive", rotation: 2},
-	{method: "grayscale", rotation: 0},
 	{method: "deblur", rotation: 0},
-	{method: "deblur", rotation: -1.5},
-	{method: "deblur", rotation: 1.5},
-	{method: "deblur", rotation: -2},
-	{method: "deblur", rotation: 2},
 }
 
 func buildPreprocessVariants(q qualityMetrics) []preprocessVariant {
 	out := make([]preprocessVariant, 0, len(basePreprocessVariants)+40)
 	out = append(out, basePreprocessVariants...)
-	// Moderate: tambah rotasi ±3, ±4 dan beberapa varian adaptive/deblur
-	if q.Class == "moderate" {
-		for _, rot := range []float64{-4, -3, 3, 4} {
-			out = append(out, preprocessVariant{method: "rotate_only", rotation: rot})
-		}
+	// Hard case: tambahkan sedikit rotasi saja (tetap ringkas).
+	if q.IsHardCase || q.Class == "moderate" {
 		for _, rot := range []float64{-3, -2, 2, 3} {
-			out = append(out, preprocessVariant{method: "adaptive", rotation: rot})
-			out = append(out, preprocessVariant{method: "deblur", rotation: rot})
-		}
-	}
-	if q.IsHardCase {
-		for _, rot := range []float64{-5, -4, -3, -2, -1, 1, 2, 3, 4, 5} {
 			out = append(out, preprocessVariant{method: "rotate_only", rotation: rot})
-		}
-		for _, rot := range []float64{-4, -3, -2, 2, 3, 4} {
-			out = append(out, preprocessVariant{method: "adaptive", rotation: rot})
-			out = append(out, preprocessVariant{method: "deblur", rotation: rot})
 		}
 	}
 	// Deduplicate variants.
@@ -126,36 +102,16 @@ func runTesseract(imagePath string, psm string) (string, error) {
 	return out.String(), nil
 }
 
-// ExtractHybrid menggunakan EasyOCR sebagai primary dan fallback ke Tesseract.
+// ExtractHybrid: production-ready default is Tesseract-only (EasyOCR disabled).
 func ExtractHybrid(imagePath string, easyEnabled bool, easyEndpoint string, easyTimeout time.Duration) (*Result, error) {
 	start := time.Now()
 	if err := validateImageFile(imagePath); err != nil {
 		return errorResult(start, err.Error()), err
 	}
-	if !easyEnabled {
-		return extractWithTesseract(imagePath, start)
-	}
-
-	rawText, _, err := callEasyOCR(imagePath, easyEndpoint, easyTimeout)
-	if err != nil {
-		log.Printf("[KTP OCR EASY] fallback to tesseract: %v", err)
-		return extractWithTesseract(imagePath, start)
-	}
-
-	easyResult := parseOCRTextToResult(imagePath, rawText, start)
-	if easyResult == nil || easyResult.Stats == nil {
-		log.Printf("[KTP OCR EASY] empty/invalid result, fallback to tesseract")
-		return extractWithTesseract(imagePath, start)
-	}
-	if !isEasyResultUsable(easyResult) {
-		log.Printf("[KTP OCR EASY] weak result acc=%.2f fields=%d validNIK=%t; fallback to tesseract",
-			easyResult.Stats.Accuracy, easyResult.Stats.ExtractedFields, easyResult.Stats.IsValidNIK)
-		return extractWithTesseract(imagePath, start)
-	}
-
-	log.Printf("[KTP OCR EASY] used primary engine acc=%.2f fields=%d validNIK=%t",
-		easyResult.Stats.Accuracy, easyResult.Stats.ExtractedFields, easyResult.Stats.IsValidNIK)
-	return easyResult, nil
+	_ = easyEnabled
+	_ = easyEndpoint
+	_ = easyTimeout
+	return extractWithTesseract(imagePath, start)
 }
 
 // Extract runs OCR on imagePath and returns KTP fields.
@@ -378,49 +334,7 @@ func extractAllFields(text string, lines []string) *Result {
 	r := &Result{}
 	r.NIK = extractNIK(text, lines)
 	r.Nama = extractNama(text, lines)
-	r.TTL = extractTTL(text)
-	r.Provinsi = extractProvinsi(text, lines)
-	r.KabupatenKota = extractKabupatenKota(text, lines)
 	r.Alamat = extractAlamat(text, lines)
-	r.RtRw = extractRTRW(text, lines)
-	r.Kelurahan = extractKelurahan(text, lines)
-	r.Kecamatan = extractKecamatan(text)
-	r.JenisKelamin, r.GolonganDarah = extractJenisKelaminAndGolonganDarah(text)
-	if r.JenisKelamin == nil {
-		// fallback
-		jkRe := regexp.MustCompile(`(?i)JENIS\s+KE[LI]AMIN\s*[:.]?\s*(\w+)|JK\s*[:.]?\s*(\w+)|(LAKI-LAKI|PEREMPUAN)`)
-		if m := jkRe.FindStringSubmatch(text); len(m) > 1 {
-			v := m[1]
-			if v == "" {
-				v = m[2]
-			}
-			if v == "" {
-				v = m[3]
-			}
-			v = strings.ToUpper(v)
-			if regexp.MustCompile(`LAKI|^L$`).MatchString(v) {
-				s := "Laki-laki"
-				r.JenisKelamin = &s
-			} else if regexp.MustCompile(`PEREMPUAN|^P$`).MatchString(v) {
-				s := "Perempuan"
-				r.JenisKelamin = &s
-			}
-		}
-	}
-	if r.GolonganDarah == nil {
-		golRe := regexp.MustCompile(`(?i)GOL\.?\s*DARAH\s*[:.]?\s*([ABO\-]+)`)
-		if m := golRe.FindStringSubmatch(text); len(m) > 1 {
-			g := strings.TrimSpace(strings.ReplaceAll(m[1], "-", ""))
-			if g == "A" || g == "B" || g == "AB" || g == "O" {
-				r.GolonganDarah = &g
-			}
-		}
-	}
-	r.Agama = extractAgama(text)
-	r.StatusPerkawinan = extractStatusPerkawinan(text)
-	r.Pekerjaan = extractPekerjaan(text)
-	r.Kewarganegaraan = extractKewarganegaraan(text)
-	r.BerlakuHingga = extractBerlakuHingga(text)
 	r.RawText = text
 	return r
 }
@@ -439,45 +353,6 @@ func buildConsensusResult(cands []ocrCandidate, fallback *Result) *Result {
 	}
 	if alamat := pickBestString(cands, func(r *Result) *string { return r.Alamat }, normalizeTextForVote, nil); alamat != nil {
 		out.Alamat = alamat
-	}
-	if rtRw := pickBestString(cands, func(r *Result) *string { return r.RtRw }, normalizeRTRWForVote, nil); rtRw != nil {
-		out.RtRw = rtRw
-	}
-	if kel := pickBestString(cands, func(r *Result) *string { return r.Kelurahan }, normalizeTextForVote, nil); kel != nil {
-		out.Kelurahan = kel
-	}
-	if kec := pickBestString(cands, func(r *Result) *string { return r.Kecamatan }, normalizeTextForVote, nil); kec != nil {
-		out.Kecamatan = kec
-	}
-	if prov := pickBestString(cands, func(r *Result) *string { return r.Provinsi }, normalizeTextForVote, nil); prov != nil {
-		out.Provinsi = prov
-	}
-	if kk := pickBestString(cands, func(r *Result) *string { return r.KabupatenKota }, normalizeTextForVote, nil); kk != nil {
-		out.KabupatenKota = kk
-	}
-	if jk := pickBestString(cands, func(r *Result) *string { return r.JenisKelamin }, normalizeTextForVote, nil); jk != nil {
-		out.JenisKelamin = jk
-	}
-	if gol := pickBestString(cands, func(r *Result) *string { return r.GolonganDarah }, normalizeTextForVote, nil); gol != nil {
-		out.GolonganDarah = gol
-	}
-	if agama := pickBestString(cands, func(r *Result) *string { return r.Agama }, normalizeTextForVote, nil); agama != nil {
-		out.Agama = agama
-	}
-	if sp := pickBestString(cands, func(r *Result) *string { return r.StatusPerkawinan }, normalizeTextForVote, nil); sp != nil {
-		out.StatusPerkawinan = sp
-	}
-	if kerja := pickBestString(cands, func(r *Result) *string { return r.Pekerjaan }, normalizeTextForVote, nil); kerja != nil {
-		out.Pekerjaan = kerja
-	}
-	if kew := pickBestString(cands, func(r *Result) *string { return r.Kewarganegaraan }, normalizeTextForVote, nil); kew != nil {
-		out.Kewarganegaraan = kew
-	}
-	if berlaku := pickBestString(cands, func(r *Result) *string { return r.BerlakuHingga }, normalizeTextForVote, nil); berlaku != nil {
-		out.BerlakuHingga = berlaku
-	}
-	if ttl := pickBestTTL(cands); ttl != nil {
-		out.TTL = ttl
 	}
 	return out
 }
@@ -785,47 +660,8 @@ func fillMissingFields(dst, src *Result) {
 	if dst.Nama == nil && src.Nama != nil {
 		dst.Nama = src.Nama
 	}
-	if dst.TTL == nil && src.TTL != nil {
-		dst.TTL = src.TTL
-	}
-	if dst.Provinsi == nil && src.Provinsi != nil {
-		dst.Provinsi = src.Provinsi
-	}
-	if dst.KabupatenKota == nil && src.KabupatenKota != nil {
-		dst.KabupatenKota = src.KabupatenKota
-	}
 	if dst.Alamat == nil && src.Alamat != nil {
 		dst.Alamat = src.Alamat
-	}
-	if dst.RtRw == nil && src.RtRw != nil {
-		dst.RtRw = src.RtRw
-	}
-	if dst.Kelurahan == nil && src.Kelurahan != nil {
-		dst.Kelurahan = src.Kelurahan
-	}
-	if dst.Kecamatan == nil && src.Kecamatan != nil {
-		dst.Kecamatan = src.Kecamatan
-	}
-	if dst.JenisKelamin == nil && src.JenisKelamin != nil {
-		dst.JenisKelamin = src.JenisKelamin
-	}
-	if dst.GolonganDarah == nil && src.GolonganDarah != nil {
-		dst.GolonganDarah = src.GolonganDarah
-	}
-	if dst.Agama == nil && src.Agama != nil {
-		dst.Agama = src.Agama
-	}
-	if dst.StatusPerkawinan == nil && src.StatusPerkawinan != nil {
-		dst.StatusPerkawinan = src.StatusPerkawinan
-	}
-	if dst.Pekerjaan == nil && src.Pekerjaan != nil {
-		dst.Pekerjaan = src.Pekerjaan
-	}
-	if dst.Kewarganegaraan == nil && src.Kewarganegaraan != nil {
-		dst.Kewarganegaraan = src.Kewarganegaraan
-	}
-	if dst.BerlakuHingga == nil && src.BerlakuHingga != nil {
-		dst.BerlakuHingga = src.BerlakuHingga
 	}
 }
 
@@ -837,12 +673,6 @@ func normalizeCriticalFields(r *Result) {
 		n := normalizeNIKForVote(*r.NIK)
 		if c := correctNIK(n); c != nil {
 			r.NIK = c
-		}
-	}
-	if r.RtRw != nil {
-		v := normalizeRTRWForVote(*r.RtRw)
-		if v != "" {
-			r.RtRw = &v
 		}
 	}
 }
@@ -926,26 +756,8 @@ func calcScore(r *Result, conf float64) float64 {
 	if r.Nama != nil {
 		s += 0.15
 	}
-	if r.TTL != nil {
-		s += 0.1
-	}
 	if r.Alamat != nil {
-		s += 0.1
-	}
-	if r.RtRw != nil {
-		s += 0.08
-	}
-	if r.Kelurahan != nil {
-		s += 0.08
-	}
-	if r.Kecamatan != nil {
-		s += 0.06
-	}
-	if r.JenisKelamin != nil {
-		s += 0.05
-	}
-	if r.StatusPerkawinan != nil {
-		s += 0.06
+		s += 0.15
 	}
 	if r.NIK != nil && !validateNIK(*r.NIK) {
 		s -= 0.15
@@ -957,7 +769,7 @@ func calcScore(r *Result, conf float64) float64 {
 }
 
 func estimateConfidence(r *Result) float64 {
-	// Confidence heuristik berbasis konsistensi field utama KTP.
+	// Confidence heuristik berbasis 3 field utama: NIK, Nama, Alamat.
 	score := 0.0
 	total := 0.0
 
@@ -973,26 +785,6 @@ func estimateConfidence(r *Result) float64 {
 	if r.Alamat != nil && len(strings.TrimSpace(*r.Alamat)) >= 5 {
 		score += 10
 	}
-	total += 10
-	if r.RtRw != nil {
-		score += 10
-	}
-	total += 10
-	if r.Kelurahan != nil {
-		score += 10
-	}
-	total += 10
-	if r.Kecamatan != nil {
-		score += 10
-	}
-	total += 10
-	if r.JenisKelamin != nil {
-		score += 10
-	}
-	total += 10
-	if r.BerlakuHingga != nil {
-		score += 10
-	}
 	if total == 0 {
 		return 0
 	}
@@ -1000,22 +792,19 @@ func estimateConfidence(r *Result) float64 {
 }
 
 func getExtractionStats(r *Result, accuracy float64) *Stats {
-	fields := []*string{r.NIK, r.Nama, nil, r.Provinsi, r.KabupatenKota, r.Alamat, r.RtRw, r.Kelurahan, r.Kecamatan, r.JenisKelamin, r.GolonganDarah, r.Agama, r.StatusPerkawinan, r.Pekerjaan, r.Kewarganegaraan, r.BerlakuHingga}
+	fields := []*string{r.NIK, r.Nama, r.Alamat}
 	count := 0
 	for _, f := range fields {
 		if f != nil {
 			count++
 		}
 	}
-	if r.TTL != nil {
-		count++
-	}
 	isValidNIK := false
 	if r.NIK != nil && validateNIK(*r.NIK) {
 		isValidNIK = true
 	}
 	completeness := 0.0
-	totalFields := 16
+	totalFields := 3
 	if totalFields > 0 {
 		completeness = float64(count) / float64(totalFields) * 100
 	}

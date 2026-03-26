@@ -186,21 +186,9 @@ func isSecureRequest(r *http.Request) bool {
 }
 
 func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
-	var tempatLahir, tanggalLahir *string
-	if result.TTL != nil {
-		t, u := result.TTL.Tempat, result.TTL.Tanggal
-		tempatLahir, tanggalLahir = &t, &u
-	}
 	payload := ktpExtractJSON{
 		NIK: result.NIK, Nama: result.Nama,
-		TempatLahir: tempatLahir, TanggalLahir: tanggalLahir,
-		Provinsi: result.Provinsi, KabupatenKota: result.KabupatenKota,
-		Alamat: result.Alamat, RtRw: result.RtRw,
-		Kelurahan: result.Kelurahan, Kecamatan: result.Kecamatan,
-		JenisKelamin: result.JenisKelamin, GolonganDarah: result.GolonganDarah,
-		Agama: result.Agama, StatusPerkawinan: result.StatusPerkawinan,
-		Pekerjaan: result.Pekerjaan, Kewarganegaraan: result.Kewarganegaraan,
-		BerlakuHingga: result.BerlakuHingga,
+		Alamat: result.Alamat,
 		CreatedAt: createdAt,
 	}
 	rawForDB := result.RawText
@@ -208,15 +196,10 @@ func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJ
 		rawForDB = rawForDB[:2000]
 	}
 	ktpOcrBytes, _ := json.Marshal(map[string]interface{}{
-		"nik": result.NIK, "nama": result.Nama, "rawText": rawForDB,
-		"provinsi": result.Provinsi, "kabupatenKota": result.KabupatenKota,
-		"alamat": result.Alamat, "rtRw": result.RtRw,
-		"kelurahan": result.Kelurahan, "kecamatan": result.Kecamatan,
-		"jenisKelamin": result.JenisKelamin, "golonganDarah": result.GolonganDarah,
-		"agama": result.Agama, "statusPerkawinan": result.StatusPerkawinan,
-		"pekerjaan": result.Pekerjaan, "kewarganegaraan": result.Kewarganegaraan,
-		"berlakuHingga": result.BerlakuHingga,
-		"tempatLahir": tempatLahir, "tanggalLahir": tanggalLahir,
+		"nik": result.NIK,
+		"nama": result.Nama,
+		"alamat": result.Alamat,
+		"rawText": rawForDB,
 	})
 	payload.KtpOcrJson = string(ktpOcrBytes)
 	return payload, payload.KtpOcrJson
@@ -237,21 +220,7 @@ func NewAuthHandler(cfg *config.Config, pool *pgxpool.Pool) *AuthHandler {
 type ktpExtractJSON struct {
 	NIK              *string  `json:"nik"`
 	Nama             *string  `json:"nama"`
-	TempatLahir      *string  `json:"tempatLahir"`
-	TanggalLahir     *string  `json:"tanggalLahir"`
-	Provinsi         *string  `json:"provinsi"`
-	KabupatenKota    *string  `json:"kabupatenKota"`
 	Alamat           *string  `json:"alamat"`
-	RtRw             *string  `json:"rtRw"`
-	Kelurahan        *string  `json:"kelurahan"`
-	Kecamatan        *string  `json:"kecamatan"`
-	JenisKelamin     *string  `json:"jenisKelamin"`
-	GolonganDarah    *string  `json:"golonganDarah"`
-	Agama            *string  `json:"agama"`
-	StatusPerkawinan *string  `json:"statusPerkawinan"`
-	Pekerjaan        *string  `json:"pekerjaan"`
-	Kewarganegaraan  *string  `json:"kewarganegaraan"`
-	BerlakuHingga    *string  `json:"berlakuHingga"`
 	KtpOcrJson       string   `json:"ktpOcrJson"` // stringified untuk kolom DB
 	CreatedAt        int64    `json:"createdAt"`
 }
@@ -318,34 +287,28 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.")
 		return
 	}
+	if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
+		jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Pastikan foto KTP tidak blur dan bagian nama terlihat jelas.")
+		return
+	}
+	if result.Alamat == nil || len(strings.TrimSpace(*result.Alamat)) < 5 {
+		jsonError(w, http.StatusBadRequest, "Alamat tidak terbaca. Pastikan foto KTP tidak blur dan bagian alamat terlihat jelas.")
+		return
+	}
 
 	createdAt := time.Now().UnixMilli()
 	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
 	uploadId := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(*result.NIK), createdAt)
 
 	responseData := map[string]interface{}{
-		"nik":              payload.NIK,
-		"nama":             payload.Nama,
-		"tempatLahir":      payload.TempatLahir,
-		"tanggalLahir":     payload.TanggalLahir,
-		"provinsi":         payload.Provinsi,
-		"kabupatenKota":    payload.KabupatenKota,
-		"alamat":           payload.Alamat,
-		"rtRw":             payload.RtRw,
-		"kelurahan":        payload.Kelurahan,
-		"kecamatan":       payload.Kecamatan,
-		"jenisKelamin":     payload.JenisKelamin,
-		"golonganDarah":    payload.GolonganDarah,
-		"agama":            payload.Agama,
-		"statusPerkawinan": payload.StatusPerkawinan,
-		"pekerjaan":        payload.Pekerjaan,
-		"kewarganegaraan":  payload.Kewarganegaraan,
-		"berlakuHingga":    payload.BerlakuHingga,
+		"nik":    payload.NIK,
+		"nama":   payload.Nama,
+		"alamat": payload.Alamat,
 	}
 
 	decision := "success"
 	if result.Stats != nil {
-		if !result.Stats.IsValidNIK || result.Stats.Accuracy < 50 || result.Stats.ExtractedFields < 5 {
+		if !result.Stats.IsValidNIK || result.Stats.Accuracy < 50 || result.Stats.ExtractedFields < 2 {
 			decision = "needs_review"
 		}
 	}

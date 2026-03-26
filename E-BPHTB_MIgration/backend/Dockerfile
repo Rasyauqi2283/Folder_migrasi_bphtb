@@ -9,7 +9,10 @@ COPY E-BPHTB_MIgration/backend ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /server ./cmd/server
 
 FROM alpine:3.19
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata \
+    tesseract-ocr \
+    tesseract-ocr-data-eng \
+    tesseract-ocr-data-ind
 WORKDIR /app
 COPY --from=builder /server .
 

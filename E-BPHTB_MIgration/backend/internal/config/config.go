@@ -72,9 +72,10 @@ func Load() *Config {
 	if easyOCRURL == "" {
 		easyOCRURL = "http://localhost:8010/ocr"
 	}
-	easyOCREnabled := parseBoolEnv(os.Getenv("EASYOCR_ENABLED"), true)
-	// Default 120s: cold start EasyOCR (model load) bisa 30–120s; setelah warmup cukup ~5–15s
-	easyOCRTimeout := 120000
+	// Production default: EasyOCR disabled (too heavy). Use Tesseract-only OCR.
+	easyOCREnabled := parseBoolEnv(os.Getenv("EASYOCR_ENABLED"), false)
+	// Keep env knobs for backward compatibility (unused when disabled).
+	easyOCRTimeout := 60000
 	if p := os.Getenv("EASYOCR_TIMEOUT_MS"); p != "" {
 		if v, err := strconv.Atoi(p); err == nil && v > 0 {
 			easyOCRTimeout = v

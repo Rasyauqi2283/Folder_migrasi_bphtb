@@ -163,12 +163,14 @@ func main() {
 	} else {
 		userRepo = repository.NewUserRepo(nil)
 	}
-	usersHandler := handler.NewUsersHandler(userRepo)
+	usersHandler := handler.NewUsersHandler(userRepo, cfg.TempUploadsDir)
 	// Path spesifik pakai method eksplisit agar tidak konflik dengan pola /api/users/{userid} (Go 1.22+ ServeMux).
 	mux.HandleFunc("GET /api/users/pending", usersHandler.GetPending)
 	mux.HandleFunc("GET /api/users/complete", usersHandler.GetComplete)
 	mux.HandleFunc("POST /api/users/generate-userid", usersHandler.GenerateUserID)
 	mux.HandleFunc("POST /api/users/assign-userid-and-divisi", usersHandler.AssignUserIDAndDivisi)
+	mux.HandleFunc("POST /api/users/wp-badan/{id}/approve", usersHandler.ApproveWPBadan)
+	mux.HandleFunc("POST /api/users/wp-badan/{id}/reject", usersHandler.RejectWPBadan)
 	mux.HandleFunc("PUT /api/users/{userid}", usersHandler.PutUser)
 	mux.HandleFunc("DELETE /api/users/{userid}", usersHandler.DeleteUser)
 	mux.HandleFunc("PUT /api/users/{userid}/status-ppat", usersHandler.PutStatusPpat)
@@ -279,6 +281,10 @@ func main() {
 	})
 	mux.HandleFunc("GET /api/uploads/banners/{filename}", func(w http.ResponseWriter, r *http.Request) {
 		handler.ServeUploadDir(cfg.BannerUploadDir, r.PathValue("filename"))(w, r)
+	})
+	// Serve WP Badan docs (NIB PDF) from TEMP_UPLOADS_DIR/nib_docs
+	mux.HandleFunc("GET /api/uploads/nib/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeUploadDir(filepath.Join(cfg.TempUploadsDir, "nib_docs"), r.PathValue("filename"))(w, r)
 	})
 
 	// PPAT — handler Go (load-all-booking, rekap/diserahkan, send-now, create-booking, generate-pdf); didahulukan dari proxy
