@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import styles from "./GreetingCard.module.css";
 
 export interface GreetingCardProps {
@@ -26,17 +26,32 @@ export default function GreetingCard({
   gender,
   rightContent,
 }: GreetingCardProps) {
-  const isPerempuan =
-    typeof gender === "string" &&
-    (gender.toLowerCase() === "perempuan" || gender.toLowerCase() === "female");
+  const normalizedGender = useMemo(() => (typeof gender === "string" ? gender.trim().toLowerCase() : ""), [gender]);
+  const isPerempuan = normalizedGender === "perempuan" || normalizedGender === "female";
+  const isLakiLaki = normalizedGender === "laki-laki" || normalizedGender === "laki laki" || normalizedGender === "male";
+  const [sapaan, setSapaan] = useState("Halo");
+
+  useEffect(() => {
+    if (isPerempuan) {
+      setSapaan("Halo, Bu");
+      return;
+    }
+    if (isLakiLaki) {
+      setSapaan("Halo, Pak");
+      return;
+    }
+    setSapaan("Halo");
+  }, [isLakiLaki, isPerempuan, normalizedGender]);
+
   const svgSrc = isPerempuan ? SVG_PEREMPUAN : SVG_LAKI;
+  const renderKey = `${nama}-${normalizedGender}-${pageLabel}`;
 
   return (
-    <section className={styles.card}>
+    <section key={renderKey} className={styles.card}>
       <div className={styles.left}>
         <div className={styles.copy}>
           <h2 className={styles.title}>
-            Selamat Datang,{" "}
+            {sapaan}{" "}
             <span className={styles.name}>{nama}</span>
             {pageLabel ? (
               <>
@@ -54,6 +69,7 @@ export default function GreetingCard({
         <div className={styles.heroWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            key={`hero-${renderKey}`}
             src={svgSrc}
             alt=""
             className={styles.heroImg}

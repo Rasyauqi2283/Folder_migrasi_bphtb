@@ -176,8 +176,13 @@ func SendSupportTicketReply(to, ticketID, subject, originalMessage, replyBody st
 	sub := "[E-BPHTB Support] Balasan untuk Tiket Anda #" + ticketID
 	replyWithFooter := strings.TrimRight(replyBody, " \n\r\t") + "\n\n" + supportReplyFooterPlain
 	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
-<h2 style="color: #0f766e;">Balasan dari Customer Service</h2>
-<p style="color:#64748b; font-size:14px;">Tiket: <strong>%s</strong> · Subjek: %s</p>
+<h2 style="color: #2c3e50;">Balasan Customer Service</h2>
+<p>Halo,</p>
+<p>Kami telah menindaklanjuti tiket Anda.</p>
+<div style="background-color: #f8f9fa; padding: 14px; border-radius: 8px; margin: 14px 0;">
+  <p style="margin:0; color:#334155;"><strong>No. Tiket:</strong> %s</p>
+  <p style="margin:6px 0 0; color:#334155;"><strong>Subjek:</strong> %s</p>
+</div>
 <div style="border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin:12px 0; background:#fafafa;">
   <p style="margin:0 0 8px; color:#64748b; font-size:12px;">Pesan Anda sebelumnya:</p>
   <p style="margin:0; white-space:pre-wrap;">%s</p>
@@ -188,7 +193,7 @@ func SendSupportTicketReply(to, ticketID, subject, originalMessage, replyBody st
   <p style="margin:10px 0 0; white-space:pre-wrap; font-size:13px; color:#0f172a; font-weight:800;">%s</p>
 </div>
 <p style="color:#64748b; font-size:13px;">Jika masih ada kendala, balas email ini dengan menyebutkan nomor tiket.</p>
-<p>Salam,<br><strong>Tim BAPPENDA BPHTB — Customer Service</strong></p>
+<p>Terima kasih,<br><strong>Tim BAPPENDA BPHTB</strong></p>
 </div>`, escapeHTML(ticketID), escapeHTML(subject), escapeHTML(originalMessage), escapeHTML(replyBody), escapeHTML(supportReplyFooterPlain))
 
 	text := fmt.Sprintf("Tiket %s\nSubjek: %s\n\n--- Pesan Anda ---\n%s\n\n--- Balasan CS ---\n%s\n", ticketID, subject, originalMessage, replyWithFooter)

@@ -66,11 +66,28 @@ func (r *PpatRepo) ListPendingCorrections(ctx context.Context, userid string, li
 	if limit > 200 {
 		limit = 200
 	}
-	rows, err := r.pool.Query(ctx, `
+	var hasStpdCode bool
+	if err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema = 'public'
+			  AND table_name = 'p_1_verifikasi'
+			  AND column_name = 'stpd_code'
+		)
+	`).Scan(&hasStpdCode); err != nil {
+		return nil, err
+	}
+	stpdSelect := "NULL::varchar(50)"
+	if hasStpdCode {
+		stpdSelect = "p.stpd_code"
+	}
+
+	q := `
 		SELECT
 			p.nobooking,
 			p.no_registrasi,
-			p.stpd_code,
+			` + stpdSelect + `,
 			p.catatan_peneliti,
 			p.catatan_pu,
 			p.bukti_pelunasan_path,
@@ -81,7 +98,8 @@ func (r *PpatRepo) ListPendingCorrections(ctx context.Context, userid string, li
 		  AND COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'
 		ORDER BY p.correction_updated_at DESC NULLS LAST, p.no_registrasi ASC NULLS LAST, p.nobooking ASC
 		LIMIT $2
-	`, userid, limit)
+	`
+	rows, err := r.pool.Query(ctx, q, userid, limit)
 	if err != nil {
 		return nil, err
 	}

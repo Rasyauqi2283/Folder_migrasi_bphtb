@@ -1080,6 +1080,12 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 			jsonError(w, http.StatusBadRequest, "NPWP Badan, NIB, dan upload Sertifikat NIB (PDF) wajib untuk WP Badan Usaha.")
 			return
 		}
+		nibFile := filepath.Join(h.cfg.TempUploadsDir, "nib_docs", nibDocUploadID+".pdf")
+		if _, statErr := os.Stat(nibFile); statErr != nil {
+			log.Printf("[VERIFY_OTP_FINALIZE][WP_BADAN] NIB doc missing email=%s uploadID=%s path=%s err=%v", email, nibDocUploadID, nibFile, statErr)
+			jsonError(w, http.StatusBadRequest, "Dokumen NIB tidak ditemukan. Silakan upload ulang Sertifikat NIB (PDF) sebelum verifikasi OTP.")
+			return
+		}
 		if len(nik) != 16 || !isDigits(nik) {
 			jsonError(w, http.StatusBadRequest, "NIK Penanggung Jawab harus 16 digit.")
 			return
@@ -1128,7 +1134,6 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		})
 		return
 	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
 		jsonError(w, http.StatusInternalServerError, "Gagal memproses registrasi.")
@@ -1208,6 +1213,8 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		nibDocPathPtr = &nibDocPath
 	}
 	genderPtr := &gender
+	log.Printf("[VERIFY_OTP_FINALIZE] preparing insert email=%s verse=%s is_wp_badan=%t divisi=%s npwp_set=%t nib_set=%t nib_doc_set=%t",
+		email, verseOut, isWPBadan, divisiOut, npwpBadanPtr != nil, nibPtr != nil, nibDocPathPtr != nil)
 
 	_, err = tx.Exec(r.Context(),
 		`INSERT INTO a_2_verified_users (
@@ -1230,14 +1237,18 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 			})
 			return
 		}
+		log.Printf("[VERIFY_OTP_FINALIZE] INSERT a_2_failed email=%s verse=%s is_wp_badan=%t err=%v", email, verseOut, isWPBadan, err)
 		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
 		return
 	}
 
 	if err := tx.Commit(r.Context()); err != nil {
+		log.Printf("[VERIFY_OTP_FINALIZE] COMMIT failed email=%s verse=%s is_wp_badan=%t err=%v", email, verseOut, isWPBadan, err)
 		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
 		return
 	}
+	log.Printf("[VERIFY_OTP_FINALIZE] success email=%s verse=%s is_wp_badan=%t verified_status=%s userid=%s",
+		email, verseOut, isWPBadan, verifiedStatus, useridOut)
 
 	// Simpan ktp_ocr_json ke cek_ktp_ocr (terikat NIK) untuk preview admin
 	if h.repo != nil && ktpOcrJson != "" && nik != "" {

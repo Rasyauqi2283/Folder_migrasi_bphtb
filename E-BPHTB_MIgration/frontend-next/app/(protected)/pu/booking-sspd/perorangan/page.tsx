@@ -76,13 +76,17 @@ export default function BookingSSPDPeroranganPage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const loadTable = useCallback(async (p: number) => {
+  const loadTable = useCallback(async (p: number, q?: string) => {
     setLoading(true);
     setError(null);
     try {
       const base = getApiBase();
-      const url = `${base}/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
+      const sq = typeof q === "string" ? q : searchQuery;
+      let url = `${base}/api/ppat/load-all-booking?page=${p}&limit=${LIMIT}&jenis_wajib_pajak=${encodeURIComponent(JENIS_WP)}`;
+      if (sq.trim()) url += `&search=${encodeURIComponent(sq.trim())}`;
       const res = await fetch(url, { credentials: "include" });
       const json = (await res.json()) as ApiResponse;
       if (!res.ok || !json.success) {
@@ -99,11 +103,11 @@ export default function BookingSSPDPeroranganPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchQuery]);
 
   useEffect(() => {
-    loadTable(page);
-  }, [page, loadTable]);
+    loadTable(page, searchQuery);
+  }, [page, loadTable, searchQuery]);
 
   const status = (s: string) => (s || "").toLowerCase();
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
@@ -243,18 +247,57 @@ export default function BookingSSPDPeroranganPage() {
         </div>
       )}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 12,
+          overflow: "hidden",
+          boxShadow: "var(--card_shadow)",
+          border: "1px solid var(--border_color)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 16px",
+            background: "var(--accent)",
+            color: "#fff",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Daftar Perorangan</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="text"
+              placeholder="Cari data..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { setSearchQuery(searchInput.trim()); setPage(1); } }}
+              style={{ padding: "8px 12px 8px 36px", borderRadius: 8, border: "none", minWidth: 200, fontSize: 14 }}
+            />
+            <button type="button" onClick={() => { setSearchQuery(searchInput.trim()); setPage(1); }} style={{ ...btnStyle, background: "rgba(255,255,255,0.95)", color: "#0f172a", padding: "8px 14px" }}>
+              Cari
+            </button>
+            <button type="button" onClick={() => loadTable(page, searchQuery)} style={{ ...btnStyle, background: "rgba(255,255,255,0.95)", color: "#0f172a", padding: "8px 14px" }}>
+              Refresh
+            </button>
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+        <table style={{ ...tableStyle, boxShadow: "none", borderRadius: 0 }}>
           <thead>
             <tr>
-              <th style={thStyle}>No. Booking</th>
-              <th style={thStyle}>No. PPBB</th>
-              <th style={thStyle}>Tahun AJB</th>
-              <th style={thStyle}>Nama Wajib Pajak</th>
-              <th style={thStyle}>Nama Pemilik Objek</th>
-              <th style={thStyle}>NPWP</th>
-              <th style={thStyle}>Track Status</th>
-              <th style={thStyle}>Kirim</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>No. Booking</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>No. PPBB</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Tahun AJB</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Nama Wajib Pajak</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Nama Pemilik Objek</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>NPWP</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Track Status</th>
+              <th style={{ ...thStyle, background: "var(--accent)", color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}>Kirim</th>
             </tr>
           </thead>
           <tbody>
@@ -329,6 +372,7 @@ export default function BookingSSPDPeroranganPage() {
             )}
           </tbody>
         </table>
+      </div>
       </div>
 
       {totalPages > 1 && (

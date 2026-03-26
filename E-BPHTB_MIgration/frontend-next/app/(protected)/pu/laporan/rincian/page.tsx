@@ -353,10 +353,10 @@ export default function RincianLaporanBulananPage() {
               style={{
                 marginTop: 30,
                 padding: 20,
-                background: "var(--card_bg)",
-                borderRadius: 16,
+                background: "#fff",
+                borderRadius: 12,
                 border: "1px solid var(--border_color)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+                boxShadow: "var(--card_shadow)",
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
@@ -403,10 +403,10 @@ export default function RincianLaporanBulananPage() {
                   🔄 Refresh
                 </button>
               </div>
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ overflowX: "auto", borderRadius: 10, border: "1px solid var(--border_color)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
                   <thead>
-                    <tr style={{ background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)" }}>
+                    <tr style={{ background: "var(--accent)" }}>
                       <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>No Booking</th>
                       <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>NOP PBB</th>
                       <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>Tanggal</th>

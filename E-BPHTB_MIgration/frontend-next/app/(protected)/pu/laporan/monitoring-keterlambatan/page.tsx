@@ -168,16 +168,30 @@ export default function MonitoringKeterlambatanPage() {
 
       <div
         style={{
-          overflowX: "auto",
-          background: "var(--card_bg)",
-          borderRadius: 16,
+          background: "#fff",
+          borderRadius: 12,
+          overflow: "hidden",
+          boxShadow: "var(--card_shadow)",
           border: "1px solid var(--border_color)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
         }}
       >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 16px",
+            background: "var(--accent)",
+            color: "#fff",
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Daftar Monitoring Keterlambatan</h2>
+        </div>
+        <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
           <thead>
-            <tr style={{ background: "linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%)" }}>
+            <tr>
               <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>No</th>
               <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>No. Booking</th>
               <th style={{ padding: "16px 12px", textAlign: "center", color: "#fff", fontWeight: 600, fontSize: 12, textTransform: "uppercase" }}>No. Registrasi</th>
@@ -230,6 +244,7 @@ export default function MonitoringKeterlambatanPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <p style={{ marginTop: 24 }}>

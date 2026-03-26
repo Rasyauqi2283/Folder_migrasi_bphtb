@@ -184,7 +184,10 @@ export default function BookingSSPDBadanPage() {
   }, [loadCorrections]);
 
   const status = (s: string) => (s || "").toLowerCase();
+  const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
+  const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
+  const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
 
   const getFileUrl = (path: string) => {
     if (!path) return "";
@@ -523,13 +526,13 @@ export default function BookingSSPDBadanPage() {
         <button type="button" style={btnTambah} onClick={() => setFormVisible((v) => !v)}>
           + Tambah Data
         </button>
-        <button type="button" style={btnSecondary} onClick={() => openModal("signature")}>
+        <button type="button" style={btnSecondary} onClick={() => openModal("signature")} disabled={selectedLocked}>
           Tambah Tanda Tangan
         </button>
         <button type="button" style={btnSecondary} onClick={() => (expandedRow || data[0]?.nobooking) ? openPdfBooking() : openModal("documents")}>
           Lihat Dokumen
         </button>
-        <button type="button" style={btnSecondary} onClick={() => openModal("delete")}>
+        <button type="button" style={btnSecondary} onClick={() => openModal("delete")} disabled={selectedLocked}>
           Hapus Data
         </button>
       </div>
@@ -544,6 +547,7 @@ export default function BookingSSPDBadanPage() {
                 style={{ width: "100%", padding: 8, borderRadius: 8, color: "#0f172a", background: "#fff" }}
                 value={modalNobooking}
                 onChange={(e) => setModalNobooking(e.target.value)}
+                disabled={selectedLocked}
               >
                 {data.map((r) => (
                   <option key={r.nobooking} value={r.nobooking}>{r.nobooking}</option>
@@ -552,11 +556,11 @@ export default function BookingSSPDBadanPage() {
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>File Tanda Tangan (gambar)</label>
-              <input type="file" accept="image/*" onChange={(e) => setSignatureFile(e.target.files?.[0] || null)} />
+              <input type="file" accept="image/*" onChange={(e) => setSignatureFile(e.target.files?.[0] || null)} disabled={selectedLocked} />
             </div>
             {actionMessage && <p style={{ color: "#b91c1c", marginBottom: 8 }}>{actionMessage}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={btnTambah} disabled={uploading} onClick={handleUploadSignature}>
+              <button type="button" style={btnTambah} disabled={uploading || selectedLocked} onClick={handleUploadSignature}>
                 {uploading ? "Mengunggah..." : "Upload"}
               </button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
@@ -571,7 +575,7 @@ export default function BookingSSPDBadanPage() {
                   setWpInviteOpen((v) => !v);
                   setWpInviteMessage(null);
                 }}
-                disabled={wpInviting}
+                disabled={wpInviting || selectedLocked}
               >
                 {wpInviteOpen ? "Tutup Libatkan WP" : "Libatkan WP"}
               </button>
@@ -585,6 +589,7 @@ export default function BookingSSPDBadanPage() {
                       onChange={(e) => setWpNikNpwp(e.target.value)}
                       placeholder="Masukkan NIK atau NPWP"
                       style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border_color)" }}
+                      disabled={selectedLocked}
                     />
                   </div>
                   <div>
@@ -594,6 +599,7 @@ export default function BookingSSPDBadanPage() {
                       onChange={(e) => setWpEmail(e.target.value)}
                       placeholder="email@contoh.com"
                       style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid var(--border_color)" }}
+                      disabled={selectedLocked}
                     />
                   </div>
 
@@ -606,7 +612,7 @@ export default function BookingSSPDBadanPage() {
                   <button
                     type="button"
                     style={{ ...btnTambah, width: "100%" }}
-                    disabled={wpInviting || !modalNobooking || !wpNikNpwp.trim() || !wpEmail.trim()}
+                    disabled={wpInviting || selectedLocked || !modalNobooking || !wpNikNpwp.trim() || !wpEmail.trim()}
                     onClick={async () => {
                       setWpInviting(true);
                       setWpInviteMessage(null);
@@ -726,6 +732,7 @@ export default function BookingSSPDBadanPage() {
               style={{ width: "100%", padding: 8, marginBottom: 12, color: "#0f172a", background: "#fff" }}
               value={modalNobooking}
               onChange={(e) => setModalNobooking(e.target.value)}
+                disabled={selectedLocked}
             >
               {data.map((r) => (
                 <option key={r.nobooking} value={r.nobooking}>{r.nobooking} — {r.namawajibpajak}</option>
@@ -733,7 +740,7 @@ export default function BookingSSPDBadanPage() {
             </select>
             {actionMessage && <p style={{ color: actionMessage.includes("Gagal") ? "#b91c1c" : "#166534", marginBottom: 8 }}>{actionMessage}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading} onClick={handleHapusData}>
+              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading || selectedLocked} onClick={handleHapusData}>
                 {uploading ? "Memproses..." : "Ya, Tandai Dihapus"}
               </button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
@@ -960,7 +967,8 @@ export default function BookingSSPDBadanPage() {
                             </button>
                             <Link
                               href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
-                              style={{ color: "var(--accent)", fontWeight: 600 }}
+                              style={{ color: isLocked(row) ? "#94a3b8" : "var(--accent)", fontWeight: 600, pointerEvents: isLocked(row) ? "none" : "auto" }}
+                              aria-disabled={isLocked(row)}
                             >
                               Isi Form Permohonan Validasi →
                             </Link>
@@ -1013,6 +1021,7 @@ export default function BookingSSPDBadanPage() {
                                       e.target.value = "";
                                     }}
                                     style={{ fontSize: 12, color: "#0f172a" }}
+                                    disabled={isLocked(row)}
                                   />
                                   {docUploading === `${row.nobooking}-${field}` && <span style={{ fontSize: 12, color: "#475569" }}> Mengunggah...</span>}
                                 </div>

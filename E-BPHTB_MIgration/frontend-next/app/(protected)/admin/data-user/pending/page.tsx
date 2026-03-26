@@ -95,17 +95,19 @@ export default function AdminDataUserPendingPage() {
   const divisiOptions =
     assignTipe === "karyawan" ? DIVISI_KARYAWAN : DIVISI_PU;
 
-  const totalPages = Math.max(1, Math.ceil(pendingUsers.length / PAGE_SIZE));
-  const startIdx = (page - 1) * PAGE_SIZE;
-  const pageUsers = pendingUsers.slice(startIdx, startIdx + PAGE_SIZE);
-  // Filter ketat: hanya verse Karyawan di tabel Karyawan, hanya verse PU di tabel PU
-  const karyawanRows = pageUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
-  const puRows = pageUsers.filter((u) => (u.verse ?? "").toUpperCase() === "PU");
-  const wpBadanRows = pageUsers.filter((u) => {
+  // Filter dulu per kategori agar data WP Badan tidak "hilang" karena slicing campuran.
+  const karyawanAll = pendingUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
+  const puAll = pendingUsers.filter((u) => (u.verse ?? "").toUpperCase() === "PU");
+  const wpBadanAll = pendingUsers.filter((u) => {
     const verse = (u.verse ?? "").toUpperCase();
     const div = (u.divisi ?? "").toLowerCase();
     return verse === "WP" && div.includes("wajib pajak b");
   });
+  const totalPages = Math.max(1, Math.ceil(pendingUsers.length / PAGE_SIZE));
+  const startIdx = (page - 1) * PAGE_SIZE;
+  const karyawanRows = karyawanAll.slice(startIdx, startIdx + PAGE_SIZE);
+  const puRows = puAll.slice(startIdx, startIdx + PAGE_SIZE);
+  const wpBadanRows = wpBadanAll.slice(startIdx, startIdx + PAGE_SIZE);
 
   const nibDocUrl = (u: PendingUser): string | null => {
     const raw = (u.nib_doc_path ?? "").trim();
