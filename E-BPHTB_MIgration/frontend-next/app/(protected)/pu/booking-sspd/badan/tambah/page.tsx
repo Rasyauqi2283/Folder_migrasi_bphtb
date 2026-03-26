@@ -367,9 +367,72 @@ function parseDdMmYyyyParts(s: string | undefined): { d: string; m: string; y: s
   if (!t) return { d: "", m: "", y: "" };
   const parts = t.split(/[-./]/).map((x) => x.trim());
   if (parts.length >= 3) {
+    if (parts[0].length === 4) {
+      return { d: parts[2] || "", m: parts[1] || "", y: parts[0] || "" };
+    }
     return { d: parts[0] || "", m: parts[1] || "", y: parts[2] || "" };
   }
   return { d: "", m: "", y: "" };
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+function getDaysInMonth(month: number, year: number): number {
+  if (!month || month < 1 || month > 12) return 31;
+  if (month === 2) return isLeapYear(year) ? 29 : 28;
+  if ([4, 6, 9, 11].includes(month)) return 30;
+  return 31;
+}
+
+function partsToIsoDate(parts: { d: string; m: string; y: string }): string {
+  const d = Number(parts.d);
+  const m = Number(parts.m);
+  const y = Number(parts.y);
+  if (!d || !m || !y) return "";
+  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function isoDateToParts(iso: string): { d: string; m: string; y: string } {
+  const parts = (iso || "").split("-");
+  if (parts.length !== 3) return { d: "", m: "", y: "" };
+  return {
+    d: String(Number(parts[2]) || ""),
+    m: String(Number(parts[1]) || ""),
+    y: String(Number(parts[0]) || ""),
+  };
+}
+
+function validateDateParts(parts: { d: string; m: string; y: string }, minYear: number, maxYear: number): string | null {
+  const d = Number(parts.d);
+  const m = Number(parts.m);
+  const y = Number(parts.y);
+  if (!d || !m || !y) return "Tanggal belum lengkap.";
+  if (m < 1 || m > 12) return "Bulan tidak valid.";
+  if (y < minYear || y > maxYear) return `Tahun harus antara ${minYear} - ${maxYear}.`;
+  const maxDay = getDaysInMonth(m, y);
+  if (d < 1 || d > maxDay) return `Tanggal tidak valid. Bulan ${String(m).padStart(2, "0")} tahun ${y} maksimal ${maxDay} hari.`;
+  return null;
+}
+
+function formatTanggalIndonesia(parts: { d: string; m: string; y: string }): string {
+  const d = Number(parts.d);
+  const m = Number(parts.m);
+  const y = Number(parts.y);
+  if (!d || !m || !y) return "-";
+  const monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  ];
+  return `${d} ${monthNames[m - 1]} ${y}`;
+}
+
+function formatRupiahCompact(value: number): string {
+  if (!value || value <= 0 || Number.isNaN(value)) return "0";
+  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} Triliun`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} Miliar`;
+  return value.toLocaleString("id-ID");
 }
 
 /** Nilai status_kepemilikan di DB → value `<select>` form */
@@ -406,10 +469,16 @@ export default function TambahBookingBadanPage() {
   const [npoptkp, setNpoptkp] = useState<number>(80_000_000);
   const [tanggalOleh, setTanggalOleh] = useState({ d: "", m: "", y: "" });
   const [tanggalBayar, setTanggalBayar] = useState({ d: "", m: "", y: "" });
+  const [tanggalOlehError, setTanggalOlehError] = useState<string | null>(null);
+  const [tanggalBayarError, setTanggalBayarError] = useState<string | null>(null);
+  const [calculatedTanah, setCalculatedTanah] = useState(0);
+  const [calculatedBangunan, setCalculatedBangunan] = useState(0);
 
   const nopRefs = useRef<(HTMLInputElement | null)[]>([]);
   const npwpWpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const npwpOpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const tanggalOlehPickerRef = useRef<HTMLInputElement | null>(null);
+  const tanggalBayarPickerRef = useRef<HTMLInputElement | null>(null);
   const [kecamatanSearch, setKecamatanSearch] = useState("");
   const [kecamatanDropdownOpen, setKecamatanDropdownOpen] = useState(false);
   const [kelurahanDropdownOpen, setKelurahanDropdownOpen] = useState(false);
@@ -424,6 +493,11 @@ export default function TambahBookingBadanPage() {
   const [callbackListLoading, setCallbackListLoading] = useState(false);
   const [callbackApplyLoading, setCallbackApplyLoading] = useState(false);
   const [callbackNotice, setCallbackNotice] = useState<string | null>(null);
+  const minYear = 1900;
+  const maxYear = today.getFullYear() + 1;
+  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => String(minYear + i));
+  const days = Array.from({ length: 31 }, (_, i) => String(i + 1));
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
   const [form, setForm] = useState<Record<string, string | number | undefined>>({
     namawajibpajak: "",
@@ -619,6 +693,33 @@ export default function TambahBookingBadanPage() {
     updateForm("jenisPerolehan", val);
   }, [updateForm]);
 
+  useEffect(() => {
+    const lt = Number(form.luas_tanah) || 0;
+    const nt = Number(form.njop_tanah) || 0;
+    const lb = Number(form.luas_bangunan) || 0;
+    const nb = Number(form.njop_bangunan) || 0;
+    setCalculatedTanah(lt * nt);
+    setCalculatedBangunan(lb * nb);
+  }, [form.luas_tanah, form.njop_tanah, form.luas_bangunan, form.njop_bangunan]);
+
+  useEffect(() => {
+    setTanggalOlehError(validateDateParts(tanggalOleh, minYear, maxYear));
+  }, [tanggalOleh, minYear, maxYear]);
+
+  useEffect(() => {
+    setTanggalBayarError(validateDateParts(tanggalBayar, minYear, maxYear));
+  }, [tanggalBayar, minYear, maxYear]);
+
+  const openNativeDatePicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    if (!ref.current) return;
+    if (typeof ref.current.showPicker === "function") {
+      ref.current.showPicker();
+      return;
+    }
+    ref.current.focus();
+    ref.current.click();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -642,8 +743,15 @@ export default function TambahBookingBadanPage() {
       return;
     }
 
-    const tanggalOlehStr = `${pad(Number(tanggalOleh.d) || 0)}-${pad(Number(tanggalOleh.m) || 0)}-${tanggalOleh.y || "0000"}`;
-    const tanggalBayarStr = `${pad(Number(tanggalBayar.d) || 0)}-${pad(Number(tanggalBayar.m) || 0)}-${tanggalBayar.y || "0000"}`;
+    const tanggalOlehErr = validateDateParts(tanggalOleh, minYear, maxYear);
+    const tanggalBayarErr = validateDateParts(tanggalBayar, minYear, maxYear);
+    if (tanggalOlehErr || tanggalBayarErr) {
+      setError(tanggalOlehErr || tanggalBayarErr || "Tanggal tidak valid.");
+      return;
+    }
+
+    const tanggalOlehStr = partsToIsoDate(tanggalOleh);
+    const tanggalBayarStr = partsToIsoDate(tanggalBayar);
 
     const payload: CreatePayload = {
       jenis_wajib_pajak: "Badan Usaha",
@@ -964,7 +1072,7 @@ export default function TambahBookingBadanPage() {
               </span>
             ))}
           </div>
-          <p style={hintStyle}>Format: 00.000.000.0-000.000 — otomatis pindah ke kolom berikutnya</p>
+          <p style={hintStyle}>Format: 00.000.000.0-000.000</p>
         </div>
 
         {/* Pemilik Objek Pajak BPHTB */}
@@ -1173,7 +1281,9 @@ export default function TambahBookingBadanPage() {
         {/* Perhitungan NJOP */}
         <h3 style={judulStyle}>Perhitungan NJOP</h3>
         <div style={sectionStyle}>
-          <h4 style={{ margin: "0 0 12px", fontSize: 14 }}>Tanah</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 14 }}>
+            Tanah ({formatRupiahCompact(calculatedTanah)})
+          </h4>
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Luas Tanah (m²)</label>
@@ -1205,7 +1315,9 @@ export default function TambahBookingBadanPage() {
               <p style={hintStyle}>contoh: 1.500.000.000 — otomatis format ribuan</p>
             </div>
           </div>
-          <h4 style={{ margin: "16px 0 12px", fontSize: 14 }}>Bagian Bangunan</h4>
+          <h4 style={{ margin: "16px 0 12px", fontSize: 14 }}>
+            Bagian Bangunan ({formatRupiahCompact(calculatedBangunan)})
+          </h4>
           <div style={rowStyle}>
             <div>
               <label style={labelStyle}>Luas Bangunan (m²)</label>
@@ -1369,84 +1481,122 @@ export default function TambahBookingBadanPage() {
               </div>
               <div style={rowStyle}>
                 <div>
-                  <label style={labelStyle}>Tanggal Perolehan (DD-MM-YYYY)</label>
+                  <label style={labelStyle}>Tanggal Perolehan (DD/MM/YYYY)</label>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <input
-                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
-                      type="number"
-                      placeholder="DD"
-                      min={1}
-                      max={31}
-                      maxLength={2}
+                    <select
+                      style={{ ...inputStyle, width: 72, marginTop: 0 }}
                       value={tanggalOleh.d}
                       onChange={(e) => setTanggalOleh((p) => ({ ...p, d: e.target.value }))}
                       required
-                    />
-                    <span>-</span>
-                    <input
-                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
-                      type="number"
-                      placeholder="MM"
-                      min={1}
-                      max={12}
-                      maxLength={2}
+                    >
+                      <option value="">DD</option>
+                      {days.map((d) => (
+                        <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <span>/</span>
+                    <select
+                      style={{ ...inputStyle, width: 80, marginTop: 0 }}
                       value={tanggalOleh.m}
                       onChange={(e) => setTanggalOleh((p) => ({ ...p, m: e.target.value }))}
                       required
-                    />
-                    <span>-</span>
-                    <input
-                      style={{ ...inputStyle, width: 70, marginTop: 0 }}
-                      type="number"
-                      placeholder="YYYY"
-                      min={1700}
-                      max={2200}
-                      maxLength={4}
+                    >
+                      <option value="">MM</option>
+                      {months.map((m) => (
+                        <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <span>/</span>
+                    <select
+                      style={{ ...inputStyle, width: 95, marginTop: 0 }}
                       value={tanggalOleh.y}
                       onChange={(e) => setTanggalOleh((p) => ({ ...p, y: e.target.value }))}
                       required
+                    >
+                      <option value="">YYYY</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => openNativeDatePicker(tanggalOlehPickerRef)}
+                      style={{ ...inputStyle, width: 44, marginTop: 0, padding: "8px 0", cursor: "pointer" }}
+                      title="Pilih dari kalender"
+                    >
+                      📅
+                    </button>
+                    <input
+                      ref={tanggalOlehPickerRef}
+                      type="date"
+                      value={partsToIsoDate(tanggalOleh)}
+                      onChange={(e) => setTanggalOleh(isoDateToParts(e.target.value))}
+                      style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
+                      tabIndex={-1}
+                      aria-hidden="true"
                     />
                   </div>
+                  <p style={hintStyle}>Tanggal: {formatTanggalIndonesia(tanggalOleh)}</p>
+                  {tanggalOlehError ? <p style={{ ...hintStyle, color: "#b91c1c" }}>{tanggalOlehError}</p> : null}
                 </div>
                 <div>
-                  <label style={labelStyle}>Tanggal Pembayaran (DD-MM-YYYY)</label>
+                  <label style={labelStyle}>Tanggal Pembayaran (DD/MM/YYYY)</label>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <input
-                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
-                      type="number"
-                      placeholder="DD"
-                      min={1}
-                      max={31}
-                      maxLength={2}
+                    <select
+                      style={{ ...inputStyle, width: 72, marginTop: 0 }}
                       value={tanggalBayar.d}
                       onChange={(e) => setTanggalBayar((p) => ({ ...p, d: e.target.value }))}
                       required
-                    />
-                    <span>-</span>
-                    <input
-                      style={{ ...inputStyle, width: 50, marginTop: 0 }}
-                      type="number"
-                      placeholder="MM"
-                      min={1}
-                      max={12}
-                      maxLength={2}
+                    >
+                      <option value="">DD</option>
+                      {days.map((d) => (
+                        <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <span>/</span>
+                    <select
+                      style={{ ...inputStyle, width: 80, marginTop: 0 }}
                       value={tanggalBayar.m}
                       onChange={(e) => setTanggalBayar((p) => ({ ...p, m: e.target.value }))}
                       required
-                    />
-                    <span>-</span>
-                    <input
-                      style={{ ...inputStyle, width: 70, marginTop: 0 }}
-                      type="number"
-                      placeholder="YYYY"
-                      min={1700}
-                      max={2200}
-                      maxLength={4}
+                    >
+                      <option value="">MM</option>
+                      {months.map((m) => (
+                        <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <span>/</span>
+                    <select
+                      style={{ ...inputStyle, width: 95, marginTop: 0 }}
                       value={tanggalBayar.y}
                       onChange={(e) => setTanggalBayar((p) => ({ ...p, y: e.target.value }))}
                       required
+                    >
+                      <option value="">YYYY</option>
+                      {years.map((y) => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => openNativeDatePicker(tanggalBayarPickerRef)}
+                      style={{ ...inputStyle, width: 44, marginTop: 0, padding: "8px 0", cursor: "pointer" }}
+                      title="Pilih dari kalender"
+                    >
+                      📅
+                    </button>
+                    <input
+                      ref={tanggalBayarPickerRef}
+                      type="date"
+                      value={partsToIsoDate(tanggalBayar)}
+                      onChange={(e) => setTanggalBayar(isoDateToParts(e.target.value))}
+                      style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
+                      tabIndex={-1}
+                      aria-hidden="true"
                     />
                   </div>
+                  <p style={hintStyle}>Tanggal: {formatTanggalIndonesia(tanggalBayar)}</p>
+                  {tanggalBayarError ? <p style={{ ...hintStyle, color: "#b91c1c" }}>{tanggalBayarError}</p> : null}
                 </div>
               </div>
               <div style={sectionStyle}>

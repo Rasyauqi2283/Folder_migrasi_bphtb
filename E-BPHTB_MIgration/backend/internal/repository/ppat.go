@@ -66,21 +66,70 @@ func (r *PpatRepo) ListPendingCorrections(ctx context.Context, userid string, li
 	if limit > 200 {
 		limit = 200
 	}
-	var hasStpdCode bool
-	if err := r.pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM information_schema.columns
-			WHERE table_schema = 'public'
-			  AND table_name = 'p_1_verifikasi'
-			  AND column_name = 'stpd_code'
-		)
-	`).Scan(&hasStpdCode); err != nil {
+	hasColumn := func(name string) (bool, error) {
+		var ok bool
+		err := r.pool.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = 'p_1_verifikasi'
+				  AND column_name = $1
+			)
+		`, name).Scan(&ok)
+		return ok, err
+	}
+
+	hasStpdCode, err := hasColumn("stpd_code")
+	if err != nil {
 		return nil, err
 	}
+	hasCatatanPeneliti, err := hasColumn("catatan_peneliti")
+	if err != nil {
+		return nil, err
+	}
+	hasCatatanPu, err := hasColumn("catatan_pu")
+	if err != nil {
+		return nil, err
+	}
+	hasBuktiPelunasanPath, err := hasColumn("bukti_pelunasan_path")
+	if err != nil {
+		return nil, err
+	}
+	hasCorrectionUpdatedAt, err := hasColumn("correction_updated_at")
+	if err != nil {
+		return nil, err
+	}
+	hasVerificationState, err := hasColumn("verification_state")
+	if err != nil {
+		return nil, err
+	}
+
 	stpdSelect := "NULL::varchar(50)"
 	if hasStpdCode {
 		stpdSelect = "p.stpd_code"
+	}
+	catatanPenelitiSelect := "NULL::text"
+	if hasCatatanPeneliti {
+		catatanPenelitiSelect = "p.catatan_peneliti"
+	}
+	catatanPuSelect := "NULL::text"
+	if hasCatatanPu {
+		catatanPuSelect = "p.catatan_pu"
+	}
+	buktiPathSelect := "NULL::text"
+	if hasBuktiPelunasanPath {
+		buktiPathSelect = "p.bukti_pelunasan_path"
+	}
+	correctionUpdatedAtSelect := "NULL::timestamptz"
+	orderBy := "p.no_registrasi ASC NULLS LAST, p.nobooking ASC"
+	if hasCorrectionUpdatedAt {
+		correctionUpdatedAtSelect = "p.correction_updated_at"
+		orderBy = "p.correction_updated_at DESC NULLS LAST, p.no_registrasi ASC NULLS LAST, p.nobooking ASC"
+	}
+	verificationFilter := "FALSE"
+	if hasVerificationState {
+		verificationFilter = "COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'"
 	}
 
 	q := `
@@ -88,15 +137,15 @@ func (r *PpatRepo) ListPendingCorrections(ctx context.Context, userid string, li
 			p.nobooking,
 			p.no_registrasi,
 			` + stpdSelect + `,
-			p.catatan_peneliti,
-			p.catatan_pu,
-			p.bukti_pelunasan_path,
-			p.correction_updated_at
+			` + catatanPenelitiSelect + `,
+			` + catatanPuSelect + `,
+			` + buktiPathSelect + `,
+			` + correctionUpdatedAtSelect + `
 		FROM p_1_verifikasi p
 		INNER JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
 		WHERE b.userid = $1
-		  AND COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'
-		ORDER BY p.correction_updated_at DESC NULLS LAST, p.no_registrasi ASC NULLS LAST, p.nobooking ASC
+		  AND ` + verificationFilter + `
+		ORDER BY ` + orderBy + `
 		LIMIT $2
 	`
 	rows, err := r.pool.Query(ctx, q, userid, limit)
