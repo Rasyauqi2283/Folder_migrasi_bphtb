@@ -87,10 +87,16 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if isAllowed(origin) {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else {
-			log.Printf("Blocked CORS origin: %s", origin)
+		// Some requests legitimately omit Origin (same-origin navigations, server-to-server, health checks).
+		// Do not treat empty Origin as a blocked CORS attempt.
+		if strings.TrimSpace(origin) != "" {
+			allowed := isAllowed(origin)
+			if allowed {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			} else {
+				log.Printf("Blocked CORS origin: %s", origin)
+			}
+			log.Printf("CORS Origin: %s | Allowed: %v", origin, allowed)
 		}
 		// Ensure caches/proxies don't mix responses across origins.
 		w.Header().Add("Vary", "Origin")
@@ -99,13 +105,11 @@ func corsMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-User-Id, X-Requested-With")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Max-Age", "86400")
-		log.Printf("CORS Origin: %s | Allowed: %v", origin, isAllowed(origin))
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		next.ServeHTTP(w, r)
-		log.Printf("Incoming Origin: %s", origin)
 	})
 }
 
@@ -202,12 +206,16 @@ func main() {
 	} else {
 		csTicketRepo = repository.NewCsTicketRepo(nil)
 	}
-	supportHandler := handler.NewSupportHandler(csTicketRepo, userRepo)
+	csTemplateRepo := repository.NewCsTemplateRepo(pool)
+	supportHandler := handler.NewSupportHandler(csTicketRepo, csTemplateRepo, userRepo)
 	mux.HandleFunc("POST /api/public/support/tickets", supportHandler.CreatePublicTicket)
 	mux.HandleFunc("GET /api/cs/support/tickets/unread-count", supportHandler.UnreadCountCS)
 	mux.HandleFunc("GET /api/cs/support/tickets/{ticket_id}", supportHandler.GetTicketCS)
 	mux.HandleFunc("POST /api/cs/support/tickets/{ticket_id}/reply", supportHandler.ReplyTicketCS)
 	mux.HandleFunc("GET /api/cs/support/tickets", supportHandler.ListTicketsCS)
+	mux.HandleFunc("GET /api/cs/templates", supportHandler.ListTemplatesCS)
+	mux.HandleFunc("POST /api/cs/templates", supportHandler.CreateTemplateCS)
+	mux.HandleFunc("DELETE /api/cs/templates/{id}", supportHandler.DeleteTemplateCS)
 
 	// KTP Preview — handler Go (return JSON ekstraksi OCR, bukan gambar)
 	mux.HandleFunc("GET /api/admin/ktp-preview/{id}", usersHandler.KTPPreview)

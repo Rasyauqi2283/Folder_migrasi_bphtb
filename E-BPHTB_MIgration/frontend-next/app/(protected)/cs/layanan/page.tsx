@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getApiBase } from "../../../../lib/api";
 
 interface TicketRow {
@@ -20,6 +20,13 @@ interface ReplyRow {
   id: number;
   body: string;
   author_type: string;
+  created_at: string;
+}
+
+interface ReplyTemplateRow {
+  id: number;
+  title: string;
+  content: string;
   created_at: string;
 }
 
@@ -53,6 +60,7 @@ export default function CsLayananPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailTicket, setDetailTicket] = useState<TicketRow | null>(null);
   const [replies, setReplies] = useState<ReplyRow[]>([]);
@@ -60,6 +68,20 @@ export default function CsLayananPage() {
   const [replyText, setReplyText] = useState("");
   const [replyStatus, setReplyStatus] = useState("in_progress");
   const [replySubmitting, setReplySubmitting] = useState(false);
+
+  const [templates, setTemplates] = useState<ReplyTemplateRow[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [tplTitle, setTplTitle] = useState("");
+  const [tplContent, setTplContent] = useState("");
+  const [tplSubmitting, setTplSubmitting] = useState(false);
+
+  const showToast = useCallback((type: "success" | "error", text: string) => {
+    setToast({ type, text });
+    window.setTimeout(() => setToast(null), 1800);
+  }, []);
 
   const loadList = useCallback(async () => {
     try {
@@ -80,6 +102,74 @@ export default function CsLayananPage() {
       setLoading(false);
     }
   }, [base]);
+
+  const loadTemplates = useCallback(async () => {
+    setTemplatesLoading(true);
+    setTemplatesError(null);
+    try {
+      const res = await fetch(`${base}/api/cs/templates`, { credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setTemplatesError(typeof json?.message === "string" ? json.message : "Gagal memuat template");
+        return;
+      }
+      if (json?.success && Array.isArray(json.data)) {
+        setTemplates(json.data);
+      }
+    } catch {
+      setTemplatesError("Koneksi gagal memuat template");
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [base]);
+
+  const createTemplate = useCallback(async () => {
+    if (!tplTitle.trim() || !tplContent.trim()) return;
+    setTplSubmitting(true);
+    try {
+      const res = await fetch(`${base}/api/cs/templates`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: tplTitle.trim(), content: tplContent.trim() }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast("error", typeof json?.message === "string" ? json.message : "Gagal menyimpan template");
+        return;
+      }
+      showToast("success", "Template berhasil dibuat");
+      setTplTitle("");
+      setTplContent("");
+      await loadTemplates();
+    } catch {
+      showToast("error", "Gagal menyimpan template");
+    } finally {
+      setTplSubmitting(false);
+    }
+  }, [base, loadTemplates, showToast, tplContent, tplTitle]);
+
+  const deleteTemplate = useCallback(
+    async (id: number) => {
+      if (!id) return;
+      try {
+        const res = await fetch(`${base}/api/cs/templates/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showToast("error", typeof json?.message === "string" ? json.message : "Gagal menghapus template");
+          return;
+        }
+        showToast("success", "Template berhasil dihapus");
+        await loadTemplates();
+      } catch {
+        showToast("error", "Gagal menghapus template");
+      }
+    },
+    [base, loadTemplates, showToast]
+  );
 
   const loadDetail = useCallback(
     async (ticketId: string) => {
@@ -113,9 +203,33 @@ export default function CsLayananPage() {
   }, [loadList]);
 
   useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  useEffect(() => {
     const id = setInterval(() => loadList(), 30000);
     return () => clearInterval(id);
   }, [loadList]);
+
+  const filteredTemplates = useMemo(() => {
+    const q = templateSearch.trim().toLowerCase();
+    if (!q) return templates;
+    return templates.filter((t) => t.title.toLowerCase().includes(q) || t.content.toLowerCase().includes(q));
+  }, [templateSearch, templates]);
+
+  const applyTemplate = useCallback(
+    (tpl: ReplyTemplateRow) => {
+      const namaUser = detailTicket?.submitter_name ?? "";
+      const rendered = tpl.content.replaceAll("{{nama_user}}", namaUser);
+      setReplyText((prev) => {
+        const baseText = prev ?? "";
+        if (!baseText.trim()) return rendered;
+        return baseText.trimEnd() + "\n\n" + rendered;
+      });
+      showToast("success", "Template berhasil diterapkan");
+    },
+    [detailTicket?.submitter_name, showToast]
+  );
 
   const submitReply = async () => {
     if (!selectedId || !replyText.trim()) return;
@@ -144,6 +258,26 @@ export default function CsLayananPage() {
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            top: 16,
+            right: 16,
+            zIndex: 1000,
+            padding: "10px 12px",
+            borderRadius: 10,
+            background: toast.type === "success" ? "rgba(16,185,129,0.95)" : "rgba(239,68,68,0.95)",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 13,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            maxWidth: 360,
+          }}
+        >
+          {toast.text}
+        </div>
+      )}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ margin: "0 0 8px", color: "var(--color_font_main)" }}>Layanan — Tiket dukungan</h1>
@@ -151,6 +285,22 @@ export default function CsLayananPage() {
             Keluhan dari halaman landing (tanpa login). Balas pengguna lewat email; riwayat tersimpan di sistem.
           </p>
         </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={() => setTemplateModalOpen(true)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--border_color)",
+              background: "var(--card_bg)",
+              color: "var(--color_font_main)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Buat Template
+          </button>
         {unreadCount > 0 && (
           <div
             style={{
@@ -166,6 +316,7 @@ export default function CsLayananPage() {
             {unreadCount} tiket belum dibaca
           </div>
         )}
+        </div>
       </div>
 
       {error && (
@@ -319,6 +470,68 @@ export default function CsLayananPage() {
                 )}
 
                 <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 14 }}>Balas pengguna (email)</div>
+
+                <div
+                  style={{
+                    padding: 12,
+                    border: "1px solid var(--border_color)",
+                    borderRadius: 10,
+                    background: "var(--card_bg_grey)",
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 800, fontSize: 13 }}>Pesan cepat (template)</div>
+                    <input
+                      value={templateSearch}
+                      onChange={(e) => setTemplateSearch(e.target.value)}
+                      placeholder="Cari template…"
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 10,
+                        border: "1px solid var(--border_color)",
+                        background: "var(--card_bg)",
+                        minWidth: 200,
+                        fontSize: 13,
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, maxHeight: 84, overflow: "auto" }}>
+                    {templatesLoading ? (
+                      <span style={{ fontSize: 12, color: "var(--color_font_main_muted)" }}>Memuat template…</span>
+                    ) : templatesError ? (
+                      <span style={{ fontSize: 12, color: "#b91c1c" }}>{templatesError}</span>
+                    ) : filteredTemplates.length === 0 ? (
+                      <span style={{ fontSize: 12, color: "var(--color_font_main_muted)" }}>Belum ada template</span>
+                    ) : (
+                      filteredTemplates.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => applyTemplate(t)}
+                          style={{
+                            border: "1px solid rgba(14,165,233,0.35)",
+                            background: "rgba(14,165,233,0.10)",
+                            color: "var(--color_font_main)",
+                            padding: "6px 10px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                          title="Klik untuk terapkan ke balasan"
+                        >
+                          {t.title}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--color_font_main_muted)" }}>
+                    Tips: gunakan variabel <strong>{"{{nama_user}}"}</strong> untuk auto-isi nama pengirim.
+                  </div>
+                </div>
+
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
@@ -400,6 +613,218 @@ export default function CsLayananPage() {
           ← Kembali ke Dashboard CS
         </Link>
       </p>
+
+      {templateModalOpen && (
+        <div
+          onClick={() => setTemplateModalOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(760px, 100%)",
+              background: "var(--card_bg)",
+              border: "1px solid var(--border_color)",
+              borderRadius: 14,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border_color)", display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 16, color: "var(--color_font_main)" }}>Template Balasan</div>
+                <div style={{ fontSize: 12, color: "var(--color_font_main_muted)", marginTop: 2 }}>
+                  Buat dan kelola pesan cepat untuk mempercepat balasan tiket.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTemplateModalOpen(false)}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--border_color)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontWeight: 800,
+                }}
+              >
+                Tutup
+              </button>
+            </div>
+
+            <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div>
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>Buat template baru</div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Judul Template</label>
+                <input
+                  value={tplTitle}
+                  onChange={(e) => setTplTitle(e.target.value)}
+                  placeholder='Contoh: "Panduan Gagal OCR"'
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border_color)",
+                    background: "var(--card_bg)",
+                    marginBottom: 10,
+                  }}
+                />
+                <label style={{ display: "block", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Isi Pesan</label>
+                <textarea
+                  value={tplContent}
+                  onChange={(e) => setTplContent(e.target.value)}
+                  rows={8}
+                  placeholder="Tuliskan isi template… (boleh pakai {{nama_user}})"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid var(--border_color)",
+                    background: "var(--card_bg)",
+                    resize: "vertical",
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10, marginTop: 10, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    disabled={tplSubmitting || !tplTitle.trim() || !tplContent.trim()}
+                    onClick={createTemplate}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "var(--accent)",
+                      color: "#fff",
+                      fontWeight: 800,
+                      cursor: tplSubmitting || !tplTitle.trim() || !tplContent.trim() ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {tplSubmitting ? "Menyimpan…" : "Simpan Template"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTplTitle("");
+                      setTplContent("");
+                    }}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border_color)",
+                      background: "transparent",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 900 }}>Daftar template Anda</div>
+                  <button
+                    type="button"
+                    onClick={loadTemplates}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border_color)",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontWeight: 800,
+                      fontSize: 12,
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <input
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    placeholder="Cari di template…"
+                    style={{
+                      width: "100%",
+                      padding: "9px 10px",
+                      borderRadius: 10,
+                      border: "1px solid var(--border_color)",
+                      background: "var(--card_bg)",
+                      fontSize: 13,
+                    }}
+                  />
+                </div>
+                <div style={{ marginTop: 10, maxHeight: 340, overflow: "auto", border: "1px solid var(--border_color)", borderRadius: 12 }}>
+                  {templatesLoading ? (
+                    <div style={{ padding: 12, color: "var(--color_font_main_muted)" }}>Memuat…</div>
+                  ) : templatesError ? (
+                    <div style={{ padding: 12, color: "#b91c1c" }}>{templatesError}</div>
+                  ) : filteredTemplates.length === 0 ? (
+                    <div style={{ padding: 12, color: "var(--color_font_main_muted)" }}>Belum ada template</div>
+                  ) : (
+                    filteredTemplates.map((t) => (
+                      <div key={t.id} style={{ padding: 12, borderBottom: "1px solid var(--border_color)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <div style={{ fontWeight: 900 }}>{t.title}</div>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <button
+                              type="button"
+                              onClick={() => applyTemplate(t)}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                border: "1px solid rgba(14,165,233,0.45)",
+                                background: "rgba(14,165,233,0.12)",
+                                cursor: "pointer",
+                                fontWeight: 900,
+                                fontSize: 12,
+                              }}
+                            >
+                              Terapkan
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteTemplate(t.id)}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                border: "1px solid rgba(239,68,68,0.45)",
+                                background: "rgba(239,68,68,0.10)",
+                                cursor: "pointer",
+                                fontWeight: 900,
+                                fontSize: 12,
+                              }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 13, whiteSpace: "pre-wrap", color: "var(--color_font_main)" }}>
+                          {t.content.length > 420 ? t.content.slice(0, 420) + "…" : t.content}
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 11, color: "var(--color_font_main_muted)" }}>
+                          Dibuat: {fmtTime(t.created_at)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

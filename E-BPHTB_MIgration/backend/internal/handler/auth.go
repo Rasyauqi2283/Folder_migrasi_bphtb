@@ -189,6 +189,7 @@ func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJ
 	payload := ktpExtractJSON{
 		NIK: result.NIK, Nama: result.Nama,
 		Alamat: result.Alamat,
+		IsReadable: result.IsReadable,
 		CreatedAt: createdAt,
 	}
 	rawForDB := result.RawText
@@ -199,6 +200,7 @@ func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJ
 		"nik": result.NIK,
 		"nama": result.Nama,
 		"alamat": result.Alamat,
+		"is_readable": result.IsReadable,
 		"rawText": rawForDB,
 	})
 	payload.KtpOcrJson = string(ktpOcrBytes)
@@ -221,6 +223,7 @@ type ktpExtractJSON struct {
 	NIK              *string  `json:"nik"`
 	Nama             *string  `json:"nama"`
 	Alamat           *string  `json:"alamat"`
+	IsReadable       bool     `json:"is_readable"`
 	KtpOcrJson       string   `json:"ktpOcrJson"` // stringified untuk kolom DB
 	CreatedAt        int64    `json:"createdAt"`
 }
@@ -291,10 +294,6 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Pastikan foto KTP tidak blur dan bagian nama terlihat jelas.")
 		return
 	}
-	if result.Alamat == nil || len(strings.TrimSpace(*result.Alamat)) < 5 {
-		jsonError(w, http.StatusBadRequest, "Alamat tidak terbaca. Pastikan foto KTP tidak blur dan bagian alamat terlihat jelas.")
-		return
-	}
 
 	createdAt := time.Now().UnixMilli()
 	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
@@ -304,19 +303,26 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		"nik":    payload.NIK,
 		"nama":   payload.Nama,
 		"alamat": payload.Alamat,
+		"is_readable": payload.IsReadable,
 	}
 
 	decision := "success"
+	message := "Data KTP berhasil dipindai."
 	if result.Stats != nil {
 		if !result.Stats.IsValidNIK || result.Stats.Accuracy < 50 || result.Stats.ExtractedFields < 2 {
 			decision = "needs_review"
 		}
 	}
+	// Best effort: allow progress if NIK + Nama are readable even when alamat is missing/unclear.
+	if payload.IsReadable && (payload.Alamat == nil || len(strings.TrimSpace(*payload.Alamat)) < 5) {
+		decision = "needs_review"
+		message = "NIK dan Nama terbaca. Alamat belum terbaca jelas — silakan lanjut dan isi alamat secara manual."
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":    true,
-		"message":    "Data KTP berhasil dipindai.",
+		"message":    message,
 		"decision":   decision,
 		"uploadId":   uploadId,
 		"timestamp":  createdAt,
@@ -379,28 +385,11 @@ func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request
 	}
 
 	data := map[string]interface{}{
-		"nik":              result.NIK,
-		"nama":             result.Nama,
-		"tempatLahir":      nil,
-		"tanggalLahir":     nil,
-		"provinsi":         result.Provinsi,
-		"kabupatenKota":    result.KabupatenKota,
-		"alamat":           result.Alamat,
-		"rtRw":             result.RtRw,
-		"kelurahan":        result.Kelurahan,
-		"kecamatan":        result.Kecamatan,
-		"jenisKelamin":     result.JenisKelamin,
-		"golonganDarah":    result.GolonganDarah,
-		"agama":            result.Agama,
-		"statusPerkawinan": result.StatusPerkawinan,
-		"pekerjaan":        result.Pekerjaan,
-		"kewarganegaraan":  result.Kewarganegaraan,
-		"berlakuHingga":    result.BerlakuHingga,
-		"status":           "VERIFIED_BY_OCR",
-	}
-	if result.TTL != nil {
-		data["tempatLahir"] = result.TTL.Tempat
-		data["tanggalLahir"] = result.TTL.Tanggal
+		"nik":         result.NIK,
+		"nama":        result.Nama,
+		"alamat":      result.Alamat,
+		"is_readable": result.IsReadable,
+		"status":      "VERIFIED_BY_OCR",
 	}
 
 	// Decision policy OCR: success / needs_review / reject.
@@ -417,9 +406,9 @@ func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request
 		isValidNIK = result.Stats.IsValidNIK
 		accuracy = result.Stats.Accuracy
 	}
-	// Jangan pernah reject jika NIK valid (user bisa koreksi field lain manual).
-	isHardReject := !isValidNIK && (accuracy < ocrRejectMinAccuracy || extractedFields < 3)
-	needsReview := accuracy < ocrMinAccuracy || !isValidNIK || extractedFields < 5
+	// Jangan pernah reject jika minimal NIK+Nama terbaca (best effort; user bisa isi manual).
+	isHardReject := !result.IsReadable && !isValidNIK && (accuracy < ocrRejectMinAccuracy || extractedFields < 1)
+	needsReview := accuracy < ocrMinAccuracy || !result.IsReadable || !isValidNIK || extractedFields < 2
 
 	if isHardReject {
 		log.Printf("[OCR REAL] reject acc=%.1f isValidNIK=%t fields=%d", accuracy, isValidNIK, extractedFields)
@@ -1130,7 +1119,13 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if existsVerified {
-		jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Akun sudah aktif. Silakan masuk ke akun Anda.",
+			"code":    "ALREADY_VERIFIED",
+		})
 		return
 	}
 
@@ -1226,7 +1221,13 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	)
 	if err != nil {
 		if isDuplicateKey(err) {
-			jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Akun sudah aktif. Silakan masuk ke akun Anda.",
+				"code":    "ALREADY_VERIFIED",
+			})
 			return
 		}
 		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
@@ -1249,7 +1250,7 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	if !isWPBadan && ktpOcrJson != "" {
 		jsonBaseName := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(nik), createdAt)
 		if err := os.MkdirAll(h.cfg.TempUploadsDir, 0755); err == nil {
-			payload := ktpExtractJSON{NIK: &nik, Nama: &nama, CreatedAt: createdAt, KtpOcrJson: ktpOcrJson}
+			payload := ktpExtractJSON{NIK: &nik, Nama: &nama, Alamat: nil, IsReadable: true, CreatedAt: createdAt, KtpOcrJson: ktpOcrJson}
 			if body, err := json.Marshal(payload); err == nil {
 				_ = os.WriteFile(filepath.Join(h.cfg.TempUploadsDir, jsonBaseName+".json"), body, 0644)
 			}
@@ -1264,13 +1265,9 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	msg := "Verifikasi berhasil! Akun Anda sedang diproses."
-	if verseOut == "WP" {
-		if isWPBadan {
-			msg = "Pendaftaran berhasil. Akun Anda menunggu verifikasi admin. Anda dapat login setelah disetujui."
-		} else {
-			msg = "Verifikasi berhasil! Silakan periksa email untuk User ID, lalu masuk ke dashboard."
-		}
+	msg := "Verifikasi Berhasil! Silakan masuk ke akun Anda."
+	if verseOut == "WP" && isWPBadan {
+		msg = "Pendaftaran berhasil. Akun Anda menunggu verifikasi admin. Anda dapat login setelah disetujui."
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1335,7 +1332,13 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if existsVerified {
-		jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Akun sudah aktif. Silakan masuk ke akun Anda.",
+			"code":    "ALREADY_VERIFIED",
+		})
 		return
 	}
 
@@ -1444,7 +1447,13 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 			_, _ = tx.Exec(ctx, `DELETE FROM a_1_unverified_users WHERE email = $1`, email)
 			tx.Commit(ctx)
 			log.Printf("[VERIFY_OTP] Duplicate key (race) for %s - akun sudah terverifikasi", email)
-			jsonError(w, http.StatusBadRequest, "Akun sudah terverifikasi.")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": false,
+				"message": "Akun sudah aktif. Silakan masuk ke akun Anda.",
+				"code":    "ALREADY_VERIFIED",
+			})
 			return
 		}
 		log.Printf("[VERIFY_OTP] Insert error: %v", err)

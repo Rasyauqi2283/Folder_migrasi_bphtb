@@ -98,12 +98,21 @@ export default function VerifikasiOtpPage() {
         body: JSON.stringify({ email, otp, pendingRegistration }),
       });
       const data = await res.json();
-      setMessage({ type: res.ok ? "success" : "error", text: data.message ?? "Terjadi kesalahan." });
+      const rawText = (data?.message ?? "Terjadi kesalahan.") as string;
+      const friendlyText =
+        typeof rawText === "string" && rawText.toLowerCase().includes("sudah terverifikasi")
+          ? "Akun sudah aktif. Silakan masuk ke akun Anda."
+          : rawText;
+
+      setMessage({
+        type: res.ok ? "success" : "error",
+        text: res.ok ? "Verifikasi Berhasil! Silakan masuk ke akun Anda." : friendlyText,
+      });
       if (res.ok) {
         if (typeof window !== "undefined") {
           sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
         }
-        setTimeout(() => router.push("/login"), 1500);
+        setTimeout(() => router.push("/login"), 900);
       }
     } catch (err) {
       setMessage({

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,12 +19,13 @@ import (
 // SupportHandler handles public support tickets and CS replies.
 type SupportHandler struct {
 	tickets *repository.CsTicketRepo
+	templates *repository.CsTemplateRepo
 	users   *repository.UserRepo
 }
 
 // NewSupportHandler creates SupportHandler.
-func NewSupportHandler(tickets *repository.CsTicketRepo, users *repository.UserRepo) *SupportHandler {
-	return &SupportHandler{tickets: tickets, users: users}
+func NewSupportHandler(tickets *repository.CsTicketRepo, templates *repository.CsTemplateRepo, users *repository.UserRepo) *SupportHandler {
+	return &SupportHandler{tickets: tickets, templates: templates, users: users}
 }
 
 func csUseridFromCookie(r *http.Request) string {
@@ -239,5 +241,109 @@ func (h *SupportHandler) ReplyTicketCS(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Balasan terkirim ke email pengguna.",
+	})
+}
+
+// ListTemplatesCS handles GET /api/cs/templates.
+func (h *SupportHandler) ListTemplatesCS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	csUserid, ok := h.requireCS(w, r)
+	if !ok {
+		return
+	}
+	if h.templates == nil || h.templates.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	list, err := h.templates.ListTemplatesByCS(ctx, csUserid)
+	if err != nil {
+		log.Printf("[CS_TEMPLATES] List: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal memuat template")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": list})
+}
+
+// CreateTemplateCS handles POST /api/cs/templates.
+func (h *SupportHandler) CreateTemplateCS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	csUserid, ok := h.requireCS(w, r)
+	if !ok {
+		return
+	}
+	if h.templates == nil || h.templates.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia")
+		return
+	}
+	var body struct {
+		Title   string `json:"title"`
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonError(w, http.StatusBadRequest, "JSON tidak valid")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	row, err := h.templates.CreateTemplate(ctx, body.Title, body.Content, csUserid)
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Template berhasil disimpan.",
+		"data":    row,
+	})
+}
+
+// DeleteTemplateCS handles DELETE /api/cs/templates/{id}.
+func (h *SupportHandler) DeleteTemplateCS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		jsonError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	csUserid, ok := h.requireCS(w, r)
+	if !ok {
+		return
+	}
+	if h.templates == nil || h.templates.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia")
+		return
+	}
+	raw := strings.TrimSpace(r.PathValue("id"))
+	if raw == "" {
+		jsonError(w, http.StatusBadRequest, "id wajib")
+		return
+	}
+	id64, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id64 <= 0 {
+		jsonError(w, http.StatusBadRequest, "id tidak valid")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	if err := h.templates.DeleteTemplate(ctx, id64, csUserid); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			jsonError(w, http.StatusNotFound, "Template tidak ditemukan")
+			return
+		}
+		jsonError(w, http.StatusBadRequest, "Gagal menghapus template")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Template berhasil dihapus.",
 	})
 }

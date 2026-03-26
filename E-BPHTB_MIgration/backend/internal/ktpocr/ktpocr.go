@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"log"
 	"math"
 	"os"
@@ -61,6 +62,7 @@ var basePreprocessVariants = []preprocessVariant{
 	{method: "rotate_only", rotation: 1.5},
 	{method: "otsu", rotation: 0},
 	{method: "adaptive", rotation: 0},
+	{method: "threshold", rotation: 0},
 	{method: "deblur", rotation: 0},
 }
 
@@ -260,6 +262,23 @@ func validateImageFile(imagePath string) error {
 	return nil
 }
 
+func binarizeThreshold(src image.Image, thr uint8) *image.Gray {
+	b := src.Bounds()
+	gray := image.NewGray(b)
+	draw.Draw(gray, b, src, b.Min, draw.Src)
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			i := gray.PixOffset(x, y)
+			if gray.Pix[i] >= thr {
+				gray.Pix[i] = 255
+			} else {
+				gray.Pix[i] = 0
+			}
+		}
+	}
+	return gray
+}
+
 func preprocess(imagePath string, method string, rotationDeg float64) (string, error) {
 	img, err := imaging.Open(imagePath, imaging.AutoOrientation(true))
 	if err != nil {
@@ -302,6 +321,10 @@ func preprocess(imagePath string, method string, rotationDeg float64) (string, e
 	case "adaptive":
 		img = imaging.Sharpen(img, 1.5)
 		img = imaging.AdjustContrast(img, 50)
+	case "threshold":
+		img = imaging.Sharpen(img, 1.2)
+		img = imaging.AdjustContrast(img, 55)
+		img = binarizeThreshold(img, 140)
 	case "grayscale":
 		img = imaging.Sharpen(img, 1.0)
 	case "deblur":
@@ -336,6 +359,7 @@ func extractAllFields(text string, lines []string) *Result {
 	r.Nama = extractNama(text, lines)
 	r.Alamat = extractAlamat(text, lines)
 	r.RawText = text
+	r.IsReadable = r.NIK != nil && validateNIK(*r.NIK) && r.Nama != nil && strings.TrimSpace(*r.Nama) != ""
 	return r
 }
 
@@ -354,6 +378,7 @@ func buildConsensusResult(cands []ocrCandidate, fallback *Result) *Result {
 	if alamat := pickBestString(cands, func(r *Result) *string { return r.Alamat }, normalizeTextForVote, nil); alamat != nil {
 		out.Alamat = alamat
 	}
+	out.IsReadable = out.NIK != nil && validateNIK(*out.NIK) && out.Nama != nil && strings.TrimSpace(*out.Nama) != ""
 	return out
 }
 
@@ -410,36 +435,6 @@ func pickBestString(cands []ocrCandidate, selector func(*Result) *string, normal
 	return &v
 }
 
-func pickBestTTL(cands []ocrCandidate) *TTL {
-	weights := map[string]float64{}
-	ttls := map[string]*TTL{}
-	for _, c := range cands {
-		if c.result == nil || c.result.TTL == nil {
-			continue
-		}
-		tempat := normalizeTextForVote(c.result.TTL.Tempat)
-		tanggal := strings.TrimSpace(strings.ReplaceAll(c.result.TTL.Tanggal, "/", "-"))
-		if tempat == "" || tanggal == "" {
-			continue
-		}
-		key := tempat + "|" + tanggal
-		weights[key] += c.score + (c.result.Confidence / 100.0)
-		ttls[key] = &TTL{Tempat: tempat, Tanggal: tanggal}
-	}
-	bestKey := ""
-	bestWeight := -1.0
-	for k, w := range weights {
-		if w > bestWeight {
-			bestWeight = w
-			bestKey = k
-		}
-	}
-	if bestKey == "" {
-		return nil
-	}
-	return ttls[bestKey]
-}
-
 func normalizeTextForVote(s string) string {
 	s = strings.TrimSpace(strings.ToUpper(s))
 	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
@@ -479,25 +474,6 @@ func normalizeNIKForVote(s string) string {
 	return v
 }
 
-func normalizeRTRWForVote(s string) string {
-	s = strings.ToUpper(strings.TrimSpace(s))
-	s = strings.ReplaceAll(s, "-", "/")
-	s = strings.ReplaceAll(s, " ", "")
-	s = strings.ReplaceAll(s, "O", "0")
-	s = strings.ReplaceAll(s, "I", "1")
-	s = strings.ReplaceAll(s, "L", "1")
-	parts := strings.Split(s, "/")
-	if len(parts) != 2 {
-		return ""
-	}
-	p0 := keepDigits(parts[0])
-	p1 := keepDigits(parts[1])
-	if p0 == "" || p1 == "" {
-		return ""
-	}
-	return p0 + "/" + p1
-}
-
 func keepDigits(s string) string {
 	var b strings.Builder
 	for _, r := range s {
@@ -521,61 +497,9 @@ func cloneResult(in *Result) *Result {
 		v := *in.Nama
 		out.Nama = &v
 	}
-	if in.TTL != nil {
-		v := *in.TTL
-		out.TTL = &v
-	}
-	if in.Provinsi != nil {
-		v := *in.Provinsi
-		out.Provinsi = &v
-	}
-	if in.KabupatenKota != nil {
-		v := *in.KabupatenKota
-		out.KabupatenKota = &v
-	}
 	if in.Alamat != nil {
 		v := *in.Alamat
 		out.Alamat = &v
-	}
-	if in.RtRw != nil {
-		v := *in.RtRw
-		out.RtRw = &v
-	}
-	if in.Kelurahan != nil {
-		v := *in.Kelurahan
-		out.Kelurahan = &v
-	}
-	if in.Kecamatan != nil {
-		v := *in.Kecamatan
-		out.Kecamatan = &v
-	}
-	if in.JenisKelamin != nil {
-		v := *in.JenisKelamin
-		out.JenisKelamin = &v
-	}
-	if in.GolonganDarah != nil {
-		v := *in.GolonganDarah
-		out.GolonganDarah = &v
-	}
-	if in.Agama != nil {
-		v := *in.Agama
-		out.Agama = &v
-	}
-	if in.StatusPerkawinan != nil {
-		v := *in.StatusPerkawinan
-		out.StatusPerkawinan = &v
-	}
-	if in.Pekerjaan != nil {
-		v := *in.Pekerjaan
-		out.Pekerjaan = &v
-	}
-	if in.Kewarganegaraan != nil {
-		v := *in.Kewarganegaraan
-		out.Kewarganegaraan = &v
-	}
-	if in.BerlakuHingga != nil {
-		v := *in.BerlakuHingga
-		out.BerlakuHingga = &v
 	}
 	return &out
 }
@@ -584,7 +508,7 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 	if base == nil {
 		return base
 	}
-	missingCritical := base.NIK == nil || base.Nama == nil || base.Alamat == nil || base.RtRw == nil
+	missingCritical := base.NIK == nil || base.Nama == nil || base.Alamat == nil
 	if !missingCritical {
 		return base
 	}
@@ -633,6 +557,7 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 
 	recoverFromTexts(leftPath)
 	recoverFromTexts(nikPath)
+	base.IsReadable = base.NIK != nil && validateNIK(*base.NIK) && base.Nama != nil && strings.TrimSpace(*base.Nama) != ""
 	return base
 }
 

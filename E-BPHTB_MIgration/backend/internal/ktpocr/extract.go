@@ -6,6 +6,12 @@ import (
 	"unicode"
 )
 
+// TTL kept for backward-compatible helpers in this file (not used in production Result).
+type TTL struct {
+	Tempat  string `json:"tempat"`
+	Tanggal string `json:"tanggal"`
+}
+
 // validProvinces is kode provinsi valid untuk NIK (2 digit pertama).
 var validProvinces = map[string]bool{
 	"11": true, "12": true, "13": true, "14": true, "15": true, "16": true, "17": true, "18": true, "19": true,

@@ -18,10 +18,9 @@ type imageStats struct {
 	Accuracy        float64
 	ExtractedFields int
 	IsValidNIK      bool
+	IsReadable      bool
 	HasNama         bool
 	HasAlamat       bool
-	HasJenisKelamin bool
-	HasRTRW         bool
 	Decision        string
 }
 
@@ -66,10 +65,9 @@ func main() {
 			Accuracy:        r.Stats.Accuracy,
 			ExtractedFields: r.Stats.ExtractedFields,
 			IsValidNIK:      r.Stats.IsValidNIK,
+			IsReadable:      r.IsReadable,
 			HasNama:         r.Nama != nil,
 			HasAlamat:       r.Alamat != nil,
-			HasJenisKelamin: r.JenisKelamin != nil,
-			HasRTRW:         r.RtRw != nil,
 			Decision:        decision,
 		})
 	}
@@ -81,21 +79,24 @@ func main() {
 
 	sort.Slice(stats, func(i, j int) bool { return stats[i].File < stats[j].File })
 	fmt.Println("=== OCR Benchmark (KTP) ===")
-	fmt.Println("file | acc | fields | nik_valid | nama | alamat | jk | rtrw | decision")
+	fmt.Println("file | acc | fields | nik_valid | readable | nama | alamat | decision")
 	for _, s := range stats {
-		fmt.Printf("%s | %.1f | %d | %t | %t | %t | %t | %t | %s\n",
-			s.File, s.Accuracy, s.ExtractedFields, s.IsValidNIK, s.HasNama, s.HasAlamat, s.HasJenisKelamin, s.HasRTRW, s.Decision)
+		fmt.Printf("%s | %.1f | %d | %t | %t | %t | %t | %s\n",
+			s.File, s.Accuracy, s.ExtractedFields, s.IsValidNIK, s.IsReadable, s.HasNama, s.HasAlamat, s.Decision)
 	}
 
 	total := float64(len(stats))
-	var validNIK, criticalComplete, needsReview, reject int
+	var validNIK, readable, criticalComplete, needsReview, reject int
 	var sumAcc float64
 	for _, s := range stats {
 		sumAcc += s.Accuracy
 		if s.IsValidNIK {
 			validNIK++
 		}
-		if s.HasNama && s.HasAlamat && s.HasJenisKelamin && s.HasRTRW {
+		if s.IsReadable {
+			readable++
+		}
+		if s.HasNama && s.HasAlamat {
 			criticalComplete++
 		}
 		switch s.Decision {
@@ -110,6 +111,7 @@ func main() {
 	fmt.Printf("Total gambar           : %d\n", len(stats))
 	fmt.Printf("Rata-rata akurasi      : %.2f\n", sumAcc/total)
 	fmt.Printf("NIK valid rate         : %.2f%%\n", float64(validNIK)*100/total)
+	fmt.Printf("Readable rate (NIK+Nama): %.2f%%\n", float64(readable)*100/total)
 	fmt.Printf("Critical fields lengkap: %.2f%%\n", float64(criticalComplete)*100/total)
 	fmt.Printf("Needs review rate      : %.2f%%\n", float64(needsReview)*100/total)
 	fmt.Printf("Reject rate            : %.2f%%\n", float64(reject)*100/total)
