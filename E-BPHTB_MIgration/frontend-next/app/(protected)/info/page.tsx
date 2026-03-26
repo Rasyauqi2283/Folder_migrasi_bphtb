@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, ReactNode, useMemo } from "react";
+import { useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useAuth } from "../../context/AuthContext";
 import {
   isBankDivisi,
   runBankDashboardTourFromInfo,
   runGenericDashboardIntroTour,
 } from "../../components/tours/bankDashboardTour";
+import { GUIDES, normalizeDivisiToGuideKey } from "./guides";
 
 /**
  * Halaman Informasi & Panduan.
@@ -17,69 +20,8 @@ import {
 export default function InfoPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = String(user?.divisi || "").toLowerCase() === "admin";
-
-  const adminGuideMarkdown = useMemo(
-    () => `## Panduan Admin — E-BPHTB
-
-### Apa itu Admin?
-Admin adalah **peran pengelola & pemantau sistem**. Fokus utama Admin bukan mengerjakan 1 berkas, tetapi:
-- Memantau kondisi aplikasi (kelancaran proses, antrian, kuota).
-- Mengelola data pengguna (akun/role/divisi).
-- Mengatur informasi yang ditampilkan ke pengguna (mis. iklan/pengumuman) dan membantu koordinasi operasional.
-
-### Kegiatan utama di menu Admin
-- **Monitoring & kontrol operasional**: memantau aktivitas layanan harian, memastikan alur kerja berjalan baik.
-- **Pengelolaan pengguna**: menambah/mengubah status akun, memastikan divisi yang benar agar akses menu sesuai.
-- **Pengaturan konten & komunikasi**: menyampaikan pengumuman/iklan/informasi penting agar pengguna paham kondisi layanan.
-
-### Banyak menu interaktif, maksudnya apa?
-Di Admin biasanya ada banyak menu karena Admin adalah “panel kendali”. Menu-menu ini bersifat:
-- **Interaktif**: ada form, tombol aksi, filter, dan tabel data.
-- **Berisiko tinggi jika salah**: karena perubahan Admin bisa berdampak ke banyak pengguna.
-
-> Prinsipnya: **Admin melihat gambaran besar**, bukan hanya 1 transaksi.
-
-### Apa itu menu Iklan?
-Menu **Iklan** (atau Pengumuman/Banner) adalah tempat untuk menampilkan informasi resmi di aplikasi, contohnya:
-- Jadwal pelayanan.
-- Informasi gangguan.
-- Pemberitahuan perubahan prosedur.
-
-**Cara pakainya (umum):**
-1. Masuk ke menu **Iklan**.
-2. Buat iklan/pengumuman baru (judul, isi, periode tampil).
-3. Simpan.
-4. Pastikan tampil di halaman yang dituju, lalu nonaktifkan jika sudah tidak relevan.
-
-**Best practice:**
-- Tulis singkat, jelas, dan ada tanggal/jam berlaku.
-- Hindari informasi ambigu.
-- Jika ada ETA (perkiraan selesai), tulis format yang konsisten.
-
-### Apa itu menu User?
-Menu **User** adalah tempat Admin mengelola akun pengguna aplikasi.
-Biasanya meliputi:
-- Melihat daftar user.
-- Mengecek divisi/role (mis. admin, cs, peneliti, bank, dll).
-- Mengaktifkan/nonaktifkan akun jika diperlukan.
-
-**Cara pakainya (umum):**
-1. Masuk menu **User**.
-2. Cari user (pakai pencarian/filter).
-3. Buka detail user.
-4. Periksa dan sesuaikan **divisi** (ini yang menentukan akses menu).
-5. Simpan perubahan.
-
-### Catatan keamanan & tanggung jawab Admin
-- Jangan bagikan akses Admin ke orang yang tidak berwenang.
-- Perubahan di Admin sebaiknya bisa ditelusuri (siapa, kapan, apa yang diubah).
-- Jika ada hal sensitif (data pribadi), akses dan ekspor data harus mengikuti kebijakan instansi.
-`,
-    []
-  );
-
-  const adminGuide = useMemo(() => renderSimpleMarkdown(adminGuideMarkdown), [adminGuideMarkdown]);
+  const guideKey = useMemo(() => normalizeDivisiToGuideKey(user?.divisi), [user?.divisi]);
+  const guideMarkdown = useMemo(() => (guideKey ? GUIDES[guideKey] : ""), [guideKey]);
 
   const startDashboardTour = () => {
     if (isBankDivisi(user?.divisi)) {
@@ -137,7 +79,7 @@ Biasanya meliputi:
           color: "var(--color_font_main)",
         }}
       >
-        {!isAdmin ? (
+        {!guideKey ? (
           <div
             style={{
               padding: 14,
@@ -147,13 +89,17 @@ Biasanya meliputi:
               color: "var(--color_font_main)",
             }}
           >
-            <p style={{ margin: 0, fontWeight: 700 }}>Konten Admin tidak tersedia.</p>
+            <p style={{ margin: 0, fontWeight: 700 }}>Konten panduan tidak tersedia.</p>
             <p style={{ margin: "8px 0 0", color: "var(--color_font_main_muted)" }}>
-              Panduan ini hanya dapat dibaca oleh pengguna dengan divisi <strong>admin</strong>.
+              Divisi Anda belum terpetakan. Hubungi Administrator untuk memastikan divisi akun sudah benar.
             </p>
           </div>
         ) : (
-          <article style={{ lineHeight: 1.7 }}>{adminGuide}</article>
+          <article style={{ lineHeight: 1.7 }}>
+            <div className="prose prose-slate max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{guideMarkdown}</ReactMarkdown>
+            </div>
+          </article>
         )}
         <p style={{ marginTop: 16, fontSize: "0.9rem", color: "var(--color_font_main_muted)" }}>
           Tombol <strong>Mulai Panduan Dashboard</strong> menjalankan panduan visual (layar gelap dan penjelasan
@@ -169,115 +115,5 @@ Biasanya meliputi:
         </Link>
       </p>
     </div>
-  );
-}
-
-function renderSimpleMarkdown(md: string): ReactNode {
-  const lines = md.replace(/\r\n/g, "\n").split("\n");
-  const out: ReactNode[] = [];
-
-  let paragraph: string[] = [];
-  let list: string[] = [];
-
-  const flushParagraph = () => {
-    if (paragraph.length === 0) return;
-    const text = paragraph.join(" ").trim();
-    if (text) out.push(<p key={`p-${out.length}`} style={{ margin: "0 0 12px" }}>{renderInline(text)}</p>);
-    paragraph = [];
-  };
-
-  const flushList = () => {
-    if (list.length === 0) return;
-    out.push(
-      <ul key={`ul-${out.length}`} style={{ margin: "0 0 12px 18px" }}>
-        {list.map((item, idx) => (
-          <li key={idx} style={{ margin: "6px 0" }}>
-            {renderInline(item)}
-          </li>
-        ))}
-      </ul>
-    );
-    list = [];
-  };
-
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    const t = line.trim();
-
-    if (!t) {
-      flushList();
-      flushParagraph();
-      continue;
-    }
-
-    if (t.startsWith("## ")) {
-      flushList();
-      flushParagraph();
-      out.push(
-        <h2 key={`h2-${out.length}`} style={{ margin: "0 0 10px", fontSize: "1.25rem" }}>
-          {renderInline(t.slice(3).trim())}
-        </h2>
-      );
-      continue;
-    }
-
-    if (t.startsWith("### ")) {
-      flushList();
-      flushParagraph();
-      out.push(
-        <h3 key={`h3-${out.length}`} style={{ margin: "14px 0 8px", fontSize: "1.05rem" }}>
-          {renderInline(t.slice(4).trim())}
-        </h3>
-      );
-      continue;
-    }
-
-    if (t.startsWith("> ")) {
-      flushList();
-      flushParagraph();
-      out.push(
-        <blockquote
-          key={`bq-${out.length}`}
-          style={{
-            margin: "10px 0 12px",
-            padding: "10px 12px",
-            borderLeft: "3px solid var(--accent)",
-            background: "rgba(37, 99, 235, 0.08)",
-            borderRadius: 10,
-          }}
-        >
-          <p style={{ margin: 0, color: "var(--color_font_main)" }}>{renderInline(t.slice(2).trim())}</p>
-        </blockquote>
-      );
-      continue;
-    }
-
-    if (t.startsWith("- ")) {
-      flushParagraph();
-      list.push(t.slice(2).trim());
-      continue;
-    }
-
-    flushList();
-    paragraph.push(t);
-  }
-
-  flushList();
-  flushParagraph();
-
-  return <Fragment>{out}</Fragment>;
-}
-
-function renderInline(text: string): ReactNode {
-  // supports **bold** only (minimal; enough for admin docs)
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return (
-    <>
-      {parts.map((p, idx) => {
-        const isBold = p.startsWith("**") && p.endsWith("**") && p.length >= 4;
-        if (isBold) return <strong key={idx}>{p.slice(2, -2)}</strong>;
-        return <Fragment key={idx}>{p}</Fragment>;
-      })}
-    </>
   );
 }
