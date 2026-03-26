@@ -7,6 +7,11 @@ import RasproLogo from "./components/RasproLogo";
 import BackendHealth from "./components/BackendHealth";
 import styles from "./landing-stripe.module.css";
 
+export const metadata = {
+  title: "Selamat Datang",
+  description: "Beranda resmi layanan BPHTB digital Kabupaten Bogor (E-BPHTB).",
+};
+
 export default function HomePage() {
   return (
     <div className="landing-page">
