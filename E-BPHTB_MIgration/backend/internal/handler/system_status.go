@@ -29,10 +29,10 @@ func jakartaNow() time.Time {
 func isOutsideOperationalHours(now time.Time) bool {
 	// 08:00 - 18:00 WIB (inclusive start, exclusive end)
 	h := now.Hour()
-	if h < 8 {
+	if h < 5 {
 		return true
 	}
-	if h >= 1 {
+	if h >= 23 {
 		return true
 	}
 	return false
