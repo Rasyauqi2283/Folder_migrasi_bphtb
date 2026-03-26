@@ -43,6 +43,118 @@ type LoadAllBookingRow struct {
 	FileWithstempelPath   *string    `json:"file_withstempel_path"`
 }
 
+// PendingCorrectionRow represents one correction item for PU (PPAT/PPATS/Notaris).
+type PendingCorrectionRow struct {
+	Nobooking        string  `json:"nobooking"`
+	NoRegistrasi     *string `json:"no_registrasi"`
+	StpdCode         *string `json:"stpd_code"`
+	CatatanPeneliti  *string `json:"catatan_peneliti"`
+	CatatanPu        *string `json:"catatan_pu"`
+	BuktiPelunasanPath *string `json:"bukti_pelunasan_path"`
+	CorrectionUpdatedAt *time.Time `json:"correction_updated_at"`
+}
+
+// ListPendingCorrections returns correction items with verification_state = 'PENDING_CORRECTION'
+// for bookings owned by userid. Does not create new rows.
+func (r *PpatRepo) ListPendingCorrections(ctx context.Context, userid string, limit int) ([]PendingCorrectionRow, error) {
+	if r.pool == nil {
+		return []PendingCorrectionRow{}, nil
+	}
+	if limit < 1 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			p.nobooking,
+			p.no_registrasi,
+			p.stpd_code,
+			p.catatan_peneliti,
+			p.catatan_pu,
+			p.bukti_pelunasan_path,
+			p.correction_updated_at
+		FROM p_1_verifikasi p
+		INNER JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
+		WHERE b.userid = $1
+		  AND COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'
+		ORDER BY p.correction_updated_at DESC NULLS LAST, p.no_registrasi ASC NULLS LAST, p.nobooking ASC
+		LIMIT $2
+	`, userid, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]PendingCorrectionRow, 0, 16)
+	for rows.Next() {
+		var row PendingCorrectionRow
+		if err := rows.Scan(&row.Nobooking, &row.NoRegistrasi, &row.StpdCode, &row.CatatanPeneliti, &row.CatatanPu, &row.BuktiPelunasanPath, &row.CorrectionUpdatedAt); err != nil {
+			continue
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+// UpdateCorrectionNoteAndProof updates catatan_pu and/or bukti_pelunasan_path for a correction item
+// owned by userid.
+func (r *PpatRepo) UpdateCorrectionNoteAndProof(ctx context.Context, userid, nobooking string, note *string, buktiPath *string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	cmd, err := r.pool.Exec(ctx, `
+		UPDATE p_1_verifikasi p
+		SET
+			catatan_pu = COALESCE($3, catatan_pu),
+			bukti_pelunasan_path = COALESCE($4, bukti_pelunasan_path),
+			correction_updated_at = now()
+		FROM pat_1_bookingsspd b
+		WHERE p.nobooking = b.nobooking
+		  AND b.userid = $1
+		  AND p.nobooking = $2
+		  AND COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'
+	`, userid, nobooking, note, buktiPath)
+	if err != nil {
+		return err
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("data koreksi tidak ditemukan")
+	}
+	return nil
+}
+
+// ResubmitCorrection sends the same no_registrasi back to Peneliti queue.
+// It does not create new rows (UPDATE only).
+func (r *PpatRepo) ResubmitCorrection(ctx context.Context, userid, nobooking string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	cmd, err := r.pool.Exec(ctx, `
+		UPDATE p_1_verifikasi p
+		SET
+			trackstatus = 'Dilanjutkan',
+			status = 'Diajukan',
+			locked_by_user_id = NULL,
+			locked_by_nama = NULL,
+			locked_at = NULL,
+			verification_state = 'RESUBMITTED',
+			correction_updated_at = now()
+		FROM pat_1_bookingsspd b
+		WHERE p.nobooking = b.nobooking
+		  AND b.userid = $1
+		  AND p.nobooking = $2
+		  AND COALESCE(p.verification_state,'') = 'PENDING_CORRECTION'
+	`, userid, nobooking)
+	if err != nil {
+		return err
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("data koreksi tidak ditemukan")
+	}
+	return nil
+}
+
 // LoadAllBookingResult holds data and pagination for load-all-booking.
 type LoadAllBookingResult struct {
 	Data       []LoadAllBookingRow

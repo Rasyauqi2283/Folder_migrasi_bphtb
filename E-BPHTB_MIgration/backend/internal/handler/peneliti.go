@@ -135,6 +135,7 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 			AngkaPersen               *string `json:"angkapersen"`
 			KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
 			IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+			CatatanPeneliti           *string `json:"catatan_peneliti"`
 			PersetujuanVerif          bool    `json:"persetujuanVerif"`
 		} `json:"data"`
 		Nobooking                 string  `json:"nobooking"`
@@ -144,6 +145,7 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 		AngkaPersen               *string `json:"angkapersen"`
 		KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
 		IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+		CatatanPeneliti           *string `json:"catatan_peneliti"`
 		PersetujuanVerif          bool    `json:"persetujuanVerif"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
@@ -158,10 +160,11 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 			AngkaPersen               *string `json:"angkapersen"`
 			KeteranganDihitungSendiri *string `json:"keterangandihitungSendiri"`
 			IsiKeteranganLainnya      *string `json:"isiketeranganlainnya"`
+			CatatanPeneliti           *string `json:"catatan_peneliti"`
 			PersetujuanVerif          bool    `json:"persetujuanVerif"`
 		}{
 			Nobooking: body.Nobooking, Pemilihan: body.Pemilihan, NomorSTPD: body.NomorSTPD, TanggalSTPD: body.TanggalSTPD,
-			AngkaPersen: body.AngkaPersen, KeteranganDihitungSendiri: body.KeteranganDihitungSendiri, IsiKeteranganLainnya: body.IsiKeteranganLainnya, PersetujuanVerif: body.PersetujuanVerif,
+			AngkaPersen: body.AngkaPersen, KeteranganDihitungSendiri: body.KeteranganDihitungSendiri, IsiKeteranganLainnya: body.IsiKeteranganLainnya, CatatanPeneliti: body.CatatanPeneliti, PersetujuanVerif: body.PersetujuanVerif,
 		}
 	}
 	if strings.TrimSpace(src.Nobooking) == "" || strings.TrimSpace(src.Pemilihan) == "" {
@@ -180,7 +183,7 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 	}
 	err := h.repo.SaveVerificationByPemilihan(r.Context(), userid, repository.PenelitiVerificationUpdateInput{
 		Nobooking: strings.TrimSpace(src.Nobooking), Pemilihan: strings.TrimSpace(src.Pemilihan), NomorSTPD: src.NomorSTPD, TanggalSTPD: src.TanggalSTPD,
-		AngkaPersen: angkaPtr, KeteranganDihitungSendiri: src.KeteranganDihitungSendiri, IsiKeteranganLainnya: src.IsiKeteranganLainnya, PersetujuanVerif: src.PersetujuanVerif,
+		AngkaPersen: angkaPtr, KeteranganDihitungSendiri: src.KeteranganDihitungSendiri, IsiKeteranganLainnya: src.IsiKeteranganLainnya, CatatanPeneliti: src.CatatanPeneliti, PersetujuanVerif: src.PersetujuanVerif,
 	})
 	if err != nil {
 		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})

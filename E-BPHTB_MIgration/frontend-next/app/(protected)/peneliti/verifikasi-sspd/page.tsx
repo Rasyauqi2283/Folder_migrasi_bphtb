@@ -153,6 +153,7 @@ export default function PenelitiVerifikasiSspdPage() {
     angkapersen: string;
     keterangandihitungSendiri: string;
     isiketeranganlainnya: string;
+    catatan_peneliti: string;
     persetujuanVerif: boolean;
   }>>({});
 
@@ -263,6 +264,7 @@ export default function PenelitiVerifikasiSspdPage() {
         angkapersen: String(item.angkapersen ?? ""),
         keterangandihitungSendiri: String(item.keterangandihitungsendiri ?? ""),
         isiketeranganlainnya: String(item.isiketeranganlainnya ?? ""),
+        catatan_peneliti: String((item as any).catatan_peneliti ?? ""),
         persetujuanVerif: String(item.persetujuan ?? "").toLowerCase() === "true",
       },
     }));
@@ -275,6 +277,7 @@ export default function PenelitiVerifikasiSspdPage() {
     angkapersen: string;
     keterangandihitungSendiri: string;
     isiketeranganlainnya: string;
+    catatan_peneliti: string;
     persetujuanVerif: boolean;
   }>) => {
     setVerificationForms((prev) => ({
@@ -287,6 +290,7 @@ export default function PenelitiVerifikasiSspdPage() {
           angkapersen: "",
           keterangandihitungSendiri: "",
           isiketeranganlainnya: "",
+          catatan_peneliti: "",
           persetujuanVerif: false,
         }),
         ...patch,
@@ -304,6 +308,10 @@ export default function PenelitiVerifikasiSspdPage() {
       alert("Pilih jenis kelengkapan/pemilihan terlebih dahulu.");
       return;
     }
+    if (f.pemilihan === "stpd_kurangbayar" && !f.catatan_peneliti.trim()) {
+      alert("Catatan Peneliti wajib diisi untuk STPD Kurang Bayar.");
+      return;
+    }
     setActionLoading(nobooking);
     try {
       const res = await fetch(`${getApiBase()}/api/peneliti_update-berdasarkan-pemilihan`, {
@@ -319,6 +327,7 @@ export default function PenelitiVerifikasiSspdPage() {
             angkapersen: f.angkapersen || null,
             keterangandihitungSendiri: f.keterangandihitungSendiri || null,
             isiketeranganlainnya: f.isiketeranganlainnya || null,
+            catatan_peneliti: f.catatan_peneliti || null,
             persetujuanVerif: f.persetujuanVerif,
           },
         }),
@@ -653,7 +662,15 @@ export default function PenelitiVerifikasiSspdPage() {
                             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                               <select
                                 value={verificationForms[r.nobooking || ""]?.pemilihan || ""}
-                                onChange={(e) => patchForm(r.nobooking || "", { pemilihan: e.target.value })}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  patchForm(r.nobooking || "", {
+                                    pemilihan: v,
+                                    // STPD kurang bayar: nomor/tanggal di-generate backend (kita kosongkan agar tidak membingungkan)
+                                    nomorstpd: v === "stpd_kurangbayar" ? "" : (verificationForms[r.nobooking || ""]?.nomorstpd || ""),
+                                    tanggalstpd: v === "stpd_kurangbayar" ? "" : (verificationForms[r.nobooking || ""]?.tanggalstpd || ""),
+                                  });
+                                }}
                                 style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 260 }}
                               >
                                 <option value="">Pilih kelengkapan/pemilihan</option>
@@ -672,9 +689,16 @@ export default function PenelitiVerifikasiSspdPage() {
                               </label>
                             </div>
                             {(verificationForms[r.nobooking || ""]?.pemilihan === "stpd_kurangbayar") && (
-                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
-                                <input type="text" placeholder="Nomor STPD" value={verificationForms[r.nobooking || ""]?.nomorstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { nomorstpd: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
-                                <input type="date" value={verificationForms[r.nobooking || ""]?.tanggalstpd || ""} onChange={(e) => patchForm(r.nobooking || "", { tanggalstpd: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
+                              <div style={{ marginTop: 10 }}>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: "#b45309", marginBottom: 6 }}>
+                                  STPD Kurang Bayar terdeteksi — sistem akan membuat kode STPD otomatis (status: PENDING_CORRECTION).
+                                </div>
+                                <textarea
+                                  placeholder="Catatan untuk PU: jelaskan bagian mana yang kurang bayar / yang harus diperbaiki..."
+                                  value={verificationForms[r.nobooking || ""]?.catatan_peneliti || ""}
+                                  onChange={(e) => patchForm(r.nobooking || "", { catatan_peneliti: e.target.value })}
+                                  style={{ width: "100%", minHeight: 80, padding: "10px 12px", ...inputReadableStyle }}
+                                />
                               </div>
                             )}
                             {(verificationForms[r.nobooking || ""]?.pemilihan === "dihitungsendiri") && (

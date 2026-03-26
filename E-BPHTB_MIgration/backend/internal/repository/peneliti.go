@@ -200,6 +200,7 @@ type PenelitiVerificationUpdateInput struct {
 	AngkaPersen               *float64
 	KeteranganDihitungSendiri *string
 	IsiKeteranganLainnya      *string
+	CatatanPeneliti           *string
 	PersetujuanVerif          bool
 }
 
@@ -215,9 +216,6 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 	}
 	if !valid[in.Pemilihan] {
 		return fmt.Errorf("jenis pemilihan tidak valid")
-	}
-	if in.Pemilihan == "stpd_kurangbayar" && (in.NomorSTPD == nil || strings.TrimSpace(*in.NomorSTPD) == "" || in.TanggalSTPD == nil || strings.TrimSpace(*in.TanggalSTPD) == "") {
-		return fmt.Errorf("nomor dan tanggal STPD wajib diisi")
 	}
 	if in.Pemilihan == "dihitungsendiri" && (in.AngkaPersen == nil || *in.AngkaPersen < 0 || *in.AngkaPersen > 100 || in.KeteranganDihitungSendiri == nil || strings.TrimSpace(*in.KeteranganDihitungSendiri) == "") {
 		return fmt.Errorf("persentase 0-100 dan keterangan wajib diisi")
@@ -235,12 +233,51 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 		persetujuanText = "true"
 	}
 
+	// STPD kurang bayar: generate a temporary STPD reference code (BPN-XXXXXX).
+	// Keep data integrity: UPDATE existing row only (no inserts).
+	stpdCode := ""
+	state := ""
+	if in.Pemilihan == "stpd_kurangbayar" {
+		// Require a note so PU knows what to correct.
+		if in.CatatanPeneliti == nil || strings.TrimSpace(*in.CatatanPeneliti) == "" {
+			return fmt.Errorf("catatan peneliti wajib diisi untuk STPD kurang bayar")
+		}
+		// Reuse existing code if already present.
+		var existing *string
+		_ = r.pool.QueryRow(ctx, `SELECT stpd_code FROM p_1_verifikasi WHERE nobooking = $1`, in.Nobooking).Scan(&existing)
+		if existing != nil && strings.TrimSpace(*existing) != "" {
+			stpdCode = strings.TrimSpace(*existing)
+		} else {
+			for i := 0; i < 12; i++ {
+				sfx, err := randomAlphaNum(6)
+				if err != nil {
+					return err
+				}
+				candidate := "BPN-" + sfx
+				var x int
+				err = r.pool.QueryRow(ctx, `SELECT 1 FROM p_1_verifikasi WHERE stpd_code = $1 LIMIT 1`, candidate).Scan(&x)
+				if err != nil {
+					// no rows -> unique
+					stpdCode = candidate
+					break
+				}
+			}
+			if stpdCode == "" {
+				return fmt.Errorf("gagal membuat kode STPD unik")
+			}
+		}
+		state = "PENDING_CORRECTION"
+	}
+	if in.Pemilihan == "penghitung_wajib_pajak" {
+		state = "OK"
+	}
+
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE p_1_verifikasi
 		SET
 			pemilihan = $1,
-			nomorstpd = $2,
-			tanggalstpd = $3::date,
+			nomorstpd = CASE WHEN $1 = 'stpd_kurangbayar' THEN COALESCE(NULLIF($14,''), nomorstpd) ELSE $2 END,
+			tanggalstpd = CASE WHEN $1 = 'stpd_kurangbayar' THEN (CURRENT_DATE) ELSE $3::date END,
 			angkapersen = $4,
 			keterangandihitungsendiri = $5,
 			isiketeranganlainnya = $6,
@@ -251,10 +288,14 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 			verified_at = $12,
 			verified_by = $8,
 			verified_by_nama = $13,
-			locked_at = $12
+			locked_at = $12,
+			verification_state = CASE WHEN $15 <> '' THEN $15 ELSE verification_state END,
+			stpd_code = CASE WHEN $14 <> '' THEN $14 ELSE stpd_code END,
+			catatan_peneliti = COALESCE($16, catatan_peneliti),
+			correction_updated_at = CASE WHEN $15 = 'PENDING_CORRECTION' THEN $12 ELSE correction_updated_at END
 		WHERE nobooking = $11
 		  AND (COALESCE(locked_by_user_id, '') = '' OR locked_by_user_id = $8)
-	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking, jakartaNow(), penelitiNama)
+	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking, jakartaNow(), penelitiNama, stpdCode, state, in.CatatanPeneliti)
 	if err != nil {
 		return err
 	}

@@ -369,6 +369,9 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/schedule-send", ppatHandler.ScheduleSend)
 	mux.HandleFunc("POST /api/ppat/upload-signatures", ppatHandler.UploadSignatures)
 	mux.HandleFunc("POST /api/ppat/upload-documents", ppatHandler.UploadDocuments)
+	mux.HandleFunc("GET /api/ppat/corrections/pending", ppatHandler.ListPendingCorrections)
+	mux.HandleFunc("POST /api/ppat/corrections/{nobooking}/upload-proof", ppatHandler.UploadCorrectionProof)
+	mux.HandleFunc("POST /api/ppat/corrections/{nobooking}/resubmit", ppatHandler.ResubmitCorrection)
 
 	// WP — Libatkan WP flow (validate, invite, list, approve)
 	wpSign := handler.NewWpSignHandler(userRepo, ppatRepo)

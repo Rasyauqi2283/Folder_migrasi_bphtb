@@ -43,6 +43,142 @@ func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *
 	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, cfg: cfg}
 }
 
+// ListPendingCorrections handles GET /api/ppat/corrections/pending.
+func (h *PpatHandler) ListPendingCorrections(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	rows, err := h.repo.ListPendingCorrections(ctx, userid, limit)
+	if err != nil {
+		log.Printf("[PPAT] ListPendingCorrections: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memuat data koreksi")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": rows})
+}
+
+// UploadCorrectionProof handles POST /api/ppat/corrections/{nobooking}/upload-proof.
+// Stores file under PpatStorageBaseDir/corrections/... and updates p_1_verifikasi.bukti_pelunasan_path.
+func (h *PpatHandler) UploadCorrectionProof(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	if err := r.ParseMultipartForm(maxDocumentSize); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Failed to parse form")
+		return
+	}
+	note := strings.TrimSpace(r.FormValue("catatan_pu"))
+	var notePtr *string
+	if note != "" {
+		notePtr = &note
+	}
+	file, hdr, err := r.FormFile("bukti")
+	if err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "File bukti wajib")
+		return
+	}
+	defer file.Close()
+	data, err := io.ReadAll(file)
+	if err != nil || len(data) == 0 {
+		ppatJSONError(w, http.StatusBadRequest, "File tidak valid")
+		return
+	}
+	if len(data) > maxDocumentSize {
+		ppatJSONError(w, http.StatusBadRequest, "File terlalu besar (max 50MB)")
+		return
+	}
+	ct := ""
+	if hdr != nil {
+		ct = hdr.Header.Get("Content-Type")
+	}
+	allowed := map[string]bool{
+		"image/jpeg": true, "image/jpg": true, "image/png": true, "image/webp": true, "application/pdf": true,
+	}
+	if ct != "" && !allowed[ct] {
+		ppatJSONError(w, http.StatusBadRequest, "Format file tidak didukung (PDF/JPG/PNG)")
+		return
+	}
+	baseDir := h.cfg.PpatStorageBaseDir
+	if baseDir == "" {
+		baseDir = "./storage/ppat"
+	}
+	year := strconv.Itoa(time.Now().Year())
+	folderBase := filepath.Join(baseDir, "corrections", year, userid, nobooking)
+	if err := ensureDir(folderBase); err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Failed to create directory")
+		return
+	}
+	ext := ".pdf"
+	if hdr != nil && filepath.Ext(hdr.Filename) != "" {
+		ext = strings.ToLower(filepath.Ext(hdr.Filename))
+	}
+	filename := fmt.Sprintf("%s_bukti_%d%s", nobooking, time.Now().UnixMilli(), ext)
+	fullPath := filepath.Join(folderBase, filename)
+	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Failed to save file")
+		return
+	}
+	relPath := filepath.ToSlash(filepath.Join("corrections", year, userid, nobooking, filename))
+	buktiPtr := &relPath
+
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	if err := h.repo.UpdateCorrectionNoteAndProof(ctx, userid, nobooking, notePtr, buktiPtr); err != nil {
+		_ = os.Remove(fullPath)
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "OK", "path": relPath})
+}
+
+// ResubmitCorrection handles POST /api/ppat/corrections/{nobooking}/resubmit.
+func (h *PpatHandler) ResubmitCorrection(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	if err := h.repo.ResubmitCorrection(ctx, userid, nobooking); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "OK"})
+}
+
 // LoadAllBooking handles GET /api/ppat/load-all-booking.
 func (h *PpatHandler) LoadAllBooking(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

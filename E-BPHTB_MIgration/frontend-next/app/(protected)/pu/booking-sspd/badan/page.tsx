@@ -28,6 +28,16 @@ type ApiResponse = {
   pagination?: { page: number; limit: number; total: number; pages: number };
 };
 
+type PendingCorrection = {
+  nobooking: string;
+  no_registrasi?: string | null;
+  stpd_code?: string | null;
+  catatan_peneliti?: string | null;
+  catatan_pu?: string | null;
+  bukti_pelunasan_path?: string | null;
+  correction_updated_at?: string | null;
+};
+
 const tableStyle: React.CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
@@ -99,6 +109,35 @@ export default function BookingSSPDBadanPage() {
     bphtb_yangtelah_dibayar?: number;
   } | null>(null);
 
+  const [corrections, setCorrections] = useState<PendingCorrection[]>([]);
+  const [correctionsLoading, setCorrectionsLoading] = useState(false);
+  const [correctionsErr, setCorrectionsErr] = useState<string | null>(null);
+  const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
+  const [selectedCorrection, setSelectedCorrection] = useState<PendingCorrection | null>(null);
+  const [correctionNote, setCorrectionNote] = useState("");
+  const [correctionFile, setCorrectionFile] = useState<File | null>(null);
+  const [correctionBusy, setCorrectionBusy] = useState(false);
+
+  const loadCorrections = useCallback(async () => {
+    setCorrectionsLoading(true);
+    setCorrectionsErr(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ppat/corrections/pending?limit=50`, { credentials: "include" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setCorrectionsErr(j?.message || "Gagal memuat notifikasi koreksi.");
+        setCorrections([]);
+        return;
+      }
+      setCorrections(Array.isArray(j?.data) ? j.data : []);
+    } catch {
+      setCorrectionsErr("Gagal memuat notifikasi koreksi.");
+      setCorrections([]);
+    } finally {
+      setCorrectionsLoading(false);
+    }
+  }, []);
+
   const setCekBookingNobooking = useCallback((nobooking: string) => {
     setCekBookingDetail(null);
     fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" })
@@ -140,6 +179,10 @@ export default function BookingSSPDBadanPage() {
     loadTable(page, searchQuery);
   }, [page, loadTable, searchQuery]);
 
+  useEffect(() => {
+    loadCorrections();
+  }, [loadCorrections]);
+
   const status = (s: string) => (s || "").toLowerCase();
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
 
@@ -150,6 +193,70 @@ export default function BookingSSPDBadanPage() {
     return `${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(rel)}`;
   };
   const getFileName = (path: string) => (path ? path.split("/").pop()?.replace(/^v\d+_/, "") || "File" : "File");
+
+  const openCorrectionModal = (c: PendingCorrection) => {
+    setSelectedCorrection(c);
+    setCorrectionNote(String(c.catatan_pu ?? ""));
+    setCorrectionFile(null);
+    setActionMessage(null);
+    setCorrectionModalOpen(true);
+  };
+
+  const submitCorrectionProof = async () => {
+    if (!selectedCorrection?.nobooking) return;
+    if (!correctionFile) {
+      setActionMessage("Upload bukti pelunasan (PDF/JPG/PNG) terlebih dahulu.");
+      return;
+    }
+    setCorrectionBusy(true);
+    setActionMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("bukti", correctionFile);
+      if (correctionNote.trim()) fd.append("catatan_pu", correctionNote.trim());
+      const res = await fetch(`${getApiBase()}/api/ppat/corrections/${encodeURIComponent(selectedCorrection.nobooking)}/upload-proof`, {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setActionMessage(j?.message || "Gagal upload bukti.");
+        return;
+      }
+      await loadCorrections();
+      setActionMessage("Bukti berhasil diupload.");
+    } catch {
+      setActionMessage("Gagal upload bukti.");
+    } finally {
+      setCorrectionBusy(false);
+    }
+  };
+
+  const resubmitCorrection = async () => {
+    if (!selectedCorrection?.nobooking) return;
+    setCorrectionBusy(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ppat/corrections/${encodeURIComponent(selectedCorrection.nobooking)}/resubmit`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setActionMessage(j?.message || "Gagal kirim ulang.");
+        return;
+      }
+      setCorrectionModalOpen(false);
+      setSelectedCorrection(null);
+      await loadCorrections();
+      setActionMessage("Berhasil dikirim ulang ke antrian Peneliti.");
+    } catch {
+      setActionMessage("Gagal kirim ulang.");
+    } finally {
+      setCorrectionBusy(false);
+    }
+  };
 
   const openModalKirim = (row: BookingRow) => {
     setModal("kirim");
@@ -353,6 +460,64 @@ export default function BookingSSPDBadanPage() {
       <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem", marginBottom: 20 }}>
         Kelola booking SSPD untuk wajib pajak badan usaha. Tambah data, upload tanda tangan, lihat dokumen, atau kirim ke Bappenda.
       </p>
+
+      {/* Alert: Pending Correction (STPD Kurang Bayar) */}
+      <div style={{ marginBottom: 16 }}>
+        {correctionsLoading ? (
+          <div style={{ padding: 12, borderRadius: 10, border: "1px solid var(--border_color)", background: "rgba(245,158,11,0.08)" }}>
+            <strong style={{ color: "#92400e" }}>Memuat notifikasi STPD/Koreksi...</strong>
+          </div>
+        ) : correctionsErr ? (
+          <div style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(239,68,68,0.35)", background: "rgba(239,68,68,0.08)", color: "#b91c1c", fontWeight: 700 }}>
+            {correctionsErr}
+          </div>
+        ) : corrections.length === 0 ? null : (
+          <div style={{ padding: 14, borderRadius: 12, border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.10)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontWeight: 900, color: "#92400e", marginBottom: 6 }}>Perlu Koreksi / STPD Kurang Bayar</div>
+                <div style={{ fontSize: 13, color: "#78350f" }}>
+                  Ada <strong>{corrections.length}</strong> dokumen berstatus <strong>PENDING_CORRECTION</strong> dari Peneliti. Silakan proses pelunasan/koreksi lalu kirim ulang.
+                </div>
+              </div>
+              <button type="button" style={{ ...btnSecondary, border: "1px solid rgba(245,158,11,0.35)" }} onClick={loadCorrections}>
+                Refresh
+              </button>
+            </div>
+            <div style={{ marginTop: 12, overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "10px 8px", fontSize: 12, color: "#92400e" }}>No Registrasi</th>
+                    <th style={{ textAlign: "left", padding: "10px 8px", fontSize: 12, color: "#92400e" }}>Kode STPD</th>
+                    <th style={{ textAlign: "left", padding: "10px 8px", fontSize: 12, color: "#92400e" }}>Catatan Peneliti</th>
+                    <th style={{ textAlign: "right", padding: "10px 8px", fontSize: 12, color: "#92400e" }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {corrections.slice(0, 8).map((c) => (
+                    <tr key={c.nobooking} style={{ borderTop: "1px solid rgba(245,158,11,0.18)" }}>
+                      <td style={{ padding: "10px 8px", fontSize: 13, color: "#0f172a" }}>{c.no_registrasi || "—"}</td>
+                      <td style={{ padding: "10px 8px", fontSize: 13, fontWeight: 800, color: "#0f172a" }}>{c.stpd_code || "—"}</td>
+                      <td style={{ padding: "10px 8px", fontSize: 13, color: "#0f172a" }}>{(c.catatan_peneliti || "—") as any}</td>
+                      <td style={{ padding: "10px 8px", textAlign: "right" }}>
+                        <button type="button" style={{ ...btnStyle, background: "#f59e0b", color: "#111827" }} onClick={() => openCorrectionModal(c)}>
+                          Proses Pelunasan/Koreksi
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {corrections.length > 8 && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#78350f" }}>
+                  Menampilkan 8 dari {corrections.length} item. Gunakan tombol refresh untuk update data terbaru.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20, alignItems: "center" }}>
         <button type="button" style={btnTambah} onClick={() => setFormVisible((v) => !v)}>
@@ -572,6 +737,53 @@ export default function BookingSSPDBadanPage() {
                 {uploading ? "Memproses..." : "Ya, Tandai Dihapus"}
               </button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Correction modal */}
+      {correctionModalOpen && selectedCorrection && (
+        <div style={modalOverlayStyle} onClick={() => !correctionBusy && setCorrectionModalOpen(false)}>
+          <div style={{ ...modalBoxStyle, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 10px", color: "#0f172a" }}>Proses Pelunasan / Koreksi</h3>
+            <div style={{ fontSize: 14, color: "#0f172a", display: "grid", gap: 6 }}>
+              <div><strong>No Registrasi:</strong> {selectedCorrection.no_registrasi || "—"}</div>
+              <div><strong>No Booking:</strong> {selectedCorrection.nobooking}</div>
+              <div><strong>Kode STPD:</strong> <span style={{ fontWeight: 900, color: "#92400e" }}>{selectedCorrection.stpd_code || "—"}</span></div>
+              <div><strong>Catatan Peneliti:</strong> {selectedCorrection.catatan_peneliti || "—"}</div>
+            </div>
+
+            <div style={{ marginTop: 14, padding: 12, borderRadius: 10, border: "1px solid var(--border_color)", background: "rgba(245,158,11,0.06)" }}>
+              <div style={{ fontWeight: 800, marginBottom: 6, color: "#92400e" }}>Upload Bukti Pelunasan</div>
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={(e) => setCorrectionFile(e.target.files?.[0] || null)}
+                disabled={correctionBusy}
+              />
+              <div style={{ marginTop: 10 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>Catatan PU (opsional)</label>
+                <textarea
+                  value={correctionNote}
+                  onChange={(e) => setCorrectionNote(e.target.value)}
+                  placeholder="Catatan untuk internal/peneliti..."
+                  style={{ width: "100%", minHeight: 70, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border_color)" }}
+                  disabled={correctionBusy}
+                />
+              </div>
+              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" style={{ ...btnStyle, background: "#2563eb", color: "#fff" }} disabled={correctionBusy} onClick={submitCorrectionProof}>
+                  {correctionBusy ? "Memproses..." : "Upload Bukti"}
+                </button>
+                <button type="button" style={{ ...btnStyle, background: "#f59e0b", color: "#111827" }} disabled={correctionBusy} onClick={resubmitCorrection}>
+                  {correctionBusy ? "Memproses..." : "Kirim Ulang ke Peneliti"}
+                </button>
+                <button type="button" style={btnSecondary} disabled={correctionBusy} onClick={() => setCorrectionModalOpen(false)}>
+                  Tutup
+                </button>
+              </div>
+              {actionMessage && <p style={{ marginTop: 10, fontSize: 13, color: actionMessage.includes("Gagal") ? "#b91c1c" : "#166534" }}>{actionMessage}</p>}
             </div>
           </div>
         </div>
