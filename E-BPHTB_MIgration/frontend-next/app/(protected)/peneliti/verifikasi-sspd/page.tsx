@@ -674,10 +674,10 @@ export default function PenelitiVerifikasiSspdPage() {
                                 style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 260 }}
                               >
                                 <option value="">Pilih kelengkapan/pemilihan</option>
-                                <option value="penghitung_wajib_pajak">Sesuai (Penghitungan Wajib Pajak)</option>
-                                <option value="stpd_kurangbayar">Tidak Sesuai (STPD Kurang Bayar)</option>
-                                <option value="dihitungsendiri">Ada (Pengurangan dihitung sendiri)</option>
-                                <option value="lainnyapenghitungwp">Tidak Ada (Lainnya)</option>
+                                <option value="SESUAI">Sesuai (Penghitungan Wajib Pajak)</option>
+                                <option value="KURANG_BAYAR">Tidak Sesuai (STPD Kurang Bayar)</option>
+                                <option value="DIHITUNG_SENDIRI">Ada (Pengurangan dihitung sendiri)</option>
+                                <option value="LAINNYA">Tidak Ada (Lainnya)</option>
                               </select>
                               <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <input
@@ -688,7 +688,7 @@ export default function PenelitiVerifikasiSspdPage() {
                                 Setujui Paraf
                               </label>
                             </div>
-                            {(verificationForms[r.nobooking || ""]?.pemilihan === "stpd_kurangbayar") && (
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "KURANG_BAYAR") && (
                               <div style={{ marginTop: 10 }}>
                                 <div style={{ fontSize: 12, fontWeight: 800, color: "#b45309", marginBottom: 6 }}>
                                   STPD Kurang Bayar terdeteksi — sistem akan membuat kode STPD otomatis (status: PENDING_CORRECTION).
@@ -701,13 +701,13 @@ export default function PenelitiVerifikasiSspdPage() {
                                 />
                               </div>
                             )}
-                            {(verificationForms[r.nobooking || ""]?.pemilihan === "dihitungsendiri") && (
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "DIHITUNG_SENDIRI") && (
                               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
                                 <input type="number" min={0} max={100} step={0.01} placeholder="Persentase (0-100)" value={verificationForms[r.nobooking || ""]?.angkapersen || ""} onChange={(e) => patchForm(r.nobooking || "", { angkapersen: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle }} />
                                 <input type="text" placeholder="Keterangan dihitung sendiri" value={verificationForms[r.nobooking || ""]?.keterangandihitungSendiri || ""} onChange={(e) => patchForm(r.nobooking || "", { keterangandihitungSendiri: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 320 }} />
                               </div>
                             )}
-                            {(verificationForms[r.nobooking || ""]?.pemilihan === "lainnyapenghitungwp") && (
+                            {(verificationForms[r.nobooking || ""]?.pemilihan === "LAINNYA") && (
                               <input type="text" placeholder="Isi keterangan lainnya..." value={verificationForms[r.nobooking || ""]?.isiketeranganlainnya || ""} onChange={(e) => patchForm(r.nobooking || "", { isiketeranganlainnya: e.target.value })} style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 320, marginTop: 8 }} />
                             )}
                             <div style={{ marginTop: 10 }}>

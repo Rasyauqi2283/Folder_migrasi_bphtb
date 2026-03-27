@@ -144,13 +144,31 @@ export default function BookingSSPDBadanPage() {
 
   const setCekBookingNobooking = useCallback((nobooking: string) => {
     setCekBookingDetail(null);
-    fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`, { credentials: "include" })
-      .then((res) => res.json())
+    const base = `${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`;
+    // Prefer callback endpoint because it contains full joined fields
+    // (jenisPerolehan, harga transaksi, luas/njop tanah-bangunan, dll).
+    fetch(`${base}/callback`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("callback fetch failed"))))
       .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
-        if (j?.success && j?.data)
+        if (j?.success && j?.data) {
           setCekBookingDetail({ nobooking, ...j.data } as BookingDetail);
+          return;
+        }
+        throw new Error("callback payload invalid");
       })
-      .catch(() => setCekBookingDetail(null));
+      .catch(() => {
+        // Backward-compatible fallback to basic detail endpoint.
+        fetch(base, { credentials: "include" })
+          .then((res) => res.json())
+          .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
+            if (j?.success && j?.data) {
+              setCekBookingDetail({ nobooking, ...j.data } as BookingDetail);
+              return;
+            }
+            setCekBookingDetail(null);
+          })
+          .catch(() => setCekBookingDetail(null));
+      });
   }, []);
 
   const loadTable = useCallback(async (p: number, q?: string) => {
@@ -221,7 +239,10 @@ export default function BookingSSPDBadanPage() {
   };
   const val = (v: unknown) => {
     const s = String(v ?? "").trim();
-    return s || "—";
+    if (!s) return "—";
+    const lowered = s.toLowerCase();
+    if (lowered === "undefined" || lowered === "null" || lowered === "nan") return "—";
+    return s;
   };
   const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
     const st = status(trackStatus || "");
@@ -1090,7 +1111,7 @@ export default function BookingSSPDBadanPage() {
                                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                                       <div><div style={fieldLabelStyle}>NIK</div><div style={fieldValueStyle}>{val(detail?.nik)}</div></div>
                                       <div><div style={fieldLabelStyle}>Nama Wajib Pajak</div><div style={fieldValueStyle}>{val(detail?.nama_wajib_pajak ?? row.namawajibpajak)}</div></div>
-                                      <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.Alamatop ?? detail?.keterangan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.alamatwajibpajak ?? detail?.alamat_wajib_pajak ?? detail?.Alamatop ?? detail?.letaktanahdanbangunan ?? detail?.keterangan)}</div></div>
                                       <div><div style={fieldLabelStyle}>NOP PBB</div><div style={fieldValueStyle}>{val(row.noppbb)}</div></div>
                                     </div>
                                   </div>
@@ -1100,7 +1121,7 @@ export default function BookingSSPDBadanPage() {
                                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
                                       <div><div style={fieldLabelStyle}>Jenis Perolehan</div><div style={fieldValueStyle}>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div></div>
                                       <div><div style={fieldLabelStyle}>Tanggal Perolehan</div><div style={fieldValueStyle}>{val(detail?.tanggal_perolehan)}</div></div>
-                                      <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi ?? detail?.harga_transaksi)}</div></div>
                                       <div><div style={fieldLabelStyle}>Status Booking</div><div style={fieldValueStyle}>{val(row.trackstatus)}</div></div>
                                     </div>
                                   </div>

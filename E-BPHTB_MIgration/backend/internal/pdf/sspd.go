@@ -221,7 +221,9 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	tblBottom := tblY + 60
 	pdf.Line(tblX, tblY, tblX+tableWidth, tblY)
 	pdf.SetFont("Helvetica", "B", 10)
-	for i, h := range []string{"BPHTB", "Luas/m²", "NJOP PBB", "Luas × NJOP PBB/m²"} {
+	// NOTE: gofpdf core fonts are ISO-8859-1; use Latin-1 bytes to avoid UTF-8 artifacts.
+	// \xb2 = superscript 2 (²), \xd7 = multiplication sign (×).
+	for i, h := range []string{"BPHTB", "Luas/m\xb2", "NJOP PBB", "Luas \xd7 NJOP PBB/m\xb2"} {
 		x := tblX
 		for j := 0; j < i; j++ {
 			x += colW[j]
@@ -342,11 +344,38 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 		label string
 		checked bool
 	}{
-		{"a. Penghitungan Wajib Pajak", true},
+		{"a. Penghitungan Wajib Pajak", false},
 		{"b. STPD BPHTB/SKPDB KURANG BAYAR*)", false},
 		{"c. Pengurangan dihitung sendiri menjadi:", false},
 		{"d. .........", false},
 	}
+	normalizePemilihan := func(s string) string {
+		v := strings.TrimSpace(strings.ToLower(s))
+		switch v {
+		case "sesuai":
+			return "sesuai"
+		case "kurang_bayar", "kurang bayar":
+			return "kurang_bayar"
+		case "penghitung_wajib_pajak":
+			return "sesuai"
+		case "stpd_kurangbayar":
+			return "kurang_bayar"
+		case "dihitungsendiri", "dihitung_sendiri":
+			return "dihitung_sendiri"
+		case "lainnyapenghitungwp", "lainnya":
+			return "lainnya"
+		default:
+			return v
+		}
+	}
+	pemilihan := normalizePemilihan(data.Pemilihan)
+	if pemilihan == "sesuai" {
+		opts[0].checked = true
+	}
+	if pemilihan == "kurang_bayar" {
+		opts[1].checked = true
+	}
+
 	for i, o := range opts {
 		y := selY + 20 + float64(i)*15
 		drawCheckbox(40, y, o.checked)
@@ -354,12 +383,27 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 		pdf.SetXY(60, y-2)
 		pdf.CellFormat(400, 12, o.label, "", 0, "L", false, 0, "")
 	}
-	pdf.SetXY(300, selY+55)
-	pdf.CellFormat(80, 10, "Nomor: ______", "", 0, "L", false, 0, "")
-	pdf.SetXY(400, selY+55)
-	pdf.CellFormat(80, 10, "Tanggal: ______", "", 0, "L", false, 0, "")
-	pdf.SetXY(300, selY+70)
-	pdf.CellFormat(200, 10, "% berdasarkan ......", "", 0, "L", false, 0, "")
+	// Align "Nomor/Tanggal" with option b line, and "% berdasarkan" with option c line.
+	yB := selY + 20 + 1*15
+	yC := selY + 20 + 2*15
+	nomorText := "Nomor: ______"
+	tanggalText := "Tanggal: ______"
+	if pemilihan == "kurang_bayar" {
+		if strings.TrimSpace(data.StpdCode) != "" {
+			nomorText = "Nomor: " + strings.TrimSpace(data.StpdCode)
+		}
+		// Prefer tanggalstpd from p_1_verifikasi; best-effort format DD/MM/YYYY.
+		if strings.TrimSpace(data.TanggalStpd) != "" {
+			tanggalText = "Tanggal: " + formatTanggal(strings.TrimSpace(data.TanggalStpd))
+		}
+	}
+	pdf.SetFont("Helvetica", "", 9)
+	pdf.SetXY(300, yB-2)
+	pdf.CellFormat(90, 12, nomorText, "", 0, "L", false, 0, "")
+	pdf.SetXY(410, yB-2)
+	pdf.CellFormat(110, 12, tanggalText, "", 0, "L", false, 0, "")
+	pdf.SetXY(300, yC-2)
+	pdf.CellFormat(200, 12, "% berdasarkan ......", "", 0, "L", false, 0, "")
 
 	// Jumlah Yang Disetorkan: box width 190 (40–230), 340 (250–590); text width = box width
 	pdf.SetFont("Helvetica", "", 10)

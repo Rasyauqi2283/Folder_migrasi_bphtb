@@ -283,6 +283,10 @@ type SSPDPDFData struct {
 	LuasTanah, NjopTanah, LuasBangunan, NjopBangunan                              float64
 	LuasxnjopTanah, LuasxnjopBangunan, TotalNjoppbb                               float64
 	PathTtdWp                                                                     string
+	// Verification (from p_1_verifikasi) - used for dynamic checkbox mapping in PDF.
+	Pemilihan  string
+	StpdCode   string
+	TanggalStpd string // YYYY-MM-DD (best-effort) or empty
 }
 
 // GetBookingForSSPDPDF returns data for generating SSPD PDF (Badan) by nobooking.
@@ -306,13 +310,23 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 			COALESCE(vb.nama,''), COALESCE(vb.special_field,''), COALESCE(vb.tanda_tangan_path,''),
 			COALESCE(pp.luas_tanah,0), COALESCE(pp.njop_tanah,0), COALESCE(pp.luas_bangunan,0), COALESCE(pp.njop_bangunan,0),
 			COALESCE(pp.luasxnjop_tanah,0), COALESCE(pp.luasxnjop_bangunan,0), COALESCE(pp.total_njoppbb,0),
-			COALESCE(ps.path_ttd_wp,'')
+			COALESCE(ps.path_ttd_wp,''),
+			COALESCE(v.pemilihan,'') AS pemilihan,
+			CASE
+			  WHEN EXISTS (
+			    SELECT 1 FROM information_schema.columns
+			    WHERE table_schema = 'public' AND table_name = 'p_1_verifikasi' AND column_name = 'stpd_code'
+			  ) THEN COALESCE(v.stpd_code,'')
+			  ELSE COALESCE(v.nomorstpd,'')
+			END AS stpd_code,
+			COALESCE(v.tanggalstpd::text,'') AS tanggalstpd
 		FROM pat_1_bookingsspd pb
 		LEFT JOIN pat_2_bphtb_perhitungan bp ON pb.nobooking = bp.nobooking
 		LEFT JOIN pat_4_objek_pajak o ON pb.nobooking = o.nobooking
 		LEFT JOIN a_2_verified_users vb ON pb.userid = vb.userid
 		LEFT JOIN pat_5_penghitungan_njop pp ON pb.nobooking = pp.nobooking
 		LEFT JOIN pat_6_sign ps ON pb.nobooking = ps.nobooking
+		LEFT JOIN p_1_verifikasi v ON pb.nobooking = v.nobooking
 		WHERE pb.userid = $1 AND pb.nobooking = $2
 	`
 	qByBookingOnly := strings.Replace(q, `WHERE pb.userid = $1 AND pb.nobooking = $2`, `WHERE pb.nobooking = $1`, 1)
@@ -331,6 +345,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 		&d.LuasTanah, &d.NjopTanah, &d.LuasBangunan, &d.NjopBangunan,
 		&d.LuasxnjopTanah, &d.LuasxnjopBangunan, &d.TotalNjoppbb,
 		&d.PathTtdWp,
+		&d.Pemilihan, &d.StpdCode, &d.TanggalStpd,
 	)
 	if err != nil && (errors.Is(err, pgx.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "no rows")) {
 		err = r.pool.QueryRow(ctx, qByBookingOnly, nobooking).Scan(
@@ -347,6 +362,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 			&d.LuasTanah, &d.NjopTanah, &d.LuasBangunan, &d.NjopBangunan,
 			&d.LuasxnjopTanah, &d.LuasxnjopBangunan, &d.TotalNjoppbb,
 			&d.PathTtdWp,
+			&d.Pemilihan, &d.StpdCode, &d.TanggalStpd,
 		)
 	}
 	if err != nil {

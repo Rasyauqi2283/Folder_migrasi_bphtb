@@ -208,6 +208,24 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
+	// Accept both legacy values and canonical values from frontend.
+	normalizePemilihan := func(s string) string {
+		v := strings.TrimSpace(strings.ToUpper(s))
+		switch v {
+		case "SESUAI":
+			return "penghitung_wajib_pajak"
+		case "KURANG_BAYAR":
+			return "stpd_kurangbayar"
+		case "DIHITUNG_SENDIRI":
+			return "dihitungsendiri"
+		case "LAINNYA":
+			return "lainnyapenghitungwp"
+		default:
+			return strings.TrimSpace(s)
+		}
+	}
+	in.Pemilihan = normalizePemilihan(in.Pemilihan)
+
 	valid := map[string]bool{
 		"penghitung_wajib_pajak": true,
 		"stpd_kurangbayar":       true,
