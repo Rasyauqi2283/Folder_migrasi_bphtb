@@ -43,9 +43,9 @@ export default function PenelitiValidasiMonitoringSkpdKurangPage() {
 
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 20, fontSize: 24, fontWeight: 700 }}>Monitoring SKPD Kurang Bayar</h2>
+      <h2 style={{ marginBottom: 20, fontSize: 24, fontWeight: 700 }}>Monitoring STPD Kurang Bayar</h2>
       <p style={{ marginBottom: 16, color: "var(--color_font_main_muted)" }}>
-        Dokumen terkait SKPD Kurang Bayar. Detail lengkap dapat dilihat di halaman legacy.
+        Dokumen terkait STPD Kurang Bayar. Detail lengkap dapat dilihat di halaman legacy.
       </p>
       {loading ? (
         <p>Memuat...</p>
