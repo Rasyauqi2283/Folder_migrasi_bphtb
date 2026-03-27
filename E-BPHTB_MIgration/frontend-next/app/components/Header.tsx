@@ -233,6 +233,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
               </div>
               <div style={{ padding: 8 }}>
                 <Link
+                  prefetch={false}
                   href="/profile"
                   onClick={() => setProfileOpen(false)}
                   style={{
@@ -250,6 +251,7 @@ export default function Header({ title = "Dashboard" }: HeaderProps) {
                   Profil
                 </Link>
                 <Link
+                  prefetch={false}
                   href="/faq"
                   onClick={() => setProfileOpen(false)}
                   style={{

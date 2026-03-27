@@ -209,14 +209,14 @@ export default function PermohonanValidasiPage() {
           <button type="submit" disabled={loading} style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
             {loading ? "Menyimpan..." : "Simpan Permohonan"}
           </button>
-          <Link href="/pu/booking-sspd/badan" style={{ padding: "10px 20px", borderRadius: 8, border: "1px solid var(--border_color)", color: "var(--color_font_main)", fontWeight: 600, textDecoration: "none" }}>
+          <Link prefetch={false} href="/pu/booking-sspd/badan" style={{ padding: "10px 20px", borderRadius: 8, border: "1px solid var(--border_color)", color: "var(--color_font_main)", fontWeight: 600, textDecoration: "none" }}>
             Batal
           </Link>
         </div>
       </form>
 
       <p style={{ marginTop: 16 }}>
-        <Link href="/pu/booking-sspd/badan" style={{ color: "var(--accent)", fontWeight: 600 }}>← Kembali ke Booking SSPD Badan</Link>
+        <Link prefetch={false} href="/pu/booking-sspd/badan" style={{ color: "var(--accent)", fontWeight: 600 }}>← Kembali ke Booking SSPD Badan</Link>
       </p>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { getBackendBaseUrl } from "../../../../../../lib/api";
 
 const today = new Date();
@@ -455,6 +456,7 @@ interface CallbackHistoryRow {
 
 export default function TambahBookingBadanPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -462,6 +464,9 @@ export default function TambahBookingBadanPage() {
   const [openPerhitungan, setOpenPerhitungan] = useState(false);
 
   const [tanggal, setTanggal] = useState(defaultTanggal);
+  const [nobookingValue, setNobookingValue] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
   const [nopDigits, setNopDigits] = useState<string[]>(Array(7).fill(""));
   const [npwpWpDigits, setNpwpWpDigits] = useState<string[]>(Array(6).fill(""));
   const [npwpOpDigits, setNpwpOpDigits] = useState<string[]>(Array(6).fill(""));
@@ -560,6 +565,76 @@ export default function TambahBookingBadanPage() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, []);
+
+  // Edit mode: prefill by nobooking from URL (?edit=1&nobooking=XXX)
+  useEffect(() => {
+    const editFlag = (searchParams?.get("edit") || "").trim();
+    const nb = (searchParams?.get("nobooking") || "").trim();
+    if (!nb || (editFlag !== "1" && editFlag.toLowerCase() !== "true")) return;
+    let cancelled = false;
+    (async () => {
+      setIsEditMode(true);
+      setEditLoading(true);
+      setError(null);
+      try {
+        const base = getBackendBaseUrl();
+        const url = `${base ? base : ""}/api/ppat/booking/${encodeURIComponent(nb)}`;
+        const res = await fetch(url, { credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok || !json?.success || !json?.data) {
+          setError(typeof json?.message === "string" ? json.message : "Gagal memuat detail booking.");
+          return;
+        }
+        const d = json.data as Record<string, unknown>;
+
+        const str = (k: string) => (d[k] != null ? String(d[k]) : "");
+        const num = (k: string) => {
+          const v = d[k];
+          if (typeof v === "number" && !Number.isNaN(v)) return v;
+          if (typeof v === "string" && v.trim() !== "") return parseFloat(v.replace(/\./g, "").replace(",", "."));
+          return undefined;
+        };
+
+        setNobookingValue(nb);
+        setNopDigits(parseNopToDigits(str("nop")));
+        setNpwpWpDigits(parseNpwpToDigits(str("npwpwp")));
+        setNpwpOpDigits(parseNpwpToDigits(str("npwpop")));
+
+        // Best-effort: backend GetBookingByNobooking currently returns limited fields.
+        // Fill what we have, leave others editable for user to complete.
+        setForm((prev) => ({
+          ...prev,
+          namawajibpajak: str("nama_wajib_pajak") || prev.namawajibpajak,
+          alamatwajibpajak: str("alamat_wajib_pajak") || prev.alamatwajibpajak,
+          namapemilikobjekpajak: str("atas_nama") || prev.namapemilikobjekpajak,
+          // NOTE: backend doesn't return alamat pemilik in this query; keep previous.
+          npwpwp: str("npwpwp") || prev.npwpwp,
+          npwpop: str("npwpop") || prev.npwpop,
+          tahunajb: str("tahunajb") || prev.tahunajb,
+          kabupatenkotawp: str("kabupaten_kota") || prev.kabupatenkotawp,
+          kecamatanwp: str("kecamatan") || prev.kecamatanwp,
+          kelurahandesawp: str("kelurahan") || prev.kelurahandesawp,
+          kodeposwp: str("kodeposwp") || prev.kodeposwp,
+          kabupatenkotaop: str("kabupatenkotaop") || prev.kabupatenkotaop,
+          kecamatanop: str("kecamatanopj") || prev.kecamatanop,
+          kelurahandesaop: str("kelurahanop") || prev.kelurahandesaop,
+          letaktanahdanbangunan: str("Alamatop") || prev.letaktanahdanbangunan,
+          keterangan: str("keterangan") || prev.keterangan,
+          luas_tanah: num("luas_tanah") ?? prev.luas_tanah,
+          luas_bangunan: num("luas_bangunan") ?? prev.luas_bangunan,
+          bphtb_yangtelah_dibayar: num("bphtb_yangtelah_dibayar") ?? prev.bphtb_yangtelah_dibayar,
+        }));
+      } catch {
+        if (!cancelled) setError("Gagal memuat detail booking.");
+      } finally {
+        if (!cancelled) setEditLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     if (!callbackOpen) return;
@@ -798,9 +873,11 @@ export default function TambahBookingBadanPage() {
     setLoading(true);
     try {
       const base = getBackendBaseUrl();
-      const url = base ? `${base}/api/ppat_create-booking-and-bphtb` : "/api/ppat_create-booking-and-bphtb";
+      const url = isEditMode && nobookingValue
+        ? (base ? `${base}/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}` : `/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}`)
+        : (base ? `${base}/api/ppat_create-booking-and-bphtb` : "/api/ppat_create-booking-and-bphtb");
       const res = await fetch(url, {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -810,12 +887,22 @@ export default function TambahBookingBadanPage() {
         setError(data?.message || "Gagal membuat booking.");
         return;
       }
+      if (isEditMode) {
+        if (data?.success) {
+          setSuccess("Data Booking berhasil diperbarui!");
+          setTimeout(() => router.push("/pu/booking-sspd/badan"), 1200);
+          return;
+        }
+        setError(data?.message || "Gagal memperbarui booking.");
+        return;
+      }
       if (data?.success && data?.nobooking) {
         setSuccess(`Booking berhasil dibuat. No. Booking: ${data.nobooking}`);
+        setNobookingValue(String(data.nobooking));
         setTimeout(() => router.push("/pu/booking-sspd/badan"), 2500);
-      } else {
-        setError(data?.message || "Gagal membuat booking.");
+        return;
       }
+      setError(data?.message || "Gagal membuat booking.");
     } catch {
       setError("Network error. Coba lagi.");
     } finally {
@@ -829,6 +916,12 @@ export default function TambahBookingBadanPage() {
       <p style={{ margin: 0, color: "var(--color_font_muted)", marginBottom: 24 }}>
         Isi data lengkap sesuai form. Submit ke API <code>/api/ppat_create-booking-and-bphtb</code>.
       </p>
+
+      {isEditMode && (
+        <div style={{ padding: 12, marginBottom: 16, background: "#fff7ed", color: "#9a3412", borderRadius: 8, border: "1px solid #fed7aa" }}>
+          Anda sedang dalam mode edit. Nomor booking tetap dan tidak dapat diubah.
+        </div>
+      )}
 
       {error && (
         <div style={{ padding: 12, marginBottom: 16, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>{error}</div>
@@ -940,7 +1033,14 @@ export default function TambahBookingBadanPage() {
             </div>
             <div>
               <label style={labelStyle}>No Booking</label>
-              <input style={inputStyle} type="text" placeholder="Akan tergenerate otomatis" readOnly />
+              <input
+                style={{ ...inputStyle, background: "var(--card_bg_grey)" }}
+                type="text"
+                placeholder="Akan tergenerate otomatis"
+                value={nobookingValue}
+                readOnly
+                disabled
+              />
             </div>
           </div>
         </div>
@@ -1667,7 +1767,7 @@ export default function TambahBookingBadanPage() {
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || editLoading}
             style={{
               padding: "12px 24px",
               borderRadius: 8,
@@ -1675,13 +1775,14 @@ export default function TambahBookingBadanPage() {
               background: "var(--accent)",
               color: "#fff",
               fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
+              cursor: loading || editLoading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Menyimpan..." : "Simpan Perhitungan booking dan perhitungan BPHTB"}
+            {loading ? "Menyimpan..." : (isEditMode ? "Simpan Perubahan" : "Simpan Perhitungan booking dan perhitungan BPHTB")}
           </button>
           <Link
             href="/pu/booking-sspd/badan"
+            prefetch={false}
             style={{ padding: "12px 24px", borderRadius: 8, border: "1px solid var(--border_color)", color: "var(--color_font_main)", fontWeight: 600, textDecoration: "none" }}
           >
             Batal
@@ -1690,7 +1791,7 @@ export default function TambahBookingBadanPage() {
       </form>
 
       <p style={{ marginTop: 16 }}>
-        <Link href="/pu/booking-sspd/badan" style={{ color: "var(--accent)", fontWeight: 600 }}>
+        <Link href="/pu/booking-sspd/badan" prefetch={false} style={{ color: "var(--accent)", fontWeight: 600 }}>
           ← Kembali ke Booking SSPD Badan
         </Link>
       </p>

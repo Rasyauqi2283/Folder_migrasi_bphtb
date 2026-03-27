@@ -677,6 +677,137 @@ func (r *PpatRepo) CreateBookingPerorangan(ctx context.Context, userid string, p
 	return r.CreateBookingBadan(ctx, userid, params)
 }
 
+// UpdateBookingBadan updates existing booking data across pat_1, pat_2, pat_4, pat_5.
+// Constraint: only allowed while booking trackstatus is Draft and owned by userid.
+func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking string, params *CreateBookingParams) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	if strings.TrimSpace(nobooking) == "" {
+		return fmt.Errorf("nobooking required")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Ensure ownership + still draft
+	var ok int
+	if err := tx.QueryRow(ctx, `
+		SELECT 1
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2 AND LOWER(COALESCE(trackstatus,'')) = 'draft'
+		LIMIT 1
+	`, nobooking, userid).Scan(&ok); err != nil {
+		return fmt.Errorf("booking tidak ditemukan atau sudah terkunci")
+	}
+
+	// pat_1
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET
+			noppbb = $3,
+			namawajibpajak = $4,
+			alamatwajibpajak = $5,
+			namapemilikobjekpajak = $6,
+			alamatpemilikobjekpajak = $7,
+			tanggal = $8,
+			tahunajb = $9,
+			kabupatenkotawp = $10,
+			kecamatanwp = $11,
+			kelurahandesawp = $12,
+			rtrwwp = $13,
+			npwpwp = $14,
+			kodeposwp = $15,
+			kabupatenkotaop = $16,
+			kecamatanop = $17,
+			kelurahandesaop = $18,
+			rtrwop = $19,
+			npwpop = $20,
+			kodeposop = $21,
+			updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+	`, nobooking, userid,
+		params.Noppbb, params.Namawajibpajak, params.Alamatwajibpajak, params.Namapemilikobjekpajak, params.Alamatpemilikobjekpajak,
+		params.Tanggal, params.Tahunajb, params.Kabupatenkotawp, params.Kecamatanwp, params.Kelurahandesawp, params.Rtrwwp, params.Npwpwp, params.Kodeposwp,
+		params.Kabupatenkotaop, params.Kecamatanop, params.Kelurahandesaop, params.Rtrwop, params.Npwpop, params.Kodeposop,
+	)
+	if err != nil {
+		return err
+	}
+
+	// pat_2 (upsert)
+	np := 0.0
+	bp := 0.0
+	if params.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
+		np = *params.NilaiPerolehanObjekPajakTidakKenaPajak
+	}
+	if params.BphtbYangtelahDibayar != nil {
+		bp = *params.BphtbYangtelahDibayar
+	}
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
+		VALUES ($1,$2,$3)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  nilaiperolehanobjekpajaktidakkenapajak = EXCLUDED.nilaiperolehanobjekpajaktidakkenapajak,
+		  bphtb_yangtelah_dibayar = EXCLUDED.bphtb_yangtelah_dibayar
+	`, np, bp, nobooking)
+
+	// pat_4 (upsert)
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_4_objek_pajak (letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  letaktanahdanbangunan = EXCLUDED.letaktanahdanbangunan,
+		  rt_rwobjekpajak = EXCLUDED.rt_rwobjekpajak,
+		  status_kepemilikan = EXCLUDED.status_kepemilikan,
+		  keterangan = EXCLUDED.keterangan,
+		  nomor_sertifikat = EXCLUDED.nomor_sertifikat,
+		  tanggal_perolehan = EXCLUDED.tanggal_perolehan,
+		  tanggal_pembayaran = EXCLUDED.tanggal_pembayaran,
+		  nomor_bukti_pembayaran = EXCLUDED.nomor_bukti_pembayaran,
+		  harga_transaksi = EXCLUDED.harga_transaksi,
+		  kelurahandesalp = EXCLUDED.kelurahandesalp,
+		  kecamatanlp = EXCLUDED.kecamatanlp,
+		  jenis_perolehan = EXCLUDED.jenis_perolehan
+	`, params.Letaktanahdanbangunan, params.RtRwobjekpajak, normStatusKepemilikan(params.StatusKepemilikan), params.Keterangan, params.NomorSertifikat,
+		params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, nobooking, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan)
+
+	// pat_5 (upsert)
+	lt, nt, lb, nb, tot := 0.0, 0.0, 0.0, 0.0, 0.0
+	if params.LuasTanah != nil {
+		lt = *params.LuasTanah
+	}
+	if params.NjopTanah != nil {
+		nt = *params.NjopTanah
+	}
+	if params.LuasBangunan != nil {
+		lb = *params.LuasBangunan
+	}
+	if params.NjopBangunan != nil {
+		nb = *params.NjopBangunan
+	}
+	if params.TotalNjoppbb != nil {
+		tot = *params.TotalNjoppbb
+	} else {
+		tot = (lt * nt) + (lb * nb)
+	}
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  luas_tanah = EXCLUDED.luas_tanah,
+		  njop_tanah = EXCLUDED.njop_tanah,
+		  luas_bangunan = EXCLUDED.luas_bangunan,
+		  njop_bangunan = EXCLUDED.njop_bangunan,
+		  total_njoppbb = EXCLUDED.total_njoppbb,
+		  updated_at = now()
+	`, lt, nt, lb, nb, tot, nobooking)
+
+	return tx.Commit(ctx)
+}
+
 func normStatusKepemilikan(s string) string {
 	switch s {
 	case "milik_pribadi", "Milik Pribadi":

@@ -10,6 +10,7 @@ const API_PROXY_TARGET = process.env.NEXT_PUBLIC_LEGACY_BASE_URL || process.env.
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   async redirects() {
     return [
       { source: "/ppat", destination: "/pu", permanent: true },

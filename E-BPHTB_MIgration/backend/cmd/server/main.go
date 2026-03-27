@@ -364,6 +364,9 @@ func main() {
 	mux.HandleFunc("GET /api/ppat/load-all-booking", ppatHandler.LoadAllBooking)
 	mux.HandleFunc("GET /api/ppat/rekap/diserahkan", ppatHandler.RekapDiserahkan)
 	mux.HandleFunc("POST /api/ppat/send-now", ppatHandler.SendNow)
+	mux.HandleFunc("POST /api/ppat/create-permohonan-validasi", ppatHandler.CreatePermohonanValidasi)
+	mux.HandleFunc("PUT /api/ppat/update-booking/{nobooking}", ppatHandler.UpdateBookingBadan)
+	mux.HandleFunc("PATCH /api/ppat/update-booking/{nobooking}", ppatHandler.UpdateBookingBadan)
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb", ppatHandler.CreateBookingBadan)
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb-perorangan", ppatHandler.CreateBookingPerorangan)
 	mux.HandleFunc("GET /api/ppat/booking/history", ppatHandler.BookingHistoryBadan)
@@ -537,7 +540,11 @@ func main() {
 	gated := handler.SystemGateMiddleware(systemStatusRepo, mux)
 	var inFlight atomic.Int64
 	tracked := handler.InFlightMiddleware(&inFlight, gated)
-	h := corsMiddleware(corsOrigins, tracked)
+	logged := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Incoming: %s %s", r.Method, r.URL.Path)
+		tracked.ServeHTTP(w, r)
+	})
+	h := corsMiddleware(corsOrigins, logged)
 	server := &http.Server{
 		Addr:              addr,
 		Handler:           h,

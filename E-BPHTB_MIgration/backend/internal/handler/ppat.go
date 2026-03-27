@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,19 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+func randomUpperAlphaNum(n int) string {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	if n <= 0 {
+		return ""
+	}
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	for i := 0; i < len(b); i++ {
+		b[i] = alphabet[int(b[i])%len(alphabet)]
+	}
+	return string(b)
+}
+
 // getPpatUserid returns userid from cookie ebphtb_userid or header X-User-Id (for PPAT endpoints).
 func getPpatUserid(r *http.Request) string {
 	if c, err := r.Cookie("ebphtb_userid"); err == nil && c != nil && strings.TrimSpace(c.Value) != "" {
@@ -41,6 +55,143 @@ type PpatHandler struct {
 // NewPpatHandler creates a PpatHandler.
 func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo) *PpatHandler {
 	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, cfg: cfg}
+}
+
+type createPermohonanValidasiInput struct {
+	Nobooking       string `json:"nobooking"`
+	NamaPemohon     string `json:"nama_pemohon"`
+	NoTelepon       string `json:"no_telepon"`
+	AlamatPemohon   string `json:"alamat_pemohon"`
+	NamaWajibPajak  string `json:"nama_wajib_pajak"`
+	AlamatWajibPajak string `json:"alamat_wajib_pajak"`
+	KabupatenKota   string `json:"kabupaten_kota"`
+	Kelurahan       string `json:"kelurahan"`
+	Kecamatan       string `json:"kecamatan"`
+	Nop             string `json:"nop"`
+	AtasNama        string `json:"atas_nama"`
+	LuasTanah       string `json:"luas_tanah"`
+	LuasBangunan    string `json:"luas_bangunan"`
+	Lainnya         string `json:"lainnya"`
+	AlamatOp        string `json:"Alamatop"`
+	KampungOp       string `json:"kampungop"`
+	KelurahanOp     string `json:"kelurahanop"`
+	KecamatanOp     string `json:"kecamatanop"`
+	NomorValidasi   string `json:"nomor_validasi"`
+}
+
+// CreatePermohonanValidasi handles POST /api/ppat/create-permohonan-validasi.
+// Inserts into pat_7_validasi_surat and pat_8_validasi_tambahan and updates pat_1_bookingsspd.nomor_validasi.
+func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Database not configured")
+		return
+	}
+
+	var in createPermohonanValidasiInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	in.Nobooking = strings.TrimSpace(in.Nobooking)
+	if in.Nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking wajib diisi")
+		return
+	}
+	if strings.TrimSpace(in.NamaPemohon) == "" || strings.TrimSpace(in.NoTelepon) == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nama_pemohon dan no_telepon wajib diisi")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	tx, err := h.repo.Pool().Begin(ctx)
+	if err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memulai transaksi")
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Duplicate check by booking
+	var existing string
+	_ = tx.QueryRow(ctx, `SELECT nomor_validasi FROM public.pat_7_validasi_surat WHERE nobooking = $1 LIMIT 1`, in.Nobooking).Scan(&existing)
+	if strings.TrimSpace(existing) != "" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":      true,
+			"is_duplicate": true,
+			"kode_validasi": existing,
+			"nomor_validasi": existing,
+			"status":       "unused",
+			"timestamp":    time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	nomorValidasi := strings.TrimSpace(in.NomorValidasi)
+	if nomorValidasi == "" {
+		nomorValidasi = "VAL-" + randomUpperAlphaNum(10)
+	}
+
+	// Insert pat_7_validasi_surat
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO public.pat_7_validasi_surat (nomor_validasi, nama_pemohon, alamat_pemohon, no_telepon, status, userid, nobooking)
+		VALUES ($1,$2,$3,$4,'unused',$5,$6)
+	`, nomorValidasi, strings.TrimSpace(in.NamaPemohon), strings.TrimSpace(in.AlamatPemohon), strings.TrimSpace(in.NoTelepon), userid, in.Nobooking); err != nil {
+		// Unique conflict -> treat as duplicate
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"success":      true,
+				"is_duplicate": true,
+				"kode_validasi": nomorValidasi,
+				"nomor_validasi": nomorValidasi,
+				"status":       "unused",
+				"timestamp":    time.Now().Format(time.RFC3339),
+			})
+			return
+		}
+		ppatJSONError(w, http.StatusBadRequest, "Gagal menyimpan permohonan validasi")
+		return
+	}
+
+	// Upsert tambahan (pat_8_validasi_tambahan)
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO public.pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at)
+		VALUES ($1,$2,$3,$4,$5, now())
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  kampungop = EXCLUDED.kampungop,
+		  kelurahanop = EXCLUDED.kelurahanop,
+		  kecamatanopj = EXCLUDED.kecamatanopj,
+		  alamat_pemohon = EXCLUDED.alamat_pemohon,
+		  updated_at = now()
+	`, in.Nobooking, strings.TrimSpace(in.KampungOp), strings.TrimSpace(in.KelurahanOp), strings.TrimSpace(in.KecamatanOp), strings.TrimSpace(in.AlamatPemohon))
+
+	// Update booking with nomor_validasi for easy join
+	_, _ = tx.Exec(ctx, `UPDATE public.pat_1_bookingsspd SET nomor_validasi = $1, updated_at = now() WHERE nobooking = $2`, nomorValidasi, in.Nobooking)
+
+	if err := tx.Commit(ctx); err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan permohonan")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":       true,
+		"is_duplicate":  false,
+		"kode_validasi": nomorValidasi,
+		"nomor_validasi": nomorValidasi,
+		"status":        "unused",
+		"timestamp":     time.Now().Format(time.RFC3339),
+	})
 }
 
 // ListPendingCorrections handles GET /api/ppat/corrections/pending.
@@ -470,6 +621,38 @@ func (h *PpatHandler) CreateBookingPerorangan(w http.ResponseWriter, r *http.Req
 		"nobooking": nobooking,
 		"message":  "Booking created",
 	})
+}
+
+// UpdateBookingBadan handles PUT /api/ppat/update-booking/{nobooking}.
+// Only allowed for Draft bookings.
+func (h *PpatHandler) UpdateBookingBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	var params repository.CreateBookingParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	if err := h.repo.UpdateBookingBadan(ctx, userid, nobooking, &params); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "OK"})
 }
 
 // GetBooking handles GET /api/ppat/booking/{nobooking}.

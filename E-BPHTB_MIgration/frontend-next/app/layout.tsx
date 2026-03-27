@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeInit } from "./components/ThemeInit";
 import SystemAlert from "./components/SystemAlert";
+import ConsoleNoiseSuppressor from "./components/ConsoleNoiseSuppressor";
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="id">
       <body>
         <ThemeInit />
+        <ConsoleNoiseSuppressor />
         <SystemAlert />
         <AuthProvider>{children}</AuthProvider>
       </body>

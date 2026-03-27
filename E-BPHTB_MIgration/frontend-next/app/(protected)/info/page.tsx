@@ -110,7 +110,7 @@ export default function InfoPage() {
       </div>
 
       <p style={{ marginTop: 24 }}>
-        <Link href="/dashboard" style={{ color: "var(--accent)", fontWeight: 600 }}>
+        <Link prefetch={false} href="/dashboard" style={{ color: "var(--accent)", fontWeight: 600 }}>
           ← Kembali ke Dashboard
         </Link>
       </p>

@@ -38,6 +38,15 @@ type PendingCorrection = {
   correction_updated_at?: string | null;
 };
 
+type BookingDetail = {
+  nobooking: string;
+  nama_wajib_pajak?: string;
+  Alamatop?: string;
+  keterangan?: string;
+  bphtb_yangtelah_dibayar?: number;
+  [key: string]: unknown;
+};
+
 const tableStyle: React.CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
@@ -101,13 +110,7 @@ export default function BookingSSPDBadanPage() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [kirimSubmitting, setKirimSubmitting] = useState(false);
   const [docUploading, setDocUploading] = useState<string | null>(null);
-  const [cekBookingDetail, setCekBookingDetail] = useState<{
-    nobooking: string;
-    nama_wajib_pajak?: string;
-    Alamatop?: string;
-    keterangan?: string;
-    bphtb_yangtelah_dibayar?: number;
-  } | null>(null);
+  const [cekBookingDetail, setCekBookingDetail] = useState<BookingDetail | null>(null);
 
   const [corrections, setCorrections] = useState<PendingCorrection[]>([]);
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
@@ -144,7 +147,7 @@ export default function BookingSSPDBadanPage() {
       .then((res) => res.json())
       .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
         if (j?.success && j?.data)
-          setCekBookingDetail({ nobooking, ...j.data } as { nobooking: string; nama_wajib_pajak?: string; Alamatop?: string; keterangan?: string; bphtb_yangtelah_dibayar?: number });
+          setCekBookingDetail({ nobooking, ...j.data } as BookingDetail);
       })
       .catch(() => setCekBookingDetail(null));
   }, []);
@@ -196,6 +199,36 @@ export default function BookingSSPDBadanPage() {
     return `${getApiBase()}/api/ppat/file-proxy?relativePath=${encodeURIComponent(rel)}`;
   };
   const getFileName = (path: string) => (path ? path.split("/").pop()?.replace(/^v\d+_/, "") || "File" : "File");
+  const fieldLabelStyle: React.CSSProperties = { fontSize: 12, color: "#6b7280", fontWeight: 600, marginBottom: 2 };
+  const fieldValueStyle: React.CSSProperties = { fontSize: 14, color: "#0f172a", fontWeight: 500 };
+  const sectionCardStyle: React.CSSProperties = {
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    background: "#ffffff",
+    padding: 12,
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.08)",
+  };
+
+  const formatMoney = (v: unknown) => {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isNaN(n)) return "—";
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  };
+  const toNum = (v: unknown) => {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isNaN(n) ? 0 : n;
+  };
+  const val = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    return s || "—";
+  };
+  const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
+    const st = status(trackStatus || "");
+    if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
+    if (st.includes("pending")) return { background: "#fff7ed", color: "#9a3412" };
+    if (st.includes("valid") || st.includes("diverifikasi")) return { background: "#ecfdf5", color: "#166534" };
+    return { background: "#f1f5f9", color: "#334155" };
+  };
 
   const openCorrectionModal = (c: PendingCorrection) => {
     setSelectedCorrection(c);
@@ -799,7 +832,7 @@ export default function BookingSSPDBadanPage() {
       {formVisible && (
         <div style={{ marginBottom: 24, padding: 20, background: "var(--card_bg)", border: "1px solid var(--border_color)", borderRadius: 12 }}>
           <p style={{ margin: "0 0 12px", fontSize: 14, color: "#475569" }}>
-            Form tambah booking badan — untuk paritas penuh gunakan field yang sama dengan legacy. Submit memanggil <code>/api/ppat_create-booking-and-bphtb</code>.
+            Form tambah booking badan.
           </p>
           <a
             href="/pu/booking-sspd/badan/tambah"
@@ -931,12 +964,30 @@ export default function BookingSSPDBadanPage() {
                 <React.Fragment key={row.nobooking}>
                   <tr
                     style={{ cursor: "pointer" }}
-                    onClick={() => setExpandedRow((x) => (x === row.nobooking ? null : row.nobooking))}
+                    onClick={() => {
+                      setExpandedRow((x) => {
+                        const next = x === row.nobooking ? null : row.nobooking;
+                        if (next) setCekBookingNobooking(row.nobooking);
+                        return next;
+                      });
+                    }}
                   >
                     <td style={tdStyle}>{row.nobooking}</td>
                     <td style={tdStyle}>{row.noppbb || "—"}</td>
                     <td style={tdStyle}>{row.npwpwp || "—"}</td>
-                    <td style={tdStyle}>{row.trackstatus || "—"}</td>
+                    <td style={tdStyle}>
+                      <span
+                        style={{
+                          ...statusBadgeStyle(row.trackstatus),
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.trackstatus || "—"}
+                      </span>
+                    </td>
                     <td style={tdStyle}>
                       <button
                         type="button"
@@ -952,86 +1003,134 @@ export default function BookingSSPDBadanPage() {
                       </button>
                     </td>
                   </tr>
-                  {expandedRow === row.nobooking && (
-                    <tr key={`${row.nobooking}-detail`}>
-                      <td colSpan={5} style={{ ...tdStyle, background: "var(--card_bg_grey)", padding: 16 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                          <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                            <button
-                              type="button"
-                              style={btnSecondary}
-                              onClick={() => setCekBookingNobooking(row.nobooking)}
-                            >
-                              Cek Booking
-                            </button>
-                            <Link
-                              href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
-                              style={{ color: isLocked(row) ? "#94a3b8" : "var(--accent)", fontWeight: 600, pointerEvents: isLocked(row) ? "none" : "auto" }}
-                              aria-disabled={isLocked(row)}
-                            >
-                              Isi Form Permohonan Validasi →
-                            </Link>
-                            <button
-                              type="button"
-                              style={btnSecondary}
-                              onClick={() => window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
-                            >
-                              Lihat Dokumen
-                            </button>
-                            <button
-                              type="button"
-                              style={btnSecondary}
-                              onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}
-                            >
-                              Lihat Dokumen Validasi
-                            </button>
-                          </div>
-                          {cekBookingDetail && cekBookingDetail.nobooking === row.nobooking && (
-                            <div style={{ marginTop: 12, padding: 16, background: "var(--card_bg)", borderRadius: 8, border: "1px solid var(--border_color)" }}>
-                              <div style={{ fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>Detail Booking</div>
-                              <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-                                <div><strong>Nama Wajib Pajak:</strong> {cekBookingDetail.nama_wajib_pajak ?? "—"}</div>
-                                <div><strong>Objek Pajak:</strong> {cekBookingDetail.Alamatop ?? cekBookingDetail.keterangan ?? "—"}</div>
-                                <div><strong>Biaya (BPHTB):</strong> {typeof cekBookingDetail.bphtb_yangtelah_dibayar === "number" ? `Rp ${cekBookingDetail.bphtb_yangtelah_dibayar.toLocaleString("id-ID")}` : (cekBookingDetail.bphtb_yangtelah_dibayar ?? "—")}</div>
+                  <tr key={`${row.nobooking}-detail`}>
+                    <td colSpan={5} style={{ ...tdStyle, padding: 0, background: "#f8fafc" }}>
+                      <div
+                        style={{
+                          maxHeight: expandedRow === row.nobooking ? 1200 : 0,
+                          opacity: expandedRow === row.nobooking ? 1 : 0,
+                          transform: expandedRow === row.nobooking ? "translateY(0)" : "translateY(-6px)",
+                          transition: "max-height 0.28s ease, opacity 0.22s ease, transform 0.22s ease",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {(() => {
+                          const detail = cekBookingDetail && cekBookingDetail.nobooking === row.nobooking ? cekBookingDetail : null;
+                          const luasTanah = toNum(detail?.luas_tanah);
+                          const njopTanah = toNum(detail?.njop_tanah);
+                          const luasBangunan = toNum(detail?.luas_bangunan);
+                          const njopBangunan = toNum(detail?.njop_bangunan);
+                          const totalNjopTanah = luasTanah * njopTanah;
+                          const totalNjopBangunan = luasBangunan * njopBangunan;
+                          return (
+                            <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                              <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                                <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  {status(row.trackstatus) === "draft" && (
+                                    <Link
+                                      href={`/pu/booking-sspd/badan/tambah?edit=1&nobooking=${encodeURIComponent(row.nobooking)}`}
+                                      prefetch={false}
+                                      style={{
+                                        ...btnStyle,
+                                        background: "#2563eb",
+                                        color: "#fff",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        textDecoration: "none",
+                                      }}
+                                    >
+                                      Edit Data
+                                    </Link>
+                                  )}
+                                  <button type="button" style={btnSecondary} onClick={() => setCekBookingNobooking(row.nobooking)}>Refresh Detail</button>
+                                  <Link
+                                    href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
+                                    prefetch={false}
+                                    style={{ color: isLocked(row) ? "#94a3b8" : "var(--accent)", fontWeight: 600, pointerEvents: isLocked(row) ? "none" : "auto" }}
+                                    aria-disabled={isLocked(row)}
+                                  >
+                                    Isi Form Permohonan Validasi →
+                                  </Link>
+                                  <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen</button>
+                                  <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen Validasi</button>
+                                </div>
+                              </div>
+
+                              <div style={{ ...sectionCardStyle }}>
+                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 1 - Data Identitas</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                  <div><div style={fieldLabelStyle}>NIK</div><div style={fieldValueStyle}>{val(detail?.nik)}</div></div>
+                                  <div><div style={fieldLabelStyle}>Nama Wajib Pajak</div><div style={fieldValueStyle}>{val(detail?.nama_wajib_pajak ?? row.namawajibpajak)}</div></div>
+                                  <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.Alamatop ?? detail?.keterangan)}</div></div>
+                                  <div><div style={fieldLabelStyle}>NOP PBB</div><div style={fieldValueStyle}>{val(row.noppbb)}</div></div>
+                                </div>
+                              </div>
+
+                              <div style={{ ...sectionCardStyle }}>
+                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 2 - Data Transaksi</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                  <div><div style={fieldLabelStyle}>Jenis Perolehan</div><div style={fieldValueStyle}>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div></div>
+                                  <div><div style={fieldLabelStyle}>Tanggal Perolehan</div><div style={fieldValueStyle}>{val(detail?.tanggal_perolehan)}</div></div>
+                                  <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi)}</div></div>
+                                  <div><div style={fieldLabelStyle}>Status Booking</div><div style={fieldValueStyle}>{val(row.trackstatus)}</div></div>
+                                </div>
+                              </div>
+
+                              <div style={{ ...sectionCardStyle }}>
+                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 3 - Perhitungan NJOP</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                  <div><div style={fieldLabelStyle}>Luas Tanah</div><div style={fieldValueStyle}>{luasTanah ? `${luasTanah} m2` : "—"}</div></div>
+                                  <div><div style={fieldLabelStyle}>NJOP Tanah</div><div style={fieldValueStyle}>{njopTanah ? formatMoney(njopTanah) : "—"}</div></div>
+                                  <div><div style={fieldLabelStyle}>Total NJOP Tanah</div><div style={fieldValueStyle}>{totalNjopTanah ? formatMoney(totalNjopTanah) : "—"}</div></div>
+                                  <div><div style={fieldLabelStyle}>Luas Bangunan</div><div style={fieldValueStyle}>{luasBangunan ? `${luasBangunan} m2` : "—"}</div></div>
+                                  <div><div style={fieldLabelStyle}>NJOP Bangunan</div><div style={fieldValueStyle}>{njopBangunan ? formatMoney(njopBangunan) : "—"}</div></div>
+                                  <div><div style={fieldLabelStyle}>Total NJOP Bangunan</div><div style={fieldValueStyle}>{totalNjopBangunan ? formatMoney(totalNjopBangunan) : "—"}</div></div>
+                                </div>
+                              </div>
+
+                              <div style={{ ...sectionCardStyle }}>
+                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 4 - Dokumen Pendukung</div>
+                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                                  {(["akta_tanah_path", "sertifikat_tanah_path", "pelengkap_path"] as const).map((pathKey, idx) => {
+                                    const field = (["aktaTanah", "sertifikatTanah", "pelengkap"] as const)[idx];
+                                    const label = ["Akta Tanah", "Sertifikat Tanah", "Pelengkap"][idx];
+                                    const path = row[pathKey];
+                                    return (
+                                      <div key={pathKey} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 12, background: "#f9fafb" }}>
+                                        <div style={{ ...fieldLabelStyle, fontSize: 13, marginBottom: 6 }}>{label}</div>
+                                        {path ? (
+                                          <div style={{ marginBottom: 8 }}>
+                                            <a href={getFileUrl(path)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>
+                                              {getFileName(path)}
+                                            </a>
+                                          </div>
+                                        ) : (
+                                          <div style={{ ...fieldValueStyle, marginBottom: 8 }}>Belum ada file</div>
+                                        )}
+                                        <input
+                                          type="file"
+                                          accept="application/pdf,image/jpeg,image/png"
+                                          onChange={(e) => {
+                                            const f = e.target.files?.[0];
+                                            if (f) handleUploadDoc(row.nobooking, field, f);
+                                            e.target.value = "";
+                                          }}
+                                          style={{ fontSize: 12, color: "#0f172a" }}
+                                          disabled={isLocked(row)}
+                                        />
+                                        {docUploading === `${row.nobooking}-${field}` && <span style={{ fontSize: 12, color: "#475569" }}> Mengunggah...</span>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
-                          )}
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-                            {(["akta_tanah_path", "sertifikat_tanah_path", "pelengkap_path"] as const).map((pathKey, idx) => {
-                              const field = (["aktaTanah", "sertifikatTanah", "pelengkap"] as const)[idx];
-                              const label = ["Akta Tanah", "Sertifikat Tanah", "Pelengkap"][idx];
-                              const path = row[pathKey];
-                              return (
-                                <div key={pathKey} style={{ border: "1px solid var(--border_color)", borderRadius: 8, padding: 12, background: "var(--card_bg)" }}>
-                                  <div style={{ fontWeight: 600, marginBottom: 6, color: "#0f172a" }}>{label}</div>
-                                  {path ? (
-                                    <div style={{ marginBottom: 8 }}>
-                                      <a href={getFileUrl(path)} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", fontSize: 13 }}>
-                                        {getFileName(path)}
-                                      </a>
-                                    </div>
-                                  ) : null}
-                                  <input
-                                    type="file"
-                                    accept="application/pdf,image/jpeg,image/png"
-                                    onChange={(e) => {
-                                      const f = e.target.files?.[0];
-                                      if (f) handleUploadDoc(row.nobooking, field, f);
-                                      e.target.value = "";
-                                    }}
-                                    style={{ fontSize: 12, color: "#0f172a" }}
-                                    disabled={isLocked(row)}
-                                  />
-                                  {docUploading === `${row.nobooking}-${field}` && <span style={{ fontSize: 12, color: "#475569" }}> Mengunggah...</span>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                          );
+                        })()}
+                      </div>
+                    </td>
+                  </tr>
                 </React.Fragment>
               ))
             )}
