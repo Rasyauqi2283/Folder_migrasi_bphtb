@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getApiBase } from "../../../../../lib/api";
 
@@ -16,6 +16,9 @@ type BookingRow = {
   npwpwp: string;
   trackstatus: string;
   jenis_wajib_pajak?: string;
+  akta_tanah_path?: string;
+  sertifikat_tanah_path?: string;
+  pelengkap_path?: string;
 };
 
 type ApiResponse = {
@@ -23,6 +26,11 @@ type ApiResponse = {
   message?: string;
   data?: BookingRow[];
   pagination?: { page: number; limit: number; total: number; pages: number };
+};
+
+type BookingDetail = {
+  nobooking: string;
+  [key: string]: unknown;
 };
 
 const tableStyle: React.CSSProperties = {
@@ -59,7 +67,7 @@ const btnSecondary = { ...btnStyle, background: "var(--card_bg_grey)", color: "v
 const btnKirim = { ...btnStyle, background: "#059669", color: "#fff" };
 const btnKirimDisabled = { ...btnStyle, background: "#9ca3af", color: "#fff", cursor: "not-allowed", opacity: 0.7 };
 
-type ModalType = "signature" | "documents" | "delete" | null;
+type ModalType = "signature" | "documents" | "delete" | "kirim" | null;
 
 export default function BookingSSPDPeroranganPage() {
   const [data, setData] = useState<BookingRow[]>([]);
@@ -78,6 +86,11 @@ export default function BookingSSPDPeroranganPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [quota, setQuota] = useState<{ used: number; limit: number; date: string } | null>(null);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [kirimSubmitting, setKirimSubmitting] = useState(false);
+  const [cekBookingDetail, setCekBookingDetail] = useState<BookingDetail | null>(null);
+  const [detailSectionsOpenFor, setDetailSectionsOpenFor] = useState<string | null>(null);
 
   const loadTable = useCallback(async (p: number, q?: string) => {
     setLoading(true);
@@ -110,7 +123,58 @@ export default function BookingSSPDPeroranganPage() {
   }, [page, loadTable, searchQuery]);
 
   const status = (s: string) => (s || "").toLowerCase();
+  const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
+  const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
+  const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
+
+  const setCekBookingNobooking = useCallback((nobooking: string) => {
+    setCekBookingDetail(null);
+    const base = `${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}`;
+    fetch(`${base}/callback`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("callback fetch failed"))))
+      .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
+        if (j?.success && j?.data) {
+          setCekBookingDetail({ nobooking, ...j.data } as BookingDetail);
+          return;
+        }
+        throw new Error("invalid callback payload");
+      })
+      .catch(() => {
+        fetch(base, { credentials: "include" })
+          .then((res) => res.json())
+          .then((j: { success?: boolean; data?: Record<string, unknown> }) => {
+            if (j?.success && j?.data) setCekBookingDetail({ nobooking, ...j.data } as BookingDetail);
+          })
+          .catch(() => setCekBookingDetail(null));
+      });
+  }, []);
+
+  const fieldLabelStyle: React.CSSProperties = { fontSize: 12, color: "#6b7280", fontWeight: 600, marginBottom: 2 };
+  const fieldValueStyle: React.CSSProperties = { fontSize: 14, color: "#0f172a", fontWeight: 500 };
+  const sectionCardStyle: React.CSSProperties = {
+    border: "1px solid #e5e7eb",
+    borderRadius: 10,
+    background: "#ffffff",
+    padding: 12,
+    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.08)",
+  };
+  const formatMoney = (v: unknown) => {
+    const n = typeof v === "number" ? v : Number(v);
+    if (Number.isNaN(n)) return "—";
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  };
+  const toNum = (v: unknown) => {
+    const n = typeof v === "number" ? v : Number(v);
+    return Number.isNaN(n) ? 0 : n;
+  };
+  const val = (v: unknown) => {
+    const s = String(v ?? "").trim();
+    if (!s) return "—";
+    const lowered = s.toLowerCase();
+    if (lowered === "undefined" || lowered === "null" || lowered === "nan") return "—";
+    return s;
+  };
   const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
     const st = status(trackStatus || "");
     if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
@@ -135,6 +199,89 @@ export default function BookingSSPDPeroranganPage() {
         .finally(() => setDocsLoading(false));
     }
     if (type === "signature") setSignatureFile(null);
+  };
+
+  const openModalKirim = (row: BookingRow) => {
+    setModal("kirim");
+    setModalNobooking(row.nobooking);
+    setScheduleDate("");
+    setQuota(null);
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const t = new Date();
+    const todayIso = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
+    setScheduleDate(todayIso);
+    fetch(`${getApiBase()}/api/ppat/quota?date=${todayIso}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.success && j?.data) setQuota({ used: j.data.used ?? 0, limit: j.data.limit ?? 80, date: j.data.date ?? "" });
+      })
+      .catch(() => setQuota({ used: 0, limit: 80, date: "" }));
+  };
+
+  const handleKirimSekarang = async () => {
+    const nb = modalNobooking;
+    if (!nb) return;
+    if (!window.confirm("Ingin kirim sekarang? Tolong cek apakah sudah sesuai dan edit jika tidak benar.")) return;
+    setKirimSubmitting(true);
+    try {
+      const day = new Date().getDay();
+      if (day === 0 || day === 6) {
+        setActionMessage("Pengiriman tidak tersedia pada hari libur.");
+        return;
+      }
+      const res = await fetch(`${getApiBase()}/api/ppat/send-now?nobooking=${encodeURIComponent(nb)}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nobooking: nb }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (j?.success) {
+        setModal(null);
+        loadTable(page, searchQuery);
+      } else {
+        setActionMessage(j?.message || "Gagal mengirim.");
+      }
+    } catch {
+      setActionMessage("Gagal mengirim.");
+    } finally {
+      setKirimSubmitting(false);
+    }
+  };
+
+  const handleJadwalkanKirim = async () => {
+    const nb = modalNobooking;
+    if (!nb || !scheduleDate) {
+      setActionMessage("Pilih tanggal terlebih dahulu.");
+      return;
+    }
+    const d = new Date(scheduleDate);
+    if (d.getDay() === 0 || d.getDay() === 6) {
+      setActionMessage("Bappenda libur pada hari Sabtu & Minggu.");
+      return;
+    }
+    const tanggalTeks = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+    if (!window.confirm(`Ingin kirim pada ${tanggalTeks} ini? Sudah benarkah dokumen yang dilampirkan dan dibuat? Jika belum, tolong cek kembali dan edit jika tidak benar.`)) return;
+    setKirimSubmitting(true);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ppat/schedule-send`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nobooking: nb, scheduled_for: scheduleDate }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (j?.success) {
+        setModal(null);
+        loadTable(page, searchQuery);
+      } else {
+        setActionMessage(j?.message || "Gagal menjadwalkan.");
+      }
+    } catch {
+      setActionMessage("Gagal menjadwalkan.");
+    } finally {
+      setKirimSubmitting(false);
+    }
   };
   const handleUploadSignature = async () => {
     if (!modalNobooking || !signatureFile) { setActionMessage("Pilih booking dan file tanda tangan."); return; }
@@ -168,9 +315,9 @@ export default function BookingSSPDPeroranganPage() {
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
         <button type="button" style={btnTambah} onClick={() => setFormVisible((v) => !v)}>+ Tambah Data</button>
-        <button type="button" style={btnSecondary} onClick={() => openModal("signature")}>Tambah Tanda Tangan</button>
+        <button type="button" style={btnSecondary} onClick={() => openModal("signature")} disabled={selectedLocked}>Tambah Tanda Tangan</button>
         <button type="button" style={btnSecondary} onClick={() => openModal("documents")}>Lihat Dokumen</button>
-        <button type="button" style={btnSecondary} onClick={() => openModal("delete")}>Hapus Data</button>
+        <button type="button" style={btnSecondary} onClick={() => openModal("delete")} disabled={selectedLocked}>Hapus Data</button>
       </div>
       {modal === "signature" && (
         <div style={modalOverlayStyle} onClick={() => !uploading && setModal(null)}>
@@ -178,17 +325,17 @@ export default function BookingSSPDPeroranganPage() {
             <h3 style={{ margin: "0 0 16px" }}>Upload Tanda Tangan</h3>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>No. Booking</label>
-              <select style={{ width: "100%", padding: 8, borderRadius: 8 }} value={modalNobooking} onChange={(e) => setModalNobooking(e.target.value)}>
+              <select style={{ width: "100%", padding: 8, borderRadius: 8 }} value={modalNobooking} onChange={(e) => setModalNobooking(e.target.value)} disabled={selectedLocked}>
                 {data.map((r) => <option key={r.nobooking} value={r.nobooking}>{r.nobooking}</option>)}
               </select>
             </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>File Tanda Tangan (gambar)</label>
-              <input type="file" accept="image/*" onChange={(e) => setSignatureFile(e.target.files?.[0] || null)} />
+              <input type="file" accept="image/*" onChange={(e) => setSignatureFile(e.target.files?.[0] || null)} disabled={selectedLocked} />
             </div>
             {actionMessage && <p style={{ color: "#b91c1c", marginBottom: 8 }}>{actionMessage}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={btnTambah} disabled={uploading} onClick={handleUploadSignature}>{uploading ? "Mengunggah..." : "Upload"}</button>
+              <button type="button" style={btnTambah} disabled={uploading || selectedLocked} onClick={handleUploadSignature}>{uploading ? "Mengunggah..." : "Upload"}</button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
             </div>
           </div>
@@ -226,14 +373,41 @@ export default function BookingSSPDPeroranganPage() {
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 16px" }}>Hapus Data</h3>
             <p style={{ marginBottom: 12 }}>Booking yang dipilih akan ditandai status &quot;Dihapus&quot;.</p>
-            <select style={{ width: "100%", padding: 8, marginBottom: 12 }} value={modalNobooking} onChange={(e) => setModalNobooking(e.target.value)}>
+            <select style={{ width: "100%", padding: 8, marginBottom: 12 }} value={modalNobooking} onChange={(e) => setModalNobooking(e.target.value)} disabled={selectedLocked}>
               {data.map((r) => <option key={r.nobooking} value={r.nobooking}>{r.nobooking} — {r.namawajibpajak}</option>)}
             </select>
             {actionMessage && <p style={{ color: actionMessage.includes("Gagal") ? "#b91c1c" : "#166534", marginBottom: 8 }}>{actionMessage}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading} onClick={handleHapusData}>{uploading ? "Memproses..." : "Ya, Tandai Dihapus"}</button>
+              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading || selectedLocked} onClick={handleHapusData}>{uploading ? "Memproses..." : "Ya, Tandai Dihapus"}</button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
             </div>
+          </div>
+        </div>
+      )}
+      {modal === "kirim" && (
+        <div style={modalOverlayStyle} onClick={() => !kirimSubmitting && setModal(null)}>
+          <div style={{ ...modalBoxStyle, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: "0 0 16px" }}>Kirim ke Bappenda</h3>
+            <p style={{ margin: "0 0 8px", fontSize: 14 }}>No. Booking: {modalNobooking}</p>
+            {quota && <p style={{ margin: "0 0 12px", fontSize: 14, color: "#1e293b" }}>Kuota hari ini: {quota.used}/{quota.limit}</p>}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+              <button type="button" style={btnKirim} disabled={kirimSubmitting} onClick={handleKirimSekarang}>
+                {kirimSubmitting ? "Memproses..." : "Kirim Sekarang"}
+              </button>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <label style={{ fontSize: 14, color: "#0f172a" }}>Tanggal:</label>
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  min={new Date().toISOString().slice(0, 10)}
+                  style={{ padding: "6px 10px", borderRadius: 6 }}
+                />
+              </div>
+              <button type="button" style={btnSecondary} disabled={kirimSubmitting} onClick={handleJadwalkanKirim}>Jadwalkan Kirim</button>
+            </div>
+            {actionMessage && <p style={{ color: actionMessage.includes("Gagal") ? "#b91c1c" : "#166534", marginBottom: 8, fontSize: 13 }}>{actionMessage}</p>}
+            <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
           </div>
         </div>
       )}
@@ -323,11 +497,16 @@ export default function BookingSSPDPeroranganPage() {
               </tr>
             ) : (
               data.map((row) => (
-                <>
+                <React.Fragment key={row.nobooking}>
                   <tr
-                    key={row.nobooking}
                     style={{ cursor: "pointer" }}
-                    onClick={() => setExpandedRow((x) => (x === row.nobooking ? null : row.nobooking))}
+                    onClick={() => {
+                      setExpandedRow((x) => {
+                        const next = x === row.nobooking ? null : row.nobooking;
+                        setDetailSectionsOpenFor(null);
+                        return next;
+                      });
+                    }}
                   >
                     <td style={tdStyle}>{row.nobooking}</td>
                     <td style={tdStyle}>{row.noppbb || "—"}</td>
@@ -356,38 +535,113 @@ export default function BookingSSPDPeroranganPage() {
                         onClick={async (e) => {
                           e.stopPropagation();
                           if (!canSend(row)) return;
-                          try {
-                            const res = await fetch(
-                              `${getApiBase()}/api/ppat/send-now?nobooking=${encodeURIComponent(row.nobooking)}`,
-                              { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nobooking: row.nobooking }) }
-                            );
-                            const j = await res.json().catch(() => ({}));
-                            if (j?.success) loadTable(page);
-                          } catch (_) {}
+                          openModalKirim(row);
                         }}
                       >
                         {status(row.trackstatus) === "diolah" ? "Sedang Diolah" : status(row.trackstatus) === "pending" ? "Menunggu Kirim" : "Kirim ke Bappenda"}
                       </button>
                     </td>
                   </tr>
-                  {expandedRow === row.nobooking && (
-                    <tr key={`${row.nobooking}-detail`}>
-                      <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)", padding: 16 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <strong>Detail No. Booking: {row.nobooking}</strong>
-                          <div>
-                            <Link
-                              href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
-                              style={{ color: "var(--accent)", fontWeight: 600 }}
-                            >
-                              Isi Form Permohonan Validasi →
-                            </Link>
-                          </div>
-                        </div>
+                  <tr key={`${row.nobooking}-detail`}>
+                    <td colSpan={8} style={{ ...tdStyle, background: "#f8fafc", padding: 0 }}>
+                      <div
+                        style={{
+                          maxHeight: expandedRow === row.nobooking ? 1200 : 0,
+                          opacity: expandedRow === row.nobooking ? 1 : 0,
+                          transform: expandedRow === row.nobooking ? "translateY(0)" : "translateY(-6px)",
+                          transition: "max-height 0.28s ease, opacity 0.22s ease, transform 0.22s ease",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {(() => {
+                          const detail = cekBookingDetail && cekBookingDetail.nobooking === row.nobooking ? cekBookingDetail : null;
+                          const luasTanah = toNum(detail?.luas_tanah);
+                          const njopTanah = toNum(detail?.njop_tanah);
+                          const luasBangunan = toNum(detail?.luas_bangunan);
+                          const njopBangunan = toNum(detail?.njop_bangunan);
+                          const totalNjopTanah = luasTanah * njopTanah;
+                          const totalNjopBangunan = luasBangunan * njopBangunan;
+                          return (
+                            <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                              <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
+                                <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
+                                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  {status(row.trackstatus) === "draft" && (
+                                    <Link
+                                      href={`/pu/booking-sspd/perorangan/tambah?edit=1&nobooking=${encodeURIComponent(row.nobooking)}`}
+                                      prefetch={false}
+                                      style={{ ...btnStyle, background: "#2563eb", color: "#fff", display: "inline-flex", alignItems: "center", textDecoration: "none" }}
+                                    >
+                                      Edit Data
+                                    </Link>
+                                  )}
+                                  <button
+                                    type="button"
+                                    style={btnSecondary}
+                                    onClick={() => {
+                                      if (detailSectionsOpenFor === row.nobooking) {
+                                        setDetailSectionsOpenFor(null);
+                                        return;
+                                      }
+                                      setCekBookingNobooking(row.nobooking);
+                                      setDetailSectionsOpenFor(row.nobooking);
+                                    }}
+                                  >
+                                    {detailSectionsOpenFor === row.nobooking ? "Hide Detail" : "Check Detail"}
+                                  </button>
+                                  <Link
+                                    href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
+                                    prefetch={false}
+                                    style={{ color: isLocked(row) ? "#94a3b8" : "var(--accent)", fontWeight: 600, pointerEvents: isLocked(row) ? "none" : "auto" }}
+                                    aria-disabled={isLocked(row)}
+                                  >
+                                    Isi Form Permohonan Validasi →
+                                  </Link>
+                                  <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat_generate-pdf-badan/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen</button>
+                                  <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen Validasi</button>
+                                </div>
+                              </div>
+
+                              {detailSectionsOpenFor === row.nobooking && (
+                                <>
+                                  <div style={sectionCardStyle}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 1 - Data Identitas</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>NIK</div><div style={fieldValueStyle}>{val(detail?.npwpwp ?? row.npwpwp)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Nama Wajib Pajak</div><div style={fieldValueStyle}>{val(detail?.nama_wajib_pajak ?? row.namawajibpajak)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.alamat_wajib_pajak ?? detail?.Alamatop ?? detail?.letaktanahdanbangunan ?? detail?.keterangan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>NOP PBB</div><div style={fieldValueStyle}>{val(row.noppbb)}</div></div>
+                                    </div>
+                                  </div>
+                                  <div style={sectionCardStyle}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 2 - Data Transaksi</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>Jenis Perolehan</div><div style={fieldValueStyle}>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Tanggal Perolehan</div><div style={fieldValueStyle}>{val(detail?.tanggal_perolehan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi ?? detail?.harga_transaksi)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Status Booking</div><div style={fieldValueStyle}>{val(row.trackstatus)}</div></div>
+                                    </div>
+                                  </div>
+                                  <div style={sectionCardStyle}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 3 - Perhitungan NJOP</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>Luas Tanah</div><div style={fieldValueStyle}>{luasTanah ? `${luasTanah} m2` : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>NJOP Tanah</div><div style={fieldValueStyle}>{njopTanah ? formatMoney(njopTanah) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Total NJOP Tanah</div><div style={fieldValueStyle}>{totalNjopTanah ? formatMoney(totalNjopTanah) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Luas Bangunan</div><div style={fieldValueStyle}>{luasBangunan ? `${luasBangunan} m2` : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>NJOP Bangunan</div><div style={fieldValueStyle}>{njopBangunan ? formatMoney(njopBangunan) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Total NJOP Bangunan</div><div style={fieldValueStyle}>{totalNjopBangunan ? formatMoney(totalNjopBangunan) : "—"}</div></div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
                       </td>
                     </tr>
-                  )}
-                </>
+                </React.Fragment>
               ))
             )}
           </tbody>
