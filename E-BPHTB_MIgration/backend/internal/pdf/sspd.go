@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -392,6 +393,10 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	pdf.CellFormat(colW2, 10, "WAJIB PAJAK/PENYETOR", "", 0, "C", false, 0, "")
 	pdf.SetXY(cols[0], sigY+30)
 	pdf.CellFormat(colW2, 10, data.Namawajibpajak, "", 0, "C", false, 0, "")
+	// Inject WP signature (if available) proportionally inside Wajib Pajak area.
+	if strings.TrimSpace(data.PathTtdWp) != "" {
+		drawImageContain(pdf, data.PathTtdWp, cols[0]+8, sigY+34, colW2-16, 34)
+	}
 	pdf.SetXY(cols[1], sigY+10)
 	pdf.CellFormat(colW2, 10, data.NamaPembuat, "", 0, "C", false, 0, "")
 	pdf.SetXY(cols[1], sigY+70)
@@ -415,6 +420,42 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	pdf.Line(0, sigY+85, pageW, sigY+85)
 
 	return pdf.Output(w)
+}
+
+func drawImageContain(pdf *gofpdf.Fpdf, imgPath string, x, y, maxW, maxH float64) {
+	if strings.TrimSpace(imgPath) == "" {
+		return
+	}
+	if _, err := os.Stat(imgPath); err != nil {
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(imgPath))
+	imgType := "PNG"
+	if ext == ".jpg" || ext == ".jpeg" {
+		imgType = "JPG"
+	} else if ext == ".webp" {
+		// gofpdf may not support WEBP directly in all builds.
+		return
+	}
+	opts := gofpdf.ImageOptions{ImageType: imgType, ReadDpi: true}
+	info := pdf.RegisterImageOptions(imgPath, opts)
+	if info == nil {
+		return
+	}
+	w := info.Width()
+	h := info.Height()
+	if w <= 0 || h <= 0 || maxW <= 0 || maxH <= 0 {
+		return
+	}
+	scale := maxW / w
+	if (h * scale) > maxH {
+		scale = maxH / h
+	}
+	drawW := w * scale
+	drawH := h * scale
+	dx := x + (maxW-drawW)/2
+	dy := y + (maxH-drawH)/2
+	pdf.ImageOptions(imgPath, dx, dy, drawW, drawH, false, opts, 0, "")
 }
 
 func terbilangRupiah(angka float64) string {

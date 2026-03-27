@@ -111,6 +111,7 @@ export default function BookingSSPDBadanPage() {
   const [kirimSubmitting, setKirimSubmitting] = useState(false);
   const [docUploading, setDocUploading] = useState<string | null>(null);
   const [cekBookingDetail, setCekBookingDetail] = useState<BookingDetail | null>(null);
+  const [detailSectionsOpenFor, setDetailSectionsOpenFor] = useState<string | null>(null);
 
   const [corrections, setCorrections] = useState<PendingCorrection[]>([]);
   const [correctionsLoading, setCorrectionsLoading] = useState(false);
@@ -225,6 +226,7 @@ export default function BookingSSPDBadanPage() {
   const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
     const st = status(trackStatus || "");
     if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
+    if (st === "wp_approved") return { background: "#dbeafe", color: "#1d4ed8" };
     if (st.includes("pending")) return { background: "#fff7ed", color: "#9a3412" };
     if (st.includes("valid") || st.includes("diverifikasi")) return { background: "#ecfdf5", color: "#166534" };
     return { background: "#f1f5f9", color: "#334155" };
@@ -313,6 +315,9 @@ export default function BookingSSPDBadanPage() {
   const handleKirimSekarang = async () => {
     const nb = modalNobooking;
     if (!nb) return;
+    if (!window.confirm("Ingin kirim sekarang? Tolong cek apakah sudah sesuai dan edit jika tidak benar.")) {
+      return;
+    }
     setKirimSubmitting(true);
     try {
       const day = new Date().getDay();
@@ -361,6 +366,14 @@ export default function BookingSSPDBadanPage() {
     const d = new Date(scheduleDate);
     if (d.getDay() === 0 || d.getDay() === 6) {
       setActionMessage("Bappenda libur pada hari Sabtu & Minggu.");
+      return;
+    }
+    const tanggalTeks = new Date(scheduleDate).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    if (!window.confirm(`Ingin kirim pada ${tanggalTeks} ini? Sudah benarkah dokumen yang dilampirkan dan dibuat? Jika belum, tolong cek kembali dan edit jika tidak benar.`)) {
       return;
     }
     setKirimSubmitting(true);
@@ -967,7 +980,7 @@ export default function BookingSSPDBadanPage() {
                     onClick={() => {
                       setExpandedRow((x) => {
                         const next = x === row.nobooking ? null : row.nobooking;
-                        if (next) setCekBookingNobooking(row.nobooking);
+                        setDetailSectionsOpenFor(null);
                         return next;
                       });
                     }}
@@ -1043,7 +1056,20 @@ export default function BookingSSPDBadanPage() {
                                       Edit Data
                                     </Link>
                                   )}
-                                  <button type="button" style={btnSecondary} onClick={() => setCekBookingNobooking(row.nobooking)}>Refresh Detail</button>
+                                  <button
+                                    type="button"
+                                    style={btnSecondary}
+                                    onClick={() => {
+                                      if (detailSectionsOpenFor === row.nobooking) {
+                                        setDetailSectionsOpenFor(null);
+                                        return;
+                                      }
+                                      setCekBookingNobooking(row.nobooking);
+                                      setDetailSectionsOpenFor(row.nobooking);
+                                    }}
+                                  >
+                                    {detailSectionsOpenFor === row.nobooking ? "Hide Detail" : "Check Detail"}
+                                  </button>
                                   <Link
                                     href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
                                     prefetch={false}
@@ -1057,37 +1083,41 @@ export default function BookingSSPDBadanPage() {
                                 </div>
                               </div>
 
-                              <div style={{ ...sectionCardStyle }}>
-                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 1 - Data Identitas</div>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                                  <div><div style={fieldLabelStyle}>NIK</div><div style={fieldValueStyle}>{val(detail?.nik)}</div></div>
-                                  <div><div style={fieldLabelStyle}>Nama Wajib Pajak</div><div style={fieldValueStyle}>{val(detail?.nama_wajib_pajak ?? row.namawajibpajak)}</div></div>
-                                  <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.Alamatop ?? detail?.keterangan)}</div></div>
-                                  <div><div style={fieldLabelStyle}>NOP PBB</div><div style={fieldValueStyle}>{val(row.noppbb)}</div></div>
-                                </div>
-                              </div>
+                              {detailSectionsOpenFor === row.nobooking && (
+                                <>
+                                  <div style={{ ...sectionCardStyle }}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 1 - Data Identitas</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>NIK</div><div style={fieldValueStyle}>{val(detail?.nik)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Nama Wajib Pajak</div><div style={fieldValueStyle}>{val(detail?.nama_wajib_pajak ?? row.namawajibpajak)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Alamat</div><div style={fieldValueStyle}>{val(detail?.Alamatop ?? detail?.keterangan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>NOP PBB</div><div style={fieldValueStyle}>{val(row.noppbb)}</div></div>
+                                    </div>
+                                  </div>
 
-                              <div style={{ ...sectionCardStyle }}>
-                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 2 - Data Transaksi</div>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                                  <div><div style={fieldLabelStyle}>Jenis Perolehan</div><div style={fieldValueStyle}>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div></div>
-                                  <div><div style={fieldLabelStyle}>Tanggal Perolehan</div><div style={fieldValueStyle}>{val(detail?.tanggal_perolehan)}</div></div>
-                                  <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi)}</div></div>
-                                  <div><div style={fieldLabelStyle}>Status Booking</div><div style={fieldValueStyle}>{val(row.trackstatus)}</div></div>
-                                </div>
-                              </div>
+                                  <div style={{ ...sectionCardStyle }}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 2 - Data Transaksi</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>Jenis Perolehan</div><div style={fieldValueStyle}>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Tanggal Perolehan</div><div style={fieldValueStyle}>{val(detail?.tanggal_perolehan)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Harga Transaksi</div><div style={fieldValueStyle}>{formatMoney(detail?.hargatransaksi)}</div></div>
+                                      <div><div style={fieldLabelStyle}>Status Booking</div><div style={fieldValueStyle}>{val(row.trackstatus)}</div></div>
+                                    </div>
+                                  </div>
 
-                              <div style={{ ...sectionCardStyle }}>
-                                <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 3 - Perhitungan NJOP</div>
-                                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-                                  <div><div style={fieldLabelStyle}>Luas Tanah</div><div style={fieldValueStyle}>{luasTanah ? `${luasTanah} m2` : "—"}</div></div>
-                                  <div><div style={fieldLabelStyle}>NJOP Tanah</div><div style={fieldValueStyle}>{njopTanah ? formatMoney(njopTanah) : "—"}</div></div>
-                                  <div><div style={fieldLabelStyle}>Total NJOP Tanah</div><div style={fieldValueStyle}>{totalNjopTanah ? formatMoney(totalNjopTanah) : "—"}</div></div>
-                                  <div><div style={fieldLabelStyle}>Luas Bangunan</div><div style={fieldValueStyle}>{luasBangunan ? `${luasBangunan} m2` : "—"}</div></div>
-                                  <div><div style={fieldLabelStyle}>NJOP Bangunan</div><div style={fieldValueStyle}>{njopBangunan ? formatMoney(njopBangunan) : "—"}</div></div>
-                                  <div><div style={fieldLabelStyle}>Total NJOP Bangunan</div><div style={fieldValueStyle}>{totalNjopBangunan ? formatMoney(totalNjopBangunan) : "—"}</div></div>
-                                </div>
-                              </div>
+                                  <div style={{ ...sectionCardStyle }}>
+                                    <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 3 - Perhitungan NJOP</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+                                      <div><div style={fieldLabelStyle}>Luas Tanah</div><div style={fieldValueStyle}>{luasTanah ? `${luasTanah} m2` : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>NJOP Tanah</div><div style={fieldValueStyle}>{njopTanah ? formatMoney(njopTanah) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Total NJOP Tanah</div><div style={fieldValueStyle}>{totalNjopTanah ? formatMoney(totalNjopTanah) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Luas Bangunan</div><div style={fieldValueStyle}>{luasBangunan ? `${luasBangunan} m2` : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>NJOP Bangunan</div><div style={fieldValueStyle}>{njopBangunan ? formatMoney(njopBangunan) : "—"}</div></div>
+                                      <div><div style={fieldLabelStyle}>Total NJOP Bangunan</div><div style={fieldValueStyle}>{totalNjopBangunan ? formatMoney(totalNjopBangunan) : "—"}</div></div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
 
                               <div style={{ ...sectionCardStyle }}>
                                 <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Section 4 - Dokumen Pendukung</div>

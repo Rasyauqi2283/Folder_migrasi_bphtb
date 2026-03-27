@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import GreetingCard from "../../components/GreetingCard";
 import { getApiBase } from "../../../lib/api";
+import QuotaCalendar from "../../components/QuotaCalendar";
 
 const CARD_STYLES = {
   wrapper: {
@@ -33,98 +34,9 @@ const CARD_STYLES = {
   },
 };
 
-function CalendarWidget() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const monthNames = [
-    "Januari",
-    "Februari",
-    "Maret",
-    "April",
-    "Mei",
-    "Juni",
-    "Juli",
-    "Agustus",
-    "September",
-    "Oktober",
-    "November",
-    "Desember",
-  ];
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = now.getDate();
-  const weekDays = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-  const dates: (number | null)[] = [];
-  const startOffset = firstDay;
-  for (let i = 0; i < startOffset; i++) dates.push(null);
-  for (let d = 1; d <= daysInMonth; d++) dates.push(d);
-
-  return (
-    <div
-      style={{
-        minWidth: 220,
-        background: "var(--card_bg_grey)",
-        border: "1px solid var(--border_color)",
-        borderRadius: 12,
-        padding: 16,
-        boxShadow: "var(--shadow_card)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 12px",
-          fontSize: 15,
-          color: "var(--color_font_main)",
-          fontWeight: 700,
-          letterSpacing: "0.02em",
-        }}
-      >
-        {monthNames[month]} {year}
-      </p>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 6,
-          fontSize: 13,
-        }}
-      >
-        {weekDays.map((w) => (
-          <div
-            key={w}
-            style={{
-              color: "var(--color_font_main_muted)",
-              textAlign: "center",
-              fontWeight: 600,
-              padding: "4px 0",
-            }}
-          >
-            {w}
-          </div>
-        ))}
-        {dates.map((d, i) => (
-          <div
-            key={i}
-            style={{
-              textAlign: "center",
-              padding: "8px 0",
-              borderRadius: 8,
-              color: d === today ? "#fff" : "var(--color_font_main)",
-              background: d === today ? "var(--accent)" : "transparent",
-              fontWeight: d === today ? 700 : 500,
-            }}
-          >
-            {d ?? ""}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function PPATDashboardPage() {
   const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [counts, setCounts] = useState({
     bookingBadan: 0,
     bookingPerorangan: 0,
@@ -254,7 +166,7 @@ export default function PPATDashboardPage() {
         pageLabel={user?.divisi || "pu"}
         subtitle="Ingin melakukan apa hari ini, Apakah Kamu Ingin Melihat Validasi?"
         gender={user?.gender ?? undefined}
-        rightContent={<CalendarWidget />}
+        rightContent={<QuotaCalendar value={selectedDate} onChange={setSelectedDate} />}
       />
 
       {loading ? (

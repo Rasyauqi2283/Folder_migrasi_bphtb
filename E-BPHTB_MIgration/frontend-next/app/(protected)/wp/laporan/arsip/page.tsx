@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getApiBase } from "../../../../../lib/api";
 
 /**
@@ -10,11 +11,56 @@ import { getApiBase } from "../../../../../lib/api";
  * Sekaligus: daftar permintaan persetujuan (Libatkan WP).
  */
 export default function WpLaporanArsipPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<
-    { id: number; nobooking: string; pu_userid: string; status: string; updated_at?: string }[]
+    {
+      id: number;
+      nobooking: string;
+      pu_userid: string;
+      status: string;
+      updated_at?: string;
+      noppbb?: string;
+      namawajibpajak?: string;
+      namapemilikobjekpajak?: string;
+      trackstatus?: string;
+    }[]
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const checkWpSignatureExists = async (): Promise<boolean> => {
+    try {
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/v1/auth/profile`, { credentials: "include" });
+      const j = await res.json().catch(() => ({}));
+      const user = j?.user ?? j?.data?.user ?? j?.data ?? j ?? {};
+      const signaturePath = String(user?.tanda_tangan_path ?? "").trim();
+      return signaturePath !== "";
+    } catch {
+      return false;
+    }
+  };
+
+  const handleApproveSSPD = async (rowId: number) => {
+    const hasSignature = await checkWpSignatureExists();
+    if (!hasSignature) {
+      window.alert("Tanda tangan belum tersedia. Silakan isi tanda tangan di profil terlebih dahulu.");
+      router.push("/wp/profile");
+      return;
+    }
+    try {
+      const res = await fetch(`${getApiBase()}/api/wp/sign-requests/${rowId}/approve`, { method: "POST", credentials: "include" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setError(j?.message || "Gagal menyetujui.");
+        return;
+      }
+      await load();
+    } catch {
+      setError("Gagal menyetujui.");
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -91,41 +137,53 @@ export default function WpLaporanArsipPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id}>
-                    <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.nobooking}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.pu_userid}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.status}</td>
-                    <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)", textAlign: "right" }}>
-                      <button
-                        type="button"
-                        disabled={r.status !== "pending"}
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`${getApiBase()}/api/wp/sign-requests/${r.id}/approve`, { method: "POST", credentials: "include" });
-                            const j = await res.json().catch(() => ({}));
-                            if (!res.ok || !j?.success) {
-                              setError(j?.message || "Gagal menyetujui.");
-                              return;
-                            }
-                            await load();
-                          } catch {
-                            setError("Gagal menyetujui.");
-                          }
-                        }}
-                        style={{
-                          padding: "8px 12px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: r.status === "pending" ? "var(--accent)" : "#9ca3af",
-                          color: "#fff",
-                          fontWeight: 700,
-                          cursor: r.status === "pending" ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        Setujui
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={r.id}>
+                    <tr
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setExpandedId((prev) => (prev === r.id ? null : r.id))}
+                    >
+                      <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.nobooking}</td>
+                      <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.pu_userid}</td>
+                      <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)" }}>{r.status}</td>
+                      <td style={{ padding: "10px 8px", borderBottom: "1px solid var(--border_color)", textAlign: "right", color: "var(--accent)", fontWeight: 700 }}>
+                        {expandedId === r.id ? "Tutup Detail" : "Klik untuk Detail"}
+                      </td>
+                    </tr>
+                    {expandedId === r.id && (
+                      <tr key={`${r.id}-detail`}>
+                        <td colSpan={4} style={{ padding: 12, borderBottom: "1px solid var(--border_color)", background: "#f8fafc" }}>
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <div><strong>No. Booking:</strong> {r.nobooking}</div>
+                            <div><strong>NOP PBB:</strong> {r.noppbb || "—"}</div>
+                            <div><strong>Nama Wajib Pajak:</strong> {r.namawajibpajak || "—"}</div>
+                            <div><strong>Nama Pemilik Objek:</strong> {r.namapemilikobjekpajak || "—"}</div>
+                            <div><strong>Status Booking:</strong> {r.trackstatus || "—"}</div>
+                            <div style={{ marginTop: 8 }}>
+                              <button
+                                type="button"
+                                disabled={r.status !== "pending"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleApproveSSPD(r.id);
+                                }}
+                                style={{
+                                  padding: "8px 12px",
+                                  borderRadius: 8,
+                                  border: "none",
+                                  background: r.status === "pending" ? "var(--accent)" : "#9ca3af",
+                                  color: "#fff",
+                                  fontWeight: 700,
+                                  cursor: r.status === "pending" ? "pointer" : "not-allowed",
+                                }}
+                              >
+                                Setujui Dokumen
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

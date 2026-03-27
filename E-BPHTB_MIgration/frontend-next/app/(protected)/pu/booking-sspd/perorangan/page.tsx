@@ -111,6 +111,14 @@ export default function BookingSSPDPeroranganPage() {
 
   const status = (s: string) => (s || "").toLowerCase();
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
+  const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
+    const st = status(trackStatus || "");
+    if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
+    if (st === "wp_approved") return { background: "#dbeafe", color: "#1d4ed8" };
+    if (st.includes("pending")) return { background: "#fff7ed", color: "#9a3412" };
+    if (st.includes("valid") || st.includes("diverifikasi")) return { background: "#ecfdf5", color: "#166534" };
+    return { background: "#f1f5f9", color: "#334155" };
+  };
 
   const openModal = (type: ModalType) => {
     setModal(type);
@@ -327,7 +335,19 @@ export default function BookingSSPDPeroranganPage() {
                     <td style={tdStyle}>{row.namawajibpajak || "—"}</td>
                     <td style={tdStyle}>{row.namapemilikobjekpajak || "—"}</td>
                     <td style={tdStyle}>{row.npwpwp || "—"}</td>
-                    <td style={tdStyle}>{row.trackstatus || "—"}</td>
+                    <td style={tdStyle}>
+                      <span
+                        style={{
+                          ...statusBadgeStyle(row.trackstatus),
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {row.trackstatus || "—"}
+                      </span>
+                    </td>
                     <td style={tdStyle}>
                       <button
                         type="button"

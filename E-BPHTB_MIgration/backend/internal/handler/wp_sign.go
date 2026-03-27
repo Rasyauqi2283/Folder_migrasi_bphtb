@@ -244,10 +244,21 @@ func (h *WpSignHandler) ListSignRequests(w http.ResponseWriter, r *http.Request)
 	defer cancel()
 
 	rows, err := h.userRepo.Pool().Query(ctx, `
-		SELECT id, nobooking, pu_userid, status, created_at, updated_at
-		FROM wp_sign_requests
-		WHERE wp_userid = $1
-		ORDER BY updated_at DESC, created_at DESC
+		SELECT
+			w.id,
+			w.nobooking,
+			w.pu_userid,
+			w.status,
+			w.created_at,
+			w.updated_at,
+			COALESCE(b.noppbb, ''),
+			COALESCE(b.namawajibpajak, ''),
+			COALESCE(b.namapemilikobjekpajak, ''),
+			COALESCE(b.trackstatus, '')
+		FROM wp_sign_requests w
+		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = w.nobooking
+		WHERE w.wp_userid = $1
+		ORDER BY w.updated_at DESC, w.created_at DESC
 		LIMIT 200
 	`, wpUserid)
 	if err != nil {
@@ -261,8 +272,9 @@ func (h *WpSignHandler) ListSignRequests(w http.ResponseWriter, r *http.Request)
 	for rows.Next() {
 		var id int64
 		var nobooking, puUserid, status string
+		var noppbb, namaWp, namaPemilik, trackstatus string
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&id, &nobooking, &puUserid, &status, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &nobooking, &puUserid, &status, &createdAt, &updatedAt, &noppbb, &namaWp, &namaPemilik, &trackstatus); err != nil {
 			continue
 		}
 		out = append(out, map[string]interface{}{
@@ -272,6 +284,10 @@ func (h *WpSignHandler) ListSignRequests(w http.ResponseWriter, r *http.Request)
 			"status":     status,
 			"created_at": createdAt,
 			"updated_at": updatedAt,
+			"noppbb": noppbb,
+			"namawajibpajak": namaWp,
+			"namapemilikobjekpajak": namaPemilik,
+			"trackstatus": trackstatus,
 		})
 	}
 
@@ -301,7 +317,35 @@ func (h *WpSignHandler) ApproveSignRequest(w http.ResponseWriter, r *http.Reques
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-	cmd, err := h.userRepo.Pool().Exec(ctx, `
+
+	// Guard: WP must already have signature uploaded in profile.
+	var wpSignaturePath string
+	if err := h.userRepo.Pool().QueryRow(ctx, `SELECT COALESCE(tanda_tangan_path,'') FROM a_2_verified_users WHERE userid = $1 LIMIT 1`, wpUserid).Scan(&wpSignaturePath); err != nil {
+		jsonError(w, http.StatusBadRequest, "Profil WP tidak ditemukan")
+		return
+	}
+	wpSignaturePath = strings.TrimSpace(wpSignaturePath)
+	if wpSignaturePath == "" {
+		jsonError(w, http.StatusBadRequest, "Tanda tangan belum tersedia. Silakan isi tanda tangan di profil terlebih dahulu.")
+		return
+	}
+
+	// Resolve booking first from request id
+	var nobooking string
+	err := h.userRepo.Pool().QueryRow(ctx, `SELECT nobooking FROM wp_sign_requests WHERE id = $1 AND wp_userid = $2 LIMIT 1`, id, wpUserid).Scan(&nobooking)
+	if err != nil || strings.TrimSpace(nobooking) == "" {
+		jsonError(w, http.StatusNotFound, "Permintaan tidak ditemukan")
+		return
+	}
+
+	tx, err := h.userRepo.Pool().Begin(ctx)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses persetujuan")
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	cmd, err := tx.Exec(ctx, `
 		UPDATE wp_sign_requests
 		SET status='approved', updated_at=now()
 		WHERE id=$1 AND wp_userid=$2
@@ -316,10 +360,32 @@ func (h *WpSignHandler) ApproveSignRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Mark booking progress for PU/Peneliti visibility.
+	if _, err := tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = 'WP_APPROVED', updated_at = now()
+		WHERE nobooking = $1
+	`, nobooking); err != nil {
+		log.Printf("[WP] approve update trackstatus warning: %v", err)
+	}
+
+	// Save WP signature reference into pat_6_sign.path_ttd_wp (best effort).
+	if h.ppatRepo != nil {
+		if err := h.ppatRepo.UpdateSignaturePath(ctx, nobooking, wpSignaturePath); err != nil {
+			log.Printf("[WP] approve update path_ttd_wp warning: %v", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		jsonError(w, http.StatusInternalServerError, "Gagal menyimpan persetujuan")
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Disetujui",
+		"status": "WP_APPROVED",
 	})
 }
 

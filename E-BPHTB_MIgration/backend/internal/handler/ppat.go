@@ -22,6 +22,7 @@ import (
 	"ebphtb/backend/internal/repository"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func randomUpperAlphaNum(n int) string {
@@ -121,9 +122,37 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	hasTable := func(name string) bool {
+		var ok bool
+		err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.tables
+				WHERE table_schema = 'public'
+				  AND table_name = $1
+			)
+		`, name).Scan(&ok)
+		return err == nil && ok
+	}
+	hasColumn := func(table, col string) bool {
+		var ok bool
+		err := tx.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema = 'public'
+				  AND table_name = $1
+				  AND column_name = $2
+			)
+		`, table, col).Scan(&ok)
+		return err == nil && ok
+	}
+
 	// Duplicate check by booking
 	var existing string
-	_ = tx.QueryRow(ctx, `SELECT nomor_validasi FROM public.pat_7_validasi_surat WHERE nobooking = $1 LIMIT 1`, in.Nobooking).Scan(&existing)
+	if hasTable("pat_7_validasi_surat") {
+		_ = tx.QueryRow(ctx, `SELECT nomor_validasi FROM public.pat_7_validasi_surat WHERE nobooking = $1 LIMIT 1`, in.Nobooking).Scan(&existing)
+	}
 	if strings.TrimSpace(existing) != "" {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -143,6 +172,10 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 	}
 
 	// Insert pat_7_validasi_surat
+	if !hasTable("pat_7_validasi_surat") {
+		ppatJSONError(w, http.StatusInternalServerError, "Tabel pat_7_validasi_surat belum tersedia")
+		return
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO public.pat_7_validasi_surat (nomor_validasi, nama_pemohon, alamat_pemohon, no_telepon, status, userid, nobooking)
 		VALUES ($1,$2,$3,$4,'unused',$5,$6)
@@ -160,24 +193,63 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 			})
 			return
 		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"success":      true,
+				"is_duplicate": true,
+				"kode_validasi": nomorValidasi,
+				"nomor_validasi": nomorValidasi,
+				"status":       "unused",
+				"timestamp":    time.Now().Format(time.RFC3339),
+			})
+			return
+		}
 		ppatJSONError(w, http.StatusBadRequest, "Gagal menyimpan permohonan validasi")
 		return
 	}
 
 	// Upsert tambahan (pat_8_validasi_tambahan)
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO public.pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at)
-		VALUES ($1,$2,$3,$4,$5, now())
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  kampungop = EXCLUDED.kampungop,
-		  kelurahanop = EXCLUDED.kelurahanop,
-		  kecamatanopj = EXCLUDED.kecamatanopj,
-		  alamat_pemohon = EXCLUDED.alamat_pemohon,
-		  updated_at = now()
-	`, in.Nobooking, strings.TrimSpace(in.KampungOp), strings.TrimSpace(in.KelurahanOp), strings.TrimSpace(in.KecamatanOp), strings.TrimSpace(in.AlamatPemohon))
+	if hasTable("pat_8_validasi_tambahan") {
+		switch {
+		case hasColumn("pat_8_validasi_tambahan", "kecamatanopj"):
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO public.pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanopj, alamat_pemohon, updated_at)
+				VALUES ($1,$2,$3,$4,$5, now())
+				ON CONFLICT (nobooking) DO UPDATE SET
+				  kampungop = EXCLUDED.kampungop,
+				  kelurahanop = EXCLUDED.kelurahanop,
+				  kecamatanopj = EXCLUDED.kecamatanopj,
+				  alamat_pemohon = EXCLUDED.alamat_pemohon,
+				  updated_at = now()
+			`, in.Nobooking, strings.TrimSpace(in.KampungOp), strings.TrimSpace(in.KelurahanOp), strings.TrimSpace(in.KecamatanOp), strings.TrimSpace(in.AlamatPemohon)); err != nil {
+				log.Printf("[PPAT] CreatePermohonanValidasi pat_8 upsert warn: %v", err)
+			}
+		case hasColumn("pat_8_validasi_tambahan", "kecamatanop"):
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO public.pat_8_validasi_tambahan (nobooking, kampungop, kelurahanop, kecamatanop, alamat_pemohon, updated_at)
+				VALUES ($1,$2,$3,$4,$5, now())
+				ON CONFLICT (nobooking) DO UPDATE SET
+				  kampungop = EXCLUDED.kampungop,
+				  kelurahanop = EXCLUDED.kelurahanop,
+				  kecamatanop = EXCLUDED.kecamatanop,
+				  alamat_pemohon = EXCLUDED.alamat_pemohon,
+				  updated_at = now()
+			`, in.Nobooking, strings.TrimSpace(in.KampungOp), strings.TrimSpace(in.KelurahanOp), strings.TrimSpace(in.KecamatanOp), strings.TrimSpace(in.AlamatPemohon)); err != nil {
+				log.Printf("[PPAT] CreatePermohonanValidasi pat_8 upsert warn: %v", err)
+			}
+		default:
+			log.Printf("[PPAT] CreatePermohonanValidasi pat_8 skipped: kecamatan column not found")
+		}
+	}
 
 	// Update booking with nomor_validasi for easy join
-	_, _ = tx.Exec(ctx, `UPDATE public.pat_1_bookingsspd SET nomor_validasi = $1, updated_at = now() WHERE nobooking = $2`, nomorValidasi, in.Nobooking)
+	if hasColumn("pat_1_bookingsspd", "nomor_validasi") {
+		if _, err := tx.Exec(ctx, `UPDATE public.pat_1_bookingsspd SET nomor_validasi = $1, updated_at = now() WHERE nobooking = $2`, nomorValidasi, in.Nobooking); err != nil {
+			log.Printf("[PPAT] CreatePermohonanValidasi update nomor_validasi warn: %v", err)
+		}
+	}
 
 	if err := tx.Commit(ctx); err != nil {
 		ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan permohonan")
@@ -1249,6 +1321,11 @@ func (h *PpatHandler) GeneratePdfBadan(w http.ResponseWriter, r *http.Request) {
 		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
 		return
 	}
+	// Resolve WP signature path from API path (/api/profile-signature/{userid})
+	// into actual local file so PDF renderer can place it in signature box.
+	if data != nil {
+		data.PathTtdWp = h.resolveProfileSignatureFile(data.PathTtdWp)
+	}
 	w.Header().Set("Content-Type", "application/pdf")
 	disposition := "inline"
 	if r.URL.Query().Get("download") != "" {
@@ -1274,6 +1351,35 @@ func (h *PpatHandler) GeneratePdfBadan(w http.ResponseWriter, r *http.Request) {
 		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghasilkan dokumen PDF")
 		return
 	}
+}
+
+func (h *PpatHandler) resolveProfileSignatureFile(pathInDB string) string {
+	p := strings.TrimSpace(pathInDB)
+	if p == "" {
+		return ""
+	}
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	const prefix = "/api/profile-signature/"
+	if !strings.HasPrefix(p, prefix) {
+		return ""
+	}
+	userid := strings.TrimSpace(strings.TrimPrefix(p, prefix))
+	if userid == "" || h.cfg == nil {
+		return ""
+	}
+	dir := strings.TrimSpace(h.cfg.ProfileSignatureDir)
+	if dir == "" {
+		return ""
+	}
+	for _, ext := range []string{".png", ".jpg", ".jpeg", ".webp"} {
+		fpath := filepath.Join(dir, userid+ext)
+		if _, err := os.Stat(fpath); err == nil {
+			return fpath
+		}
+	}
+	return ""
 }
 
 // GeneratePdfMohonValidasi handles GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}.

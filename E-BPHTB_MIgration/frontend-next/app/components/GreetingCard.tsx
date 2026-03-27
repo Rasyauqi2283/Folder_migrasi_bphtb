@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import styles from "./GreetingCard.module.css";
+import QuotaCalendar from "./QuotaCalendar";
 
 export interface GreetingCardProps {
   /** Nama user untuk teks "Selamat Datang, {nama}" */
@@ -45,6 +46,9 @@ export default function GreetingCard({
 
   const svgSrc = isPerempuan ? SVG_PEREMPUAN : SVG_LAKI;
   const renderKey = `${nama}-${normalizedGender}-${pageLabel}`;
+  const [defaultCalendarDate, setDefaultCalendarDate] = useState<Date>(() => new Date());
+  const resolvedRightContent =
+    rightContent != null ? rightContent : <QuotaCalendar value={defaultCalendarDate} onChange={setDefaultCalendarDate} />;
 
   return (
     <section key={renderKey} className={styles.card}>
@@ -76,7 +80,7 @@ export default function GreetingCard({
           />
         </div>
       </div>
-      {rightContent != null ? <div className={styles.right}>{rightContent}</div> : null}
+      <div className={styles.right}>{resolvedRightContent}</div>
     </section>
   );
 }

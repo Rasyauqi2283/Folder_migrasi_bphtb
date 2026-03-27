@@ -160,7 +160,7 @@ export default function ProfilePage() {
   const showAlamatPu = divisi === "PPAT" || divisi === "PPATS" || divisi === "Notaris";
   const showPpatKhusus = divisi === "PPAT" || divisi === "PPATS" || divisi === "Notaris";
   const showParafValidasi = divisi === "Peneliti Validasi";
-  const showParafButton = ["Peneliti", "PPAT", "PPATS"].includes(divisi ?? "");
+  const showParafButton = ["Peneliti", "PPAT", "PPATS", "Wajib Pajak"].includes(divisi ?? "");
   const showPvLink = divisi === "Peneliti Validasi";
   const hideDivisiLabel = divisi === "PPAT" || divisi === "PPATS";
 
