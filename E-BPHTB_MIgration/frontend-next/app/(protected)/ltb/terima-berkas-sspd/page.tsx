@@ -187,7 +187,9 @@ export default function LTBTerimaBerkasSSPDPage() {
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
       <h1 style={{ margin: "0 0 8px", color: "var(--color_font_main)" }}>Terima Berkas SSPD</h1>
       <p style={{ margin: 0, color: "var(--color_font_muted)", marginBottom: 20 }}>
-        Permohonan validasi SSPD — daftar berkas dari PU (sinkron dengan data di LTB setelah PU mengirim berkas).
+        Permohonan validasi SSPD — daftar berkas dari PU (sinkron dengan data di LTB setelah PU mengirim berkas). Saat{" "}
+        <strong>Kirim ke Peneliti</strong>, sistem menugaskan otomatis ke Peneliti dengan beban &lt; 10 berkas aktif, atau
+        antrean UNASSIGNED jika kuota penuh.
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}>

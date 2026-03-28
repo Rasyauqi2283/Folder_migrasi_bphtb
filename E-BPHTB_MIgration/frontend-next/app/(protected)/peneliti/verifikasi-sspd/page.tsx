@@ -32,6 +32,14 @@ interface VerifikasiItem {
   akta_tanah_path?: string;
   sertifikat_tanah_path?: string;
   pelengkap_path?: string;
+  trackstatus?: string;
+  status?: string;
+  alamatwajibpajak?: string;
+  alamatpemilikobjekpajak?: string;
+  assigned_to?: string | null;
+  assignment_status?: string | null;
+  last_edited_by?: string | null;
+  peneliti_edited_fields?: Record<string, boolean> | string;
   [key: string]: unknown;
 }
 
@@ -156,6 +164,39 @@ export default function PenelitiVerifikasiSspdPage() {
     catatan_peneliti: string;
     persetujuanVerif: boolean;
   }>>({});
+
+  type BookingDraft = {
+    namawajibpajak: string;
+    alamatwajibpajak: string;
+    namapemilikobjekpajak: string;
+    alamatpemilikobjekpajak: string;
+    noppbb: string;
+  };
+  const [bookingDrafts, setBookingDrafts] = useState<Record<string, BookingDraft>>({});
+
+  const parseEditedFields = (r: VerifikasiItem): Record<string, boolean> => {
+    const raw = r.peneliti_edited_fields;
+    if (!raw) return {};
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw) as Record<string, boolean>;
+      } catch {
+        return {};
+      }
+    }
+    return raw as Record<string, boolean>;
+  };
+
+  const isBookingEditable = (r: VerifikasiItem) =>
+    String(r.trackstatus ?? "") === "Dilanjutkan" && String(r.status ?? "") === "Diajukan";
+
+  const needsClaim = (r: VerifikasiItem) => {
+    const a = String(r.assigned_to ?? "").trim();
+    return !a;
+  };
+
+  const canEditBooking = (r: VerifikasiItem) =>
+    isBookingEditable(r) && !needsClaim(r) && String(r.assigned_to ?? "").trim() === myUserid.trim();
 
   const rowKey = (r: VerifikasiItem) => `${String(r.nobooking ?? "")}::${String(r.no_registrasi ?? "")}`;
   const mergeIncremental = (existing: VerifikasiItem[], incoming: VerifikasiItem[]) => {
@@ -308,7 +349,7 @@ export default function PenelitiVerifikasiSspdPage() {
       alert("Pilih jenis kelengkapan/pemilihan terlebih dahulu.");
       return;
     }
-    if (f.pemilihan === "stpd_kurangbayar" && !f.catatan_peneliti.trim()) {
+    if (f.pemilihan === "KURANG_BAYAR" && !f.catatan_peneliti.trim()) {
       alert("Catatan Peneliti wajib diisi untuk STPD Kurang Bayar.");
       return;
     }
@@ -416,6 +457,98 @@ export default function PenelitiVerifikasiSspdPage() {
     }
   };
 
+  const claimAssignment = async (nobooking: string) => {
+    setActionLoading(nobooking);
+    try {
+      const res = await fetch(`${getApiBase()}/api/peneliti/claim-assignment`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nobooking }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal klaim penugasan");
+      await load();
+      alert("Penugasan berhasil diklaim.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal klaim");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const saveBookingPatch = async (nobooking: string) => {
+    const d = bookingDrafts[nobooking];
+    if (!d) return;
+    setActionLoading(nobooking);
+    try {
+      const res = await fetch(`${getApiBase()}/api/peneliti/update-booking-fields`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nobooking,
+          namawajibpajak: d.namawajibpajak,
+          alamatwajibpajak: d.alamatwajibpajak,
+          namapemilikobjekpajak: d.namapemilikobjekpajak,
+          alamatpemilikobjekpajak: d.alamatpemilikobjekpajak,
+          noppbb: d.noppbb,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((json as ApiResponse).message || "Gagal menyimpan koreksi");
+      await load();
+      alert("Koreksi data tersimpan.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Gagal simpan");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const pemilihanToCanonical = (raw: string) => {
+    const u = String(raw ?? "").trim().toLowerCase();
+    if (u === "penghitung_wajib_pajak") return "SESUAI";
+    if (u === "stpd_kurangbayar") return "KURANG_BAYAR";
+    if (u === "dihitungsendiri") return "DIHITUNG_SENDIRI";
+    if (u === "lainnyapenghitungwp") return "LAINNYA";
+    return String(raw ?? "").trim();
+  };
+
+  useEffect(() => {
+    if (!expandedBooking) return;
+    const r = data.find((x) => x.nobooking === expandedBooking);
+    if (!r) return;
+    const nb = String(r.nobooking ?? "");
+    setBookingDrafts((prev) => ({
+      ...prev,
+      [nb]: {
+        namawajibpajak: String(r.namawajibpajak ?? ""),
+        alamatwajibpajak: String(r.alamatwajibpajak ?? ""),
+        namapemilikobjekpajak: String(r.namapemilikobjekpajak ?? ""),
+        alamatpemilikobjekpajak: String(r.alamatpemilikobjekpajak ?? ""),
+        noppbb: String(r.noppbb ?? ""),
+      },
+    }));
+    setVerificationForms((prev) => {
+      if (prev[nb]?.pemilihan) return prev;
+      const pem = pemilihanToCanonical(String(r.pemilihan ?? ""));
+      return {
+        ...prev,
+        [nb]: {
+          pemilihan: pem,
+          nomorstpd: String(r.nomorstpd ?? ""),
+          tanggalstpd: String(r.tanggalstpd ?? ""),
+          angkapersen: String(r.angkapersen ?? ""),
+          keterangandihitungSendiri: String(r.keterangandihitungsendiri ?? ""),
+          isiketeranganlainnya: String(r.isiketeranganlainnya ?? ""),
+          catatan_peneliti: String((r as { catatan_peneliti?: string }).catatan_peneliti ?? ""),
+          persetujuanVerif: String(r.persetujuan ?? "").toLowerCase() === "true",
+        },
+      };
+    });
+  }, [expandedBooking, data]);
+
   const reject = async (nobooking: string) => {
     const confirmReject = window.confirm("Apakah Anda yakin menolak dokumen ini?");
     if (!confirmReject) return;
@@ -505,6 +638,23 @@ export default function PenelitiVerifikasiSspdPage() {
         </div>
       </div>
 
+      <div
+        style={{
+          marginBottom: 16,
+          padding: "12px 14px",
+          borderRadius: 10,
+          border: "1px solid rgba(37, 99, 235, 0.45)",
+          background: "rgba(37, 99, 235, 0.08)",
+          color: "var(--color_font_main)",
+          fontSize: 13,
+          lineHeight: 1.55,
+        }}
+      >
+        <strong>Mode: Verifikasi &amp; Edit</strong> — Koreksi data booking (No. Booking tidak diubah) diizinkan hingga{" "}
+        <strong>Kirim ke Paraf</strong>. Setelah itu field mengikuti status read-only. Penugasan dari LTB memakai kuota{" "}
+        maks. 10 berkas aktif per Peneliti; baris <strong>UNASSIGNED</strong> dapat diklaim.
+      </div>
+
       <div style={tableScrollStyle}>
         <table style={tableStyle}>
           <thead>
@@ -515,25 +665,26 @@ export default function PenelitiVerifikasiSspdPage() {
               <th style={thStyle}>NOP PBB</th>
               <th style={thStyle}>Nama WP</th>
               <th style={thStyle}>Pembuat Booking</th>
+              <th style={thStyle}>Penugasan</th>
               <th style={thStyle}>Aksi</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
                   Memuat data...
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={7} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "#ef4444" }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "#ef4444" }}>
                   {error}
                 </td>
               </tr>
             ) : slice.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
+                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 40, color: "var(--color_font_muted)" }}>
                   Tidak ada data berkas dari LTB.
                 </td>
               </tr>
@@ -541,6 +692,7 @@ export default function PenelitiVerifikasiSspdPage() {
               slice.map((r, idx) => {
                 const lockedBy = String(r.locked_by_user_id ?? "");
                 const isLockedByOther = !!lockedBy && !!myUserid && lockedBy !== myUserid;
+                const unassigned = needsClaim(r);
                 return (
                 <Fragment key={r.nobooking ?? String(idx)}>
                   <tr
@@ -554,11 +706,20 @@ export default function PenelitiVerifikasiSspdPage() {
                     <td style={tdStyle}>{r.noppbb ?? "-"}</td>
                     <td style={tdStyle}>{r.namawajibpajak ?? "-"}</td>
                     <td style={tdStyle}>{r.creator_userid ?? r.userid ?? "-"}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontSize: 12 }}>
+                      {unassigned ? (
+                        <span style={{ padding: "4px 8px", borderRadius: 6, background: "#fef3c7", color: "#92400e", fontWeight: 700 }}>UNASSIGNED</span>
+                      ) : String(r.assigned_to ?? "").trim() === myUserid.trim() ? (
+                        <span style={{ padding: "4px 8px", borderRadius: 6, background: "#d1fae5", color: "#065f46", fontWeight: 700 }}>Saya</span>
+                      ) : (
+                        <span style={{ padding: "4px 8px", borderRadius: 6, background: "#e5e7eb", color: "#374151" }}>Peneliti lain</span>
+                      )}
+                    </td>
                     <td style={{ ...tdStyle, textAlign: "center" }}>
                       <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <button
                           type="button"
-                          disabled={!!actionLoading || isLockedByOther}
+                          disabled={!!actionLoading || isLockedByOther || unassigned}
                           onClick={(e) => {
                             e.stopPropagation();
                             sendToParaf(r.nobooking!);
@@ -586,8 +747,125 @@ export default function PenelitiVerifikasiSspdPage() {
                   </tr>
                   {expandedBooking === r.nobooking && (
                     <tr key={`${r.nobooking ?? idx}-detail`}>
-                      <td colSpan={7} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
+                      <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
                         <div style={{ display: "grid", gap: 10 }}>
+                          <div style={sectionCardStyle}>
+                            <strong style={{ display: "block", marginBottom: 8 }}>Penugasan &amp; koreksi data PU</strong>
+                            <p style={{ margin: "0 0 10px", color: "var(--color_font_muted)", fontSize: 13 }}>
+                              {needsClaim(r) ? (
+                                <>
+                                  Baris ini belum ditugaskan ke peneliti tertentu. Klaim untuk mengunci kuota Anda dan mengedit data.
+                                </>
+                              ) : (
+                                <>
+                                  Ditugaskan ke: <strong>{String(r.assigned_to ?? "—")}</strong>
+                                  {r.last_edited_by ? (
+                                    <> — terakhir koreksi: <strong>{r.last_edited_by}</strong></>
+                                  ) : null}
+                                </>
+                              )}
+                            </p>
+                            {needsClaim(r) && (
+                              <button
+                                type="button"
+                                disabled={!!actionLoading}
+                                onClick={() => claimAssignment(String(r.nobooking ?? ""))}
+                                style={{
+                                  padding: "8px 14px",
+                                  borderRadius: 8,
+                                  border: "none",
+                                  background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                                  color: "white",
+                                  fontWeight: 600,
+                                  cursor: actionLoading ? "not-allowed" : "pointer",
+                                  marginBottom: 10,
+                                }}
+                              >
+                                Klaim penugasan
+                              </button>
+                            )}
+                            {canEditBooking(r) && (
+                              <div style={{ display: "grid", gap: 8, maxWidth: 720 }}>
+                                {(() => {
+                                  const ef = parseEditedFields(r);
+                                  const efStyle = (k: string) =>
+                                    ef[k]
+                                      ? { ...inputReadableStyle, border: "2px solid #f59e0b", boxShadow: "0 0 0 1px rgba(245,158,11,0.35)" }
+                                      : inputReadableStyle;
+                                  const d = bookingDrafts[String(r.nobooking)] ?? {
+                                    namawajibpajak: String(r.namawajibpajak ?? ""),
+                                    alamatwajibpajak: String(r.alamatwajibpajak ?? ""),
+                                    namapemilikobjekpajak: String(r.namapemilikobjekpajak ?? ""),
+                                    alamatpemilikobjekpajak: String(r.alamatpemilikobjekpajak ?? ""),
+                                    noppbb: String(r.noppbb ?? ""),
+                                  };
+                                  const patch = (k: keyof BookingDraft, v: string) => {
+                                    const nb = String(r.nobooking ?? "");
+                                    setBookingDrafts((prev) => ({
+                                      ...prev,
+                                      [nb]: { ...d, [k]: v },
+                                    }));
+                                  };
+                                  return (
+                                    <>
+                                      <label style={{ fontSize: 12, fontWeight: 700 }}>Nama WP (dari PU)</label>
+                                      <input
+                                        value={d.namawajibpajak}
+                                        onChange={(e) => patch("namawajibpajak", e.target.value)}
+                                        style={{ padding: "8px 10px", ...efStyle("namawajibpajak") }}
+                                      />
+                                      <label style={{ fontSize: 12, fontWeight: 700 }}>Alamat WP</label>
+                                      <input
+                                        value={d.alamatwajibpajak}
+                                        onChange={(e) => patch("alamatwajibpajak", e.target.value)}
+                                        style={{ padding: "8px 10px", ...efStyle("alamatwajibpajak") }}
+                                      />
+                                      <label style={{ fontSize: 12, fontWeight: 700 }}>Nama pemilik objek pajak</label>
+                                      <input
+                                        value={d.namapemilikobjekpajak}
+                                        onChange={(e) => patch("namapemilikobjekpajak", e.target.value)}
+                                        style={{ padding: "8px 10px", ...efStyle("namapemilikobjekpajak") }}
+                                      />
+                                      <label style={{ fontSize: 12, fontWeight: 700 }}>Alamat OP</label>
+                                      <input
+                                        value={d.alamatpemilikobjekpajak}
+                                        onChange={(e) => patch("alamatpemilikobjekpajak", e.target.value)}
+                                        style={{ padding: "8px 10px", ...efStyle("alamatpemilikobjekpajak") }}
+                                      />
+                                      <label style={{ fontSize: 12, fontWeight: 700 }}>NOP PBB</label>
+                                      <input
+                                        value={d.noppbb}
+                                        onChange={(e) => patch("noppbb", e.target.value)}
+                                        style={{ padding: "8px 10px", ...efStyle("noppbb") }}
+                                      />
+                                      <button
+                                        type="button"
+                                        disabled={!!actionLoading || !isBookingEditable(r)}
+                                        onClick={() => saveBookingPatch(String(r.nobooking ?? ""))}
+                                        style={{
+                                          padding: "8px 14px",
+                                          borderRadius: 8,
+                                          border: "none",
+                                          background: "linear-gradient(135deg, #10b981, #059669)",
+                                          color: "white",
+                                          fontWeight: 600,
+                                          cursor: actionLoading ? "not-allowed" : "pointer",
+                                          justifySelf: "start",
+                                        }}
+                                      >
+                                        Simpan koreksi data
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {!isBookingEditable(r) && (
+                              <p style={{ margin: 0, fontSize: 12, color: "#b45309" }}>
+                                Koreksi data dinonaktifkan (sudah lewat tahap Verifikasi &amp; Edit / sudah dikirim ke paraf).
+                              </p>
+                            )}
+                          </div>
                           <div style={sectionCardStyle}>
                             <strong style={{ display: "block", marginBottom: 8 }}>Aksi Dokumen</strong>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -667,8 +945,8 @@ export default function PenelitiVerifikasiSspdPage() {
                                   patchForm(r.nobooking || "", {
                                     pemilihan: v,
                                     // STPD kurang bayar: nomor/tanggal di-generate backend (kita kosongkan agar tidak membingungkan)
-                                    nomorstpd: v === "stpd_kurangbayar" ? "" : (verificationForms[r.nobooking || ""]?.nomorstpd || ""),
-                                    tanggalstpd: v === "stpd_kurangbayar" ? "" : (verificationForms[r.nobooking || ""]?.tanggalstpd || ""),
+                                    nomorstpd: v === "KURANG_BAYAR" ? "" : (verificationForms[r.nobooking || ""]?.nomorstpd || ""),
+                                    tanggalstpd: v === "KURANG_BAYAR" ? "" : (verificationForms[r.nobooking || ""]?.tanggalstpd || ""),
                                   });
                                 }}
                                 style={{ padding: "8px 10px", ...inputReadableStyle, minWidth: 260 }}

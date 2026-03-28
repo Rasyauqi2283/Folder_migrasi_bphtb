@@ -401,14 +401,14 @@ func main() {
 	var parafRepo *repository.ParafRepo
 	if pool != nil {
 		bankRepo = repository.NewBankRepo(pool)
-		ltbRepo = repository.NewLtbRepo(pool)
 		penelitiRepo = repository.NewPenelitiRepo(pool)
+		ltbRepo = repository.NewLtbRepo(pool, penelitiRepo)
 		lsbRepo = repository.NewLSBRepo(pool)
 		parafRepo = repository.NewParafRepo(pool)
 	} else {
 		bankRepo = repository.NewBankRepo(nil)
-		ltbRepo = repository.NewLtbRepo(nil)
 		penelitiRepo = repository.NewPenelitiRepo(nil)
+		ltbRepo = repository.NewLtbRepo(nil, nil)
 		lsbRepo = repository.NewLSBRepo(nil)
 		parafRepo = repository.NewParafRepo(nil)
 	}
@@ -425,6 +425,8 @@ func main() {
 
 	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
 	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)
+	mux.HandleFunc("POST /api/peneliti/claim-assignment", penelitiHandler.ClaimUnassigned)
+	mux.HandleFunc("POST /api/peneliti/update-booking-fields", penelitiHandler.UpdateBookingFields)
 	mux.HandleFunc("GET /api/peneliti/get-berkas-till-verif", penelitiHandler.GetBerkasTillVerif)
 	mux.HandleFunc("POST /api/peneliti_update-berdasarkan-pemilihan", penelitiHandler.UpdateBerdasarkanPemilihan)
 	mux.HandleFunc("POST /api/peneliti/lock-document", penelitiHandler.LockDocument)

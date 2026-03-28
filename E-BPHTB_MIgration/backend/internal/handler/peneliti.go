@@ -192,6 +192,61 @@ func (h *PenelitiHandler) UpdateBerdasarkanPemilihan(w http.ResponseWriter, r *h
 	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Data verifikasi berhasil disimpan"})
 }
 
+// ClaimUnassigned handles POST /api/peneliti/claim-assignment.
+func (h *PenelitiHandler) ClaimUnassigned(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	var body struct {
+		Nobooking string `json:"nobooking"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if strings.TrimSpace(body.Nobooking) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	if err := h.repo.ClaimUnassigned(r.Context(), strings.TrimSpace(body.Nobooking), userid); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Penugasan berhasil diklaim"})
+}
+
+// UpdateBookingFields handles POST /api/peneliti/update-booking-fields.
+func (h *PenelitiHandler) UpdateBookingFields(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		penelitiJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requirePeneliti(r)
+	if !ok {
+		penelitiJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Akses ditolak"})
+		return
+	}
+	var body repository.PenelitiBookingPatch
+	var raw struct {
+		Nobooking string `json:"nobooking"`
+		repository.PenelitiBookingPatch
+	}
+	_ = json.NewDecoder(r.Body).Decode(&raw)
+	if strings.TrimSpace(raw.Nobooking) == "" {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	body = raw.PenelitiBookingPatch
+	if err := h.repo.UpdateBookingFieldsPeneliti(r.Context(), userid, strings.TrimSpace(raw.Nobooking), body); err != nil {
+		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	penelitiJSON(w, http.StatusOK, map[string]interface{}{"success": true, "message": "Koreksi data tersimpan"})
+}
+
 // LockDocument handles POST /api/peneliti/lock-document.
 func (h *PenelitiHandler) LockDocument(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -286,7 +341,7 @@ func (h *PenelitiHandler) RejectWithReason(w http.ResponseWriter, r *http.Reques
 		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking dan alasan wajib"})
 		return
 	}
-	info, err := h.repo.RejectWithReason(r.Context(), strings.TrimSpace(body.Nobooking), reason)
+	info, err := h.repo.RejectWithReason(r.Context(), strings.TrimSpace(body.Nobooking), reason, userid)
 	if err != nil {
 		penelitiJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
 		return

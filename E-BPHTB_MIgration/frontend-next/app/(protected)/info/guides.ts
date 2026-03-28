@@ -201,16 +201,20 @@ Peneliti adalah peran yang melakukan **verifikasi substantif** atas berkas yang 
 ### Menu Utama yang Tersedia
 - **Antrian Verifikasi**
   - Melihat daftar berkas dari LTB.
-  - Fitur **Lock Document** agar satu berkas tidak dikerjakan bersamaan oleh dua peneliti.
+  - **Penugasan otomatis (LTB → Peneliti):** setiap berkas ditugaskan ke satu Peneliti dengan aturan **kuota maks. 10 berkas aktif** (status Diajukan / Dilanjutkan) per akun. Jika semua Peneliti penuh, berkas masuk antrean **UNASSIGNED** hingga ada slot — Peneliti dapat **Klaim penugasan** dari antrean tersebut.
+  - Fitur **Lock Document** agar satu berkas tidak dikerjakan bersamaan oleh dua peneliti (hanya Peneliti yang ditugaskan).
+- **Mode Verifikasi & Edit**
+  - Koreksi **data booking** (nama/alamat WP & OP, NOP, dll.; **No. Booking tidak diubah**) langsung di layar verifikasi selama masih tahap **Diajukan / Dilanjutkan** dan **belum Kirim ke Paraf**. Field yang pernah dikoreksi ditandai (border) dan sistem mencatat **last_edited_by** untuk audit.
 - **Card Verifikasi Kelengkapan**
   - Pilih hasil verifikasi (Sesuai / STPD Kurang Bayar / dll) dan simpan.
 - **STPD Kurang Bayar**
   - Saat memilih STPD kurang bayar, sistem membuat **kode STPD sementara** dan memberi status **PENDING_CORRECTION** untuk PU.
 - **Kirim ke Paraf**
-  - Jika sudah sesuai dan disetujui, kirim ke tahap paraf berikutnya.
+  - Jika sudah sesuai dan disetujui, kirim ke tahap paraf berikutnya. Setelah itu, data booking mengikuti **read-only** pada tahap ini.
 
 ### Tanggung Jawab Utama
 - Menjaga integritas verifikasi dan mencatat keputusan dengan jelas.
+- Hanya memproses berkas yang menjadi **penugasan Anda** (bukan Peneliti lain), kecuali baris **UNASSIGNED** yang wajib diklaim dulu.
 - Mengunci dokumen sebelum memproses dan melepas lock saat selesai.
 - Memberikan catatan koreksi yang spesifik untuk PU saat kurang bayar.
 

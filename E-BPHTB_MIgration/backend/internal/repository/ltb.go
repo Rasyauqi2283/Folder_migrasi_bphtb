@@ -12,12 +12,13 @@ import (
 
 // LtbRepo handles ltb_1_terima_berkas_sspd for LTB role.
 type LtbRepo struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	peneliti *PenelitiRepo
 }
 
-// NewLtbRepo creates an LtbRepo.
-func NewLtbRepo(pool *pgxpool.Pool) *LtbRepo {
-	return &LtbRepo{pool: pool}
+// NewLtbRepo creates an LtbRepo. peneliti may be nil (assignment skipped).
+func NewLtbRepo(pool *pgxpool.Pool, peneliti *PenelitiRepo) *LtbRepo {
+	return &LtbRepo{pool: pool, peneliti: peneliti}
 }
 
 // LtbTerimaBerkasRow is one row for GET /api/ltb/terima-berkas-sspd.
@@ -262,6 +263,11 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 	`, nobooking, ltbUserid)
 	if err != nil {
 		return err
+	}
+	if r.peneliti != nil {
+		if err := r.peneliti.AssignTaskToPenelitiTx(ctx, tx, nobooking); err != nil {
+			return err
+		}
 	}
 	return tx.Commit(ctx)
 }

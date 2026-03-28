@@ -3,11 +3,13 @@ package repository
 import (
 	"crypto/rand"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -55,6 +57,12 @@ type PenelitiBerkasFromLtbRow struct {
 	VerifiedAt       *string `json:"verified_at"`
 	VerifiedBy       *string `json:"verified_by"`
 	VerifiedByNama   *string `json:"verified_by_nama"`
+	Alamatwajibpajak *string `json:"alamatwajibpajak"`
+	Alamatpemilikobjekpajak *string `json:"alamatpemilikobjekpajak"`
+	AssignedTo       *string `json:"assigned_to"`
+	AssignmentStatus *string `json:"assignment_status"`
+	LastEditedBy     *string `json:"last_edited_by"`
+	PenelitiEditedFields json.RawMessage `json:"peneliti_edited_fields,omitempty"`
 }
 
 type RejectionEmailInfo struct {
@@ -104,6 +112,245 @@ func suffixFromUser(userid string) string {
 	return out.String()
 }
 
+// MaxPenelitiActiveTasks is the per-Peneliti cap for active Diajukan/Dilanjutkan assignments.
+const MaxPenelitiActiveTasks = 10
+
+// AssignTaskToPenelitiTx sets assigned_to (least-loaded Peneliti with load < 10) or UNASSIGNED.
+// Must run in the same transaction as LTB insert/update p_1_verifikasi.
+func (r *PenelitiRepo) AssignTaskToPenelitiTx(ctx context.Context, tx pgx.Tx, nobooking string) error {
+	if r.pool == nil || tx == nil {
+		return nil
+	}
+	ids, err := r.listPenelitiUserIDsTx(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		_, err = tx.Exec(ctx, `
+			UPDATE p_1_verifikasi
+			SET assigned_to = NULL, assignment_status = 'UNASSIGNED'
+			WHERE nobooking = $1
+		`, nobooking)
+		return err
+	}
+	type load struct {
+		id    string
+		count int
+	}
+	var loads []load
+	for _, uid := range ids {
+		var n int
+		err := tx.QueryRow(ctx, `
+			SELECT COUNT(*)::int FROM p_1_verifikasi
+			WHERE assigned_to = $1 AND status = 'Diajukan' AND trackstatus = 'Dilanjutkan' AND nobooking <> $2
+		`, uid, nobooking).Scan(&n)
+		if err != nil {
+			return err
+		}
+		loads = append(loads, load{id: uid, count: n})
+	}
+	best := ""
+	bestC := 1 << 30
+	for _, L := range loads {
+		if L.count < bestC && L.count < MaxPenelitiActiveTasks {
+			bestC = L.count
+			best = L.id
+		}
+	}
+	if best == "" {
+		_, err = tx.Exec(ctx, `
+			UPDATE p_1_verifikasi
+			SET assigned_to = NULL, assignment_status = 'UNASSIGNED'
+			WHERE nobooking = $1
+		`, nobooking)
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE p_1_verifikasi
+		SET assigned_to = $1, assignment_status = 'ASSIGNED'
+		WHERE nobooking = $2
+	`, best, nobooking)
+	return err
+}
+
+func (r *PenelitiRepo) listPenelitiUserIDsTx(ctx context.Context, tx pgx.Tx) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT userid FROM a_2_verified_users
+		WHERE LOWER(TRIM(COALESCE(divisi,''))) = 'peneliti' AND verifiedstatus = 'complete'
+		ORDER BY userid ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var u string
+		if err := rows.Scan(&u); err != nil {
+			continue
+		}
+		if strings.TrimSpace(u) != "" {
+			ids = append(ids, strings.TrimSpace(u))
+		}
+	}
+	return ids, rows.Err()
+}
+
+// ClaimUnassigned assigns nobooking to peneliti if UNASSIGNED and slot available.
+func (r *PenelitiRepo) ClaimUnassigned(ctx context.Context, nobooking, penelitiUserid string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var ast, asg *string
+	err = tx.QueryRow(ctx, `
+		SELECT assignment_status, assigned_to FROM p_1_verifikasi WHERE nobooking = $1 FOR UPDATE
+	`, nobooking).Scan(&ast, &asg)
+	if err != nil {
+		return err
+	}
+	asgTrim := ""
+	if asg != nil {
+		asgTrim = strings.TrimSpace(*asg)
+	}
+	if asgTrim != "" {
+		if !strings.EqualFold(asgTrim, penelitiUserid) {
+			return fmt.Errorf("tugas sudah ditugaskan ke peneliti lain")
+		}
+		return tx.Commit(ctx)
+	}
+	astTrim := ""
+	if ast != nil {
+		astTrim = strings.TrimSpace(*ast)
+	}
+	claimable := astTrim == "" || strings.EqualFold(astTrim, "UNASSIGNED")
+	if !claimable && !strings.EqualFold(astTrim, "ASSIGNED") {
+		return fmt.Errorf("status penugasan tidak dapat diklaim")
+	}
+	var n int
+	err = tx.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM p_1_verifikasi
+		WHERE assigned_to = $1 AND status = 'Diajukan' AND trackstatus = 'Dilanjutkan' AND nobooking <> $2
+	`, penelitiUserid, nobooking).Scan(&n)
+	if err != nil {
+		return err
+	}
+	if n >= MaxPenelitiActiveTasks {
+		return fmt.Errorf("kuota penugasan aktif sudah penuh (maks %d berkas)", MaxPenelitiActiveTasks)
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE p_1_verifikasi SET assigned_to = $1, assignment_status = 'ASSIGNED' WHERE nobooking = $2
+	`, penelitiUserid, nobooking)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// PenelitiBookingPatch optional fields to correct on pat_1_bookingsspd (mirrored to p_1_verifikasi names).
+type PenelitiBookingPatch struct {
+	Namawajibpajak          *string `json:"namawajibpajak"`
+	Alamatwajibpajak        *string `json:"alamatwajibpajak"`
+	Namapemilikobjekpajak   *string `json:"namapemilikobjekpajak"`
+	Alamatpemilikobjekpajak *string `json:"alamatpemilikobjekpajak"`
+	Noppbb                  *string `json:"noppbb"`
+	Kabupatenkotawp         *string `json:"kabupatenkotawp"`
+	Kecamatanwp             *string `json:"kecamatanwp"`
+	Kelurahandesawp         *string `json:"kelurahandesawp"`
+	Kabupatenkotaop         *string `json:"kabupatenkotaop"`
+	Kecamatanop             *string `json:"kecamatanop"`
+	Kelurahandesaop         *string `json:"kelurahandesaop"`
+}
+
+// UpdateBookingFieldsPeneliti updates pat + p_1 mirror + audit; only assigned peneliti, only while Diajukan/Dilanjutkan.
+func (r *PenelitiRepo) UpdateBookingFieldsPeneliti(ctx context.Context, penelitiUserid string, nobooking string, patch PenelitiBookingPatch) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	var ast, asg *string
+	var ts, st string
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE(p.assignment_status,''), p.assigned_to, COALESCE(p.trackstatus,''), COALESCE(p.status,'')
+		FROM p_1_verifikasi p WHERE p.nobooking = $1 FOR UPDATE
+	`, nobooking).Scan(&ast, &asg, &ts, &st)
+	if err != nil {
+		return err
+	}
+	if ts != "Dilanjutkan" || st != "Diajukan" {
+		return fmt.Errorf("data tidak dapat diedit pada tahap ini")
+	}
+	if asg == nil || strings.TrimSpace(*asg) == "" {
+		return fmt.Errorf("ambil penugasan terlebih dahulu (klaim dari antrean UNASSIGNED)")
+	}
+	if strings.TrimSpace(*asg) != strings.TrimSpace(penelitiUserid) {
+		return fmt.Errorf("akses ditolak: bukan penugasan Anda")
+	}
+	edited := map[string]bool{}
+	set := func(key string, v *string) {
+		if v != nil {
+			edited[key] = true
+		}
+	}
+	set("namawajibpajak", patch.Namawajibpajak)
+	set("alamatwajibpajak", patch.Alamatwajibpajak)
+	set("namapemilikobjekpajak", patch.Namapemilikobjekpajak)
+	set("alamatpemilikobjekpajak", patch.Alamatpemilikobjekpajak)
+	set("noppbb", patch.Noppbb)
+	set("kabupatenkotawp", patch.Kabupatenkotawp)
+	set("kecamatanwp", patch.Kecamatanwp)
+	set("kelurahandesawp", patch.Kelurahandesawp)
+	set("kabupatenkotaop", patch.Kabupatenkotaop)
+	set("kecamatanop", patch.Kecamatanop)
+	set("kelurahandesaop", patch.Kelurahandesaop)
+	if len(edited) == 0 {
+		return fmt.Errorf("tidak ada field yang diubah")
+	}
+	mergedJSON, _ := json.Marshal(edited)
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd b SET
+			namawajibpajak = COALESCE($2, namawajibpajak),
+			alamatwajibpajak = COALESCE($3, alamatwajibpajak),
+			namapemilikobjekpajak = COALESCE($4, namapemilikobjekpajak),
+			alamatpemilikobjekpajak = COALESCE($5, alamatpemilikobjekpajak),
+			noppbb = COALESCE($6, noppbb),
+			kabupatenkotawp = COALESCE($7, kabupatenkotawp),
+			kecamatanwp = COALESCE($8, kecamatanwp),
+			kelurahandesawp = COALESCE($9, kelurahandesawp),
+			kabupatenkotaop = COALESCE($10, kabupatenkotaop),
+			kecamatanop = COALESCE($11, kecamatanop),
+			kelurahandesaop = COALESCE($12, kelurahandesaop),
+			updated_at = NOW()
+		WHERE b.nobooking = $1
+	`, nobooking, patch.Namawajibpajak, patch.Alamatwajibpajak, patch.Namapemilikobjekpajak, patch.Alamatpemilikobjekpajak,
+		patch.Noppbb, patch.Kabupatenkotawp, patch.Kecamatanwp, patch.Kelurahandesawp,
+		patch.Kabupatenkotaop, patch.Kecamatanop, patch.Kelurahandesaop)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE p_1_verifikasi SET
+			namawajibpajak = COALESCE($2, namawajibpajak),
+			namapemilikobjekpajak = COALESCE($3, namapemilikobjekpajak),
+			last_edited_by = $4,
+			last_edited_at = NOW(),
+			peneliti_edited_fields = COALESCE(peneliti_edited_fields, '{}'::jsonb) || $5::jsonb
+		WHERE nobooking = $1
+	`, nobooking, patch.Namawajibpajak, patch.Namapemilikobjekpajak, penelitiUserid, string(mergedJSON))
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 // GetBerkasFromLtb returns data for Peneliti "berkas dari LTB" (p_1_verifikasi + pat + bank + ltb gates).
 func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid string) ([]PenelitiBerkasFromLtbRow, error) {
 	if r.pool == nil {
@@ -126,7 +373,10 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			p.locked_by_user_id, p.locked_by_nama,
 			CASE WHEN p.locked_at IS NULL THEN NULL ELSE to_char((p.locked_at AT TIME ZONE 'Asia/Jakarta'), 'YYYY-MM-DD HH24:MI:SS') || ' WIB' END AS locked_at_wib,
 			CASE WHEN p.verified_at IS NULL THEN NULL ELSE to_char((p.verified_at AT TIME ZONE 'Asia/Jakarta'), 'YYYY-MM-DD HH24:MI:SS') || ' WIB' END AS verified_at_wib,
-			p.verified_by, p.verified_by_nama
+			p.verified_by, p.verified_by_nama,
+			b.alamatwajibpajak, b.alamatpemilikobjekpajak,
+			p.assigned_to, p.assignment_status, p.last_edited_by,
+			COALESCE(p.peneliti_edited_fields::text, '{}')::text
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -143,6 +393,11 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 		  AND COALESCE(ltb.status, 'Diajukan') IN ('Diajukan','Dilanjutkan','Diterima')
 		  AND COALESCE(bk.status_verifikasi, 'Pending') = 'Disetujui'
 		  AND COALESCE(bk.status_dibank, 'Dicheck') = 'Tercheck'
+		  AND (
+			p.assigned_to = $1
+			OR (p.assigned_to IS NULL AND COALESCE(p.assignment_status,'') = 'UNASSIGNED')
+			OR (p.assigned_to IS NULL AND p.assignment_status IS NULL)
+		  )
 		ORDER BY p.no_registrasi ASC
 		LIMIT 1000
 	`
@@ -154,13 +409,18 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 	var out []PenelitiBerkasFromLtbRow
 	for rows.Next() {
 		var row PenelitiBerkasFromLtbRow
+		var editedJSON string
 		if err := rows.Scan(&row.NoRegistrasi, &row.Nobooking, &row.Trackstatus, &row.Status,
 			&row.Noppbb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.AktaTanahPath, &row.SertifikatTanahPath, &row.PelengkapPath,
 			&row.Userid, &row.PenelitiTandaTanganPath, &row.CreatorUserid, &row.TandaParafPath, &row.SignerUserid, &row.Pemverifikasi, &row.PemverifikasiNama, &row.Pemparaf, &row.PemparafNama,
 			&row.Pemilihan, &row.NomorStpd, &row.TanggalStpd, &row.AngkaPersen, &row.KeteranganSendiri, &row.KeteranganLainnya, &row.Persetujuan,
-			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt, &row.VerifiedAt, &row.VerifiedBy, &row.VerifiedByNama); err != nil {
+			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt, &row.VerifiedAt, &row.VerifiedBy, &row.VerifiedByNama,
+			&row.Alamatwajibpajak, &row.Alamatpemilikobjekpajak,
+			&row.AssignedTo, &row.AssignmentStatus, &row.LastEditedBy,
+			&editedJSON); err != nil {
 			continue
 		}
+		row.PenelitiEditedFields = json.RawMessage(editedJSON)
 		out = append(out, row)
 	}
 	return out, nil
@@ -170,10 +430,16 @@ func (r *PenelitiRepo) LockDocument(ctx context.Context, nobooking, userid, nama
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
-	var currentLock *string
-	err := r.pool.QueryRow(ctx, `SELECT locked_by_user_id FROM p_1_verifikasi WHERE nobooking = $1`, nobooking).Scan(&currentLock)
+	var currentLock, assignedTo *string
+	err := r.pool.QueryRow(ctx, `SELECT locked_by_user_id, assigned_to FROM p_1_verifikasi WHERE nobooking = $1`, nobooking).Scan(&currentLock, &assignedTo)
 	if err != nil {
 		return err
+	}
+	if assignedTo == nil || strings.TrimSpace(*assignedTo) == "" {
+		return fmt.Errorf("klaim penugasan terlebih dahulu (baris UNASSIGNED)")
+	}
+	if strings.TrimSpace(*assignedTo) != strings.TrimSpace(userid) {
+		return fmt.Errorf("dokumen ditugaskan ke peneliti lain")
 	}
 	if currentLock != nil && strings.TrimSpace(*currentLock) != "" && strings.TrimSpace(*currentLock) != strings.TrimSpace(userid) {
 		return fmt.Errorf("dokumen sedang diperiksa oleh user lain")
@@ -313,6 +579,7 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 			correction_updated_at = CASE WHEN $15 = 'PENDING_CORRECTION' THEN $12 ELSE correction_updated_at END
 		WHERE nobooking = $11
 		  AND (COALESCE(locked_by_user_id, '') = '' OR locked_by_user_id = $8)
+		  AND assigned_to = $8
 	`, in.Pemilihan, in.NomorSTPD, in.TanggalSTPD, in.AngkaPersen, in.KeteranganDihitungSendiri, in.IsiKeteranganLainnya, persetujuanText, penelitiUserid, ttdPath, ttdMime, in.Nobooking, jakartaNow(), penelitiNama, stpdCode, state, in.CatatanPeneliti)
 	if err != nil {
 		return err
@@ -333,12 +600,12 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	}
 	defer tx.Rollback(ctx)
 
-	var pemilihan, persetujuan, lockedBy *string
+	var pemilihan, persetujuan, lockedBy, assignedTo *string
 	var noReg *string
 	var creatorUserid, namaWP, namaOP, pengirimLTB string
 	err = tx.QueryRow(ctx, `
 		SELECT
-			p.pemilihan, p.persetujuan, p.no_registrasi, p.locked_by_user_id,
+			p.pemilihan, p.persetujuan, p.no_registrasi, p.locked_by_user_id, p.assigned_to,
 			COALESCE(b.userid, ''),
 			COALESCE(p.namawajibpajak, ''),
 			COALESCE(p.namapemilikobjekpajak, ''),
@@ -347,7 +614,7 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 		LEFT JOIN pat_1_bookingsspd b ON b.nobooking = p.nobooking
 		WHERE p.nobooking = $1
 		FOR UPDATE OF p
-	`, nobooking).Scan(&pemilihan, &persetujuan, &noReg, &lockedBy, &creatorUserid, &namaWP, &namaOP, &pengirimLTB)
+	`, nobooking).Scan(&pemilihan, &persetujuan, &noReg, &lockedBy, &assignedTo, &creatorUserid, &namaWP, &namaOP, &pengirimLTB)
 	if err != nil {
 		return err
 	}
@@ -359,6 +626,12 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	}
 	if lockedBy != nil && strings.TrimSpace(*lockedBy) != "" && strings.TrimSpace(*lockedBy) != strings.TrimSpace(penelitiUserid) {
 		return fmt.Errorf("dokumen ini dikunci oleh peneliti lain")
+	}
+	if assignedTo == nil || strings.TrimSpace(*assignedTo) == "" {
+		return fmt.Errorf("klaim penugasan terlebih dahulu")
+	}
+	if strings.TrimSpace(*assignedTo) != strings.TrimSpace(penelitiUserid) {
+		return fmt.Errorf("dokumen ditugaskan ke peneliti lain")
 	}
 
 	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET trackstatus='Diverifikasi', status='Dikerjakan', locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1`, nobooking); err != nil {
@@ -388,7 +661,7 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	return tx.Commit(ctx)
 }
 
-func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason string) (*RejectionEmailInfo, error) {
+func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason, penelitiUserid string) (*RejectionEmailInfo, error) {
 	if r.pool == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
@@ -405,10 +678,11 @@ func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason s
 		LEFT JOIN a_2_verified_users u ON u.userid = b.userid
 		LEFT JOIN a_2_verified_users c ON c.userid = p.nama_pengirim
 		WHERE p.nobooking = $1
-	`, nobooking).Scan(&info.Nobooking, &info.ToEmail, &info.ToName, &info.CreatorName); err != nil {
+		  AND (COALESCE(p.assigned_to,'') = '' OR p.assigned_to = $2)
+	`, nobooking, penelitiUserid).Scan(&info.Nobooking, &info.ToEmail, &info.ToName, &info.CreatorName); err != nil {
 		return nil, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya), locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1`, nobooking, reason); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE p_1_verifikasi SET status='Ditolak', trackstatus='Ditolak', isiketeranganlainnya = COALESCE($2, isiketeranganlainnya), locked_by_user_id = NULL, locked_by_nama = NULL, locked_at = NULL WHERE nobooking = $1 AND (COALESCE(assigned_to,'') = '' OR assigned_to = $3)`, nobooking, reason, penelitiUserid); err != nil {
 		return nil, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE ltb_1_terima_berkas_sspd SET status='Ditolak', trackstatus='Ditolak', updated_at=$2 WHERE nobooking = $1`, nobooking, jakartaNow()); err != nil {
