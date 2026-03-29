@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     template: "%s | E-BPHTB",
   },
   description: "Layanan resmi Bea Perolehan Hak atas Tanah dan Bangunan Kabupaten Bogor",
+  icons: {
+    icon: "/asset/TitleE-bphtb.png",
+    shortcut: "/asset/TitleE-bphtb.png",
+    apple: "/asset/TitleE-bphtb.png",
+  },
 };
 
 export default function RootLayout({

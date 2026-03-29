@@ -211,20 +211,6 @@ export default function AdminSidebar() {
           </Link>
         </div>
 
-        {/* Permohonan Validasi */}
-        <div style={{ padding: "2px", cursor: "pointer" }}>
-          <Link href="#" className={menuItemClasses(false)}>
-            {sidebarExpanded ? (
-              <>
-                <span className={styles.iconWrap} style={iconStyle}><FeatherIcon name="file-text" size={20} /></span>
-                <span style={textStyle}>Permohonan Validasi</span>
-              </>
-            ) : (
-              <span style={radioStyle(false)} />
-            )}
-          </Link>
-        </div>
-
         {/* Referensi User - Dropdown - icon 13 (hover trigger + backdrop + sliding SVG) */}
         <div
           style={{ padding: "2px", cursor: "pointer" }}

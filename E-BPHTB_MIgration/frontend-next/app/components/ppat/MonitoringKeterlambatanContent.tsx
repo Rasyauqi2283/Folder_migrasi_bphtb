@@ -17,6 +17,8 @@ const MONTHS = [
   { value: "10", label: "Oktober" }, { value: "11", label: "November" }, { value: "12", label: "Desember" },
 ];
 
+const DENDA_PER_HARI_TERLAMBAT = 1_000_000;
+
 type Row = {
   nama_pejabat?: string;
   nip?: string;
@@ -149,6 +151,11 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
     if (a === "terblokir") return { bg: "rgba(239,68,68,0.15)", fg: "#b91c1c" };
     if (a === "peringatan") return { bg: "rgba(234,179,8,0.2)", fg: "#a16207" };
     return { bg: "rgba(16,185,129,0.15)", fg: "#047857" };
+  };
+
+  const formatRupiah = (v: number) => {
+    const n = Number.isFinite(v) ? v : 0;
+    return `Rp ${Math.max(0, Math.trunc(n)).toLocaleString("id-ID")}`;
   };
 
   return (
@@ -316,6 +323,7 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
                 <th style={th}>Periode</th>
                 <th style={th}>Jatuh tempo</th>
                 <th style={th}>Hari terlambat</th>
+                <th style={th}>Denda</th>
                 <th style={th}>Status akun</th>
                 {isAdmin && <th style={th}>Aksi</th>}
                 <th style={th}>Rincian</th>
@@ -324,13 +332,13 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} style={{ padding: 40, textAlign: "center", color: "var(--color_font_muted)" }}>
+                  <td colSpan={isAdmin ? 10 : 9} style={{ padding: 40, textAlign: "center", color: "var(--color_font_muted)" }}>
                     Memuat…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} style={{ padding: 40, textAlign: "center", color: "var(--color_font_muted)" }}>
+                  <td colSpan={isAdmin ? 10 : 9} style={{ padding: 40, textAlign: "center", color: "var(--color_font_muted)" }}>
                     Tidak ada data.
                   </td>
                 </tr>
@@ -338,6 +346,8 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
                 rows.map((r, i) => {
                   const colors = badgeColor(r.status_akun);
                   const uid = r.userid ?? "";
+                  const hari = r.hari_terlambat ?? 0;
+                  const denda = Math.max(0, hari) * DENDA_PER_HARI_TERLAMBAT;
                   return (
                     <tr key={`${uid}-${i}`} style={{ borderBottom: "1px solid var(--border_color)" }}>
                       <td style={tdc}>{i + 1}</td>
@@ -345,7 +355,8 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
                       <td style={td}>{r.nip || uid || "—"}</td>
                       <td style={td}>{r.periode ?? "—"}</td>
                       <td style={td}>{r.jatuh_tempo ?? "—"}</td>
-                      <td style={tdc}>{r.hari_terlambat ?? 0}</td>
+                      <td style={tdc}>{hari}</td>
+                      <td style={td}>{formatRupiah(denda)}</td>
                       <td style={tdc}>
                         <span style={{ padding: "4px 10px", borderRadius: 8, fontSize: 12, fontWeight: 600, background: colors.bg, color: colors.fg }}>
                           {r.status_akun === "terblokir" ? "Terblokir" : r.status_akun === "peringatan" ? "Peringatan" : "Aktif"}
