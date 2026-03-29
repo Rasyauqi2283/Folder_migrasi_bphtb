@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { getApiBase } from "../../../../../lib/api";
+import BillingShareCard from "../../../../components/BillingShareCard";
 
 const LIMIT = 10;
 const JENIS_WP = "Badan Usaha";
@@ -44,8 +45,60 @@ type BookingDetail = {
   Alamatop?: string;
   keterangan?: string;
   bphtb_yangtelah_dibayar?: number;
+  trackstatus?: string;
+  payment_status?: string;
+  billing_id?: string;
+  is_calculation_completed?: boolean;
+  payment_amount_requested?: number;
   [key: string]: unknown;
 };
+
+type PostCalcForm = {
+  luas_tanah: string;
+  njop_tanah: string;
+  luas_bangunan: string;
+  njop_bangunan: string;
+  nilaiPerolehanObjekPajakTidakKenaPajak: string;
+  bphtb_yangtelah_dibayar: string;
+  tanggal_perolehan: string;
+  tanggal_pembayaran: string;
+};
+
+function toDateInputValue(v: unknown): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, "0");
+    const da = String(d.getDate()).padStart(2, "0");
+    return `${y}-${mo}-${da}`;
+  }
+  return "";
+}
+
+function paymentConfirmedFromDetail(d: BookingDetail | null | undefined): boolean {
+  const ps = String(d?.payment_status ?? "").trim().toUpperCase();
+  return ps === "PAID" || ps === "KURANG_BAYAR";
+}
+
+function detailFromPostCalcForm(d: BookingDetail | null | undefined): PostCalcForm {
+  const npoptkp = d?.nilaiPerolehanObjekPajakTidakKenaPajak;
+  const bp = d?.bphtb_yangtelah_dibayar;
+  return {
+    luas_tanah: d?.luas_tanah != null && d.luas_tanah !== "" ? String(d.luas_tanah) : "",
+    njop_tanah: d?.njop_tanah != null && d.njop_tanah !== "" ? String(d.njop_tanah) : "",
+    luas_bangunan: d?.luas_bangunan != null && d.luas_bangunan !== "" ? String(d.luas_bangunan) : "",
+    njop_bangunan: d?.njop_bangunan != null && d.njop_bangunan !== "" ? String(d.njop_bangunan) : "",
+    nilaiPerolehanObjekPajakTidakKenaPajak:
+      typeof npoptkp === "number" && !Number.isNaN(npoptkp) ? String(npoptkp) : typeof npoptkp === "string" ? npoptkp : "",
+    bphtb_yangtelah_dibayar: typeof bp === "number" && !Number.isNaN(bp) ? String(Math.round(bp)) : "",
+    tanggal_perolehan: toDateInputValue(d?.tanggal_perolehan),
+    tanggal_pembayaran: toDateInputValue(d?.tanggal_pembayaran),
+  };
+}
 
 const tableStyle: React.CSSProperties = {
   width: "100%",
@@ -122,6 +175,40 @@ export default function BookingSSPDBadanPage() {
   const [correctionFile, setCorrectionFile] = useState<File | null>(null);
   const [correctionBusy, setCorrectionBusy] = useState(false);
 
+  const [billingShare, setBillingShare] = useState<{ billingId: string; amount: number; expiresAtISO?: string } | null>(null);
+  const [postCalcOpen, setPostCalcOpen] = useState<string | null>(null);
+  const [postCalcForm, setPostCalcForm] = useState<PostCalcForm>({
+    luas_tanah: "",
+    njop_tanah: "",
+    luas_bangunan: "",
+    njop_bangunan: "",
+    nilaiPerolehanObjekPajakTidakKenaPajak: "",
+    bphtb_yangtelah_dibayar: "",
+    tanggal_perolehan: "",
+    tanggal_pembayaran: "",
+  });
+  const [billingBusyNb, setBillingBusyNb] = useState<string | null>(null);
+  const [calcSaveBusy, setCalcSaveBusy] = useState(false);
+  const [docConfirmOpen, setDocConfirmOpen] = useState(false);
+  const docConfirmActionRef = useRef<(() => void) | null>(null);
+
+  const requestDocConfirm = useCallback((action: () => void) => {
+    docConfirmActionRef.current = action;
+    setDocConfirmOpen(true);
+  }, []);
+
+  const cancelDocConfirm = useCallback(() => {
+    setDocConfirmOpen(false);
+    docConfirmActionRef.current = null;
+  }, []);
+
+  const runDocConfirmed = useCallback(() => {
+    setDocConfirmOpen(false);
+    const fn = docConfirmActionRef.current;
+    docConfirmActionRef.current = null;
+    fn?.();
+  }, []);
+
   const loadCorrections = useCallback(async () => {
     setCorrectionsLoading(true);
     setCorrectionsErr(null);
@@ -171,6 +258,16 @@ export default function BookingSSPDBadanPage() {
       });
   }, []);
 
+  useEffect(() => {
+    if (expandedRow) {
+      setCekBookingNobooking(expandedRow);
+      setPostCalcOpen((prev) => (prev && prev !== expandedRow ? null : prev));
+    } else {
+      setCekBookingDetail(null);
+      setPostCalcOpen(null);
+    }
+  }, [expandedRow, setCekBookingNobooking]);
+
   const loadTable = useCallback(async (p: number, q?: string) => {
     setLoading(true);
     setError(null);
@@ -208,6 +305,12 @@ export default function BookingSSPDBadanPage() {
   const status = (s: string) => (s || "").toLowerCase();
   const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
+  const canEditBookingData = (row: BookingRow) => {
+    const s = status(row.trackstatus);
+    return s === "draft" || s === "terbuat";
+  };
+  const canMintaBillingRow = (row: BookingRow, detail: BookingDetail | null) =>
+    canEditBookingData(row) && !paymentConfirmedFromDetail(detail);
   const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
   const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
 
@@ -337,9 +440,6 @@ export default function BookingSSPDBadanPage() {
   const handleKirimSekarang = async () => {
     const nb = modalNobooking;
     if (!nb) return;
-    if (!window.confirm("Ingin kirim sekarang? Tolong cek apakah sudah sesuai dan edit jika tidak benar.")) {
-      return;
-    }
     setKirimSubmitting(true);
     try {
       const day = new Date().getDay();
@@ -390,14 +490,6 @@ export default function BookingSSPDBadanPage() {
       setActionMessage("Bappenda libur pada hari Sabtu & Minggu.");
       return;
     }
-    const tanggalTeks = new Date(scheduleDate).toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-    if (!window.confirm(`Ingin kirim pada ${tanggalTeks} ini? Sudah benarkah dokumen yang dilampirkan dan dibuat? Jika belum, tolong cek kembali dan edit jika tidak benar.`)) {
-      return;
-    }
     setKirimSubmitting(true);
     try {
       const res = await fetch(`${getApiBase()}/api/ppat/schedule-send`, {
@@ -416,6 +508,96 @@ export default function BookingSSPDBadanPage() {
     } finally {
       setKirimSubmitting(false);
     }
+  };
+
+  const parseIdNumber = (s: string) => {
+    const x = (s || "").replace(/\./g, "").replace(",", ".").trim();
+    if (x === "") return NaN;
+    return parseFloat(x);
+  };
+
+  const requestMintaBilling = (nobooking: string) => {
+    requestDocConfirm(() => {
+      void (async () => {
+        setBillingBusyNb(nobooking);
+        setActionMessage(null);
+        try {
+          const res = await fetch(`${getApiBase()}/api/ppat/request-billing`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nobooking }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || j?.success === false) {
+            setActionMessage(j?.message || "Gagal minta billing.");
+            return;
+          }
+          setBillingShare({
+            billingId: String(j.billing_id ?? ""),
+            amount: Number(j.amount) || 0,
+            expiresAtISO: j.expires_at ? String(j.expires_at) : undefined,
+          });
+          setCekBookingNobooking(nobooking);
+          loadTable(page, searchQuery);
+        } catch {
+          setActionMessage("Gagal minta billing.");
+        } finally {
+          setBillingBusyNb(null);
+        }
+      })();
+    });
+  };
+
+  const savePostPaymentCalculation = (nobooking: string) => {
+    requestDocConfirm(() => {
+      void (async () => {
+        if (!postCalcForm.tanggal_perolehan?.trim() || !postCalcForm.tanggal_pembayaran?.trim()) {
+          setActionMessage("Tanggal perolehan dan tanggal pembayaran wajib diisi.");
+          return;
+        }
+        setCalcSaveBusy(true);
+        setActionMessage(null);
+        try {
+          const body: Record<string, unknown> = {
+            tanggal_perolehan: postCalcForm.tanggal_perolehan.trim(),
+            tanggal_pembayaran: postCalcForm.tanggal_pembayaran.trim(),
+          };
+          const lt = parseIdNumber(postCalcForm.luas_tanah);
+          const nt = parseIdNumber(postCalcForm.njop_tanah);
+          const lb = parseIdNumber(postCalcForm.luas_bangunan);
+          const njb = parseIdNumber(postCalcForm.njop_bangunan);
+          const npoptkp = parseIdNumber(postCalcForm.nilaiPerolehanObjekPajakTidakKenaPajak);
+          const bphtb = parseIdNumber(postCalcForm.bphtb_yangtelah_dibayar);
+          if (!Number.isNaN(lt)) body.luas_tanah = lt;
+          if (!Number.isNaN(nt)) body.njop_tanah = nt;
+          if (!Number.isNaN(lb)) body.luas_bangunan = lb;
+          if (!Number.isNaN(njb)) body.njop_bangunan = njb;
+          if (!Number.isNaN(npoptkp)) body.nilaiPerolehanObjekPajakTidakKenaPajak = npoptkp;
+          if (!Number.isNaN(bphtb)) body.bphtb_yangtelah_dibayar = bphtb;
+
+          const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}/calculation`, {
+            method: "PUT",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || j?.success === false) {
+            setActionMessage(j?.message || "Gagal menyimpan perhitungan.");
+            return;
+          }
+          setActionMessage("Perhitungan tersimpan.");
+          setPostCalcOpen(null);
+          setCekBookingNobooking(nobooking);
+          loadTable(page, searchQuery);
+        } catch {
+          setActionMessage("Gagal menyimpan perhitungan.");
+        } finally {
+          setCalcSaveBusy(false);
+        }
+      })();
+    });
   };
 
   const openPdfBooking = () => {
@@ -509,7 +691,9 @@ export default function BookingSSPDBadanPage() {
   const modalOverlayStyle: React.CSSProperties = {
     position: "fixed",
     inset: 0,
-    background: "rgba(0,0,0,0.5)",
+    background: "rgba(0,0,0,0.45)",
+    backdropFilter: "blur(6px)",
+    WebkitBackdropFilter: "blur(6px)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -781,7 +965,12 @@ export default function BookingSSPDBadanPage() {
                   style={{ padding: "6px 10px", borderRadius: 6 }}
                 />
               </div>
-              <button type="button" style={btnSecondary} disabled={kirimSubmitting} onClick={handleJadwalkanKirim}>
+              <button
+                type="button"
+                style={btnSecondary}
+                disabled={kirimSubmitting}
+                onClick={() => requestDocConfirm(() => void handleJadwalkanKirim())}
+              >
                 Jadwalkan Kirim
               </button>
             </div>
@@ -818,6 +1007,32 @@ export default function BookingSSPDBadanPage() {
       )}
 
       {/* Correction modal */}
+      {docConfirmOpen && (
+        <div style={modalOverlayStyle} onClick={cancelDocConfirm}>
+          <div style={{ ...modalBoxStyle, maxWidth: 420 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="doc-confirm-title">
+            <h3 id="doc-confirm-title" style={{ margin: "0 0 12px", color: "#0f172a" }}>Konfirmasi</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 15, color: "#334155", lineHeight: 1.5 }}>
+              Apakah dokumen sudah benar-benar sesuai?
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" style={btnSecondary} onClick={cancelDocConfirm}>
+                Batal
+              </button>
+              <button type="button" style={{ ...btnStyle, background: "#059669", color: "#fff" }} onClick={runDocConfirmed}>
+                Ya, lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {billingShare && (
+        <BillingShareCard
+          data={{ billingId: billingShare.billingId, amount: billingShare.amount, expiresAtISO: billingShare.expiresAtISO }}
+          onClose={() => setBillingShare(null)}
+        />
+      )}
+
       {correctionModalOpen && selectedCorrection && (
         <div style={modalOverlayStyle} onClick={() => !correctionBusy && setCorrectionModalOpen(false)}>
           <div style={{ ...modalBoxStyle, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
@@ -1048,7 +1263,7 @@ export default function BookingSSPDBadanPage() {
                     <td colSpan={5} style={{ ...tdStyle, padding: 0, background: "#f8fafc" }}>
                       <div
                         style={{
-                          maxHeight: expandedRow === row.nobooking ? 1200 : 0,
+                          maxHeight: expandedRow === row.nobooking ? 5600 : 0,
                           opacity: expandedRow === row.nobooking ? 1 : 0,
                           transform: expandedRow === row.nobooking ? "translateY(0)" : "translateY(-6px)",
                           transition: "max-height 0.28s ease, opacity 0.22s ease, transform 0.22s ease",
@@ -1063,12 +1278,19 @@ export default function BookingSSPDBadanPage() {
                           const njopBangunan = toNum(detail?.njop_bangunan);
                           const totalNjopTanah = luasTanah * njopTanah;
                           const totalNjopBangunan = luasBangunan * njopBangunan;
+                          const payOk = paymentConfirmedFromDetail(detail);
+                          const showBillingBtn = canMintaBillingRow(row, detail);
+                          const rowBillingBusy = billingBusyNb === row.nobooking;
+                          const payPreview =
+                            detail?.payment_amount_requested != null && typeof detail.payment_amount_requested === "number"
+                              ? detail.payment_amount_requested
+                              : null;
                           return (
                             <div style={{ padding: 16, display: "grid", gap: 12 }}>
                               <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
                                 <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
                                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                  {status(row.trackstatus) === "draft" && (
+                                  {canEditBookingData(row) && (
                                     <Link
                                       href={`/pu/booking-sspd/badan/tambah?edit=1&nobooking=${encodeURIComponent(row.nobooking)}`}
                                       prefetch={false}
@@ -1084,6 +1306,46 @@ export default function BookingSSPDBadanPage() {
                                       Edit Data
                                     </Link>
                                   )}
+                                  <button
+                                    type="button"
+                                    style={{
+                                      ...btnStyle,
+                                      background: showBillingBtn ? "#d97706" : "#9ca3af",
+                                      color: "#fff",
+                                      cursor: showBillingBtn && !rowBillingBusy ? "pointer" : "not-allowed",
+                                      opacity: showBillingBtn ? 1 : 0.75,
+                                    }}
+                                    disabled={!showBillingBtn || rowBillingBusy}
+                                    onClick={() => {
+                                      if (!showBillingBtn || rowBillingBusy) return;
+                                      requestMintaBilling(row.nobooking);
+                                    }}
+                                  >
+                                    {rowBillingBusy ? "Memproses..." : "Minta Billing"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title={!payOk ? "Aktif setelah bank mengonfirmasi pembayaran (PAID / KURANG_BAYAR)." : undefined}
+                                    style={{
+                                      ...btnStyle,
+                                      background: payOk ? "#7c3aed" : "#9ca3af",
+                                      color: "#fff",
+                                      cursor: payOk ? "pointer" : "not-allowed",
+                                      opacity: payOk ? 1 : 0.75,
+                                    }}
+                                    disabled={!payOk}
+                                    onClick={() => {
+                                      if (!payOk) return;
+                                      if (postCalcOpen === row.nobooking) {
+                                        setPostCalcOpen(null);
+                                      } else {
+                                        setPostCalcForm(detailFromPostCalcForm(detail));
+                                        setPostCalcOpen(row.nobooking);
+                                      }
+                                    }}
+                                  >
+                                    {postCalcOpen === row.nobooking ? "Tutup Isi Perhitungan" : "Isi Ketika Telah Bayar"}
+                                  </button>
                                   <button
                                     type="button"
                                     style={btnSecondary}
@@ -1110,6 +1372,115 @@ export default function BookingSSPDBadanPage() {
                                   <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen Validasi</button>
                                 </div>
                               </div>
+
+                              {postCalcOpen === row.nobooking && payOk && (
+                                <div style={{ ...sectionCardStyle, border: "1px solid #c4b5fd", background: "#faf5ff" }}>
+                                  <div
+                                    style={{
+                                      padding: 12,
+                                      borderRadius: 8,
+                                      background: "rgba(245, 158, 11, 0.14)",
+                                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                                      color: "#92400e",
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                      marginBottom: 14,
+                                      lineHeight: 1.45,
+                                    }}
+                                  >
+                                    Isi ini dengan data asli, karena semuanya terbaca dari sistem!
+                                  </div>
+                                  <div style={{ fontWeight: 800, marginBottom: 10, color: "#5b21b6" }}>Perhitungan NJOP &amp; Pajak BPHTB (setelah bayar)</div>
+                                  {(payPreview != null || detail?.billing_id) && (
+                                    <div style={{ fontSize: 13, color: "#0f172a", marginBottom: 12 }}>
+                                      {detail?.billing_id ? (
+                                        <div>
+                                          <strong>ID Billing:</strong> {String(detail.billing_id)}
+                                        </div>
+                                      ) : null}
+                                      {payPreview != null ? (
+                                        <div style={{ marginTop: 4 }}>
+                                          <strong>Jumlah disetorkan (tagihan):</strong> {formatMoney(payPreview)}
+                                        </div>
+                                      ) : null}
+                                      {detail?.is_calculation_completed ? (
+                                        <div style={{ marginTop: 6, color: "#166534", fontWeight: 600 }}>Perhitungan pasca-bayar sudah tersimpan.</div>
+                                      ) : null}
+                                    </div>
+                                  )}
+                                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Luas tanah (m²)</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.luas_tanah}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, luas_tanah: e.target.value }))}
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>NJOP tanah (per m²)</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.njop_tanah}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, njop_tanah: e.target.value }))}
+                                        placeholder="contoh: 1500000"
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Luas bangunan (m²)</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.luas_bangunan}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, luas_bangunan: e.target.value }))}
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>NJOP bangunan (per m²)</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.njop_bangunan}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, njop_bangunan: e.target.value }))}
+                                        placeholder="contoh: 1200000"
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>NPOPTKP (nilai perolehan tidak kena pajak)</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.nilaiPerolehanObjekPajakTidakKenaPajak}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, nilaiPerolehanObjekPajakTidakKenaPajak: e.target.value }))}
+                                        placeholder="titik sebagai pemisah ribuan"
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>BPHTB yang telah dibayar</div>
+                                      <input
+                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                                        value={postCalcForm.bphtb_yangtelah_dibayar}
+                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, bphtb_yangtelah_dibayar: e.target.value }))}
+                                      />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Tanggal perolehan</div>
+                                      <input type="date" style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }} value={postCalcForm.tanggal_perolehan} onChange={(e) => setPostCalcForm((f) => ({ ...f, tanggal_perolehan: e.target.value }))} />
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Tanggal pembayaran</div>
+                                      <input type="date" style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }} value={postCalcForm.tanggal_pembayaran} onChange={(e) => setPostCalcForm((f) => ({ ...f, tanggal_pembayaran: e.target.value }))} />
+                                    </div>
+                                  </div>
+                                  <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                    <button
+                                      type="button"
+                                      style={{ ...btnStyle, background: "#059669", color: "#fff" }}
+                                      disabled={calcSaveBusy}
+                                      onClick={() => savePostPaymentCalculation(row.nobooking)}
+                                    >
+                                      {calcSaveBusy ? "Menyimpan..." : "Simpan Perhitungan"}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
 
                               {detailSectionsOpenFor === row.nobooking && (
                                 <>

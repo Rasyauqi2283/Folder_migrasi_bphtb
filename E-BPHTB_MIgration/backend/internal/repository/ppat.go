@@ -1062,6 +1062,11 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 			p.kabupatenkotawp, p.kecamatanwp, p.kelurahandesawp, p.rtrwwp, p.kodeposwp,
 			p.kabupatenkotaop, p.kecamatanop, p.kelurahandesaop, p.rtrwop, p.kodeposop,
 			p.npwpwp, p.npwpop,
+			COALESCE(p.trackstatus::text, '') AS trackstatus,
+			COALESCE(p.payment_status::text, '') AS payment_status,
+			COALESCE(p.billing_id::text, '') AS billing_id,
+			COALESCE(p.is_calculation_completed, false) AS is_calculation_completed,
+			p.payment_amount_requested,
 			bp.nilaiperolehanobjekpajaktidakkenapajak, bp.bphtb_yangtelah_dibayar,
 			o.harga_transaksi, o.letaktanahdanbangunan, o.rt_rwobjekpajak, o.status_kepemilikan, o.keterangan, o.nomor_sertifikat,
 			o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran, o.jenis_perolehan, o.kelurahandesalp, o.kecamatanlp,
@@ -1078,6 +1083,9 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		kabwp, kecwp, kelwp, rtrwwp, kodeposwp *string
 		kabop, kecop, kelop, rtrwop, kodeposop *string
 		npwpwp, npwpop *string
+		trackstatus, paymentStatus, billingID string
+		calcDone                 bool
+		paymentAmtReq            sql.NullInt64
 		npoptkp *float64
 		bphtb   *int32
 		harga, letak, rtop, statusKm, ket, nomorSert *string
@@ -1091,6 +1099,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		&kabwp, &kecwp, &kelwp, &rtrwwp, &kodeposwp,
 		&kabop, &kecop, &kelop, &rtrwop, &kodeposop,
 		&npwpwp, &npwpop,
+		&trackstatus, &paymentStatus, &billingID, &calcDone, &paymentAmtReq,
 		&npoptkp, &bphtb,
 		&harga, &letak, &rtop, &statusKm, &ket, &nomorSert,
 		&tglPeroleh, &tglBayar, &nomorBukti, &jenisPerolehan, &kelLp, &kecLp,
@@ -1122,6 +1131,10 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		"kabupatenkotaop": val(kabop), "kecamatanop": val(kecop), "kelurahandesaop": val(kelop),
 		"rtrwop": val(rtrwop), "kodeposop": val(kodeposop),
 		"npwpwp": val(npwpwp), "npwpop": val(npwpop),
+		"trackstatus":               trackstatus,
+		"payment_status":            paymentStatus,
+		"billing_id":                billingID,
+		"is_calculation_completed":  calcDone,
 		"nilaiPerolehanObjekPajakTidakKenaPajak": valF(npoptkp),
 		"hargatransaksi": val(harga), "letaktanahdanbangunan": val(letak),
 		"rt_rwobjekpajak": val(rtop), "status_kepemilikan": val(statusKm),
@@ -1133,6 +1146,9 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 	}
 	if bphtb != nil {
 		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
+	}
+	if paymentAmtReq.Valid {
+		out["payment_amount_requested"] = paymentAmtReq.Int64
 	}
 	return out, nil
 }
