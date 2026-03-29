@@ -188,7 +188,7 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
         Kepatuhan laporan bulanan (jatuh tempo tgl 10). {isAdmin ? "Tampilan administrator: semua pejabat umum." : "Anda melihat data akun Anda."}
       </p>
 
-      {summary && (
+      {summary && isAdmin && (
         <div
           style={{
             display: "grid",
@@ -308,7 +308,7 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
         </div>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-            <thead>
+            <thead style={thead}>
               <tr>
                 <th style={th}>No</th>
                 <th style={th}>Nama pejabat</th>
@@ -398,6 +398,10 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
   );
 }
 
+const thead: React.CSSProperties = {
+  background: "linear-gradient(135deg, var(--accent), #0b3a60)",
+};
+
 const th: React.CSSProperties = {
   padding: "16px 12px",
   textAlign: "center",
@@ -405,6 +409,11 @@ const th: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 12,
   textTransform: "uppercase",
+  letterSpacing: 0.4,
+  borderBottom: "1px solid rgba(255,255,255,0.25)",
+  position: "sticky",
+  top: 0,
+  background: "transparent",
 };
 
 const td: React.CSSProperties = { padding: 12, fontSize: 13 };
