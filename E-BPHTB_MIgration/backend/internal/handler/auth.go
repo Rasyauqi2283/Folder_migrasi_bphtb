@@ -895,6 +895,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if user.TandaTanganPath != nil {
 		tandaTanganPath = *user.TandaTanganPath
 	}
+	statusPpat := ""
+	if user.StatusPpat != nil {
+		statusPpat = strings.TrimSpace(*user.StatusPpat)
+	}
 
 	msg := "Login berhasil"
 	if username != "" {
@@ -939,6 +943,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		"npwp_badan":          npwpBadan,
 		"nib":                 nib,
 		"nib_doc_path":        nibDocPath,
+		"status_ppat":         statusPpat,
 	})
 }
 
@@ -1785,6 +1790,10 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	if user.PpatKhusus != nil {
 		ppatKhusus = *user.PpatKhusus
 	}
+	statusPpat := ""
+	if user.StatusPpat != nil {
+		statusPpat = strings.TrimSpace(*user.StatusPpat)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user": map[string]interface{}{
@@ -1805,6 +1814,7 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 			"tanda_tangan_mime":   tandaTanganMime,
 			"tanda_tangan_path":   tandaTanganPath,
 			"statuspengguna":      user.Statuspengguna,
+			"status_ppat":         statusPpat,
 		},
 	})
 }

@@ -42,6 +42,7 @@ export default function LoginPage() {
           localStorage.setItem("special_field", data.special_field ?? "");
           localStorage.setItem("is_profile_complete", data.is_profile_complete ?? "");
           localStorage.setItem("gender", data.gender ?? "");
+          localStorage.setItem("status_ppat", data.status_ppat ?? "");
         }
 
         setTimeout(() => {

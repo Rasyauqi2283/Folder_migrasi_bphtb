@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useEffect } from "react";
 
@@ -43,6 +43,7 @@ function PPATLayoutContent({ children }: { children: React.ReactNode }) {
 export default function LayoutClient({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!user) return;
@@ -51,6 +52,15 @@ export default function LayoutClient({ children }: { children: React.ReactNode }
       router.replace("/dashboard");
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (!user?.userid) return;
+    const sp = (user.status_ppat ?? "").toLowerCase();
+    if (sp !== "suspend") return;
+    if (pathname?.startsWith("/pu/booking-sspd")) {
+      router.replace("/pu/akses-diblokir");
+    }
+  }, [user, pathname, router]);
 
   if (!user) {
     return (

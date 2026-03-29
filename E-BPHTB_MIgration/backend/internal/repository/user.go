@@ -140,6 +140,7 @@ type LoginUser struct {
 	NpwpBadan        *string
 	Nib              *string
 	NibDocPath       *string
+	StatusPpat       *string
 }
 
 // GetByIdentifierForLogin fetches user from a_2_verified_users by email, userid, or username.
@@ -148,7 +149,8 @@ func (r *UserRepo) GetByIdentifierForLogin(ctx context.Context, identifier strin
 	err := r.pool.QueryRow(ctx,
 		`SELECT userid, password, nama, email, divisi, COALESCE(fotoprofil, ''), COALESCE(statuspengguna, 'offline'),
 			username, nip, special_field, special_parafv, pejabat_umum,
-			tanda_tangan_mime, tanda_tangan_path, telepon, gender, ppat_khusus, alamat_pu, npwp_badan, nib, nib_doc_path
+			tanda_tangan_mime, tanda_tangan_path, telepon, gender, ppat_khusus, alamat_pu, npwp_badan, nib, nib_doc_path,
+			status_ppat
 		 FROM a_2_verified_users
 		 WHERE (email = $1 OR userid = $1 OR username = $1) AND verifiedstatus = 'complete'`,
 		identifier,
@@ -156,6 +158,7 @@ func (r *UserRepo) GetByIdentifierForLogin(ctx context.Context, identifier strin
 		&u.Userid, &u.Password, &u.Nama, &u.Email, &u.Divisi, &u.Fotoprofil, &u.Statuspengguna,
 		&u.Username, &u.NIP, &u.SpecialField, &u.SpecialParafv, &u.PejabatUmum,
 		&u.TandaTanganMime, &u.TandaTanganPath, &u.Telepon, &u.Gender, &u.PpatKhusus, &u.AlamatPu, &u.NpwpBadan, &u.Nib, &u.NibDocPath,
+		&u.StatusPpat,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -595,10 +598,42 @@ func (r *UserRepo) UpdateStatusPpat(ctx context.Context, userid, statusPpat stri
 		return nil
 	}
 	_, err := r.pool.Exec(ctx,
-		`UPDATE a_2_verified_users SET status_ppat=$1 WHERE userid=$2 AND verifiedstatus='complete' AND divisi IN ('PPAT','PPATS')`,
+		`UPDATE a_2_verified_users SET status_ppat=$1 WHERE userid=$2 AND verifiedstatus='complete' AND divisi IN ('PPAT','PPATS','Notaris')`,
 		statusPpat, userid,
 	)
 	return err
+}
+
+// GetDivisi returns divisi for userid or empty.
+func (r *UserRepo) GetDivisi(ctx context.Context, userid string) string {
+	if r.pool == nil || userid == "" {
+		return ""
+	}
+	var d string
+	_ = r.pool.QueryRow(ctx,
+		`SELECT COALESCE(divisi,'') FROM a_2_verified_users WHERE userid=$1 AND verifiedstatus='complete'`,
+		userid,
+	).Scan(&d)
+	return strings.TrimSpace(d)
+}
+
+// GetStatusPpat returns normalized lowercase status_ppat or empty.
+func (r *UserRepo) GetStatusPpat(ctx context.Context, userid string) string {
+	if r.pool == nil || userid == "" {
+		return ""
+	}
+	var s *string
+	err := r.pool.QueryRow(ctx,
+		`SELECT status_ppat FROM a_2_verified_users WHERE userid=$1 AND verifiedstatus='complete'`,
+		userid,
+	).Scan(&s)
+	if err != nil {
+		return ""
+	}
+	if s == nil {
+		return ""
+	}
+	return strings.ToLower(strings.TrimSpace(*s))
 }
 
 // DeleteCompleteByUserid soft-deletes atau menghapus user complete. Hanya untuk user non-Administrator.

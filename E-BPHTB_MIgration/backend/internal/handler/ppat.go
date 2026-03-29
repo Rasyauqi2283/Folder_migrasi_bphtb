@@ -50,12 +50,14 @@ func getPpatUserid(r *http.Request) string {
 type PpatHandler struct {
 	repo         *repository.PpatRepo
 	bookingRepo  *repository.BookingRepo
+	userRepo     *repository.UserRepo
+	laporanRepo  *repository.PpatLaporanRepo
 	cfg          *config.Config
 }
 
 // NewPpatHandler creates a PpatHandler.
-func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo) *PpatHandler {
-	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, cfg: cfg}
+func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo, userRepo *repository.UserRepo, laporanRepo *repository.PpatLaporanRepo) *PpatHandler {
+	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, userRepo: userRepo, laporanRepo: laporanRepo, cfg: cfg}
 }
 
 type createPermohonanValidasiInput struct {
@@ -586,6 +588,9 @@ func (h *PpatHandler) SendNow(w http.ResponseWriter, r *http.Request) {
 		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
+	if !h.requirePpatBookingAllowed(w, r, userid) {
+		return
+	}
 	var body struct {
 		Nobooking string `json:"nobooking"`
 	}
@@ -668,6 +673,9 @@ func (h *PpatHandler) CreateBookingPerorangan(w http.ResponseWriter, r *http.Req
 	userid := getPpatUserid(r)
 	if userid == "" {
 		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if !h.requirePpatBookingAllowed(w, r, userid) {
 		return
 	}
 	var params repository.CreateBookingParams
@@ -1074,6 +1082,9 @@ func (h *PpatHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	userid := getPpatUserid(r)
 	if userid == "" {
 		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if !h.requirePpatBookingAllowed(w, r, userid) {
 		return
 	}
 	var body struct {

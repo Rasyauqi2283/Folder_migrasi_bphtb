@@ -280,6 +280,12 @@ export default function PPATSidebar() {
               >
                 Rincian Laporan Bulanan pu
               </Link>
+              <Link
+                href="/pu/laporan/unggah-laporan-bulanan"
+                className={dropdownLinkClasses(pathname === "/pu/laporan/unggah-laporan-bulanan")}
+              >
+                Unggah Laporan Bulanan
+              </Link>
             </div>
           </div>
 

@@ -61,6 +61,7 @@ interface ProfileData {
   tanda_tangan_path?: string;
   alamat_pu?: string;
   ppat_khusus?: string;
+  status_ppat?: string;
 }
 
 function useProfile() {
@@ -93,6 +94,9 @@ function useProfile() {
       }
       if (profile.userid && typeof window !== "undefined") {
         localStorage.setItem("userid", profile.userid);
+      }
+      if (typeof profile.status_ppat === "string" && typeof window !== "undefined") {
+        localStorage.setItem("status_ppat", profile.status_ppat);
       }
       setData(profile);
     } catch (e: unknown) {

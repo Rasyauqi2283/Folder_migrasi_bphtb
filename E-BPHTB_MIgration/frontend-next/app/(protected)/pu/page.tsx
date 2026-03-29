@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../../context/AuthContext";
 import GreetingCard from "../../components/GreetingCard";
 import { getApiBase } from "../../../lib/api";
+import { getCountdownToMonthTenth, isInPreDeadlineCountdownWindow } from "../../../lib/ppatReportingDeadline";
 import QuotaCalendar from "../../components/QuotaCalendar";
 
 const CARD_STYLES = {
@@ -168,6 +169,33 @@ export default function PPATDashboardPage() {
         gender={user?.gender ?? undefined}
         rightContent={<QuotaCalendar value={selectedDate} onChange={setSelectedDate} />}
       />
+
+      {isInPreDeadlineCountdownWindow() && (() => {
+        const cd = getCountdownToMonthTenth();
+        if (!cd) return null;
+        const urgent = cd.urgent;
+        return (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 18,
+              borderRadius: 14,
+              border: `2px solid ${urgent ? "#dc2626" : "#eab308"}`,
+              background: urgent ? "rgba(239,68,68,0.1)" : "rgba(234,179,8,0.12)",
+            }}
+          >
+            <strong>Segera laporkan akta Anda!</strong> Sisa waktu: {cd.days} hari {cd.hours} jam sebelum akses
+            pembuatan SSPD baru diblokir (batas tgl 10).{" "}
+            <Link href="/pu/laporan/unggah-laporan-bulanan" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Unggah laporan
+            </Link>
+            {" · "}
+            <Link href="/pu/laporan/monitoring-keterlambatan" style={{ color: "var(--accent)" }}>
+              Monitoring
+            </Link>
+          </div>
+        );
+      })()}
 
       {loading ? (
         <p

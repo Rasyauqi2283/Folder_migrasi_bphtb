@@ -257,6 +257,9 @@ export default function AdminSidebar() {
             <Link href="/admin/referensi/validasi-qr" className={dropdownLinkClasses(isActive("/admin/referensi/validasi-qr"))}>
               Validasi QR
             </Link>
+            <Link href="/admin/monitoring-ppat-keterlambatan" className={dropdownLinkClasses(isActive("/admin/monitoring-ppat-keterlambatan"))}>
+              Monitoring Keterlambatan PPAT
+            </Link>
           </div>
         </div>
 

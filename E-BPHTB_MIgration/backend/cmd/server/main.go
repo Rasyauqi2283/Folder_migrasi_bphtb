@@ -22,6 +22,7 @@ import (
 	"ebphtb/backend/internal/config"
 	"ebphtb/backend/internal/handler"
 	"ebphtb/backend/internal/repository"
+	"ebphtb/backend/internal/worker"
 )
 
 // corsMiddleware menambahkan header CORS dan menangani preflight OPTIONS.
@@ -305,6 +306,12 @@ func main() {
 	} else {
 		ppatRepo = repository.NewPpatRepo(nil)
 	}
+	var laporanRepo *repository.PpatLaporanRepo
+	if pool != nil {
+		laporanRepo = repository.NewPpatLaporanRepo(pool)
+	} else {
+		laporanRepo = repository.NewPpatLaporanRepo(nil)
+	}
 
 	// CS support tickets (public landing + CS dashboard)
 	if pool != nil {
@@ -378,7 +385,7 @@ func main() {
 		}
 	}
 
-	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo)
+	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo, userRepo, laporanRepo)
 	mux.HandleFunc("GET /api/ppat_generate-pdf-badan/{nobooking}", ppatHandler.GeneratePdfBadan)
 	mux.HandleFunc("GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}", ppatHandler.GeneratePdfMohonValidasi)
 	mux.HandleFunc("GET /api/check-my-signature", ppatHandler.CheckMySignature)
@@ -405,6 +412,10 @@ func main() {
 	mux.HandleFunc("GET /api/ppat/corrections/pending", ppatHandler.ListPendingCorrections)
 	mux.HandleFunc("POST /api/ppat/corrections/{nobooking}/upload-proof", ppatHandler.UploadCorrectionProof)
 	mux.HandleFunc("POST /api/ppat/corrections/{nobooking}/resubmit", ppatHandler.ResubmitCorrection)
+	mux.HandleFunc("GET /api/ppat/monitoring-keterlambatan", ppatHandler.MonitoringKeterlambatan)
+	mux.HandleFunc("POST /api/ppat/laporan-bulanan/submit", ppatHandler.SubmitLaporanBulanan)
+	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/unblock", ppatHandler.PostMonitoringUnblock)
+	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/notify", ppatHandler.PostMonitoringNotify)
 
 	// WP — Libatkan WP flow (validate, invite, list, approve)
 	wpSign := handler.NewWpSignHandler(userRepo, ppatRepo)
@@ -584,6 +595,8 @@ func main() {
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
+
+	worker.StartPpatLaporanSuspendJob(pool, laporanRepo)
 
 	go func() {
 		log.Printf("Backend Go listening on %s (migrasi penuh, tidak ada proxy Node)", addr)

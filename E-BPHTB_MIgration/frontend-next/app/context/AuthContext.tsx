@@ -10,6 +10,8 @@ export interface AuthUser {
   email: string;
   gender?: string;
   is_profile_complete?: string;
+  /** aktif | suspend | peringatan | … */
+  status_ppat?: string;
 }
 
 const AuthContext = createContext<{
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("special_field");
     localStorage.removeItem("is_profile_complete");
     localStorage.removeItem("gender");
+    localStorage.removeItem("status_ppat");
     setUser(null);
     window.location.href = "/login";
   }, []);
