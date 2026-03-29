@@ -910,6 +910,9 @@ func (h *PpatHandler) GetBookingCallbackBadan(w http.ResponseWriter, r *http.Req
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
 	defer cancel()
+	if err := h.repo.ClearExpiredBillingIfStale(ctx, userid, nobooking); err != nil {
+		log.Printf("[PPAT] ClearExpiredBillingIfStale: %v", err)
+	}
 	data, err := h.repo.GetBookingBadanCallbackData(ctx, userid, nobooking)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -922,6 +925,45 @@ func (h *PpatHandler) GetBookingCallbackBadan(w http.ResponseWriter, r *http.Req
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": data})
+}
+
+// GetBillingPreviewBadan handles GET /api/ppat/booking/{nobooking}/billing-preview — ringkasan NJOP & BPHTB sebelum minta billing.
+func (h *PpatHandler) GetBillingPreviewBadan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := r.PathValue("nobooking")
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	if h.repo == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 12*time.Second)
+	defer cancel()
+	if err := h.repo.ClearExpiredBillingIfStale(ctx, userid, nobooking); err != nil {
+		log.Printf("[PPAT] ClearExpiredBillingIfStale (preview): %v", err)
+	}
+	prev, err := h.repo.GetBillingPreviewBadan(ctx, userid, nobooking)
+	if err != nil {
+		if strings.Contains(err.Error(), "tidak ditemukan") {
+			ppatJSONError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		log.Printf("[PPAT] GetBillingPreviewBadan: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menghitung pratinjau tagihan")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": prev})
 }
 
 // UpdateTrackstatus handles PUT /api/ppat/update-trackstatus/{nobooking}.
@@ -1547,6 +1589,9 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 	nb := strings.TrimSpace(nobooking)
 	if nb == "" {
 		return nil, fmt.Errorf("nobooking wajib")
+	}
+	if err := h.repo.ClearExpiredBillingIfStale(ctx, userid, nb); err != nil {
+		log.Printf("[PPAT] ClearExpiredBillingIfStale (request billing): %v", err)
 	}
 	// Strict billing amount = Point 4 (Bea Terutang) based on: max(totalNJOP, harga_transaksi) and NPOPTKP from jenisPerolehan.
 	var amountRequested int64

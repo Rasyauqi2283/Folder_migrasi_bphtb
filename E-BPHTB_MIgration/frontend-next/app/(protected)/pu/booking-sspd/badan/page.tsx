@@ -48,10 +48,53 @@ type BookingDetail = {
   trackstatus?: string;
   payment_status?: string;
   billing_id?: string;
+  billing_expires_at?: string | null;
   is_calculation_completed?: boolean;
   payment_amount_requested?: number;
   [key: string]: unknown;
 };
+
+type BillingPreviewData = {
+  luas_x_njop_tanah: number;
+  luas_x_njop_bangunan: number;
+  total_njop: number;
+  harga_transaksi: string;
+  jenis_perolehan: string;
+  npop: number;
+  npoptkp: number;
+  npopkp: number;
+  bea_terutang: number;
+  bea_terutang_rupiah: number;
+  from_stored_amount: boolean;
+};
+
+function hasActivePendingBilling(d: BookingDetail | null | undefined, now: number): boolean {
+  if (!d) return false;
+  const bid = String(d.billing_id ?? "").trim();
+  if (!bid) return false;
+  const ps = String(d.payment_status ?? "").trim().toUpperCase();
+  if (ps !== "WAITING_FOR_PAYMENT") return false;
+  const exp = d.billing_expires_at;
+  if (exp == null || String(exp).trim() === "") return true;
+  const t = Date.parse(String(exp));
+  if (Number.isNaN(t)) return false;
+  return t > now;
+}
+
+function formatCountdownRemaining(iso: string | null | undefined, now: number): string {
+  if (!iso) return "—";
+  const end = Date.parse(String(iso));
+  if (Number.isNaN(end)) return "—";
+  const ms = end - now;
+  if (ms <= 0) return "Berakhir";
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h} jam ${m} mnt ${String(sec).padStart(2, "0")} dtk`;
+  if (m > 0) return `${m} mnt ${String(sec).padStart(2, "0")} dtk`;
+  return `${sec} dtk`;
+}
 
 type PostCalcForm = {
   bphtb_yangtelah_dibayar: string;
@@ -171,6 +214,11 @@ export default function BookingSSPDBadanPage() {
     tanggal_pembayaran: "",
   });
   const [billingBusyNb, setBillingBusyNb] = useState<string | null>(null);
+  const [billingPreviewNb, setBillingPreviewNb] = useState<string | null>(null);
+  const [billingPreviewLoading, setBillingPreviewLoading] = useState(false);
+  const [billingPreviewErr, setBillingPreviewErr] = useState<string | null>(null);
+  const [billingPreviewData, setBillingPreviewData] = useState<BillingPreviewData | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [calcSaveBusy, setCalcSaveBusy] = useState(false);
   const [docConfirmOpen, setDocConfirmOpen] = useState(false);
   const docConfirmActionRef = useRef<(() => void) | null>(null);
@@ -285,6 +333,11 @@ export default function BookingSSPDBadanPage() {
     loadCorrections();
   }, [loadCorrections]);
 
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const status = (s: string) => (s || "").toLowerCase();
   const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
@@ -293,7 +346,7 @@ export default function BookingSSPDBadanPage() {
     return s === "draft" || s === "terbuat";
   };
   const canMintaBillingRow = (row: BookingRow, detail: BookingDetail | null) =>
-    canEditBookingData(row) && !paymentConfirmedFromDetail(detail);
+    canEditBookingData(row) && !paymentConfirmedFromDetail(detail) && !hasActivePendingBilling(detail, nowTick);
   const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
   const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
 
@@ -499,37 +552,71 @@ export default function BookingSSPDBadanPage() {
     return parseFloat(x);
   };
 
-  const requestMintaBilling = (nobooking: string) => {
-    requestDocConfirm(() => {
-      void (async () => {
-        setBillingBusyNb(nobooking);
-        setActionMessage(null);
-        try {
-          const res = await fetch(`${getApiBase()}/api/ppat/request-billing`, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nobooking }),
-          });
-          const j = await res.json().catch(() => ({}));
-          if (!res.ok || j?.success === false) {
-            setActionMessage(j?.message || "Gagal minta billing.");
-            return;
-          }
-          setBillingShare({
-            billingId: String(j.billing_id ?? ""),
-            amount: Number(j.amount) || 0,
-            expiresAtISO: j.expires_at ? String(j.expires_at) : undefined,
-          });
-          setCekBookingNobooking(nobooking);
-          loadTable(page, searchQuery);
-        } catch {
-          setActionMessage("Gagal minta billing.");
-        } finally {
-          setBillingBusyNb(null);
+  const openMintaBillingPreview = (nobooking: string) => {
+    setBillingPreviewNb(nobooking);
+    setBillingPreviewErr(null);
+    setBillingPreviewData(null);
+    setBillingPreviewLoading(true);
+    void (async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}/billing-preview`, {
+          credentials: "include",
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || j?.success === false) {
+          setBillingPreviewErr((j as { message?: string })?.message || "Gagal memuat pratinjau tagihan.");
+          return;
         }
-      })();
-    });
+        setBillingPreviewData(j.data as BillingPreviewData);
+        setCekBookingNobooking(nobooking);
+      } catch {
+        setBillingPreviewErr("Gagal terhubung ke server.");
+      } finally {
+        setBillingPreviewLoading(false);
+      }
+    })();
+  };
+
+  const closeMintaBillingPreview = () => {
+    setBillingPreviewNb(null);
+    setBillingPreviewErr(null);
+    setBillingPreviewData(null);
+  };
+
+  const executeRequestBilling = (nobooking: string) => {
+    void (async () => {
+      setBillingBusyNb(nobooking);
+      setActionMessage(null);
+      try {
+        const res = await fetch(`${getApiBase()}/api/ppat/request-billing`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nobooking }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || j?.success === false) {
+          setActionMessage(j?.message || "Gagal minta billing.");
+          return;
+        }
+        setBillingShare({
+          billingId: String(j.billing_id ?? ""),
+          amount: Number(j.amount) || 0,
+          expiresAtISO: j.expires_at ? String(j.expires_at) : undefined,
+        });
+        closeMintaBillingPreview();
+        setCekBookingNobooking(nobooking);
+        loadTable(page, searchQuery);
+      } catch {
+        setActionMessage("Gagal minta billing.");
+      } finally {
+        setBillingBusyNb(null);
+      }
+    })();
+  };
+
+  const confirmMintaBillingFromPreview = (nobooking: string) => {
+    requestDocConfirm(() => executeRequestBilling(nobooking));
   };
 
   const savePostPaymentCalculation = (nobooking: string) => {
@@ -1013,6 +1100,99 @@ export default function BookingSSPDBadanPage() {
         </div>
       )}
 
+      {billingPreviewNb && (
+        <div style={modalOverlayStyle} onClick={() => !billingPreviewLoading && !billingBusyNb && closeMintaBillingPreview()}>
+          <div style={{ ...modalBoxStyle, maxWidth: 520 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <h3 style={{ margin: "0 0 8px", color: "#0f172a" }}>Pratinjau tagihan BPHTB</h3>
+            <p style={{ margin: "0 0 14px", fontSize: 13, color: "#475569", lineHeight: 1.45 }}>
+              Periksa nominal dan dasar perhitungan sebelum meminta ID billing ke bank. No. booking:{" "}
+              <strong>{billingPreviewNb}</strong>
+            </p>
+            {billingPreviewLoading && <p style={{ color: "#475569" }}>Menghitung…</p>}
+            {billingPreviewErr && (
+              <p style={{ color: "#b91c1c", fontWeight: 600, marginBottom: 12 }}>{billingPreviewErr}</p>
+            )}
+            {!billingPreviewLoading && billingPreviewData && (
+              <div
+                style={{
+                  display: "grid",
+                  gap: 10,
+                  marginBottom: 16,
+                  padding: 14,
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  background: "#f8fafc",
+                  fontSize: 13,
+                  color: "#0f172a",
+                }}
+              >
+                <div style={{ fontWeight: 800, gridColumn: "1 / -1" }}>Dasar NJOP (luas × NJOP)</div>
+                <div>
+                  <div style={fieldLabelStyle}>Tanah</div>
+                  <div style={{ fontWeight: 700 }}>{formatMoney(billingPreviewData.luas_x_njop_tanah)}</div>
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>Bangunan</div>
+                  <div style={{ fontWeight: 700 }}>{formatMoney(billingPreviewData.luas_x_njop_bangunan)}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <div style={fieldLabelStyle}>Jumlah NJOP PBB</div>
+                  <div style={{ fontWeight: 700 }}>{formatMoney(billingPreviewData.total_njop)}</div>
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>Harga transaksi</div>
+                  <div>{billingPreviewData.harga_transaksi?.trim() ? formatMoney(parseIdNumber(billingPreviewData.harga_transaksi)) : "—"}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <div style={fieldLabelStyle}>Jenis perolehan</div>
+                  <div>{billingPreviewData.jenis_perolehan?.trim() ? billingPreviewData.jenis_perolehan : "—"}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1", borderTop: "1px solid #e2e8f0", paddingTop: 10 }} />
+                <div>
+                  <div style={fieldLabelStyle}>NPOP (nilai lebih besar)</div>
+                  <div style={{ fontWeight: 700 }}>{formatMoney(billingPreviewData.npop)}</div>
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>NPOPTKP</div>
+                  <div>{formatMoney(billingPreviewData.npoptkp)}</div>
+                </div>
+                <div>
+                  <div style={fieldLabelStyle}>NPOPKP</div>
+                  <div>{formatMoney(billingPreviewData.npopkp)}</div>
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <div style={fieldLabelStyle}>BPHTB terutang (5% × NPOPKP) — yang dibayarkan</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: "#0a3d62" }}>
+                    {formatMoney(billingPreviewData.bea_terutang_rupiah)}
+                  </div>
+                  {billingPreviewData.from_stored_amount && (
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Menggunakan nominal tersimpan di sistem.</div>
+                  )}
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" style={btnSecondary} disabled={!!billingBusyNb} onClick={closeMintaBillingPreview}>
+                Batal
+              </button>
+              <button
+                type="button"
+                style={{ ...btnStyle, background: "#d97706", color: "#fff" }}
+                disabled={
+                  !!billingBusyNb ||
+                  billingPreviewLoading ||
+                  !billingPreviewData ||
+                  billingPreviewData.bea_terutang_rupiah <= 0
+                }
+                onClick={() => confirmMintaBillingFromPreview(billingPreviewNb)}
+              >
+                {billingBusyNb ? "Memproses…" : "Konfirmasi & minta billing"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {billingShare && (
         <BillingShareCard
           data={{ billingId: billingShare.billingId, amount: billingShare.amount, expiresAtISO: billingShare.expiresAtISO }}
@@ -1267,13 +1447,59 @@ export default function BookingSSPDBadanPage() {
                           const totalNjopBangunan = luasBangunan * njopBangunan;
                           const payOk = paymentConfirmedFromDetail(detail);
                           const showBillingBtn = canMintaBillingRow(row, detail);
-                          const rowBillingBusy = billingBusyNb === row.nobooking;
+                          const pendingBilling = hasActivePendingBilling(detail, nowTick);
+                          const rowBillingBusy =
+                            billingBusyNb === row.nobooking ||
+                            (billingPreviewNb === row.nobooking && billingPreviewLoading);
                           const payPreview =
                             detail?.payment_amount_requested != null && typeof detail.payment_amount_requested === "number"
                               ? detail.payment_amount_requested
                               : null;
                           return (
                             <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                              {pendingBilling && detail && (
+                                <div
+                                  style={{
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    border: "1px solid #fbbf24",
+                                    background: "#fffbeb",
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 800, marginBottom: 8, color: "#92400e" }}>Tagihan aktif — selesaikan pembayaran</div>
+                                  <label style={{ fontSize: 12, color: "#78350f", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                                    ID billing yang harus dibayar (hingga batas waktu)
+                                  </label>
+                                  <select
+                                    value={String(detail.billing_id ?? "")}
+                                    onChange={() => {}}
+                                    style={{
+                                      width: "100%",
+                                      maxWidth: 480,
+                                      padding: "10px 12px",
+                                      borderRadius: 8,
+                                      border: "1px solid #f59e0b",
+                                      fontFamily: "ui-monospace, Consolas, monospace",
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                      background: "#fff",
+                                      color: "#0f172a",
+                                    }}
+                                  >
+                                    <option value={String(detail.billing_id ?? "")}>
+                                      {String(detail.billing_id ?? "")} — {formatMoney(detail.payment_amount_requested)} — sisa{" "}
+                                      {formatCountdownRemaining(detail.billing_expires_at, nowTick)}
+                                    </option>
+                                  </select>
+                                  <p style={{ margin: "10px 0 0", fontSize: 12, color: "#78350f", lineHeight: 1.45 }}>
+                                    Batas waktu:{" "}
+                                    {detail.billing_expires_at
+                                      ? new Date(String(detail.billing_expires_at)).toLocaleString("id-ID")
+                                      : "—"}
+                                    . Tombol &quot;Minta Billing&quot; dinonaktifkan sampai pembayaran tercatat atau masa berlaku habis (gagal bayar).
+                                  </p>
+                                </div>
+                              )}
                               <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
                                 <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
                                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1305,7 +1531,7 @@ export default function BookingSSPDBadanPage() {
                                     disabled={!showBillingBtn || rowBillingBusy}
                                     onClick={() => {
                                       if (!showBillingBtn || rowBillingBusy) return;
-                                      requestMintaBilling(row.nobooking);
+                                      openMintaBillingPreview(row.nobooking);
                                     }}
                                   >
                                     {rowBillingBusy ? "Memproses..." : "Minta Billing"}

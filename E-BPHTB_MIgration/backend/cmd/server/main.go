@@ -435,6 +435,7 @@ func main() {
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb-perorangan", ppatHandler.CreateBookingPerorangan)
 	mux.HandleFunc("GET /api/ppat/booking/history", ppatHandler.BookingHistoryBadan)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}/callback", ppatHandler.GetBookingCallbackBadan)
+	mux.HandleFunc("GET /api/ppat/booking/{nobooking}/billing-preview", ppatHandler.GetBillingPreviewBadan)
 	mux.HandleFunc("GET /api/ppat/pbb/lookup-nop", ppatHandler.LookupNopPBB)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}", ppatHandler.GetBooking)
 	mux.HandleFunc("PUT /api/ppat/booking/{nobooking}/calculation", ppatHandler.SavePostPaymentCalculation)

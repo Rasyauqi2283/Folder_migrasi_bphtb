@@ -1103,6 +1103,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 			COALESCE(p.trackstatus::text, '') AS trackstatus,
 			COALESCE(p.payment_status::text, '') AS payment_status,
 			COALESCE(p.billing_id::text, '') AS billing_id,
+			p.billing_expires_at,
 			COALESCE(p.is_calculation_completed, false) AS is_calculation_completed,
 			p.payment_amount_requested,
 			bp.nilaiperolehanobjekpajaktidakkenapajak, bp.bphtb_yangtelah_dibayar,
@@ -1122,6 +1123,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		kabop, kecop, kelop, rtrwop, kodeposop *string
 		npwpwp, npwpop *string
 		trackstatus, paymentStatus, billingID string
+		billingExpires           sql.NullTime
 		calcDone                 bool
 		paymentAmtReq            sql.NullInt64
 		npoptkp *float64
@@ -1137,7 +1139,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		&kabwp, &kecwp, &kelwp, &rtrwwp, &kodeposwp,
 		&kabop, &kecop, &kelop, &rtrwop, &kodeposop,
 		&npwpwp, &npwpop,
-		&trackstatus, &paymentStatus, &billingID, &calcDone, &paymentAmtReq,
+		&trackstatus, &paymentStatus, &billingID, &billingExpires, &calcDone, &paymentAmtReq,
 		&npoptkp, &bphtb,
 		&harga, &letak, &rtop, &statusKm, &ket, &nomorSert,
 		&tglPeroleh, &tglBayar, &nomorBukti, &jenisPerolehan, &kelLp, &kecLp,
@@ -1173,20 +1175,155 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		"payment_status":            paymentStatus,
 		"billing_id":                billingID,
 		"is_calculation_completed":  calcDone,
-		"nilaiPerolehanObjekPajakTidakKenaPajak": valF(npoptkp),
-		"hargatransaksi": val(harga), "letaktanahdanbangunan": val(letak),
-		"rt_rwobjekpajak": val(rtop), "status_kepemilikan": val(statusKm),
-		"keterangan": val(ket), "nomor_sertifikat": val(nomorSert),
-		"tanggal_perolehan": val(tglPeroleh), "tanggal_pembayaran": val(tglBayar),
-		"nomor_bukti_pembayaran": val(nomorBukti), "jenisPerolehan": val(jenisPerolehan),
-		"kelurahandesalp": val(kelLp), "kecamatanlp": val(kecLp),
-		"luas_tanah": valF(luasT), "njop_tanah": valF(njopT), "luas_bangunan": valF(luasB), "njop_bangunan": valF(njopB),
 	}
+	if billingExpires.Valid {
+		out["billing_expires_at"] = billingExpires.Time.UTC().Format(time.RFC3339)
+	} else {
+		out["billing_expires_at"] = nil
+	}
+	out["nilaiPerolehanObjekPajakTidakKenaPajak"] = valF(npoptkp)
+	out["hargatransaksi"] = val(harga)
+	out["letaktanahdanbangunan"] = val(letak)
+	out["rt_rwobjekpajak"] = val(rtop)
+	out["status_kepemilikan"] = val(statusKm)
+	out["keterangan"] = val(ket)
+	out["nomor_sertifikat"] = val(nomorSert)
+	out["tanggal_perolehan"] = val(tglPeroleh)
+	out["tanggal_pembayaran"] = val(tglBayar)
+	out["nomor_bukti_pembayaran"] = val(nomorBukti)
+	out["jenisPerolehan"] = val(jenisPerolehan)
+	out["kelurahandesalp"] = val(kelLp)
+	out["kecamatanlp"] = val(kecLp)
+	out["luas_tanah"] = valF(luasT)
+	out["njop_tanah"] = valF(njopT)
+	out["luas_bangunan"] = valF(luasB)
+	out["njop_bangunan"] = valF(njopB)
 	if bphtb != nil {
 		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
 	}
 	if paymentAmtReq.Valid {
 		out["payment_amount_requested"] = paymentAmtReq.Int64
+	}
+	return out, nil
+}
+
+// ClearExpiredBillingIfStale removes billing_id when WAITING_FOR_PAYMENT and billing already expired.
+func (r *PpatRepo) ClearExpiredBillingIfStale(ctx context.Context, userid, nobooking string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(userid)
+	if nb == "" || u == "" {
+		return nil
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	cmd, err := tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd SET
+			billing_id = NULL,
+			billing_expires_at = NULL,
+			payment_amount_requested = NULL,
+			payment_status = NULL,
+			sspd_pembayaran_status = 'BELUM_LUNAS',
+			updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+		  AND COALESCE(payment_status::text, '') = 'WAITING_FOR_PAYMENT'
+		  AND billing_expires_at IS NOT NULL
+		  AND billing_expires_at <= now()
+	`, nb, u)
+	if err != nil {
+		return err
+	}
+	if cmd.RowsAffected() > 0 {
+		_, _ = tx.Exec(ctx, `UPDATE pat_4_objek_pajak SET nomor_bukti_pembayaran = NULL WHERE nobooking = $1`, nb)
+	}
+	return tx.Commit(ctx)
+}
+
+// BillingPreviewBadan is server-side BPHTB breakdown for PU confirmation before requesting billing ID.
+type BillingPreviewBadan struct {
+	LuasTanah          float64 `json:"luas_tanah"`
+	NjopTanah          float64 `json:"njop_tanah"`
+	LuasBangunan       float64 `json:"luas_bangunan"`
+	NjopBangunan       float64 `json:"njop_bangunan"`
+	LuasXNJOPTanah     float64 `json:"luas_x_njop_tanah"`
+	LuasXNJOPBangunan  float64 `json:"luas_x_njop_bangunan"`
+	TotalNJOP          float64 `json:"total_njop"`
+	HargaTransaksi     string  `json:"harga_transaksi"`
+	JenisPerolehan     string  `json:"jenis_perolehan"`
+	NPOP               float64 `json:"npop"`
+	NPOPTKP            float64 `json:"npoptkp"`
+	NPOPKP             float64 `json:"npopkp"`
+	BeaTerutang        float64 `json:"bea_terutang"`
+	BeaTerutangRupiah  int64   `json:"bea_terutang_rupiah"`
+	FromStoredAmount   bool    `json:"from_stored_amount"`
+}
+
+// GetBillingPreviewBadan computes BPHTB tagihan (tanpa memanggil bank) untuk konfirmasi PU.
+func (r *PpatRepo) GetBillingPreviewBadan(ctx context.Context, userid, nobooking string) (*BillingPreviewBadan, error) {
+	if r.pool == nil {
+		return nil, fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(userid)
+	if nb == "" || u == "" {
+		return nil, fmt.Errorf("nobooking dan userid wajib")
+	}
+	var (
+		lt, nt, lb, nbang float64
+		totalNJOP         float64
+		hargaTrans        string
+		jenisPerolehan    string
+		storedAmt         sql.NullInt64
+	)
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(pp.luas_tanah, 0)::float8,
+			COALESCE(pp.njop_tanah, 0)::float8,
+			COALESCE(pp.luas_bangunan, 0)::float8,
+			COALESCE(pp.njop_bangunan, 0)::float8,
+			COALESCE(pp.total_njoppbb, (COALESCE(pp.luas_tanah,0)*COALESCE(pp.njop_tanah,0) + COALESCE(pp.luas_bangunan,0)*COALESCE(pp.njop_bangunan,0)), 0)::float8 AS total_njop,
+			COALESCE(o.harga_transaksi::text, '') AS harga_transaksi,
+			COALESCE(NULLIF(TRIM(o.jenis_perolehan::text), ''), '') AS jenis_perolehan,
+			COALESCE(p.payment_amount_requested, 0)::bigint
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2 AND p.jenis_wajib_pajak::text = 'Badan Usaha'
+		LIMIT 1
+	`, nb, u).Scan(&lt, &nt, &lb, &nbang, &totalNJOP, &hargaTrans, &jenisPerolehan, &storedAmt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("booking tidak ditemukan")
+		}
+		return nil, err
+	}
+	calc := CalculateBPHTB(totalNJOP, hargaTrans, jenisPerolehan, 0)
+	out := &BillingPreviewBadan{
+		LuasTanah:         lt,
+		NjopTanah:         nt,
+		LuasBangunan:      lb,
+		NjopBangunan:      nbang,
+		LuasXNJOPTanah:    lt * nt,
+		LuasXNJOPBangunan: lb * nbang,
+		TotalNJOP:         totalNJOP,
+		HargaTransaksi:    hargaTrans,
+		JenisPerolehan:    jenisPerolehan,
+		NPOP:              calc.NPOP,
+		NPOPTKP:           calc.NPOPTKP,
+		NPOPKP:            calc.NPOPKP,
+		BeaTerutang:       calc.BeaTerutang,
+	}
+	if storedAmt.Valid && storedAmt.Int64 > 0 {
+		out.FromStoredAmount = true
+		out.BeaTerutangRupiah = storedAmt.Int64
+		out.BeaTerutang = float64(storedAmt.Int64)
+	} else {
+		out.BeaTerutangRupiah = int64(math.Round(calc.BeaTerutang))
 	}
 	return out, nil
 }
