@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -337,6 +337,29 @@ function parseRupiah(s: string): number {
   return raw === "" ? 0 : parseInt(raw, 10);
 }
 
+/** Luas: titik sebagai ribuan, koma sebagai desimal (contoh 1.234,5) atau angka sederhana */
+function parseDecimalInput(s: string): number {
+  const t = (s || "").trim().replace(/\s/g, "");
+  if (!t) return NaN;
+  const hasComma = t.includes(",");
+  const hasDot = t.includes(".");
+  if (hasComma && hasDot) {
+    return parseFloat(t.replace(/\./g, "").replace(",", "."));
+  }
+  if (hasComma) {
+    return parseFloat(t.replace(/\./g, "").replace(",", "."));
+  }
+  if (hasDot) {
+    const parts = t.split(".");
+    if (parts.length === 2 && parts[1].length <= 2) {
+      return parseFloat(t);
+    }
+    return parseFloat(t.replace(/\./g, ""));
+  }
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -492,6 +515,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
     nomor_sertifikat: "",
     npwpwp: "",
     npwpop: "",
+    luas_tanah: "",
+    luas_bangunan: "",
+    njop_tanah: "",
+    njop_bangunan: "",
+    nilaiPerolehanObjekPajakTidakKenaPajak: "",
   });
 
   const [billingModal, setBillingModal] = useState<null | { billing_id: string; amount: number; expires_at: string }>(null);
@@ -692,61 +720,103 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       setError(null);
       try {
         const base = getBackendBaseUrl();
-        const url = `${base ? base : ""}/api/ppat/booking/${encodeURIComponent(nb)}`;
-        const res = await fetch(url, { credentials: "include" });
+        const urlBook = `${base ? base : ""}/api/ppat/booking/${encodeURIComponent(nb)}`;
+        const res = await fetch(urlBook, { credentials: "include" });
         const json = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok || !json?.success || !json?.data) {
           setError(typeof json?.message === "string" ? json.message : "Gagal memuat detail booking.");
           return;
         }
-        const d = json.data as Record<string, unknown>;
-
-        const str = (k: string) => (d[k] != null ? String(d[k]) : "");
-        const num = (k: string) => {
-          const v = d[k];
+        let d = json.data as Record<string, unknown>;
+        const str = (rec: Record<string, unknown>, k: string) => (rec[k] != null ? String(rec[k]) : "");
+        const num = (rec: Record<string, unknown>, k: string) => {
+          const v = rec[k];
           if (typeof v === "number" && !Number.isNaN(v)) return v;
           if (typeof v === "string" && v.trim() !== "") return parseFloat(v.replace(/\./g, "").replace(",", "."));
           return undefined;
         };
 
-        // Best-effort: backend GetBookingByNobooking currently returns limited fields.
-        const jwpRaw = str("jenis_wajib_pajak");
+        const jwpRaw = str(d, "jenis_wajib_pajak");
         const isPerorangan = jwpRaw.toLowerCase().includes("perorangan");
-        setEntityKind(isPerorangan ? "perorangan" : "badan");
+        if (!isPerorangan && base) {
+          const resCb = await fetch(`${base}/api/ppat/booking/${encodeURIComponent(nb)}/callback`, { credentials: "include" });
+          const jCb = await resCb.json().catch(() => ({}));
+          if (resCb.ok && jCb?.success && jCb?.data && typeof jCb.data === "object") {
+            d = { ...d, ...(jCb.data as Record<string, unknown>) };
+          }
+        }
+
+        const jwpRaw2 = str(d, "jenis_wajib_pajak");
+        const isPer2 = jwpRaw2.toLowerCase().includes("perorangan");
+        setEntityKind(isPer2 ? "perorangan" : "badan");
 
         setNobookingValue(nb);
-        setNopDigits(parseNopToDigits(str("nop")));
-        if (isPerorangan) {
+        setNopDigits(parseNopToDigits(str(d, "nop")));
+        if (isPer2) {
           setNpwpWpDigits(Array(6).fill(""));
           setNpwpOpDigits(Array(6).fill(""));
         } else {
-          setNpwpWpDigits(parseNpwpToDigits(str("npwpwp")));
-          setNpwpOpDigits(parseNpwpToDigits(str("npwpop")));
+          setNpwpWpDigits(parseNpwpToDigits(str(d, "npwpwp")));
+          setNpwpOpDigits(parseNpwpToDigits(str(d, "npwpop")));
         }
 
-        // Fill what we have, leave others editable for user to complete.
+        const jp = str(d, "jenisPerolehan") || str(d, "jenis_perolehan");
+        setJenisPerolehan(jp);
+
+        const luasTStr = num(d, "luas_tanah") != null ? String(num(d, "luas_tanah")) : "";
+        const luasBStr = num(d, "luas_bangunan") != null ? String(num(d, "luas_bangunan")) : "";
+        const njopTStr =
+          d.njop_tanah != null && d.njop_tanah !== ""
+            ? String(typeof d.njop_tanah === "number" ? Math.round(d.njop_tanah) : parseRupiah(String(d.njop_tanah)))
+            : "";
+        const njopBStr =
+          d.njop_bangunan != null && d.njop_bangunan !== ""
+            ? String(typeof d.njop_bangunan === "number" ? Math.round(d.njop_bangunan) : parseRupiah(String(d.njop_bangunan)))
+            : "";
+        const npRaw = d.nilaiPerolehanObjekPajakTidakKenaPajak;
+        let npoptkpStr = "";
+        if (npRaw != null && String(npRaw).trim() !== "") {
+          const n = typeof npRaw === "number" ? Math.round(npRaw) : parseRupiah(String(npRaw));
+          npoptkpStr = n >= 0 ? String(n) : "";
+        }
+        const npDef = NPOPTKP_MAP[jp];
+        if (!npoptkpStr && npDef !== undefined) {
+          npoptkpStr = String(npDef);
+        }
+
+        const htRaw = d.hargatransaksi ?? d.harga_transaksi;
+        let hargaStr = "";
+        if (htRaw != null && String(htRaw).trim() !== "") {
+          const n = typeof htRaw === "number" ? htRaw : parseRupiah(String(htRaw));
+          hargaStr = n > 0 ? String(n) : "";
+        }
+
         setForm((prev) => ({
           ...prev,
-          namawajibpajak: str("nama_wajib_pajak") || prev.namawajibpajak,
-          alamatwajibpajak: str("alamat_wajib_pajak") || prev.alamatwajibpajak,
-          namapemilikobjekpajak: str("atas_nama") || prev.namapemilikobjekpajak,
-          // NOTE: backend doesn't return alamat pemilik in this query; keep previous.
-          npwpwp: isPerorangan ? (str("npwpwp") || prev.npwpwp) : prev.npwpwp,
-          npwpop: isPerorangan ? (str("npwpop") || prev.npwpop) : prev.npwpop,
-          tahunajb: str("tahunajb") || prev.tahunajb,
-          kabupatenkotawp: str("kabupaten_kota") || prev.kabupatenkotawp,
-          kecamatanwp: str("kecamatan") || prev.kecamatanwp,
-          kelurahandesawp: str("kelurahan") || prev.kelurahandesawp,
-          kodeposwp: str("kodeposwp") || prev.kodeposwp,
-          kabupatenkotaop: str("kabupatenkotaop") || prev.kabupatenkotaop,
-          kecamatanop: str("kecamatanopj") || prev.kecamatanop,
-          kelurahandesaop: str("kelurahanop") || prev.kelurahandesaop,
-          letaktanahdanbangunan: str("Alamatop") || prev.letaktanahdanbangunan,
-          keterangan: str("keterangan") || prev.keterangan,
-          luas_tanah: num("luas_tanah") ?? prev.luas_tanah,
-          luas_bangunan: num("luas_bangunan") ?? prev.luas_bangunan,
-          bphtb_yangtelah_dibayar: num("bphtb_yangtelah_dibayar") ?? prev.bphtb_yangtelah_dibayar,
+          namawajibpajak: str(d, "nama_wajib_pajak") || prev.namawajibpajak,
+          alamatwajibpajak: str(d, "alamat_wajib_pajak") || prev.alamatwajibpajak,
+          namapemilikobjekpajak: str(d, "atas_nama") || prev.namapemilikobjekpajak,
+          npwpwp: isPer2 ? (str(d, "npwpwp") || prev.npwpwp) : prev.npwpwp,
+          npwpop: isPer2 ? (str(d, "npwpop") || prev.npwpop) : prev.npwpop,
+          tahunajb: str(d, "tahunajb") || prev.tahunajb,
+          kabupatenkotawp: str(d, "kabupaten_kota") || prev.kabupatenkotawp,
+          kecamatanwp: str(d, "kecamatan") || prev.kecamatanwp,
+          kelurahandesawp: str(d, "kelurahan") || prev.kelurahandesawp,
+          kodeposwp: str(d, "kodeposwp") || prev.kodeposwp,
+          kabupatenkotaop: str(d, "kabupatenkotaop") || prev.kabupatenkotaop,
+          kecamatanop: str(d, "kecamatanopj") || prev.kecamatanop,
+          kelurahandesaop: str(d, "kelurahanop") || prev.kelurahandesaop,
+          letaktanahdanbangunan: str(d, "Alamatop") || str(d, "letaktanahdanbangunan") || prev.letaktanahdanbangunan,
+          keterangan: str(d, "keterangan") || prev.keterangan,
+          hargatransaksi: hargaStr || (prev.hargatransaksi as string),
+          jenisPerolehan: jp || (prev.jenisPerolehan as string),
+          luas_tanah: luasTStr || (prev.luas_tanah as string),
+          luas_bangunan: luasBStr || (prev.luas_bangunan as string),
+          njop_tanah: njopTStr || (prev.njop_tanah as string),
+          njop_bangunan: njopBStr || (prev.njop_bangunan as string),
+          nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpStr || (prev.nilaiPerolehanObjekPajakTidakKenaPajak as string),
+          bphtb_yangtelah_dibayar: num(d, "bphtb_yangtelah_dibayar") ?? prev.bphtb_yangtelah_dibayar,
         }));
       } catch {
         if (!cancelled) setError("Gagal memuat detail booking.");
@@ -812,6 +882,29 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       hargaStr = n > 0 ? String(n) : "";
     }
 
+    const nx = (v: unknown): string => {
+      if (v == null) return "";
+      if (typeof v === "number" && !Number.isNaN(v)) return String(Math.round(v));
+      const n = parseRupiah(String(v));
+      return n > 0 ? String(n) : "";
+    };
+    const nLuas = (v: unknown): string => {
+      if (v == null) return "";
+      if (typeof v === "number" && !Number.isNaN(v)) return String(v);
+      const t = String(v).trim();
+      return t;
+    };
+    const npoptkpRaw = d.nilaiPerolehanObjekPajakTidakKenaPajak;
+    let npoptkpStr = "";
+    if (npoptkpRaw != null && String(npoptkpRaw).trim() !== "") {
+      const n = typeof npoptkpRaw === "number" ? Math.round(npoptkpRaw) : parseRupiah(String(npoptkpRaw));
+      npoptkpStr = n >= 0 ? String(n) : "";
+    }
+    const npFromJenis = NPOPTKP_MAP[jp];
+    if (!npoptkpStr && npFromJenis !== undefined) {
+      npoptkpStr = String(npFromJenis);
+    }
+
     setKecamatanSearch("");
     setForm({
       namawajibpajak: str("namawajibpajak"),
@@ -840,6 +933,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       nomor_sertifikat: str("nomor_sertifikat"),
       npwpwp: isPerCb ? str("npwpwp") : "",
       npwpop: isPerCb ? str("npwpop") : "",
+      luas_tanah: nLuas(d.luas_tanah),
+      luas_bangunan: nLuas(d.luas_bangunan),
+      njop_tanah: nx(d.njop_tanah),
+      njop_bangunan: nx(d.njop_bangunan),
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpStr,
     });
     setOpenObjek(true);
     setError(null);
@@ -871,8 +969,29 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
   const handleJenisPerolehanChange = useCallback((val: string) => {
     setJenisPerolehan(val);
-    updateForm("jenisPerolehan", val);
-  }, [updateForm]);
+    setForm((prev) => {
+      const next: Record<string, string | number | undefined> = { ...prev, jenisPerolehan: val };
+      const np = NPOPTKP_MAP[val];
+      if (np !== undefined) {
+        next.nilaiPerolehanObjekPajakTidakKenaPajak = String(np);
+      }
+      return next;
+    });
+    setError(null);
+  }, []);
+
+  const njopPreview = useMemo(() => {
+    const lt = parseDecimalInput(String(form.luas_tanah ?? ""));
+    const nt = parseRupiah(String(form.njop_tanah ?? ""));
+    const lb = parseDecimalInput(String(form.luas_bangunan ?? ""));
+    const njb = parseRupiah(String(form.njop_bangunan ?? ""));
+    const totalTanah = (Number.isFinite(lt) ? lt : 0) * nt;
+    const totalBangunan = (Number.isFinite(lb) ? lb : 0) * njb;
+    const sumNjop = totalTanah + totalBangunan;
+    const harga = parseRupiah(String(form.hargatransaksi ?? ""));
+    const dasarP1 = Math.max(sumNjop, harga);
+    return { totalTanah, totalBangunan, sumNjop, harga, dasarP1 };
+  }, [form.luas_tanah, form.njop_tanah, form.luas_bangunan, form.njop_bangunan, form.hargatransaksi]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -917,6 +1036,20 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       return;
     }
 
+    const lt = parseDecimalInput(String(form.luas_tanah ?? ""));
+    const nt = parseRupiah(String(form.njop_tanah ?? ""));
+    const lb = parseDecimalInput(String(form.luas_bangunan ?? ""));
+    const njb = parseRupiah(String(form.njop_bangunan ?? ""));
+    if (lt > 0 && nt <= 0) {
+      setError("Jika luas tanah diisi, NJOP tanah wajib diisi (lebih dari nol).");
+      return;
+    }
+    if (lb > 0 && njb <= 0) {
+      setError("Jika luas bangunan diisi, NJOP bangunan wajib diisi (lebih dari nol).");
+      return;
+    }
+    const npoptkpNum = parseRupiah(String(form.nilaiPerolehanObjekPajakTidakKenaPajak ?? ""));
+
     const payload: CreatePayload = {
       jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
       noppbb,
@@ -948,6 +1081,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       jenisPerolehan: form.jenisPerolehan?.toString(),
       keterangan: form.keterangan?.toString(),
       nomor_sertifikat: form.nomor_sertifikat?.toString(),
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpNum > 0 ? npoptkpNum : undefined,
+      luas_tanah: Number.isFinite(lt) && lt > 0 ? lt : undefined,
+      njop_tanah: nt > 0 ? nt : undefined,
+      luas_bangunan: Number.isFinite(lb) && lb > 0 ? lb : undefined,
+      njop_bangunan: njb > 0 ? njb : undefined,
     };
 
     setLoading(true);
@@ -1664,6 +1802,21 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           </button>
           {openObjek && (
             <div style={{ padding: 16, borderTop: "1px solid var(--border_color)" }}>
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "rgba(245, 158, 11, 0.12)",
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  color: "#92400e",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  marginBottom: 16,
+                  lineHeight: 1.45,
+                }}
+              >
+                Isi ini dengan data asli, karena semuanya terbaca dari sistem!
+              </div>
               <div style={sectionStyle}>
                 <label style={labelStyle}>Harga Transaksi/Nilai Pasar</label>
                 <input
@@ -1703,6 +1856,135 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
                   ))}
                 </select>
               </div>
+              <div style={sectionStyle}>
+                <label style={labelStyle}>NPOPTKP (nilai perolehan tidak kena pajak)</label>
+                <input
+                  style={inputStyle}
+                  type="text"
+                  inputMode="numeric"
+                  value={
+                    form.nilaiPerolehanObjekPajakTidakKenaPajak
+                      ? formatRupiah(parseRupiah(String(form.nilaiPerolehanObjekPajakTidakKenaPajak)))
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const num = parseRupiah(e.target.value);
+                    updateForm("nilaiPerolehanObjekPajakTidakKenaPajak", num ? String(num) : "");
+                  }}
+                  placeholder="terisi otomatis dari jenis perolehan; boleh disesuaikan"
+                />
+                <p style={hintStyle}>Nilai pengurang mengikuti ketentuan (mis. 300 jt / 80 jt sesuai kode); berubah saat Anda mengganti jenis perolehan.</p>
+              </div>
+
+              <div
+                style={{
+                  ...sectionStyle,
+                  padding: 14,
+                  background: "var(--card_bg_grey)",
+                  borderRadius: 8,
+                  border: "1px solid var(--border_color)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span aria-hidden style={{ fontSize: 18 }}>🌱</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color_font_main)" }}>Data tanah</span>
+                </div>
+                <div style={{ ...rowStyle, gridTemplateColumns: "repeat(2, minmax(160px, 1fr))" }}>
+                  <div>
+                    <label style={labelStyle}>Luas tanah (m²)</label>
+                    <input
+                      style={inputStyle}
+                      type="text"
+                      inputMode="decimal"
+                      value={form.luas_tanah ?? ""}
+                      onChange={(e) => updateForm("luas_tanah", e.target.value.replace(/[^\d.,]/g, ""))}
+                      placeholder="contoh: 120 atau 120,5"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>NJOP tanah (Rp per m²)</label>
+                    <input
+                      style={inputStyle}
+                      type="text"
+                      inputMode="numeric"
+                      value={form.njop_tanah ? formatRupiah(parseRupiah(String(form.njop_tanah))) : ""}
+                      onChange={(e) => {
+                        const num = parseRupiah(e.target.value);
+                        updateForm("njop_tanah", num ? String(num) : "");
+                      }}
+                      placeholder="contoh: 1.500.000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  ...sectionStyle,
+                  padding: 14,
+                  background: "var(--card_bg_grey)",
+                  borderRadius: 8,
+                  border: "1px solid var(--border_color)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span aria-hidden style={{ fontSize: 18 }}>🏠</span>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--color_font_main)" }}>Data bangunan</span>
+                </div>
+                <div style={{ ...rowStyle, gridTemplateColumns: "repeat(2, minmax(160px, 1fr))" }}>
+                  <div>
+                    <label style={labelStyle}>Luas bangunan (m²)</label>
+                    <input
+                      style={inputStyle}
+                      type="text"
+                      inputMode="decimal"
+                      value={form.luas_bangunan ?? ""}
+                      onChange={(e) => updateForm("luas_bangunan", e.target.value.replace(/[^\d.,]/g, ""))}
+                      placeholder="contoh: 0 jika tidak ada bangunan"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>NJOP bangunan (Rp per m²)</label>
+                    <input
+                      style={inputStyle}
+                      type="text"
+                      inputMode="numeric"
+                      value={form.njop_bangunan ? formatRupiah(parseRupiah(String(form.njop_bangunan))) : ""}
+                      onChange={(e) => {
+                        const num = parseRupiah(e.target.value);
+                        updateForm("njop_bangunan", num ? String(num) : "");
+                      }}
+                      placeholder="contoh: 1.200.000"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  ...sectionStyle,
+                  padding: 14,
+                  borderRadius: 8,
+                  background: "#f0f9ff",
+                  border: "1px solid #bae6fd",
+                  fontSize: 14,
+                  color: "#0c4a6e",
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>Pentotalan nilai NJOP (transparan)</div>
+                <div>Total nilai tanah (luas × NJOP): <strong>Rp {formatRupiah(Math.round(njopPreview.totalTanah))}</strong></div>
+                <div style={{ marginTop: 6 }}>Total nilai bangunan (luas × NJOP): <strong>Rp {formatRupiah(Math.round(njopPreview.totalBangunan))}</strong></div>
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #bae6fd" }}>
+                  Jumlah NJOP PBB: <strong>Rp {formatRupiah(Math.round(njopPreview.sumNjop))}</strong>
+                  {" · "}
+                  Harga transaksi: <strong>Rp {formatRupiah(Math.round(njopPreview.harga))}</strong>
+                </div>
+                <div style={{ marginTop: 8, fontWeight: 700 }}>
+                  Dasar NPOP untuk perhitungan Poin 1 (nilai yang dipakai = yang lebih besar):{" "}
+                  <strong>Rp {formatRupiah(Math.round(njopPreview.dasarP1))}</strong>
+                </div>
+              </div>
+
               <div style={rowStyle}>
                 <div>
                   <label style={labelStyle}>Status Kepemilikan</label>
@@ -1772,8 +2054,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
             </div>
           )}
         </div>
-
-        {/* Card perhitungan NJOP/BPHTB dipindahkan ke dropdown tabel setelah billing & pembayaran. */}
 
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
           <button

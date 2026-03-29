@@ -778,6 +778,8 @@ func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params
 		}
 		if params.TotalNjoppbb != nil {
 			tot = *params.TotalNjoppbb
+		} else {
+			tot = (lt * nt) + (lb * nb)
 		}
 		_, _ = tx.Exec(ctx, `INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking) VALUES ($1,$2,$3,$4,$5,$6)`, lt, nt, lb, nb, tot, nobooking)
 	}

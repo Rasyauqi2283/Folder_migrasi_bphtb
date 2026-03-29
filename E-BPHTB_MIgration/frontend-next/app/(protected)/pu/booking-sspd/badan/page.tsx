@@ -54,11 +54,6 @@ type BookingDetail = {
 };
 
 type PostCalcForm = {
-  luas_tanah: string;
-  njop_tanah: string;
-  luas_bangunan: string;
-  njop_bangunan: string;
-  nilaiPerolehanObjekPajakTidakKenaPajak: string;
   bphtb_yangtelah_dibayar: string;
   tanggal_perolehan: string;
   tanggal_pembayaran: string;
@@ -85,15 +80,8 @@ function paymentConfirmedFromDetail(d: BookingDetail | null | undefined): boolea
 }
 
 function detailFromPostCalcForm(d: BookingDetail | null | undefined): PostCalcForm {
-  const npoptkp = d?.nilaiPerolehanObjekPajakTidakKenaPajak;
   const bp = d?.bphtb_yangtelah_dibayar;
   return {
-    luas_tanah: d?.luas_tanah != null && d.luas_tanah !== "" ? String(d.luas_tanah) : "",
-    njop_tanah: d?.njop_tanah != null && d.njop_tanah !== "" ? String(d.njop_tanah) : "",
-    luas_bangunan: d?.luas_bangunan != null && d.luas_bangunan !== "" ? String(d.luas_bangunan) : "",
-    njop_bangunan: d?.njop_bangunan != null && d.njop_bangunan !== "" ? String(d.njop_bangunan) : "",
-    nilaiPerolehanObjekPajakTidakKenaPajak:
-      typeof npoptkp === "number" && !Number.isNaN(npoptkp) ? String(npoptkp) : typeof npoptkp === "string" ? npoptkp : "",
     bphtb_yangtelah_dibayar: typeof bp === "number" && !Number.isNaN(bp) ? String(Math.round(bp)) : "",
     tanggal_perolehan: toDateInputValue(d?.tanggal_perolehan),
     tanggal_pembayaran: toDateInputValue(d?.tanggal_pembayaran),
@@ -178,11 +166,6 @@ export default function BookingSSPDBadanPage() {
   const [billingShare, setBillingShare] = useState<{ billingId: string; amount: number; expiresAtISO?: string } | null>(null);
   const [postCalcOpen, setPostCalcOpen] = useState<string | null>(null);
   const [postCalcForm, setPostCalcForm] = useState<PostCalcForm>({
-    luas_tanah: "",
-    njop_tanah: "",
-    luas_bangunan: "",
-    njop_bangunan: "",
-    nilaiPerolehanObjekPajakTidakKenaPajak: "",
     bphtb_yangtelah_dibayar: "",
     tanggal_perolehan: "",
     tanggal_pembayaran: "",
@@ -559,21 +542,25 @@ export default function BookingSSPDBadanPage() {
         setCalcSaveBusy(true);
         setActionMessage(null);
         try {
+          const src = cekBookingDetail?.nobooking === nobooking ? cekBookingDetail : null;
+          if (!src) {
+            setActionMessage("Data booking belum termuat. Tutup baris lalu buka lagi, atau klik Check Detail.");
+            setCalcSaveBusy(false);
+            return;
+          }
           const body: Record<string, unknown> = {
             tanggal_perolehan: postCalcForm.tanggal_perolehan.trim(),
             tanggal_pembayaran: postCalcForm.tanggal_pembayaran.trim(),
           };
-          const lt = parseIdNumber(postCalcForm.luas_tanah);
-          const nt = parseIdNumber(postCalcForm.njop_tanah);
-          const lb = parseIdNumber(postCalcForm.luas_bangunan);
-          const njb = parseIdNumber(postCalcForm.njop_bangunan);
-          const npoptkp = parseIdNumber(postCalcForm.nilaiPerolehanObjekPajakTidakKenaPajak);
+          const lt = toNum(src.luas_tanah);
+          const nt = toNum(src.njop_tanah);
+          const lb = toNum(src.luas_bangunan);
+          const njb = toNum(src.njop_bangunan);
+          body.luas_tanah = lt;
+          body.njop_tanah = nt;
+          body.luas_bangunan = lb;
+          body.njop_bangunan = njb;
           const bphtb = parseIdNumber(postCalcForm.bphtb_yangtelah_dibayar);
-          if (!Number.isNaN(lt)) body.luas_tanah = lt;
-          if (!Number.isNaN(nt)) body.njop_tanah = nt;
-          if (!Number.isNaN(lb)) body.luas_bangunan = lb;
-          if (!Number.isNaN(njb)) body.njop_bangunan = njb;
-          if (!Number.isNaN(npoptkp)) body.nilaiPerolehanObjekPajakTidakKenaPajak = npoptkp;
           if (!Number.isNaN(bphtb)) body.bphtb_yangtelah_dibayar = bphtb;
 
           const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nobooking)}/calculation`, {
@@ -1390,7 +1377,10 @@ export default function BookingSSPDBadanPage() {
                                   >
                                     Isi ini dengan data asli, karena semuanya terbaca dari sistem!
                                   </div>
-                                  <div style={{ fontWeight: 800, marginBottom: 10, color: "#5b21b6" }}>Perhitungan NJOP &amp; Pajak BPHTB (setelah bayar)</div>
+                                  <div style={{ fontWeight: 800, marginBottom: 10, color: "#5b21b6" }}>Finalisasi perhitungan BPHTB (setelah bayar)</div>
+                                  <p style={{ fontSize: 13, color: "#4c1d95", marginTop: 0, marginBottom: 12, lineHeight: 1.45 }}>
+                                    Luas dan NJOP diisi di form tambah/edit booking utama. Di sini hanya ringkasan angka dan pengisian setelah pembayaran.
+                                  </p>
                                   {(payPreview != null || detail?.billing_id) && (
                                     <div style={{ fontSize: 13, color: "#0f172a", marginBottom: 12 }}>
                                       {detail?.billing_id ? (
@@ -1408,50 +1398,53 @@ export default function BookingSSPDBadanPage() {
                                       ) : null}
                                     </div>
                                   )}
+                                  <div
+                                    style={{
+                                      display: "grid",
+                                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                      gap: 10,
+                                      marginBottom: 14,
+                                      padding: 12,
+                                      background: "#f8fafc",
+                                      borderRadius: 8,
+                                      border: "1px solid #e2e8f0",
+                                      fontSize: 13,
+                                      color: "#0f172a",
+                                    }}
+                                  >
+                                    <div style={{ gridColumn: "1 / -1", fontWeight: 700, marginBottom: 4 }}>Ringkasan dasar (dari booking — Poin 1)</div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Total nilai tanah (luas × NJOP)</div>
+                                      <div>{totalNjopTanah ? formatMoney(totalNjopTanah) : "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Total nilai bangunan (luas × NJOP)</div>
+                                      <div>{totalNjopBangunan ? formatMoney(totalNjopBangunan) : "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Jumlah NJOP PBB</div>
+                                      <div>{totalNjopTanah + totalNjopBangunan ? formatMoney(totalNjopTanah + totalNjopBangunan) : "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Harga transaksi</div>
+                                      <div>{formatMoney(detail?.hargatransaksi ?? detail?.harga_transaksi)}</div>
+                                    </div>
+                                    <div style={{ gridColumn: "1 / -1" }}>
+                                      <div style={fieldLabelStyle}>Dasar NPOP (nilai lebih besar antara NJOP dan harga)</div>
+                                      <div style={{ fontWeight: 700 }}>
+                                        {formatMoney(Math.max(totalNjopTanah + totalNjopBangunan, toNum(detail?.hargatransaksi ?? detail?.harga_transaksi)))}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>NPOPTKP (tersimpan / akan dihitung ulang di server)</div>
+                                      <div>{detail?.nilaiPerolehanObjekPajakTidakKenaPajak != null ? formatMoney(detail.nilaiPerolehanObjekPajakTidakKenaPajak) : "—"}</div>
+                                    </div>
+                                    <div>
+                                      <div style={fieldLabelStyle}>Jenis perolehan</div>
+                                      <div>{val(detail?.jenisPerolehan ?? detail?.jenis_perolehan)}</div>
+                                    </div>
+                                  </div>
                                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                                    <div>
-                                      <div style={fieldLabelStyle}>Luas tanah (m²)</div>
-                                      <input
-                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                                        value={postCalcForm.luas_tanah}
-                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, luas_tanah: e.target.value }))}
-                                      />
-                                    </div>
-                                    <div>
-                                      <div style={fieldLabelStyle}>NJOP tanah (per m²)</div>
-                                      <input
-                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                                        value={postCalcForm.njop_tanah}
-                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, njop_tanah: e.target.value }))}
-                                        placeholder="contoh: 1500000"
-                                      />
-                                    </div>
-                                    <div>
-                                      <div style={fieldLabelStyle}>Luas bangunan (m²)</div>
-                                      <input
-                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                                        value={postCalcForm.luas_bangunan}
-                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, luas_bangunan: e.target.value }))}
-                                      />
-                                    </div>
-                                    <div>
-                                      <div style={fieldLabelStyle}>NJOP bangunan (per m²)</div>
-                                      <input
-                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                                        value={postCalcForm.njop_bangunan}
-                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, njop_bangunan: e.target.value }))}
-                                        placeholder="contoh: 1200000"
-                                      />
-                                    </div>
-                                    <div>
-                                      <div style={fieldLabelStyle}>NPOPTKP (nilai perolehan tidak kena pajak)</div>
-                                      <input
-                                        style={{ width: "100%", padding: 8, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                                        value={postCalcForm.nilaiPerolehanObjekPajakTidakKenaPajak}
-                                        onChange={(e) => setPostCalcForm((f) => ({ ...f, nilaiPerolehanObjekPajakTidakKenaPajak: e.target.value }))}
-                                        placeholder="titik sebagai pemisah ribuan"
-                                      />
-                                    </div>
                                     <div>
                                       <div style={fieldLabelStyle}>BPHTB yang telah dibayar</div>
                                       <input
