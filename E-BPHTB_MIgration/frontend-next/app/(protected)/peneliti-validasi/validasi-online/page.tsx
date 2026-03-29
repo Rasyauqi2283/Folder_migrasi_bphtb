@@ -63,6 +63,8 @@ export default function PenelitiValidasiValidasiOnlinePage() {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [lastVerifiedNv, setLastVerifiedNv] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -132,22 +134,24 @@ export default function PenelitiValidasiValidasiOnlinePage() {
       setUserMsg("Pilih dokumen terlebih dahulu.");
       return;
     }
-    if (!confirm("Setujui dokumen ini?")) return;
+    if (
+      !confirm(
+        "Apakah Anda yakin data ini sudah valid? Tindakan ini akan menerbitkan Nomor Validasi dan menandatangani dokumen secara digital."
+      )
+    )
+      return;
     setApproveLoading(true);
     setUserMsg("");
     try {
-      const js = await callPV(`/api/validasi/${encodeURIComponent(selectedNv)}/decision`, {
-        method: "POST",
-        body: { decision: "approve" },
-      });
+      const js = await callPV(`/api/validasi/approve/${encodeURIComponent(selectedNv)}`, { method: "POST" });
       if (js.success) {
         setUserMsg(js.message || "Dokumen disetujui.");
-        if (js.lsb_result?.success) {
-          setUserMsg(`Dokumen disetujui dan dikirim ke LSB. No. Booking: ${js.nobooking ?? selectedNb}`);
+        const url = typeof js.pdf_url === "string" && js.pdf_url ? js.pdf_url : null;
+        if (url) {
+          setPdfViewerUrl(url.startsWith("http") ? url : `${getApiBase()}${url}`);
+          setPdfViewerOpen(true);
         }
         await fetchDocs();
-        setSelectedNv(null);
-        setSelectedNb(null);
       } else {
         setUserMsg("Gagal: " + (js.message || "Unknown"));
       }
@@ -210,6 +214,80 @@ export default function PenelitiValidasiValidasiOnlinePage() {
   };
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      {pdfViewerOpen && pdfViewerUrl && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPdfViewerOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 18,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(1100px, 98vw)",
+              height: "min(86vh, 900px)",
+              background: "#0b0f1a",
+              borderRadius: 12,
+              border: "1px solid rgba(148,163,184,0.25)",
+              overflow: "hidden",
+              boxShadow: "0 20px 70px rgba(0,0,0,0.6)",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 12px",
+                borderBottom: "1px solid rgba(148,163,184,0.18)",
+                color: "#e5e7eb",
+              }}
+            >
+              <div style={{ fontWeight: 800 }}>View Dokumen Validasi</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <a
+                  href={pdfViewerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#93c5fd", textDecoration: "none", fontWeight: 700, fontSize: 13 }}
+                >
+                  Buka Tab Baru
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPdfViewerOpen(false)}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(148,163,184,0.35)",
+                    background: "#111827",
+                    color: "#e5e7eb",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+
+            <div style={{ position: "absolute", inset: 0, top: 44 }}>
+              <iframe title="PDF Viewer" src={pdfViewerUrl} style={{ width: "100%", height: "100%", border: "none" }} />
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <Link
           href="/peneliti-validasi/sertifikat-digital"
@@ -411,6 +489,28 @@ export default function PenelitiValidasiValidasiOnlinePage() {
                                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                                   <a href={`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Permohonan</a>
                                   <a href={`${getApiBase()}/api/Validasi_lanjutan-generate-pdf-bookingsspd/${encodeURIComponent(nb)}`} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #334155", background: "#1d4ed8", color: "#fff", textDecoration: "none", fontSize: 14 }}>Lihat Dokumen Booking</a>
+                                  <button
+                                    type="button"
+                                    disabled={!(d.status_display === "Sudah Divalidasi" && nv)}
+                                    onClick={() => {
+                                      const url = `${getApiBase()}/api/validasi/pdf/${encodeURIComponent(nv)}`;
+                                      setPdfViewerUrl(url);
+                                      setPdfViewerOpen(true);
+                                    }}
+                                    style={{
+                                      padding: "6px 10px",
+                                      borderRadius: 6,
+                                      border: "1px solid #334155",
+                                      background: d.status_display === "Sudah Divalidasi" ? "#16a34a" : "#334155",
+                                      color: "#fff",
+                                      fontSize: 14,
+                                      fontWeight: 700,
+                                      cursor: d.status_display === "Sudah Divalidasi" ? "pointer" : "not-allowed",
+                                      opacity: d.status_display === "Sudah Divalidasi" ? 1 : 0.55,
+                                    }}
+                                  >
+                                    View Dokumen Validasi (Final)
+                                  </button>
                                 </div>
                               </div>
                               <div style={{ background: "#0b0f1a", border: "1px solid #1f2937", borderRadius: 10, padding: 14 }}>

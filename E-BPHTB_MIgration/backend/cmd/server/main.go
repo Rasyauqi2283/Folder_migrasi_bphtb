@@ -501,6 +501,11 @@ func main() {
 	mux.HandleFunc("GET /api/paraf/get-berkas-pending", parafHandler.GetBerkasPending)
 	mux.HandleFunc("GET /api/paraf/get-monitoring-documents", parafHandler.GetMonitoringDocuments)
 
+	// Validasi (Peneliti Validasi) — approval + view PDF (Go-native, replaces legacy Node approve flow)
+	validasiHandler := handler.NewValidasiHandler(userRepo, validationRepo)
+	mux.HandleFunc("POST /api/validasi/approve/{no_validasi}", validasiHandler.Approve)
+	mux.HandleFunc("GET /api/validasi/pdf/{no_validasi}", validasiHandler.ViewPDF)
+
 	// Proxy /api/admin/* ke Node dimatikan.
 	// Alasan: sebagian besar endpoint /api/admin/* sudah punya handler Go (lihat registrasi di atas),
 	// dan proxy ini berisiko membuat route admin yang seharusnya dilayani Go menjadi nyasar ke legacy Node di production.

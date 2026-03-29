@@ -27,6 +27,9 @@ func GenerateValidasiPDF(w io.Writer, data *repository.ValidasiPDFData, logoPath
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.AddPage()
 
+	// Watermark (diagonal) — do this early so all content is above it.
+	addValidasiWatermark(pdf, "SUDAH DIVALIDASI")
+
 	// === HEADER ===
 	pdf.Line(50, 35, 550, 35)
 	if strings.TrimSpace(logoPath) != "" {
@@ -278,6 +281,23 @@ func GenerateValidasiPDF(w io.Writer, data *repository.ValidasiPDFData, logoPath
 	pdf.Text(55, 585, "Digital Signature Key: "+shorten(qrPayload, 160))
 
 	return pdf.Output(w)
+}
+
+func addValidasiWatermark(pdf *gofpdf.Fpdf, text string) {
+	t := strings.TrimSpace(text)
+	if t == "" || pdf == nil {
+		return
+	}
+	// Light gray watermark, rotated. Keep it subtle.
+	pdf.SetTextColor(220, 220, 220)
+	pdf.SetFont("Helvetica", "B", 54)
+	pdf.TransformBegin()
+	// Rotate around center-ish of page.
+	pdf.TransformRotate(35, 300, 420)
+	pdf.Text(80, 420, t)
+	pdf.TransformEnd()
+	// Reset color (black)
+	pdf.SetTextColor(0, 0, 0)
 }
 
 func drawNjopRow(pdf *gofpdf.Fpdf, y float64, objek, no1 string, luas float64, no2 string, njop float64, no3 string, total float64) {
