@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -261,8 +262,13 @@ func (h *PpatHandler) SubmitLaporanBulanan(w http.ResponseWriter, r *http.Reques
 		sub := filepath.Join("laporan_bulanan", strconv.Itoa(tahun), fmt.Sprintf("%02d", bulan), userid)
 		dir := filepath.Join(baseDir, sub)
 		if err := ensureDir(dir); err != nil {
-			ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan file")
-			return
+			fallbackRoot := filepath.Join(os.TempDir(), "ppat_storage")
+			dir = filepath.Join(fallbackRoot, sub)
+			if err2 := ensureDir(dir); err2 != nil {
+				log.Printf("[PPAT] laporan ensureDir: %v; fallback: %v", err, err2)
+				ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan file")
+				return
+			}
 		}
 		ext := strings.ToLower(filepath.Ext(hdr.Filename))
 		if ext == "" {
@@ -271,8 +277,19 @@ func (h *PpatHandler) SubmitLaporanBulanan(w http.ResponseWriter, r *http.Reques
 		fn := fmt.Sprintf("laporan_%s_%d%s", userid, time.Now().UnixMilli(), ext)
 		full := filepath.Join(dir, fn)
 		if err := os.WriteFile(full, data, 0644); err != nil {
-			ppatJSONError(w, http.StatusInternalServerError, "Gagal menulis file")
-			return
+			fallbackRoot := filepath.Join(os.TempDir(), "ppat_storage")
+			dir = filepath.Join(fallbackRoot, sub)
+			if err2 := ensureDir(dir); err2 != nil {
+				log.Printf("[PPAT] laporan WriteFile: %v; fallback mkdir: %v", err, err2)
+				ppatJSONError(w, http.StatusInternalServerError, "Gagal menulis file")
+				return
+			}
+			full = filepath.Join(dir, fn)
+			if err := os.WriteFile(full, data, 0644); err != nil {
+				log.Printf("[PPAT] laporan WriteFile fallback: %v", err)
+				ppatJSONError(w, http.StatusInternalServerError, "Gagal menulis file")
+				return
+			}
 		}
 		rel := filepath.ToSlash(filepath.Join(sub, fn))
 		filePath = &rel
@@ -281,6 +298,7 @@ func (h *PpatHandler) SubmitLaporanBulanan(w http.ResponseWriter, r *http.Reques
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 	if err := h.laporanRepo.UpsertSubmission(ctx, userid, tahun, bulan, filePath); err != nil {
+		log.Printf("[PPAT] SubmitLaporanBulanan UpsertSubmission: %v", err)
 		ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan laporan")
 		return
 	}

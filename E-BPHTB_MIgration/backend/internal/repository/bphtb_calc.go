@@ -19,10 +19,19 @@ type BPHTBCalc struct {
 	NeedsSTPD bool // true when poin6 > 0
 }
 
+// normalizeJenisPerolehanKode strips labels like "01 - Jual Beli" → "01".
+func normalizeJenisPerolehanKode(kode string) string {
+	s := strings.TrimSpace(kode)
+	if len(s) >= 2 && s[0] >= '0' && s[0] <= '9' && s[1] >= '0' && s[1] <= '9' {
+		return s[:2]
+	}
+	return s
+}
+
 // NPOPTKPFromJenisPerolehan maps kode jenis perolehan -> NPOPTKP (Rupiah).
 // This mirrors frontend `NPOPTKP_MAP` defaults and should stay consistent.
 func NPOPTKPFromJenisPerolehan(kode string) float64 {
-	k := strings.TrimSpace(strings.ToUpper(kode))
+	k := strings.TrimSpace(strings.ToUpper(normalizeJenisPerolehanKode(kode)))
 	switch k {
 	case "03", "24", "30":
 		return 300_000_000

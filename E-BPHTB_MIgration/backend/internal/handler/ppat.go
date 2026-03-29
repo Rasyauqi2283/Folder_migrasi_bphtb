@@ -1536,7 +1536,7 @@ func ppatJSONError(w http.ResponseWriter, code int, message string) {
 }
 
 // requestBillingByNobooking runs the core billing-ID request logic and persists the billing state.
-// Amount can be 0 in the new 2-stage workflow (tagihan final diinput setelah bayar).
+// Tagihan dihitung dari bea terutang (payment_amount_requested atau hitung dari NJOP/harga/jenis perolehan); Rp0 ditolak.
 func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nobooking string) (*payment.BillingResponse, error) {
 	if h.repo == nil {
 		return nil, fmt.Errorf("service unavailable")
@@ -1551,32 +1551,45 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 	// Strict billing amount = Point 4 (Bea Terutang) based on: max(totalNJOP, harga_transaksi) and NPOPTKP from jenisPerolehan.
 	var amountRequested int64
 	// Fast path if already computed/stored.
-	_ = h.repo.Pool().QueryRow(ctx, `
+	err := h.repo.Pool().QueryRow(ctx, `
 		SELECT COALESCE(payment_amount_requested, 0)::bigint
 		FROM pat_1_bookingsspd
 		WHERE nobooking = $1
 		LIMIT 1
 	`, nb).Scan(&amountRequested)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("booking tidak ditemukan")
+		}
+		return nil, fmt.Errorf("gagal membaca booking: %w", err)
+	}
 	if amountRequested <= 0 {
 		var totalNJOP float64
 		var hargaTrans string
 		var jenisPerolehan string
-		_ = h.repo.Pool().QueryRow(ctx, `
+		// Jenis perolehan & harga canonical di pat_4; pat_1 sering tanpa kolom jenisperolehan.
+		err = h.repo.Pool().QueryRow(ctx, `
 			SELECT
 				COALESCE(pp.total_njoppbb, (COALESCE(pp.luas_tanah,0)*COALESCE(pp.njop_tanah,0) + COALESCE(pp.luas_bangunan,0)*COALESCE(pp.njop_bangunan,0)), 0)::float8 AS total_njop,
 				COALESCE(o.harga_transaksi::text, '') AS harga_transaksi,
-				COALESCE(p.jenisperolehan, '') AS jenis_perolehan
+				COALESCE(NULLIF(TRIM(o.jenis_perolehan::text), ''), '') AS jenis_perolehan
 			FROM pat_1_bookingsspd p
 			LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
 			LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
 			WHERE p.nobooking = $1
 			LIMIT 1
 		`, nb).Scan(&totalNJOP, &hargaTrans, &jenisPerolehan)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, fmt.Errorf("booking tidak ditemukan")
+			}
+			return nil, fmt.Errorf("gagal membaca NJOP/objek pajak: %w", err)
+		}
 		calc := repository.CalculateBPHTB(totalNJOP, hargaTrans, jenisPerolehan, 0)
 		amountRequested = int64(math.Round(calc.BeaTerutang))
 	}
 	if amountRequested <= 0 {
-		return nil, fmt.Errorf("bea terutang 0; billing tidak dapat dibuat")
+		return nil, fmt.Errorf("tagihan BPHTB terhitung Rp0: pastikan harga transaksi dan NJOP (luas × NJOP) sudah tersimpan — edit booking lalu simpan, atau lengkapi form perhitungan")
 	}
 	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
 		Nobooking:       nb,

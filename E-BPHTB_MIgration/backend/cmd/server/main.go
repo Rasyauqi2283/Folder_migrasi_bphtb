@@ -396,6 +396,31 @@ func main() {
 		}
 	}
 
+	// PPAT laporan bulanan (idempotent; mirror backend/sql/024_ppat_laporan_bulanan.sql)
+	if pool != nil {
+		_, err := pool.Exec(context.Background(), `
+			CREATE TABLE IF NOT EXISTS public.ppat_laporan_bulanan (
+				id BIGSERIAL PRIMARY KEY,
+				userid VARCHAR(64) NOT NULL,
+				tahun INT NOT NULL,
+				bulan INT NOT NULL CHECK (bulan >= 1 AND bulan <= 12),
+				submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+				file_path TEXT,
+				CONSTRAINT uq_ppat_laporan_user_periode UNIQUE (userid, tahun, bulan)
+			);
+			CREATE INDEX IF NOT EXISTS idx_ppat_laporan_user ON public.ppat_laporan_bulanan(userid);
+			CREATE INDEX IF NOT EXISTS idx_ppat_laporan_periode ON public.ppat_laporan_bulanan(tahun, bulan);
+			CREATE TABLE IF NOT EXISTS public.ppat_job_runs (
+				job_name TEXT NOT NULL,
+				run_date DATE NOT NULL,
+				PRIMARY KEY (job_name, run_date)
+			);
+		`)
+		if err != nil {
+			log.Printf("[BOOT] ensure ppat_laporan_bulanan: %v", err)
+		}
+	}
+
 	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo, userRepo, laporanRepo)
 	mux.HandleFunc("GET /api/ppat_generate-pdf-badan/{nobooking}", ppatHandler.GeneratePdfBadan)
 	mux.HandleFunc("GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}", ppatHandler.GeneratePdfMohonValidasi)

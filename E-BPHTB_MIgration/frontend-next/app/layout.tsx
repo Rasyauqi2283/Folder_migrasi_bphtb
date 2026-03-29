@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeInit } from "./components/ThemeInit";
 import SystemAlert from "./components/SystemAlert";
-import ConsoleNoiseSuppressor from "./components/ConsoleNoiseSuppressor";
+import { CHROME_PRELOAD_CONSOLE_SCRIPT } from "../lib/suppressChromePreloadConsole";
 
 export const metadata: Metadata = {
   title: {
@@ -26,8 +27,12 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body>
+        <Script
+          id="ebphtb-suppress-chrome-preload-console-noise"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: CHROME_PRELOAD_CONSOLE_SCRIPT }}
+        />
         <ThemeInit />
-        <ConsoleNoiseSuppressor />
         <SystemAlert />
         <AuthProvider>{children}</AuthProvider>
       </body>
