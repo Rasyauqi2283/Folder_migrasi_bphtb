@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -180,4 +181,132 @@ func (r *ValidationRepo) SearchValidations(ctx context.Context, search, status s
 		list = append(list, row)
 	}
 	return &SearchResult{Rows: list, Total: total}, nil
+}
+
+// ValidasiPDFData holds all fields needed to generate the final "BUKTI VALIDASI" PDF.
+// Coordinates/layout are defined in internal/pdf/generate_validasi.go.
+type ValidasiPDFData struct {
+	NoValidasi   string
+	NoRegistrasi string
+
+	// Booking (pat_1_bookingsspd)
+	Nobooking       string
+	Noppbb          string
+	Namawajibpajak  string
+	Npwpwp          string
+	Alamatwajibpajak string
+	Kodeposwp       string
+	Rtrwwp          string
+	Kelurahandesawp string
+	Kecamatanwp     string
+	Kabupatenkotawp string
+
+	Kodeposop        string
+	Trackstatus      string
+	JenisPerolehan   string
+	NeedsSTPD        bool
+
+	// Objek pajak (pat_4_objek_pajak)
+	Letaktanahdanbangunan string
+	RtRwobjekpajak        string
+	NomorSertifikat       string
+	TanggalPembayaran     string
+	HargaTransaksi        string
+	Kelurahandesalp       string
+	Kecamatanlp           string
+
+	// NJOP (pat_5_penghitungan_njop)
+	LuasTanah, NjopTanah, LuasBangunan, NjopBangunan float64
+
+	// BPHTB (pat_2_bphtb_perhitungan)
+	BphtbYangtelahDibayar float64
+
+	// PPAT (a_2_verified_users via booking userid)
+	PpatPejabatUmum string
+
+	// Peneliti Validasi / PV
+	PvNip            string
+	PvSpecialParafv  string
+	PvSubjectCn      string
+	PvCertCreatedAtISO string
+	QrPayload        string
+}
+
+// GetValidasiPDFData returns joined fields for "BUKTI VALIDASI" PDF by no_validasi.
+func (r *ValidationRepo) GetValidasiPDFData(ctx context.Context, noValidasi string) (*ValidasiPDFData, error) {
+	if r.pool == nil || strings.TrimSpace(noValidasi) == "" {
+		return nil, nil
+	}
+	nv := strings.TrimSpace(noValidasi)
+
+	q := `
+		SELECT
+			COALESCE(pv.no_validasi,''), COALESCE(pv.no_registrasi,''),
+			COALESCE(pb.nobooking,''), COALESCE(pb.noppbb,''), COALESCE(pb.namawajibpajak,''), COALESCE(pb.npwpwp,''),
+			COALESCE(pb.alamatwajibpajak,''), COALESCE(pb.kodeposwp,''), COALESCE(pb.rtrwwp,''), COALESCE(pb.kelurahandesawp,''),
+			COALESCE(pb.kecamatanwp,''), COALESCE(pb.kabupatenkotawp,''),
+			COALESCE(pb.kodeposop,''),
+			COALESCE(pb.trackstatus,''),
+			COALESCE(pb.jenisperolehan, COALESCE(o.jenis_perolehan::text,'')),
+			COALESCE(pb.needs_stpd,false),
+			COALESCE(o.letaktanahdanbangunan,''), COALESCE(o.rt_rwobjekpajak,''), COALESCE(o.nomor_sertifikat,''), COALESCE(o.tanggal_pembayaran::text,''),
+			COALESCE(o.harga_transaksi::text,''), COALESCE(o.kelurahandesalp,''), COALESCE(o.kecamatanlp,''),
+			COALESCE(pp.luas_tanah,0), COALESCE(pp.njop_tanah,0), COALESCE(pp.luas_bangunan,0), COALESCE(pp.njop_bangunan,0),
+			COALESCE(bp.bphtb_yangtelah_dibayar,0),
+			COALESCE(vu.pejabat_umum,''),
+			COALESCE(pvu.nip,''), COALESCE(pvu.special_parafv,''), COALESCE(pc.subject_cn,''), COALESCE(pc.created_at::text,''),
+			COALESCE(sr.qr_payload,'')
+		FROM pv_1_paraf_validate pv
+		LEFT JOIN pat_1_bookingsspd pb ON pb.nobooking = pv.nobooking
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = pb.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = pb.nobooking
+		LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = pb.nobooking
+		LEFT JOIN a_2_verified_users vu ON vu.userid = pb.userid
+		LEFT JOIN LATERAL (
+			SELECT signer_userid, qr_payload
+			FROM pv_2_signing_requests
+			WHERE (no_validasi = pv.no_validasi OR nobooking = pv.nobooking)
+			ORDER BY id DESC
+			LIMIT 1
+		) sr ON true
+		LEFT JOIN a_2_verified_users pvu ON pvu.userid = sr.signer_userid
+		LEFT JOIN LATERAL (
+			SELECT subject_cn, created_at
+			FROM pv_local_certs
+			WHERE userid = sr.signer_userid AND status = 'active'
+			ORDER BY valid_to DESC NULLS LAST
+			LIMIT 1
+		) pc ON true
+		WHERE pv.no_validasi = $1
+		LIMIT 1
+	`
+
+	var d ValidasiPDFData
+	err := r.pool.QueryRow(ctx, q, nv).Scan(
+		&d.NoValidasi, &d.NoRegistrasi,
+		&d.Nobooking, &d.Noppbb, &d.Namawajibpajak, &d.Npwpwp,
+		&d.Alamatwajibpajak, &d.Kodeposwp, &d.Rtrwwp, &d.Kelurahandesawp,
+		&d.Kecamatanwp, &d.Kabupatenkotawp,
+		&d.Kodeposop,
+		&d.Trackstatus,
+		&d.JenisPerolehan,
+		&d.NeedsSTPD,
+		&d.Letaktanahdanbangunan, &d.RtRwobjekpajak, &d.NomorSertifikat, &d.TanggalPembayaran,
+		&d.HargaTransaksi, &d.Kelurahandesalp, &d.Kecamatanlp,
+		&d.LuasTanah, &d.NjopTanah, &d.LuasBangunan, &d.NjopBangunan,
+		&d.BphtbYangtelahDibayar,
+		&d.PpatPejabatUmum,
+		&d.PvNip, &d.PvSpecialParafv, &d.PvSubjectCn, &d.PvCertCreatedAtISO,
+		&d.QrPayload,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if strings.TrimSpace(d.QrPayload) != "" && !strings.Contains(d.QrPayload, "|") {
+		d.QrPayload = strings.TrimSpace(d.QrPayload) + "|" + strings.TrimSpace(d.NoValidasi)
+	}
+	return &d, nil
 }

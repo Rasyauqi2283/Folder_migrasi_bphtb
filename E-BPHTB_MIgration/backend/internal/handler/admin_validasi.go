@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"ebphtb/backend/internal/pdf"
 	"ebphtb/backend/internal/repository"
 )
 
@@ -246,6 +249,61 @@ func (h *AdminValidasiHandler) GetValidateQR(w http.ResponseWriter, r *http.Requ
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// GeneratePdfValidasi handles GET /api/admin/generate-pdf-validasi/{no_validasi}.
+// It generates the final "BUKTI VALIDASI" PDF using Go (pixel-perfect port of legacy Node generator).
+func (h *AdminValidasiHandler) GeneratePdfValidasi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !h.requireAdmin(w, r) {
+		return
+	}
+	noValidasi := strings.TrimSpace(r.PathValue("no_validasi"))
+	if noValidasi == "" {
+		adminJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Nomor validasi tidak valid"})
+		return
+	}
+	if h.valRepo == nil || h.valRepo.Pool() == nil {
+		adminJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"success": false, "message": "Database tidak tersedia"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	data, err := h.valRepo.GetValidasiPDFData(ctx, noValidasi)
+	if err != nil {
+		log.Printf("[ADMIN] GetValidasiPDFData: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Gagal memuat data PDF"})
+		return
+	}
+	if data == nil {
+		adminJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Nomor validasi tidak ditemukan"})
+		return
+	}
+
+	// Resolve logo path (prefer configured asset if exists).
+	logoPath := ""
+	if fallback, err := filepath.Abs("frontend-next/asset/Logobappenda_pdf.png"); err == nil {
+		if _, err := os.Stat(fallback); err == nil {
+			logoPath = fallback
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	disposition := "inline"
+	if r.URL.Query().Get("download") != "" {
+		disposition = "attachment"
+	}
+	w.Header().Set("Content-Disposition", disposition+`; filename="Bukti_Validasi_`+noValidasi+`.pdf"`)
+	if err := pdf.GenerateValidasiPDF(w, data, logoPath); err != nil {
+		log.Printf("[ADMIN] GeneratePdfValidasi PDF write: %v", err)
+		adminJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Gagal menghasilkan dokumen PDF"})
+		return
+	}
 }
 
 // GetValidateQRSearch handles GET /api/admin/validate-qr-search.

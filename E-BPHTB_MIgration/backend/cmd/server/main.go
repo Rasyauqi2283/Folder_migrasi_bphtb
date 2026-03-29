@@ -258,6 +258,7 @@ func main() {
 	adminValidasi := handler.NewAdminValidasiHandler(userRepo, validationRepo)
 	mux.HandleFunc("GET /api/admin/validate-qr/{no_validasi}", adminValidasi.GetValidateQR)
 	mux.HandleFunc("GET /api/admin/validate-qr-search", adminValidasi.GetValidateQRSearch)
+	mux.HandleFunc("GET /api/admin/generate-pdf-validasi/{no_validasi}", adminValidasi.GeneratePdfValidasi)
 	mux.HandleFunc("GET /api/admin/validation-statistics", adminValidasi.GetValidationStatistics)
 
 	// FAQ — public list + admin CRUD + upload image for rich text
