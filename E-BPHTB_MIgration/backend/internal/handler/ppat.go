@@ -1593,12 +1593,9 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 }
 
 // RequestBilling handles POST /api/ppat/request-billing.
+// Compatibility: some frontends/proxies may call this via GET with query param `nobooking`.
 // It registers a BJB Billing ID (mock for now) and stores it for the booking.
 func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
-		return
-	}
 	userid := getPpatUserid(r)
 	if userid == "" {
 		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
@@ -1608,14 +1605,23 @@ func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
 		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
 		return
 	}
-	var in struct {
-		Nobooking string `json:"nobooking"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+	nb := ""
+	switch r.Method {
+	case http.MethodPost:
+		var in struct {
+			Nobooking string `json:"nobooking"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+			return
+		}
+		nb = strings.TrimSpace(in.Nobooking)
+	case http.MethodGet:
+		nb = strings.TrimSpace(r.URL.Query().Get("nobooking"))
+	default:
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 		return
 	}
-	nb := strings.TrimSpace(in.Nobooking)
 	if nb == "" {
 		ppatJSONError(w, http.StatusBadRequest, "nobooking wajib")
 		return

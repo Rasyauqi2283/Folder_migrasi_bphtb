@@ -855,44 +855,66 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 		return err
 	}
 
-	// pat_2 (upsert)
+	// pat_2 — skema lama tidak selalu punya UNIQUE(nobooking); jangan pakai ON CONFLICT(nobooking).
 	np := 0.0
-	bp := 0.0
+	var bpInt int32
 	if params.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
 		np = *params.NilaiPerolehanObjekPajakTidakKenaPajak
 	}
 	if params.BphtbYangtelahDibayar != nil {
-		bp = *params.BphtbYangtelahDibayar
+		bpInt = int32(math.Round(*params.BphtbYangtelahDibayar))
 	}
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
-		VALUES ($1,$2,$3)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  nilaiperolehanobjekpajaktidakkenapajak = EXCLUDED.nilaiperolehanobjekpajaktidakkenapajak,
-		  bphtb_yangtelah_dibayar = EXCLUDED.bphtb_yangtelah_dibayar
-	`, np, bp, nobooking)
+	tag2, err := tx.Exec(ctx, `
+		UPDATE pat_2_bphtb_perhitungan SET
+			nilaiperolehanobjekpajaktidakkenapajak = $1,
+			bphtb_yangtelah_dibayar = $2
+		WHERE nobooking = $3
+	`, np, bpInt, nobooking)
+	if err != nil {
+		return err
+	}
+	if tag2.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
+			VALUES ($1,$2,$3)
+		`, np, bpInt, nobooking)
+		if err != nil {
+			return err
+		}
+	}
 
-	// pat_4 (upsert)
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_4_objek_pajak (letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  letaktanahdanbangunan = EXCLUDED.letaktanahdanbangunan,
-		  rt_rwobjekpajak = EXCLUDED.rt_rwobjekpajak,
-		  status_kepemilikan = EXCLUDED.status_kepemilikan,
-		  keterangan = EXCLUDED.keterangan,
-		  nomor_sertifikat = EXCLUDED.nomor_sertifikat,
-		  tanggal_perolehan = EXCLUDED.tanggal_perolehan,
-		  tanggal_pembayaran = EXCLUDED.tanggal_pembayaran,
-		  nomor_bukti_pembayaran = EXCLUDED.nomor_bukti_pembayaran,
-		  harga_transaksi = EXCLUDED.harga_transaksi,
-		  kelurahandesalp = EXCLUDED.kelurahandesalp,
-		  kecamatanlp = EXCLUDED.kecamatanlp,
-		  jenis_perolehan = EXCLUDED.jenis_perolehan
-	`, params.Letaktanahdanbangunan, params.RtRwobjekpajak, normStatusKepemilikan(params.StatusKepemilikan), params.Keterangan, params.NomorSertifikat,
-		params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, nobooking, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan)
+	stKepemilikan := normStatusKepemilikan(params.StatusKepemilikan)
+	tag4, err := tx.Exec(ctx, `
+		UPDATE pat_4_objek_pajak SET
+			letaktanahdanbangunan = $1,
+			rt_rwobjekpajak = $2,
+			status_kepemilikan = $3,
+			keterangan = $4,
+			nomor_sertifikat = $5,
+			tanggal_perolehan = $6,
+			tanggal_pembayaran = $7,
+			nomor_bukti_pembayaran = $8,
+			harga_transaksi = $9,
+			kelurahandesalp = $10,
+			kecamatanlp = $11,
+			jenis_perolehan = $12
+		WHERE nobooking = $13
+	`, params.Letaktanahdanbangunan, params.RtRwobjekpajak, stKepemilikan, params.Keterangan, params.NomorSertifikat,
+		params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan, nobooking)
+	if err != nil {
+		return err
+	}
+	if tag4.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO pat_4_objek_pajak (letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+			params.Letaktanahdanbangunan, params.RtRwobjekpajak, stKepemilikan, params.Keterangan, params.NomorSertifikat,
+			params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, nobooking, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan)
+		if err != nil {
+			return err
+		}
+	}
 
-	// pat_5 (upsert)
 	lt, nt, lb, nb, tot := 0.0, 0.0, 0.0, 0.0, 0.0
 	if params.LuasTanah != nil {
 		lt = *params.LuasTanah
@@ -911,19 +933,33 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 	} else {
 		tot = (lt * nt) + (lb * nb)
 	}
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
-		VALUES ($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  luas_tanah = EXCLUDED.luas_tanah,
-		  njop_tanah = EXCLUDED.njop_tanah,
-		  luas_bangunan = EXCLUDED.luas_bangunan,
-		  njop_bangunan = EXCLUDED.njop_bangunan,
-		  total_njoppbb = EXCLUDED.total_njoppbb,
-		  updated_at = now()
+	tag5, err := tx.Exec(ctx, `
+		UPDATE pat_5_penghitungan_njop SET
+			luas_tanah = $1,
+			njop_tanah = $2,
+			luas_bangunan = $3,
+			njop_bangunan = $4,
+			total_njoppbb = $5,
+			updated_at = now()
+		WHERE nobooking = $6
 	`, lt, nt, lb, nb, tot, nobooking)
+	if err != nil {
+		return err
+	}
+	if tag5.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
+			VALUES ($1,$2,$3,$4,$5,$6)
+		`, lt, nt, lb, nb, tot, nobooking)
+		if err != nil {
+			return err
+		}
+	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func normStatusKepemilikan(s string) string {
@@ -934,7 +970,7 @@ func normStatusKepemilikan(s string) string {
 		return "Milik Bersama"
 	case "sewa", "Sewa":
 		return "Sewa"
-	case "hak_guna_bangunan", "Hak Guna Bangunan":
+	case "hgb", "hak_guna_bangunan", "Hak Guna Bangunan":
 		return "Hak Guna Bangunan"
 	}
 	return "Milik Pribadi"
@@ -1727,17 +1763,28 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		nbng = *p.NjopBangunan
 	}
 	tot := (lt * nt) + (lb * nbng)
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
-		VALUES ($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  luas_tanah = EXCLUDED.luas_tanah,
-		  njop_tanah = EXCLUDED.njop_tanah,
-		  luas_bangunan = EXCLUDED.luas_bangunan,
-		  njop_bangunan = EXCLUDED.njop_bangunan,
-		  total_njoppbb = EXCLUDED.total_njoppbb,
-		  updated_at = now()
+	tag5, err := tx.Exec(ctx, `
+		UPDATE pat_5_penghitungan_njop SET
+			luas_tanah = $1,
+			njop_tanah = $2,
+			luas_bangunan = $3,
+			njop_bangunan = $4,
+			total_njoppbb = $5,
+			updated_at = now()
+		WHERE nobooking = $6
 	`, lt, nt, lb, nbng, tot, nb)
+	if err != nil {
+		return err
+	}
+	if tag5.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
+			VALUES ($1,$2,$3,$4,$5,$6)
+		`, lt, nt, lb, nbng, tot, nb)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Strict BPHTB points (1..6): NPOPTKP auto from jenis perolehan; requested amount = point 4.
 	var jenisPerolehan string
@@ -1756,23 +1803,38 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 	}
 	calc := CalculateBPHTB(tot, hargaTransaksi, jenisPerolehan, bphtbPaid)
 	npoptkp := calc.NPOPTKP
-	bphtb := calc.BeaDibayar
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
-		VALUES ($1,$2,$3)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  nilaiperolehanobjekpajaktidakkenapajak = EXCLUDED.nilaiperolehanobjekpajaktidakkenapajak,
-		  bphtb_yangtelah_dibayar = EXCLUDED.bphtb_yangtelah_dibayar
+	bphtb := int32(math.Round(calc.BeaDibayar))
+	tag2, err := tx.Exec(ctx, `
+		UPDATE pat_2_bphtb_perhitungan SET
+			nilaiperolehanobjekpajaktidakkenapajak = $1,
+			bphtb_yangtelah_dibayar = $2
+		WHERE nobooking = $3
 	`, npoptkp, bphtb, nb)
+	if err != nil {
+		return err
+	}
+	if tag2.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
+			VALUES ($1,$2,$3)
+		`, npoptkp, bphtb, nb)
+		if err != nil {
+			return err
+		}
+	}
 
-	// pat_4 (tanggal)
-	_, _ = tx.Exec(ctx, `
-		INSERT INTO pat_4_objek_pajak (tanggal_perolehan, tanggal_pembayaran, nobooking)
-		VALUES ($1,$2,$3)
-		ON CONFLICT (nobooking) DO UPDATE SET
-		  tanggal_perolehan = EXCLUDED.tanggal_perolehan,
-		  tanggal_pembayaran = EXCLUDED.tanggal_pembayaran
+	tag4, err := tx.Exec(ctx, `
+		UPDATE pat_4_objek_pajak SET
+			tanggal_perolehan = $1,
+			tanggal_pembayaran = $2
+		WHERE nobooking = $3
 	`, p.TanggalPerolehan, p.TanggalPembayaran, nb)
+	if err != nil {
+		return err
+	}
+	if tag4.RowsAffected() == 0 {
+		return fmt.Errorf("data objek pajak (pat_4) untuk booking ini belum ada")
+	}
 
 	// Update canonical requested amount (Point 4), completion flag, then re-evaluate underpayment.
 	req := int64(math.Round(calc.BeaTerutang))

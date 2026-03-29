@@ -430,6 +430,8 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/unblock", ppatHandler.PostMonitoringUnblock)
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/notify", ppatHandler.PostMonitoringNotify)
 	mux.HandleFunc("POST /api/ppat/request-billing", ppatHandler.RequestBilling)
+	// Compatibility: allow GET /api/ppat/request-billing?nobooking=... for some proxies/clients.
+	mux.HandleFunc("GET /api/ppat/request-billing", ppatHandler.RequestBilling)
 	mux.HandleFunc("POST /api/ppat/request-billing-first", ppatHandler.RequestBillingFirst)
 	mux.HandleFunc("GET /api/ppat/billing/pending", ppatHandler.PendingBillingSummary)
 
