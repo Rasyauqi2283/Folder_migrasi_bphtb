@@ -1567,6 +1567,11 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 			amountRequested = 0
 		}
 	}
+	// Stage-1 flow: tagihan final belum diketahui. Untuk mock BJB client (dan banyak gateway),
+	// amount 0 akan ditolak. Set minimal 1 agar Billing ID tetap bisa digenerate.
+	if amountRequested <= 0 {
+		amountRequested = 1
+	}
 	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
 		Nobooking:       nb,
 		AmountRequested: amountRequested,

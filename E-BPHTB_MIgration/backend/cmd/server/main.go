@@ -373,7 +373,7 @@ func main() {
 		_, err := pool.Exec(context.Background(), `
 			ALTER TABLE public.pat_1_bookingsspd
 				ADD COLUMN IF NOT EXISTS sspd_pembayaran_status character varying(40) DEFAULT 'BELUM_LUNAS';
-			COMMENT ON COLUMN public.pat_1_bookingsspd.sspd_pembayaran_status IS 'BELUM_LUNAS | LUNAS — diisi otomatis saat gateway PAID';
+			COMMENT ON COLUMN public.pat_1_bookingsspd.sspd_pembayaran_status IS 'BELUM_LUNAS | LUNAS | KURANG_BAYAR — diisi otomatis saat gateway PAID';
 			ALTER TABLE public.pat_1_bookingsspd
 				ADD COLUMN IF NOT EXISTS billing_id character varying(64),
 				ADD COLUMN IF NOT EXISTS billing_expires_at timestamp with time zone,
