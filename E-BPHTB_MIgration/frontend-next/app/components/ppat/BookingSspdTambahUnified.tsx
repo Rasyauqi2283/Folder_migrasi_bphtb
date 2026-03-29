@@ -372,79 +372,6 @@ function parseNpwpToDigits(raw: string): string[] {
   return out;
 }
 
-function parseDdMmYyyyParts(s: string | undefined): { d: string; m: string; y: string } {
-  const t = (s || "").trim();
-  if (!t) return { d: "", m: "", y: "" };
-  const parts = t.split(/[-./]/).map((x) => x.trim());
-  if (parts.length >= 3) {
-    if (parts[0].length === 4) {
-      return { d: parts[2] || "", m: parts[1] || "", y: parts[0] || "" };
-    }
-    return { d: parts[0] || "", m: parts[1] || "", y: parts[2] || "" };
-  }
-  return { d: "", m: "", y: "" };
-}
-
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
-
-function getDaysInMonth(month: number, year: number): number {
-  if (!month || month < 1 || month > 12) return 31;
-  if (month === 2) return isLeapYear(year) ? 29 : 28;
-  if ([4, 6, 9, 11].includes(month)) return 30;
-  return 31;
-}
-
-function partsToIsoDate(parts: { d: string; m: string; y: string }): string {
-  const d = Number(parts.d);
-  const m = Number(parts.m);
-  const y = Number(parts.y);
-  if (!d || !m || !y) return "";
-  return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-}
-
-function isoDateToParts(iso: string): { d: string; m: string; y: string } {
-  const parts = (iso || "").split("-");
-  if (parts.length !== 3) return { d: "", m: "", y: "" };
-  return {
-    d: String(Number(parts[2]) || ""),
-    m: String(Number(parts[1]) || ""),
-    y: String(Number(parts[0]) || ""),
-  };
-}
-
-function validateDateParts(parts: { d: string; m: string; y: string }, minYear: number, maxYear: number): string | null {
-  const d = Number(parts.d);
-  const m = Number(parts.m);
-  const y = Number(parts.y);
-  if (!d || !m || !y) return "Tanggal belum lengkap.";
-  if (m < 1 || m > 12) return "Bulan tidak valid.";
-  if (y < minYear || y > maxYear) return `Tahun harus antara ${minYear} - ${maxYear}.`;
-  const maxDay = getDaysInMonth(m, y);
-  if (d < 1 || d > maxDay) return `Tanggal tidak valid. Bulan ${String(m).padStart(2, "0")} tahun ${y} maksimal ${maxDay} hari.`;
-  return null;
-}
-
-function formatTanggalIndonesia(parts: { d: string; m: string; y: string }): string {
-  const d = Number(parts.d);
-  const m = Number(parts.m);
-  const y = Number(parts.y);
-  if (!d || !m || !y) return "-";
-  const monthNames = [
-    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-  ];
-  return `${d} ${monthNames[m - 1]} ${y}`;
-}
-
-function formatRupiahCompact(value: number): string {
-  if (!value || value <= 0 || Number.isNaN(value)) return "0";
-  if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} Triliun`;
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} Miliar`;
-  return value.toLocaleString("id-ID");
-}
-
 /** Nilai status_kepemilikan di DB → value `<select>` form */
 function statusDbToForm(s: string | undefined): string {
   const v = (s || "").trim();
@@ -499,7 +426,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [openObjek, setOpenObjek] = useState(true);
-  const [openPerhitungan, setOpenPerhitungan] = useState(true);
 
   const [tanggal, setTanggal] = useState(defaultTanggal);
   const [nobookingValue, setNobookingValue] = useState("");
@@ -509,19 +435,10 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
   const [npwpWpDigits, setNpwpWpDigits] = useState<string[]>(Array(6).fill(""));
   const [npwpOpDigits, setNpwpOpDigits] = useState<string[]>(Array(6).fill(""));
   const [jenisPerolehan, setJenisPerolehan] = useState("");
-  const [npoptkp, setNpoptkp] = useState<number>(80_000_000);
-  const [tanggalOleh, setTanggalOleh] = useState({ d: "", m: "", y: "" });
-  const [tanggalBayar, setTanggalBayar] = useState({ d: "", m: "", y: "" });
-  const [tanggalOlehError, setTanggalOlehError] = useState<string | null>(null);
-  const [tanggalBayarError, setTanggalBayarError] = useState<string | null>(null);
-  const [calculatedTanah, setCalculatedTanah] = useState(0);
-  const [calculatedBangunan, setCalculatedBangunan] = useState(0);
 
   const nopRefs = useRef<(HTMLInputElement | null)[]>([]);
   const npwpWpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const npwpOpRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const tanggalOlehPickerRef = useRef<HTMLInputElement | null>(null);
-  const tanggalBayarPickerRef = useRef<HTMLInputElement | null>(null);
   const [kecamatanSearch, setKecamatanSearch] = useState("");
   const [kecamatanDropdownOpen, setKecamatanDropdownOpen] = useState(false);
   const [kelurahanDropdownOpen, setKelurahanDropdownOpen] = useState(false);
@@ -547,11 +464,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
   const [wpLookupLoading, setWpLookupLoading] = useState(false);
   const [wpToast, setWpToast] = useState<string | null>(null);
   const [wpTeleponHint, setWpTeleponHint] = useState<string | null>(null);
-  const minYear = 1900;
-  const maxYear = today.getFullYear() + 1;
-  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => String(minYear + i));
-  const days = Array.from({ length: 31 }, (_, i) => String(i + 1));
-  const months = Array.from({ length: 12 }, (_, i) => String(i + 1));
 
   const [form, setForm] = useState<Record<string, string | number | undefined>>({
     namawajibpajak: "",
@@ -578,11 +490,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
     jenisPerolehan: "",
     keterangan: "",
     nomor_sertifikat: "",
-    luas_tanah: undefined,
-    njop_tanah: undefined,
-    luas_bangunan: undefined,
-    njop_bangunan: undefined,
-    bphtb_yangtelah_dibayar: undefined,
     npwpwp: "",
     npwpop: "",
   });
@@ -636,10 +543,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
         ...prev,
         namawajibpajak: skipNamaWp ? prev.namawajibpajak : (str("namawajibpajak") ?? prev.namawajibpajak),
         letaktanahdanbangunan: str("alamat_objek") ?? prev.letaktanahdanbangunan,
-        luas_tanah: num("luas_tanah") ?? prev.luas_tanah,
-        njop_tanah: num("njop_tanah") ?? prev.njop_tanah,
-        luas_bangunan: num("luas_bangunan") ?? prev.luas_bangunan,
-        njop_bangunan: num("njop_bangunan") ?? prev.njop_bangunan,
       }));
       const src = str("source") ?? "internal_db";
       setNopLookupNotice(
@@ -647,7 +550,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           ? `Data objek pajak dimuat (sumber: ${src}). Nama WP tidak diubah karena sudah diisi dari NIK/NPWP.`
           : `Referensi objek pajak dimuat (sumber: ${src}). Silakan sesuaikan jika ada perbedaan dengan dokumen.`
       );
-      setOpenPerhitungan(true);
       window.setTimeout(() => setNopLookupNotice(null), 8000);
     } catch (e: unknown) {
       const aborted = typeof e === "object" && e !== null && "name" in e && (e as { name: string }).name === "AbortError";
@@ -886,12 +788,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
   const applyCallbackFromData = useCallback((d: Record<string, unknown>) => {
     const str = (k: string) => (d[k] != null ? String(d[k]) : "");
-    const num = (k: string) => {
-      const v = d[k];
-      if (typeof v === "number" && !Number.isNaN(v)) return v;
-      if (typeof v === "string" && v.trim() !== "") return parseFloat(v.replace(/\./g, "").replace(",", "."));
-      return undefined;
-    };
 
     const jwpCb = str("jenis_wajib_pajak");
     const isPerCb = jwpCb.toLowerCase().includes("perorangan");
@@ -908,12 +804,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
     const jp = str("jenisPerolehan");
     setJenisPerolehan(jp);
-    setNpoptkp(NPOPTKP_MAP[jp] ?? 80_000_000);
-    const npopt = d.nilaiPerolehanObjekPajakTidakKenaPajak;
-    if (typeof npopt === "number" && !Number.isNaN(npopt)) setNpoptkp(npopt);
-
-    setTanggalOleh(parseDdMmYyyyParts(str("tanggal_perolehan")));
-    setTanggalBayar(parseDdMmYyyyParts(str("tanggal_pembayaran")));
 
     const hargaRaw = d.hargatransaksi;
     let hargaStr = "";
@@ -921,14 +811,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       const n = typeof hargaRaw === "number" ? hargaRaw : parseRupiah(String(hargaRaw));
       hargaStr = n > 0 ? String(n) : "";
     }
-
-    const bphtb = d.bphtb_yangtelah_dibayar;
-    const bphtbVal =
-      typeof bphtb === "number" && !Number.isNaN(bphtb)
-        ? bphtb
-        : typeof bphtb === "string" && bphtb.trim() !== ""
-          ? parseRupiah(bphtb)
-          : undefined;
 
     setKecamatanSearch("");
     setForm({
@@ -956,16 +838,10 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       jenisPerolehan: jp,
       keterangan: str("keterangan"),
       nomor_sertifikat: str("nomor_sertifikat"),
-      luas_tanah: num("luas_tanah"),
-      njop_tanah: num("njop_tanah"),
-      luas_bangunan: num("luas_bangunan"),
-      njop_bangunan: num("njop_bangunan"),
-      bphtb_yangtelah_dibayar: bphtbVal,
       npwpwp: isPerCb ? str("npwpwp") : "",
       npwpop: isPerCb ? str("npwpop") : "",
     });
     setOpenObjek(true);
-    setOpenPerhitungan(true);
     setError(null);
   }, []);
 
@@ -995,36 +871,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
   const handleJenisPerolehanChange = useCallback((val: string) => {
     setJenisPerolehan(val);
-    setNpoptkp(NPOPTKP_MAP[val] ?? 80_000_000);
     updateForm("jenisPerolehan", val);
   }, [updateForm]);
-
-  useEffect(() => {
-    const lt = Number(form.luas_tanah) || 0;
-    const nt = Number(form.njop_tanah) || 0;
-    const lb = Number(form.luas_bangunan) || 0;
-    const nb = Number(form.njop_bangunan) || 0;
-    setCalculatedTanah(lt * nt);
-    setCalculatedBangunan(lb * nb);
-  }, [form.luas_tanah, form.njop_tanah, form.luas_bangunan, form.njop_bangunan]);
-
-  useEffect(() => {
-    setTanggalOlehError(validateDateParts(tanggalOleh, minYear, maxYear));
-  }, [tanggalOleh, minYear, maxYear]);
-
-  useEffect(() => {
-    setTanggalBayarError(validateDateParts(tanggalBayar, minYear, maxYear));
-  }, [tanggalBayar, minYear, maxYear]);
-
-  const openNativeDatePicker = (ref: React.RefObject<HTMLInputElement | null>) => {
-    if (!ref.current) return;
-    if (typeof ref.current.showPicker === "function") {
-      ref.current.showPicker();
-      return;
-    }
-    ref.current.focus();
-    ref.current.click();
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1069,16 +917,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       return;
     }
 
-    const tanggalOlehErr = validateDateParts(tanggalOleh, minYear, maxYear);
-    const tanggalBayarErr = validateDateParts(tanggalBayar, minYear, maxYear);
-    if (tanggalOlehErr || tanggalBayarErr) {
-      setError(tanggalOlehErr || tanggalBayarErr || "Tanggal tidak valid.");
-      return;
-    }
-
-    const tanggalOlehStr = partsToIsoDate(tanggalOleh);
-    const tanggalBayarStr = partsToIsoDate(tanggalBayar);
-
     const payload: CreatePayload = {
       jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
       noppbb,
@@ -1101,8 +939,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       npwpop,
       kodeposop: String(form.kodeposop ?? ""),
       trackstatus: "Terbuat",
-      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkp,
-      bphtb_yangtelah_dibayar: form.bphtb_yangtelah_dibayar != null ? Number(form.bphtb_yangtelah_dibayar) : undefined,
       hargatransaksi: form.hargatransaksi?.toString(),
       letaktanahdanbangunan: form.letaktanahdanbangunan?.toString(),
       rt_rwobjekpajak: form.rt_rwobjekpajak?.toString(),
@@ -1112,12 +948,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       jenisPerolehan: form.jenisPerolehan?.toString(),
       keterangan: form.keterangan?.toString(),
       nomor_sertifikat: form.nomor_sertifikat?.toString(),
-      tanggal_perolehan: tanggalOlehStr,
-      tanggal_pembayaran: tanggalBayarStr,
-      luas_tanah: form.luas_tanah != null ? Number(form.luas_tanah) : undefined,
-      njop_tanah: form.njop_tanah != null ? Number(form.njop_tanah) : undefined,
-      luas_bangunan: form.luas_bangunan != null ? Number(form.luas_bangunan) : undefined,
-      njop_bangunan: form.njop_bangunan != null ? Number(form.njop_bangunan) : undefined,
     };
 
     setLoading(true);
@@ -1943,269 +1773,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           )}
         </div>
 
-        {/* Perhitungan NJOP & Pajak BPHTB — satu alur vertikal */}
-        <div style={{ marginBottom: 24, border: "1px solid var(--border_color)", borderRadius: 8, overflow: "hidden" }}>
-          <button
-            type="button"
-            onClick={() => setOpenPerhitungan(!openPerhitungan)}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              background: "var(--card_bg_grey)",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 600,
-            }}
-          >
-            <span>Perhitungan NJOP &amp; Pajak BPHTB</span>
-            <span>{openPerhitungan ? "−" : "+"}</span>
-          </button>
-          {openPerhitungan && (
-            <div style={{ padding: 16, borderTop: "1px solid var(--border_color)" }}>
-              <p style={{ ...hintStyle, marginTop: 0, marginBottom: 16, fontWeight: 700, color: "var(--color_font_main)" }}>
-                Alur vertikal: luas/NJOP → tanggal pajak → NPOPTKP &amp; bea (setelah jenis perolehan diisi di blok Objek Pajak).
-              </p>
-              <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "var(--color_font_main)" }}>
-                Tanah ({formatRupiahCompact(calculatedTanah)})
-              </h4>
-              <div style={rowStyle}>
-                <div>
-                  <label style={labelStyle}>Luas Tanah (m²)</label>
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.luas_tanah ?? ""}
-                    onChange={(e) => updateForm("luas_tanah", e.target.value ? Number(e.target.value) : undefined)}
-                    required
-                  />
-                  <p style={hintStyle}>contoh: 289.2 (gunakan titik untuk desimal)</p>
-                </div>
-                <div>
-                  <label style={labelStyle}>NJOP Tanah (Rp)</label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    inputMode="numeric"
-                    value={formatRupiah(form.njop_tanah as number | undefined)}
-                    onChange={(e) => {
-                      const num = parseRupiah(e.target.value);
-                      updateForm("njop_tanah", num || undefined);
-                    }}
-                    placeholder="0"
-                    required
-                  />
-                  <p style={hintStyle}>contoh: 1.500.000.000 — otomatis format ribuan</p>
-                </div>
-              </div>
-              <h4 style={{ margin: "16px 0 12px", fontSize: 14, color: "var(--color_font_main)" }}>
-                Bagian Bangunan ({formatRupiahCompact(calculatedBangunan)})
-              </h4>
-              <div style={rowStyle}>
-                <div>
-                  <label style={labelStyle}>Luas Bangunan (m²)</label>
-                  <input
-                    style={inputStyle}
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={form.luas_bangunan ?? ""}
-                    onChange={(e) => updateForm("luas_bangunan", e.target.value ? Number(e.target.value) : undefined)}
-                    required
-                  />
-                  <p style={hintStyle}>contoh: 289.2</p>
-                </div>
-                <div>
-                  <label style={labelStyle}>NJOP Bangunan (Rp)</label>
-                  <input
-                    style={inputStyle}
-                    type="text"
-                    inputMode="numeric"
-                    value={formatRupiah(form.njop_bangunan as number | undefined)}
-                    onChange={(e) => {
-                      const num = parseRupiah(e.target.value);
-                      updateForm("njop_bangunan", num || undefined);
-                    }}
-                    placeholder="0"
-                    required
-                  />
-                  <p style={hintStyle}>contoh: 1.500.000.000 — otomatis format ribuan</p>
-                </div>
-              </div>
-
-              <div style={{ margin: "20px 0 12px", paddingTop: 16, borderTop: "1px dashed var(--border_color)" }}>
-                <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--color_font_main)" }}>Tanggal perolehan &amp; pembayaran</h4>
-              </div>
-              <div style={rowStyle}>
-                <div>
-                  <label style={labelStyle}>Tanggal Perolehan (DD/MM/YYYY)</label>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <select
-                      style={{ ...inputStyle, width: 72, marginTop: 0 }}
-                      value={tanggalOleh.d}
-                      onChange={(e) => setTanggalOleh((p) => ({ ...p, d: e.target.value }))}
-                      required
-                    >
-                      <option value="">DD</option>
-                      {days.map((d) => (
-                        <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <span>/</span>
-                    <select
-                      style={{ ...inputStyle, width: 80, marginTop: 0 }}
-                      value={tanggalOleh.m}
-                      onChange={(e) => setTanggalOleh((p) => ({ ...p, m: e.target.value }))}
-                      required
-                    >
-                      <option value="">MM</option>
-                      {months.map((m) => (
-                        <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <span>/</span>
-                    <select
-                      style={{ ...inputStyle, width: 95, marginTop: 0 }}
-                      value={tanggalOleh.y}
-                      onChange={(e) => setTanggalOleh((p) => ({ ...p, y: e.target.value }))}
-                      required
-                    >
-                      <option value="">YYYY</option>
-                      {years.map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => openNativeDatePicker(tanggalOlehPickerRef)}
-                      style={{ ...inputStyle, width: 44, marginTop: 0, padding: "8px 0", cursor: "pointer" }}
-                      title="Pilih dari kalender"
-                    >
-                      📅
-                    </button>
-                    <input
-                      ref={tanggalOlehPickerRef}
-                      type="date"
-                      value={partsToIsoDate(tanggalOleh)}
-                      onChange={(e) => setTanggalOleh(isoDateToParts(e.target.value))}
-                      style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <p style={hintStyle}>Tanggal: {formatTanggalIndonesia(tanggalOleh)}</p>
-                  {tanggalOlehError ? <p style={{ ...hintStyle, color: "#b91c1c" }}>{tanggalOlehError}</p> : null}
-                </div>
-                <div>
-                  <label style={labelStyle}>Tanggal Pembayaran (DD/MM/YYYY)</label>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    <select
-                      style={{ ...inputStyle, width: 72, marginTop: 0 }}
-                      value={tanggalBayar.d}
-                      onChange={(e) => setTanggalBayar((p) => ({ ...p, d: e.target.value }))}
-                      required
-                    >
-                      <option value="">DD</option>
-                      {days.map((d) => (
-                        <option key={d} value={d}>{String(d).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <span>/</span>
-                    <select
-                      style={{ ...inputStyle, width: 80, marginTop: 0 }}
-                      value={tanggalBayar.m}
-                      onChange={(e) => setTanggalBayar((p) => ({ ...p, m: e.target.value }))}
-                      required
-                    >
-                      <option value="">MM</option>
-                      {months.map((m) => (
-                        <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <span>/</span>
-                    <select
-                      style={{ ...inputStyle, width: 95, marginTop: 0 }}
-                      value={tanggalBayar.y}
-                      onChange={(e) => setTanggalBayar((p) => ({ ...p, y: e.target.value }))}
-                      required
-                    >
-                      <option value="">YYYY</option>
-                      {years.map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => openNativeDatePicker(tanggalBayarPickerRef)}
-                      style={{ ...inputStyle, width: 44, marginTop: 0, padding: "8px 0", cursor: "pointer" }}
-                      title="Pilih dari kalender"
-                    >
-                      📅
-                    </button>
-                    <input
-                      ref={tanggalBayarPickerRef}
-                      type="date"
-                      value={partsToIsoDate(tanggalBayar)}
-                      onChange={(e) => setTanggalBayar(isoDateToParts(e.target.value))}
-                      style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0 }}
-                      tabIndex={-1}
-                      aria-hidden="true"
-                    />
-                  </div>
-                  <p style={hintStyle}>Tanggal: {formatTanggalIndonesia(tanggalBayar)}</p>
-                  {tanggalBayarError ? <p style={{ ...hintStyle, color: "#b91c1c" }}>{tanggalBayarError}</p> : null}
-                </div>
-              </div>
-
-              <div style={{ ...sectionStyle, marginTop: 16, padding: 12, background: "rgba(0,82,155,0.06)", borderRadius: 8 }}>
-                <label style={labelStyle}>ID Billing Bank (otomatis)</label>
-                <div style={{ ...hintStyle, color: "var(--color_font_muted)", fontSize: 13, fontWeight: 600, marginTop: 0 }}>
-                  ID Billing akan dibuat setelah simpan/proses. Tidak perlu input manual — berbeda dari No. Registrasi berkas Bappenda.
-                </div>
-              </div>
-
-              <div style={{ margin: "20px 0 12px", paddingTop: 16, borderTop: "1px dashed var(--border_color)" }}>
-                <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--color_font_main)" }}>Pajak BPHTB</h4>
-              </div>
-              <div style={sectionStyle}>
-                <label style={labelStyle}>NPOPTKP (auto dari Jenis Perolehan)</label>
-                <input
-                  style={{ ...inputStyle, background: "var(--card_bg_grey)" }}
-                  type="text"
-                  value={npoptkp.toLocaleString("id-ID")}
-                  readOnly
-                />
-              </div>
-              <div style={sectionStyle}>
-                <label style={labelStyle}>Bea Perolehan Hak Atas Tanah yang telah dibayar</label>
-                <input
-                  style={inputStyle}
-                  type="text"
-                  inputMode="numeric"
-                  value={formatRupiah(form.bphtb_yangtelah_dibayar as number | undefined)}
-                  onChange={(e) => {
-                    const num = parseRupiah(e.target.value);
-                    updateForm("bphtb_yangtelah_dibayar", num || undefined);
-                  }}
-                  placeholder="0"
-                  required
-                />
-                <p style={hintStyle}>otomatis format ribuan (titik)</p>
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={sectionStyle}>
-          <label style={labelStyle}>ID Billing Bank (otomatis)</label>
-          <div style={{ ...hintStyle, color: "var(--color_font_muted)", fontSize: 13, fontWeight: 600 }}>
-            Billing diminta dari dropdown setelah data sudah benar. Field ini tidak perlu diisi manual.
-          </div>
-        </div>
+        {/* Card perhitungan NJOP/BPHTB dipindahkan ke dropdown tabel setelah billing & pembayaran. */}
 
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
           <button

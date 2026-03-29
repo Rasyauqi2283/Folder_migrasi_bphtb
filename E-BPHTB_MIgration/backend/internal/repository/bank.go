@@ -293,7 +293,7 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 	var userid string
 	var tagihan sql.NullInt64
 	err = tx.QueryRow(ctx, `
-		SELECT p.userid, p2.bphtb_yangtelah_dibayar
+		SELECT p.userid, COALESCE(p.payment_amount_requested, p2.bphtb_yangtelah_dibayar)
 		FROM pat_1_bookingsspd p
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = p.nobooking
 		WHERE p.nobooking = $1
@@ -371,6 +371,10 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 			payment_amount_requested = COALESCE(payment_amount_requested, $3),
 			payment_status = $4,
 			sspd_pembayaran_status = $5,
+			needs_stpd = CASE
+				WHEN $3 > 0 AND $2 < $3-100 THEN true
+				ELSE COALESCE(needs_stpd, false)
+			END,
 			trackstatus = CASE
 				WHEN LOWER(COALESCE(trackstatus,'')) = 'awaiting_billing' THEN 'Draft'
 				ELSE trackstatus

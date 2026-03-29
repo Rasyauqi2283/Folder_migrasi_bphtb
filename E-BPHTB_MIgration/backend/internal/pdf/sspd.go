@@ -3,6 +3,7 @@ package pdf
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -68,44 +69,31 @@ func formatTanggal(s string) string {
 	return day + " " + bulanIndo[mi-1] + " " + year
 }
 
-// formatCurrency formats like "Rp 1,234,567.89" (comma as thousand separator).
-func formatCurrency(v float64) string {
-	s := fmt.Sprintf("%.2f", v)
-	idx := strings.Index(s, ".")
-	intPart := s
-	decPart := ""
-	if idx >= 0 {
-		intPart = s[:idx]
-		decPart = s[idx:]
+func formatNumberID(v float64) string {
+	// 2 decimals, thousands '.', decimals ','
+	s := fmt.Sprintf("%.2f", math.Abs(v))
+	parts := strings.SplitN(s, ".", 2)
+	intPart := parts[0]
+	decPart := "00"
+	if len(parts) == 2 {
+		decPart = parts[1]
 	}
 	var b strings.Builder
 	for i, c := range intPart {
 		if i > 0 && (len(intPart)-i)%3 == 0 {
-			b.WriteByte(',')
+			b.WriteByte('.')
 		}
 		b.WriteRune(c)
 	}
-	return "Rp " + b.String() + decPart
+	out := b.String() + "," + decPart
+	if v < 0 {
+		out = "-" + out
+	}
+	return out
 }
 
-// formatNumber formats number with comma thousand separator, e.g. "1,234.00".
-func formatNumber(v float64) string {
-	s := fmt.Sprintf("%.2f", v)
-	idx := strings.Index(s, ".")
-	intPart := s
-	decPart := ""
-	if idx >= 0 {
-		intPart = s[:idx]
-		decPart = s[idx:]
-	}
-	var b strings.Builder
-	for i, c := range intPart {
-		if i > 0 && (len(intPart)-i)%3 == 0 {
-			b.WriteByte(',')
-		}
-		b.WriteRune(c)
-	}
-	return b.String() + decPart
+func formatCurrency(v float64) string {
+	return "Rp " + formatNumberID(v)
 }
 
 // GenerateSSPD writes SSPD BPHTB (Badan) PDF to w, matching legacy layout. logoPath is optional (BAPPENDA logo).
@@ -236,14 +224,14 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	pdf.SetFont("Helvetica", "", 10)
 	pdf.SetXY(tblX, tblY+4)
 	pdf.CellFormat(colW[0], 20, "Tanah (Bumi)", "", 0, "L", false, 0, "")
-	pdf.CellFormat(colW[1], 20, formatNumber(data.LuasTanah), "", 0, "R", false, 0, "")
+	pdf.CellFormat(colW[1], 20, formatNumberID(data.LuasTanah), "", 0, "R", false, 0, "")
 	pdf.CellFormat(colW[2], 20, formatCurrency(data.NjopTanah), "", 0, "R", false, 0, "")
 	pdf.CellFormat(colW[3], 20, formatCurrency(data.LuasxnjopTanah), "", 0, "R", false, 0, "")
 	tblY += 20
 	pdf.Line(tblX, tblY, tblX+tableWidth, tblY)
 	pdf.SetXY(tblX, tblY+4)
 	pdf.CellFormat(colW[0], 20, "Bangunan", "", 0, "L", false, 0, "")
-	pdf.CellFormat(colW[1], 20, formatNumber(data.LuasBangunan), "", 0, "R", false, 0, "")
+	pdf.CellFormat(colW[1], 20, formatNumberID(data.LuasBangunan), "", 0, "R", false, 0, "")
 	pdf.CellFormat(colW[2], 20, formatCurrency(data.NjopBangunan), "", 0, "R", false, 0, "")
 	pdf.CellFormat(colW[3], 20, formatCurrency(data.LuasxnjopBangunan), "", 0, "R", false, 0, "")
 	tblY += 20
@@ -262,23 +250,7 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	pdf.Line(tblX, 420, tblX+tableWidth, 420)
 
 	// Penghitungan BPHTB
-	nilaiTerbesar := totalNJOP
-	if data.HargaTransaksi != "" {
-		var hv float64
-		if _, err := fmt.Sscanf(strings.ReplaceAll(data.HargaTransaksi, ",", ""), "%f", &hv); err == nil && hv > nilaiTerbesar {
-			nilaiTerbesar = hv
-		}
-	}
-	npoptkp := data.Nilaiperolehanobjekpajaktidakkenapajak
-	npopkp := nilaiTerbesar - npoptkp
-	if npopkp < 0 {
-		npopkp = 0
-	}
-	pajakTerutang := npopkp * 0.05
-	kurangBayar := pajakTerutang - data.BphtbYangtelahDibayar
-	if kurangBayar < 0 {
-		kurangBayar = 0
-	}
+	calc := repository.CalculateBPHTB(totalNJOP, data.HargaTransaksi, data.JenisPerolehan, data.BphtbYangtelahDibayar)
 	pdf.SetFont("Helvetica", "B", 10)
 	pdf.SetXY(40, 470)
 	pdf.CellFormat(100, 12, "Penghitungan BPHTB", "", 0, "L", false, 0, "")
@@ -298,12 +270,12 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 		label string
 		val   string
 	}{
-		{"1. Nilai Perolehan Objek Pajak (NPOP)", formatCurrency(nilaiTerbesar)},
-		{"2. Nilai Perolehan Objek Pajak Tidak Kena Pajak (NPOPTKP)", formatCurrency(npoptkp)},
-		{"3. Nilai Perolehan Objek Pajak Kena Pajak (NPOPKP)", formatCurrency(npopkp)},
-		{"4. Bea Perolehan Hak atas Tanah dan Bangunan yang terutang", formatCurrency(pajakTerutang)},
-		{"5. Bea Perolehan Hak atas Tanah dan Bangunan yang telah dibayar", formatCurrency(data.BphtbYangtelahDibayar)},
-		{"6. Bea Perolehan Hak atas Tanah dan Bangunan yang kurang dibayar", formatCurrency(kurangBayar)},
+		{"1. Nilai Perolehan Objek Pajak (NPOP)", formatCurrency(calc.NPOP)},
+		{"2. Nilai Perolehan Objek Pajak Tidak Kena Pajak (NPOPTKP)", formatCurrency(calc.NPOPTKP)},
+		{"3. Nilai Perolehan Objek Pajak Kena Pajak (NPOPKP)", formatCurrency(calc.NPOPKP)},
+		{"4. Bea Perolehan Hak atas Tanah dan Bangunan yang terutang", formatCurrency(calc.BeaTerutang)},
+		{"5. Bea Perolehan Hak atas Tanah dan Bangunan yang telah dibayar", formatCurrency(calc.BeaDibayar)},
+		{"6. Bea Perolehan Hak atas Tanah dan Bangunan yang kurang dibayar", formatCurrency(calc.KurangBayar)},
 	}
 	for i, it := range items {
 		y := 485.0 + float64(i)*10
@@ -349,30 +321,12 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 		{"c. Pengurangan dihitung sendiri menjadi:", false},
 		{"d. .........", false},
 	}
-	normalizePemilihan := func(s string) string {
-		v := strings.TrimSpace(strings.ToLower(s))
-		switch v {
-		case "sesuai":
-			return "sesuai"
-		case "kurang_bayar", "kurang bayar":
-			return "kurang_bayar"
-		case "penghitung_wajib_pajak":
-			return "sesuai"
-		case "stpd_kurangbayar":
-			return "kurang_bayar"
-		case "dihitungsendiri", "dihitung_sendiri":
-			return "dihitung_sendiri"
-		case "lainnyapenghitungwp", "lainnya":
-			return "lainnya"
-		default:
-			return v
-		}
-	}
-	pemilihan := normalizePemilihan(data.Pemilihan)
-	if pemilihan == "sesuai" {
+	// Strict rule:
+	// - If point 6 == 0 => mark [X] at a. Penghitungan Wajib Pajak
+	// - If point 6 > 0  => mark [X] at b. STPD BPHTB
+	if calc.KurangBayar <= 0.0001 {
 		opts[0].checked = true
-	}
-	if pemilihan == "kurang_bayar" {
+	} else {
 		opts[1].checked = true
 	}
 
@@ -388,7 +342,7 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	yC := selY + 20 + 2*15
 	nomorText := "Nomor: ______"
 	tanggalText := "Tanggal: ______"
-	if pemilihan == "kurang_bayar" {
+	if calc.KurangBayar > 0.0001 {
 		if strings.TrimSpace(data.StpdCode) != "" {
 			nomorText = "Nomor: " + strings.TrimSpace(data.StpdCode)
 		}
@@ -413,10 +367,10 @@ func GenerateSSPD(w io.Writer, data *repository.SSPDPDFData, logoPath string) er
 	pdf.CellFormat(150, 12, "Dengan huruf:", "", 0, "L", false, 0, "")
 	pdf.Rect(40, 640, 190, 15, "D")
 	pdf.SetXY(45, 643)
-	pdf.CellFormat(190, 12, formatCurrency(data.BphtbYangtelahDibayar), "", 0, "L", false, 0, "")
+	pdf.CellFormat(190, 12, formatCurrency(calc.BeaDibayar), "", 0, "L", false, 0, "")
 	pdf.Rect(250, 640, 340, 15, "D")
 	pdf.SetXY(255, 643)
-	pdf.CellFormat(340, 12, terbilangRupiah(data.BphtbYangtelahDibayar), "", 0, "L", false, 0, "")
+	pdf.CellFormat(340, 12, terbilangRupiah(calc.BeaDibayar), "", 0, "L", false, 0, "")
 	pdf.Line(0, 660, pageW, 660)
 
 	// Signature blocks (4 columns); start below line 660
@@ -617,7 +571,7 @@ func GenerateMohonValidasi(w io.Writer, data *repository.MohonValidasiPDFData) e
 	pdf.SetXY(xMid-10, y)
 	pdf.CellFormat(20, 12, ":", "", 0, "L", false, 0, "")
 	pdf.SetXY(xMid, y)
-	pdf.CellFormat(350, 12, fmt.Sprintf("Tanah %s m²   Bangunan %s m²", formatNumber(data.LuasTanah), formatNumber(data.LuasBangunan)), "", 0, "L", false, 0, "")
+	pdf.CellFormat(350, 12, fmt.Sprintf("Tanah %s m²   Bangunan %s m²", formatNumberID(data.LuasTanah), formatNumberID(data.LuasBangunan)), "", 0, "L", false, 0, "")
 	y += 12
 	row("Alamat", data.Letaktanahdanbangunan)
 	row("Kampung", data.Kampungop)

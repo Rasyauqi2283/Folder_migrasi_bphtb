@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -1720,15 +1721,24 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		  updated_at = now()
 	`, lt, nt, lb, nbng, tot, nb)
 
-	// pat_2 (BPHTB)
-	npoptkp := 0.0
-	bphtb := 0.0
-	if p.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
-		npoptkp = *p.NilaiPerolehanObjekPajakTidakKenaPajak
-	}
+	// Strict BPHTB points (1..6): NPOPTKP auto from jenis perolehan; requested amount = point 4.
+	var jenisPerolehan string
+	var hargaTransaksi string
+	_ = tx.QueryRow(ctx, `
+		SELECT COALESCE(jenisperolehan,''), COALESCE(o.harga_transaksi::text,'')
+		FROM pat_1_bookingsspd b
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = b.nobooking
+		WHERE b.nobooking = $1 AND b.userid = $2
+		LIMIT 1
+	`, nb, u).Scan(&jenisPerolehan, &hargaTransaksi)
+
+	bphtbPaid := 0.0
 	if p.BphtbYangtelahDibayar != nil {
-		bphtb = *p.BphtbYangtelahDibayar
+		bphtbPaid = *p.BphtbYangtelahDibayar
 	}
+	calc := CalculateBPHTB(tot, hargaTransaksi, jenisPerolehan, bphtbPaid)
+	npoptkp := calc.NPOPTKP
+	bphtb := calc.BeaDibayar
 	_, _ = tx.Exec(ctx, `
 		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
 		VALUES ($1,$2,$3)
@@ -1746,8 +1756,8 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		  tanggal_pembayaran = EXCLUDED.tanggal_pembayaran
 	`, p.TanggalPerolehan, p.TanggalPembayaran, nb)
 
-	// Update canonical requested amount and completion flag, then re-evaluate underpayment.
-	req := int64(bphtb)
+	// Update canonical requested amount (Point 4), completion flag, then re-evaluate underpayment.
+	req := int64(math.Round(calc.BeaTerutang))
 	paymentStatus2 := payStatus
 	sspdStatus2 := "LUNAS"
 	if payStatus == "KURANG_BAYAR" {
@@ -1763,9 +1773,10 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		  payment_amount_requested = NULLIF($3, 0),
 		  payment_status = $4,
 		  sspd_pembayaran_status = $5,
+		  needs_stpd = $6,
 		  updated_at = now()
 		WHERE nobooking = $1 AND userid = $2
-	`, nb, u, req, paymentStatus2, sspdStatus2)
+	`, nb, u, req, paymentStatus2, sspdStatus2, calc.NeedsSTPD)
 	if err != nil {
 		return err
 	}

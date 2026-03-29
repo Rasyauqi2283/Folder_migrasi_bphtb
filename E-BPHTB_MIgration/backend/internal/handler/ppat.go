@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"mime"
 	"net/http"
 	"os"
@@ -1547,8 +1548,9 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 	if nb == "" {
 		return nil, fmt.Errorf("nobooking wajib")
 	}
-	amountRequested := int64(0)
-	// Prefer canonical requested amount column if already set (e.g. from earlier calculation / imported SSPD).
+	// Strict billing amount = Point 4 (Bea Terutang) based on: max(totalNJOP, harga_transaksi) and NPOPTKP from jenisPerolehan.
+	var amountRequested int64
+	// Fast path if already computed/stored.
 	_ = h.repo.Pool().QueryRow(ctx, `
 		SELECT COALESCE(payment_amount_requested, 0)::bigint
 		FROM pat_1_bookingsspd
@@ -1556,21 +1558,25 @@ func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nob
 		LIMIT 1
 	`, nb).Scan(&amountRequested)
 	if amountRequested <= 0 {
-		// Fallback to pat_2 if available (legacy flow).
+		var totalNJOP float64
+		var hargaTrans string
+		var jenisPerolehan string
 		_ = h.repo.Pool().QueryRow(ctx, `
-			SELECT COALESCE(p2.bphtb_yangtelah_dibayar, 0)::bigint
-			FROM pat_2_bphtb_perhitungan p2
-			WHERE p2.nobooking = $1
+			SELECT
+				COALESCE(pp.total_njoppbb, (COALESCE(pp.luas_tanah,0)*COALESCE(pp.njop_tanah,0) + COALESCE(pp.luas_bangunan,0)*COALESCE(pp.njop_bangunan,0)), 0)::float8 AS total_njop,
+				COALESCE(o.harga_transaksi::text, '') AS harga_transaksi,
+				COALESCE(p.jenisperolehan, '') AS jenis_perolehan
+			FROM pat_1_bookingsspd p
+			LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+			LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+			WHERE p.nobooking = $1
 			LIMIT 1
-		`, nb).Scan(&amountRequested)
-		if amountRequested < 0 {
-			amountRequested = 0
-		}
+		`, nb).Scan(&totalNJOP, &hargaTrans, &jenisPerolehan)
+		calc := repository.CalculateBPHTB(totalNJOP, hargaTrans, jenisPerolehan, 0)
+		amountRequested = int64(math.Round(calc.BeaTerutang))
 	}
-	// Stage-1 flow: tagihan final belum diketahui. Untuk mock BJB client (dan banyak gateway),
-	// amount 0 akan ditolak. Set minimal 1 agar Billing ID tetap bisa digenerate.
 	if amountRequested <= 0 {
-		amountRequested = 1
+		return nil, fmt.Errorf("bea terutang 0; billing tidak dapat dibuat")
 	}
 	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
 		Nobooking:       nb,

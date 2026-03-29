@@ -275,6 +275,7 @@ type SSPDPDFData struct {
 	Kabupatenkotawp, Kecamatanwp, Kelurahandesawp, Rtrwwp, Npwpwp, Kodeposwp    string
 	Kabupatenkotaop, Kecamatanop, Kelurahandesaop, Rtrwop, Npwpop, Kodeposop      string
 	Trackstatus                                                                   string
+	JenisPerolehan                                                                string
 	Nilaiperolehanobjekpajaktidakkenapajak, BphtbYangtelahDibayar                float64
 	HargaTransaksi, Letaktanahdanbangunan, RtRwobjekpajak, StatusKepemilikan     string
 	Keterangan, NomorSertifikat, TanggalPerolehan, TanggalPembayaran             string
@@ -303,6 +304,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 			COALESCE(pb.npwpwp,''), COALESCE(pb.kodeposwp,''), COALESCE(pb.kabupatenkotaop,''), COALESCE(pb.kecamatanop,''),
 			COALESCE(pb.kelurahandesaop,''), COALESCE(pb.rtrwop,''), COALESCE(pb.npwpop,''), COALESCE(pb.kodeposop,''),
 			COALESCE(pb.trackstatus,''),
+			COALESCE(pb.jenisperolehan,''),
 			COALESCE(bp.nilaiperolehanobjekpajaktidakkenapajak,0), COALESCE(bp.bphtb_yangtelah_dibayar,0),
 			COALESCE(o.harga_transaksi::text,''), COALESCE(o.letaktanahdanbangunan,''), COALESCE(o.rt_rwobjekpajak,''), COALESCE(o.status_kepemilikan,''),
 			COALESCE(o.keterangan,''), COALESCE(o.nomor_sertifikat,''), COALESCE(o.tanggal_perolehan::text,''), COALESCE(o.tanggal_pembayaran::text,''),
@@ -337,6 +339,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 		&d.Kabupatenkotawp, &d.Kecamatanwp, &d.Kelurahandesawp, &d.Rtrwwp, &d.Npwpwp, &d.Kodeposwp,
 		&d.Kabupatenkotaop, &d.Kecamatanop, &d.Kelurahandesaop, &d.Rtrwop, &d.Npwpop, &d.Kodeposop,
 		&d.Trackstatus,
+		&d.JenisPerolehan,
 		&d.Nilaiperolehanobjekpajaktidakkenapajak, &d.BphtbYangtelahDibayar,
 		&d.HargaTransaksi, &d.Letaktanahdanbangunan, &d.RtRwobjekpajak, &d.StatusKepemilikan,
 		&d.Keterangan, &d.NomorSertifikat, &d.TanggalPerolehan, &d.TanggalPembayaran,
@@ -354,6 +357,7 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 			&d.Kabupatenkotawp, &d.Kecamatanwp, &d.Kelurahandesawp, &d.Rtrwwp, &d.Npwpwp, &d.Kodeposwp,
 			&d.Kabupatenkotaop, &d.Kecamatanop, &d.Kelurahandesaop, &d.Rtrwop, &d.Npwpop, &d.Kodeposop,
 			&d.Trackstatus,
+			&d.JenisPerolehan,
 			&d.Nilaiperolehanobjekpajaktidakkenapajak, &d.BphtbYangtelahDibayar,
 			&d.HargaTransaksi, &d.Letaktanahdanbangunan, &d.RtRwobjekpajak, &d.StatusKepemilikan,
 			&d.Keterangan, &d.NomorSertifikat, &d.TanggalPerolehan, &d.TanggalPembayaran,
