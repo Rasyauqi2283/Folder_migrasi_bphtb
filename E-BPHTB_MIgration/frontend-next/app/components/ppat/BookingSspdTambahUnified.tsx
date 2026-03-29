@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { getBackendBaseUrl } from "../../../lib/api";
+import BillingShareCard from "../BillingShareCard";
 
 export type BookingSspdEntity = "badan" | "perorangan";
 
@@ -1068,43 +1069,92 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       return;
     }
 
+    const tanggalOlehErr = validateDateParts(tanggalOleh, minYear, maxYear);
+    const tanggalBayarErr = validateDateParts(tanggalBayar, minYear, maxYear);
+    if (tanggalOlehErr || tanggalBayarErr) {
+      setError(tanggalOlehErr || tanggalBayarErr || "Tanggal tidak valid.");
+      return;
+    }
+
+    const tanggalOlehStr = partsToIsoDate(tanggalOleh);
+    const tanggalBayarStr = partsToIsoDate(tanggalBayar);
+
+    const payload: CreatePayload = {
+      jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
+      noppbb,
+      namawajibpajak: String(form.namawajibpajak ?? ""),
+      alamatwajibpajak: String(form.alamatwajibpajak ?? ""),
+      namapemilikobjekpajak: String(form.namapemilikobjekpajak ?? ""),
+      alamatpemilikobjekpajak: String(form.alamatpemilikobjekpajak ?? ""),
+      tanggal,
+      tahunajb: String(form.tahunajb ?? ""),
+      kabupatenkotawp: String(form.kabupatenkotawp ?? ""),
+      kecamatanwp: String(form.kecamatanwp ?? ""),
+      kelurahandesawp: String(form.kelurahandesawp ?? ""),
+      rtrwwp: String(form.rtrwwp ?? ""),
+      npwpwp,
+      kodeposwp: String(form.kodeposwp ?? ""),
+      kabupatenkotaop: String(form.kabupatenkotaop ?? ""),
+      kecamatanop: String(form.kecamatanop ?? ""),
+      kelurahandesaop: String(form.kelurahandesaop ?? ""),
+      rtrwop: String(form.rtrwop ?? ""),
+      npwpop,
+      kodeposop: String(form.kodeposop ?? ""),
+      trackstatus: "Terbuat",
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkp,
+      bphtb_yangtelah_dibayar: form.bphtb_yangtelah_dibayar != null ? Number(form.bphtb_yangtelah_dibayar) : undefined,
+      hargatransaksi: form.hargatransaksi?.toString(),
+      letaktanahdanbangunan: form.letaktanahdanbangunan?.toString(),
+      rt_rwobjekpajak: form.rt_rwobjekpajak?.toString(),
+      kecamatanlp: form.kecamatanlp?.toString(),
+      kelurahandesalp: form.kelurahandesalp?.toString(),
+      status_kepemilikan: form.status_kepemilikan?.toString(),
+      jenisPerolehan: form.jenisPerolehan?.toString(),
+      keterangan: form.keterangan?.toString(),
+      nomor_sertifikat: form.nomor_sertifikat?.toString(),
+      tanggal_perolehan: tanggalOlehStr,
+      tanggal_pembayaran: tanggalBayarStr,
+      luas_tanah: form.luas_tanah != null ? Number(form.luas_tanah) : undefined,
+      njop_tanah: form.njop_tanah != null ? Number(form.njop_tanah) : undefined,
+      luas_bangunan: form.luas_bangunan != null ? Number(form.luas_bangunan) : undefined,
+      njop_bangunan: form.njop_bangunan != null ? Number(form.njop_bangunan) : undefined,
+    };
+
     setLoading(true);
     try {
       const base = getBackendBaseUrl();
-      if (isEditMode && nobookingValue) {
-        setError("Mode edit tidak mendukung alur 2-tahap (billing dulu). Silakan buat booking baru.");
-        return;
-      }
-      const url = base ? `${base}/api/ppat/request-billing-first` : "/api/ppat/request-billing-first";
+      const url = isEditMode && nobookingValue
+        ? (base ? `${base}/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}` : `/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}`)
+        : (base
+          ? `${base}${entityKind === "badan" ? "/api/ppat_create-booking-and-bphtb" : "/api/ppat_create-booking-and-bphtb-perorangan"}`
+          : (entityKind === "badan" ? "/api/ppat_create-booking-and-bphtb" : "/api/ppat_create-booking-and-bphtb-perorangan"));
       const res = await fetch(url, {
-        method: "POST",
+        method: isEditMode ? "PUT" : "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
-          noppbb,
-          namawajibpajak: String(form.namawajibpajak ?? ""),
-          namapemilikobjekpajak: String(form.namapemilikobjekpajak ?? ""),
-          npwpwp,
-          npwpop,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.message || "Gagal meminta billing ke bank.");
+        setError(data?.message || "Gagal menyimpan booking.");
         return;
       }
-      if (data?.success && data?.billing_id && data?.nobooking) {
+      if (isEditMode) {
+        if (data?.success) {
+          setSuccess("Data Booking berhasil diperbarui!");
+          setTimeout(() => router.push(listPath), 1200);
+          return;
+        }
+        setError(data?.message || "Gagal memperbarui booking.");
+        return;
+      }
+      if (data?.success && data?.nobooking) {
+        setSuccess(`Booking berhasil dibuat. No. Booking: ${data.nobooking} (status: Terbuat)`);
         setNobookingValue(String(data.nobooking));
-        setSuccess(`Billing berhasil dibuat. No. Booking: ${data.nobooking} (status: AWAITING_BILLING)`);
-        setBillingModal({
-          billing_id: String(data.billing_id),
-          amount: Number(data.amount || 0),
-          expires_at: String(data.expires_at || ""),
-        });
+        setTimeout(() => router.push(listPath), 1500);
         return;
       }
-      setError(data?.message || "Gagal meminta billing ke bank.");
+      setError(data?.message || "Gagal menyimpan booking.");
     } catch {
       setError("Network error. Coba lagi.");
     } finally {
@@ -1540,21 +1590,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           )}
         </div>
 
-        <div style={sectionStyle}>
-          <label style={labelStyle}>Nama Pemilik Objek Pajak</label>
-          <input
-            style={inputStyle}
-            value={form.namapemilikobjekpajak ?? ""}
-            onChange={(e) => updateForm("namapemilikobjekpajak", e.target.value)}
-            placeholder="Nama pemilik objek pajak"
-            required
-          />
-          <p style={hintStyle}>Detail perhitungan/berkas akan dilengkapi setelah pembayaran terkonfirmasi.</p>
-        </div>
-
-        {/* Stage-2 fields are filled post-payment on dashboard dropdown */}
-        {false && (
-        <>
         {/* Pemilik Objek Pajak BPHTB */}
         <h3 style={judulStyle}>Pemilik Objek Pajak BPHTB</h3>
         <div style={sectionStyle}>
@@ -2165,8 +2200,12 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
             </div>
           )}
         </div>
-        </>
-        )}
+        <div style={sectionStyle}>
+          <label style={labelStyle}>ID Billing Bank (otomatis)</label>
+          <div style={{ ...hintStyle, color: "var(--color_font_muted)", fontSize: 13, fontWeight: 600 }}>
+            Billing diminta dari dropdown setelah data sudah benar. Field ini tidak perlu diisi manual.
+          </div>
+        </div>
 
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
           <button
@@ -2182,7 +2221,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
               cursor: loading || editLoading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Memproses..." : (isEditMode ? "Simpan Perubahan" : "Minta Billing ke Bank")}
+            {loading ? "Menyimpan..." : (isEditMode ? "Simpan Perubahan" : "Simpan (Terbuat)")}
           </button>
           <Link
             href={listPath}
@@ -2224,111 +2263,12 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
         </div>
       )}
 
+      {/* Billing modal dipindahkan ke dropdown dashboard (flow baru). Tetap disediakan untuk reuse. */}
       {billingModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.55)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            zIndex: 200,
-            backdropFilter: "blur(6px)",
-          }}
-          onClick={() => setBillingModal(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 520,
-              background: "#fff",
-              borderRadius: 14,
-              border: "1px solid rgba(15,23,42,0.12)",
-              overflow: "hidden",
-              boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
-            }}
-          >
-            <div style={{ padding: "14px 18px", background: "linear-gradient(135deg, #0a3d62, #00529B)", color: "#fff" }}>
-              <div style={{ fontWeight: 900, letterSpacing: "0.02em" }}>ID Billing Bank BJB</div>
-              <div style={{ fontSize: 12, opacity: 0.9 }}>Gunakan ID ini untuk pembayaran (ATM / Mobile Banking / Teller)</div>
-            </div>
-            <div style={{ padding: 18, color: "#0f172a" }}>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>ID BILLING</div>
-                  <div style={{ fontFamily: "ui-monospace, Consolas, monospace", fontSize: 18, fontWeight: 900 }}>
-                    {billingModal.billing_id}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>NOMINAL TAGIHAN</div>
-                  <div style={{ fontFamily: "ui-monospace, Consolas, monospace", fontSize: 22, fontWeight: 900, color: "#0a3d62" }}>
-                    Rp {Number(billingModal.amount || 0).toLocaleString("id-ID")}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>BATAS WAKTU</div>
-                  <div style={{ fontSize: 14, fontWeight: 800 }}>
-                    {billingModal.expires_at ? new Date(billingModal.expires_at).toLocaleString("id-ID") : "—"}
-                  </div>
-                </div>
-                <div style={{ padding: 12, borderRadius: 10, background: "rgba(0,82,155,0.08)", border: "1px solid rgba(0,82,155,0.18)" }}>
-                  <div style={{ fontWeight: 900, color: "#0a3d62", marginBottom: 4 }}>Instruksi</div>
-                  <div style={{ fontSize: 13, color: "#0f172a" }}>
-                    Silakan bayar melalui ATM, Mobile Banking, atau Teller <strong>Bank BJB</strong> menggunakan <strong>ID Billing</strong> di atas.
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(billingModal.billing_id);
-                      setSuccess("ID Billing disalin.");
-                    } catch {
-                      setSuccess("Tidak bisa menyalin otomatis. Silakan salin manual.");
-                    }
-                  }}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "#00529B",
-                    color: "#fff",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  Salin ID Billing
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBillingModal(null);
-                    router.push(listPath);
-                  }}
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(15,23,42,0.18)",
-                    background: "#fff",
-                    color: "#0f172a",
-                    fontWeight: 800,
-                    cursor: "pointer",
-                  }}
-                >
-                  Kembali ke daftar booking
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <BillingShareCard
+          data={{ billingId: billingModal.billing_id, amount: billingModal.amount, expiresAtISO: billingModal.expires_at }}
+          onClose={() => setBillingModal(null)}
+        />
       )}
     </div>
   );

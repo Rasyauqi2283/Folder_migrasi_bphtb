@@ -649,7 +649,7 @@ func (h *PpatHandler) CreateBookingBadan(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if params.Trackstatus == "" {
-		params.Trackstatus = "Draft"
+		params.Trackstatus = "Terbuat"
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -688,7 +688,7 @@ func (h *PpatHandler) CreateBookingPerorangan(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if params.Trackstatus == "" {
-		params.Trackstatus = "Draft"
+		params.Trackstatus = "Terbuat"
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)

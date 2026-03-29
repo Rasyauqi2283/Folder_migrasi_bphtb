@@ -455,6 +455,8 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 	if err != nil {
 		return nil, err
 	}
+	// Draft is the only state allowed to submit to LTB.
+	// Terbuat is editable-only (same as Draft in edit rights) but not yet sendable.
 	if currentStatus != "Draft" && currentStatus != "Pending" {
 		return nil, ErrPpatBookingNotSendable
 	}
@@ -805,12 +807,12 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 	}
 	defer tx.Rollback(ctx)
 
-	// Ensure ownership + still draft
+	// Ensure ownership + still editable
 	var ok int
 	if err := tx.QueryRow(ctx, `
 		SELECT 1
 		FROM pat_1_bookingsspd
-		WHERE nobooking = $1 AND userid = $2 AND LOWER(COALESCE(trackstatus,'')) = 'draft'
+		WHERE nobooking = $1 AND userid = $2 AND LOWER(COALESCE(trackstatus,'')) IN ('draft', 'terbuat')
 		LIMIT 1
 	`, nobooking, userid).Scan(&ok); err != nil {
 		return fmt.Errorf("booking tidak ditemukan atau sudah terkunci")
