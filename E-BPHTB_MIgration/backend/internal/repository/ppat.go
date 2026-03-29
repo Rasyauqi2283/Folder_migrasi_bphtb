@@ -1494,3 +1494,111 @@ type CreateBookingParams struct {
 	NjopBangunan   *float64 `json:"njop_bangunan"`
 	TotalNjoppbb   *float64 `json:"total_njoppbb"`
 }
+
+// BillingInfo holds stored billing state for one booking.
+type BillingInfo struct {
+	Nobooking       string
+	BillingID       string
+	AmountRequested int64
+	ExpiresAt       time.Time
+	PaymentStatus   string
+}
+
+// SetBookingBilling stores BJB Billing ID and marks payment as waiting.
+// It updates pat_1_bookingsspd as the canonical state, and mirrors billing_id into pat_4_objek_pajak.nomor_bukti_pembayaran
+// for legacy joins/UI that still read nomor_bukti_pembayaran.
+func (r *PpatRepo) SetBookingBilling(ctx context.Context, userid, nobooking, billingID string, amountRequested int64, expiresAt time.Time) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(userid)
+	bid := strings.TrimSpace(billingID)
+	if nb == "" || u == "" {
+		return fmt.Errorf("nobooking dan userid wajib")
+	}
+	if bid == "" {
+		return fmt.Errorf("billing_id wajib")
+	}
+	if amountRequested <= 0 {
+		return fmt.Errorf("amount_requested wajib > 0")
+	}
+	if expiresAt.IsZero() {
+		expiresAt = time.Now().Add(2 * time.Hour).UTC()
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	cmd, err := tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd SET
+			billing_id = $1,
+			billing_expires_at = $2,
+			payment_amount_requested = $3,
+			payment_status = 'WAITING_FOR_PAYMENT',
+			sspd_pembayaran_status = 'WAITING_FOR_PAYMENT',
+			updated_at = now()
+		WHERE nobooking = $4 AND userid = $5
+	`, bid, expiresAt, amountRequested, nb, u)
+	if err != nil {
+		return err
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("booking tidak ditemukan")
+	}
+
+	// Mirror billing ID to pat_4 and bank row if they exist.
+	_, _ = tx.Exec(ctx, `UPDATE pat_4_objek_pajak SET nomor_bukti_pembayaran = $1 WHERE nobooking = $2`, bid, nb)
+	_, _ = tx.Exec(ctx, `UPDATE bank_1_cek_hasil_transaksi SET nomor_bukti_pembayaran = COALESCE(nomor_bukti_pembayaran, $1) WHERE nobooking = $2`, bid, nb)
+
+	return tx.Commit(ctx)
+}
+
+// PendingBillingCount returns how many active unpaid billings a PU user has.
+func (r *PpatRepo) PendingBillingCount(ctx context.Context, userid string) (count int, nearestExpiry *time.Time, err error) {
+	if r.pool == nil {
+		return 0, nil, nil
+	}
+	u := strings.TrimSpace(userid)
+	if u == "" {
+		return 0, nil, fmt.Errorf("userid wajib")
+	}
+	// Consider billing pending if it has billing_id and status WAITING_FOR_PAYMENT and not expired.
+	var nearest time.Time
+	var hasNearest bool
+	err = r.pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*)::int,
+			MIN(billing_expires_at) FILTER (WHERE billing_expires_at IS NOT NULL) AS nearest_exp
+		FROM pat_1_bookingsspd
+		WHERE userid = $1
+		  AND COALESCE(payment_status, '') = 'WAITING_FOR_PAYMENT'
+		  AND COALESCE(billing_id, '') <> ''
+		  AND (billing_expires_at IS NULL OR billing_expires_at > now())
+	`, u).Scan(&count, &nearest)
+	if err != nil {
+		// MIN() with no rows may return NULL; handle via a second query style? pgx Scan into time.Time may fail.
+		// Fallback: just return count without expiry if scan fails.
+		var cnt int
+		_ = r.pool.QueryRow(ctx, `
+			SELECT COUNT(*)::int
+			FROM pat_1_bookingsspd
+			WHERE userid = $1
+			  AND COALESCE(payment_status, '') = 'WAITING_FOR_PAYMENT'
+			  AND COALESCE(billing_id, '') <> ''
+			  AND (billing_expires_at IS NULL OR billing_expires_at > now())
+		`, u).Scan(&cnt)
+		return cnt, nil, nil
+	}
+	// If nearest is zero value, treat as absent.
+	if !nearest.IsZero() {
+		hasNearest = true
+	}
+	if hasNearest {
+		nearestExpiry = &nearest
+	}
+	return count, nearestExpiry, nil
+}

@@ -21,6 +21,7 @@ interface BankRow {
   gateway_status?: string;
   has_discrepancy?: boolean;
   sspd_pembayaran_status?: string;
+  payment_status?: string;
   tanggal_pembayaran?: string;
   status_verifikasi?: string;
 }
@@ -43,6 +44,7 @@ interface BankDetail {
   gateway_channel?: string | null;
   has_discrepancy: boolean;
   sspd_pembayaran_status: string;
+  payment_status?: string | null;
 }
 
 interface ApiResponse {
@@ -70,10 +72,11 @@ function monoBigRupiah(n: number | undefined | null): React.ReactNode {
   );
 }
 
-function Badge({ status, hasDisc }: { status: string; hasDisc?: boolean }) {
+function Badge({ status, hasDisc, paymentStatus }: { status: string; hasDisc?: boolean; paymentStatus?: string }) {
   const s = String(status || "Pending");
   const isSync = s === "Sinkron Otomatis";
   const isDisc = s === "Selisih" || hasDisc;
+  const isUnderpaid = (paymentStatus || "").toUpperCase() === "KURANG_BAYAR";
   const isApproved = s === "Disetujui";
   const isRejected = s === "Ditolak";
   const style: React.CSSProperties = {
@@ -81,7 +84,9 @@ function Badge({ status, hasDisc }: { status: string; hasDisc?: boolean }) {
     borderRadius: 8,
     fontSize: 12,
     fontWeight: 600,
-    ...(isSync
+    ...(isUnderpaid
+      ? { background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#111827" }
+      : isSync
       ? { background: "linear-gradient(135deg, #0f766e, #0d9488)", color: "white" }
       : isDisc
         ? { background: "linear-gradient(135deg, #ea580c, #c2410c)", color: "white" }
@@ -91,7 +96,7 @@ function Badge({ status, hasDisc }: { status: string; hasDisc?: boolean }) {
             ? { background: "linear-gradient(135deg, #ef4444, #dc2626)", color: "white" }
             : { background: "linear-gradient(135deg, #64748b, #475569)", color: "white" }),
   };
-  return <span style={style}>{s}</span>;
+  return <span style={style}>{isUnderpaid ? "KURANG BAYAR" : s}</span>;
 }
 
 const tabLabel: Record<TabType, string> = {
@@ -417,14 +422,24 @@ export default function BankHasilTransaksiPage() {
                 </td>
               </tr>
             ) : (
-              rows.map((r, idx) => (
-                <tr key={r.nobooking || idx} style={{ borderBottom: "1px solid var(--border_color)", background: r.has_discrepancy ? "rgba(234, 88, 12, 0.06)" : undefined }}>
+              rows.map((r, idx) => {
+                const paySt = String(r.payment_status || "").toUpperCase();
+                const isUnderpaid = paySt === "KURANG_BAYAR";
+                const isWaiting = paySt === "WAITING_FOR_PAYMENT";
+                return (
+                <tr
+                  key={r.nobooking || idx}
+                  style={{
+                    borderBottom: "1px solid var(--border_color)",
+                    background: isUnderpaid ? "rgba(245, 158, 11, 0.14)" : r.has_discrepancy ? "rgba(234, 88, 12, 0.06)" : undefined,
+                  }}
+                >
                   <td style={tdStyle}>{startNumber + idx}</td>
                   <td style={tdStyle}>{r.no_registrasi || "-"}</td>
                   <td style={tdStyle}>{r.nobooking || "-"}</td>
                   <td style={{ ...tdStyle, fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12 }}>{r.noppbb || "-"}</td>
                   <td style={tdStyle}>{r.namawajibpajak || "-"}</td>
-                  <td style={tdStyle}>{r.nomor_bukti_pembayaran || "-"}</td>
+                  <td style={tdStyle}>{r.nomor_bukti_pembayaran || (isWaiting ? "WAITING_FOR_PAYMENT" : "-")}</td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 700, fontFamily: "ui-monospace, Consolas, monospace" }}>{fmtCurrency(r.nominal)}</td>
                   <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, fontFamily: "ui-monospace, Consolas, monospace", color: "#00529B" }}>
                     {r.gateway_nominal_received != null ? fmtCurrency(r.gateway_nominal_received) : "—"}
@@ -432,7 +447,7 @@ export default function BankHasilTransaksiPage() {
                   <td style={tdStyle}>{r.sspd_pembayaran_status || "-"}</td>
                   <td style={tdStyle}>{r.tanggal_pembayaran || "-"}</td>
                   <td style={tdStyle}>
-                    <Badge status={r.status_verifikasi ?? ""} hasDisc={r.has_discrepancy} />
+                    <Badge status={r.status_verifikasi ?? ""} hasDisc={r.has_discrepancy} paymentStatus={r.payment_status} />
                   </td>
                   <td style={{ ...tdStyle, textAlign: "center" }}>
                     <button
@@ -454,7 +469,7 @@ export default function BankHasilTransaksiPage() {
                     </button>
                   </td>
                 </tr>
-              ))
+              )})
             )}
           </tbody>
         </table>
@@ -566,6 +581,28 @@ export default function BankHasilTransaksiPage() {
                   <div style={{ marginTop: 4, color: "#0f172a" }}>{monoBigRupiah(detailModal.tagihan_nominal ?? null)}</div>
                 </div>
               </div>
+
+              {(() => {
+                const tagihan = Number(detailModal.tagihan_nominal || 0);
+                const bayar = Number(detailModal.gateway_nominal_received || 0);
+                const diff = bayar - tagihan;
+                const isUnder = (detailModal.payment_status || "").toUpperCase() === "KURANG_BAYAR" || diff < -100;
+                return (
+                  <div style={{ marginTop: 14, padding: 12, borderRadius: 6, background: isUnder ? "#fffbeb" : "#f1f5f9", border: `1px solid ${isUnder ? "#f59e0b" : "#cbd5e1"}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontFamily: "ui-monospace, Consolas, monospace", fontSize: 13 }}>
+                      <span style={{ color: "#64748b" }}>Selisih</span>
+                      <span style={{ fontWeight: 900, color: isUnder ? "#b45309" : "#0f172a" }}>
+                        {diff === 0 ? "Rp 0" : `Rp ${diff.toLocaleString("id-ID")}`}
+                      </span>
+                    </div>
+                    {isUnder && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "#92400e", fontWeight: 700 }}>
+                        Peringatan: pembayaran kurang. Berkas tetap diteruskan untuk tindak lanjut STPD.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {detailModal.has_discrepancy && (
                 <div

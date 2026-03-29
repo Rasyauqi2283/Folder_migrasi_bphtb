@@ -40,6 +40,7 @@ type BankTransaksiRow struct {
 	GatewayStatus          *string  `json:"gateway_status,omitempty"`
 	HasDiscrepancy         bool     `json:"has_discrepancy"`
 	SspdPembayaranStatus   string   `json:"sspd_pembayaran_status,omitempty"`
+	PaymentStatus          *string  `json:"payment_status,omitempty"`
 }
 
 // BankTransaksiDetail is returned for GET /api/bank/transaksi/{nobooking}/detail (modal Periksa).
@@ -61,6 +62,7 @@ type BankTransaksiDetail struct {
 	GatewayChannel         *string    `json:"gateway_channel,omitempty"`
 	HasDiscrepancy         bool       `json:"has_discrepancy"`
 	SspdPembayaranStatus   string     `json:"sspd_pembayaran_status"`
+	PaymentStatus          *string    `json:"payment_status,omitempty"`
 }
 
 // bankDiscrepancyExpr: gateway PAID vs tagihan sistem berbeda > Rp 100.
@@ -147,7 +149,8 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 			bk.catatan_bank, l.no_registrasi,
 			bk.gateway_nominal_received, bk.gateway_status,
 			(COALESCE(bk.status_verifikasi, '') = 'Selisih' OR %s) AS has_discrepancy,
-			COALESCE(p.sspd_pembayaran_status, 'BELUM_LUNAS') AS sspd_pembayaran_status
+			COALESCE(p.sspd_pembayaran_status, 'BELUM_LUNAS') AS sspd_pembayaran_status,
+			COALESCE(p.payment_status, 'WAITING_FOR_PAYMENT') AS payment_status
 		FROM bank_1_cek_hasil_transaksi bk
 		LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
@@ -166,10 +169,11 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 		var row BankTransaksiRow
 		var gwAmt sql.NullInt64
 		var gwSt sql.NullString
+		var paySt sql.NullString
 		if err := rowsResult.Scan(&row.ID, &row.Nobooking, &row.Noppbb, &row.Namawajibpajak,
 			&row.NomorBuktiPembayaran, &row.Nominal, &row.TanggalPembayaran,
 			&row.StatusVerifikasi, &row.StatusDibank, &row.CatatanBank, &row.NoRegistrasi,
-			&gwAmt, &gwSt, &row.HasDiscrepancy, &row.SspdPembayaranStatus); err != nil {
+			&gwAmt, &gwSt, &row.HasDiscrepancy, &row.SspdPembayaranStatus, &paySt); err != nil {
 			continue
 		}
 		if gwAmt.Valid {
@@ -179,6 +183,10 @@ func (r *BankRepo) BankTransaksiList(ctx context.Context, tab, statusFilter, sea
 		if gwSt.Valid && strings.TrimSpace(gwSt.String) != "" {
 			s := gwSt.String
 			row.GatewayStatus = &s
+		}
+		if paySt.Valid && strings.TrimSpace(paySt.String) != "" {
+			s := paySt.String
+			row.PaymentStatus = &s
 		}
 		rows = append(rows, row)
 	}
@@ -208,7 +216,8 @@ func (r *BankRepo) GetTransaksiDetail(ctx context.Context, nobooking string) (*B
 				AND COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar, 0) > 0
 				AND ABS(bk.gateway_nominal_received - COALESCE(bk.bphtb_yangtelah_dibayar, p2.bphtb_yangtelah_dibayar, 0)::bigint) > 100
 			)) AS has_disc,
-			COALESCE(p.sspd_pembayaran_status, 'BELUM_LUNAS')
+			COALESCE(p.sspd_pembayaran_status, 'BELUM_LUNAS'),
+			COALESCE(p.payment_status, 'WAITING_FOR_PAYMENT')
 		FROM bank_1_cek_hasil_transaksi bk
 		LEFT JOIN pat_1_bookingsspd p ON p.nobooking = bk.nobooking
 		LEFT JOIN pat_2_bphtb_perhitungan p2 ON p2.nobooking = bk.nobooking
@@ -221,12 +230,13 @@ func (r *BankRepo) GetTransaksiDetail(ctx context.Context, nobooking string) (*B
 	var gwAmt sql.NullInt64
 	var gwSt, gwRef, gwCh sql.NullString
 	var gwAt sql.NullTime
+	var paySt sql.NullString
 	err := r.pool.QueryRow(ctx, q, nb).Scan(
 		&d.Nobooking, &d.NoRegistrasi, &d.Noppbb, &d.Namawajibpajak,
 		&tag, &d.NomorBuktiPembayaran, &d.TanggalPembayaran,
 		&d.StatusVerifikasi, &d.StatusDibank, &d.CatatanBank,
 		&gwAmt, &gwSt, &gwRef, &gwAt, &gwCh,
-		&d.HasDiscrepancy, &d.SspdPembayaranStatus,
+		&d.HasDiscrepancy, &d.SspdPembayaranStatus, &paySt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil
@@ -257,6 +267,10 @@ func (r *BankRepo) GetTransaksiDetail(ctx context.Context, nobooking string) (*B
 	if gwAt.Valid {
 		t := gwAt.Time
 		d.GatewayPaidAt = &t
+	}
+	if paySt.Valid && strings.TrimSpace(paySt.String) != "" {
+		s := paySt.String
+		d.PaymentStatus = &s
 	}
 	return &d, nil
 }
@@ -340,7 +354,26 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 		}
 	}
 
-	_, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET sspd_pembayaran_status = 'LUNAS' WHERE nobooking = $1`, nb)
+	// Persist canonical payment state on booking.
+	underpaid := false
+	if tagihan.Valid && tagihan.Int64 > 0 && amount < tagihan.Int64-100 {
+		underpaid = true
+	}
+	paymentStatus := "PAID"
+	sspdStatus := "LUNAS"
+	if underpaid {
+		paymentStatus = "KURANG_BAYAR"
+		sspdStatus = "KURANG_BAYAR"
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd SET
+			payment_amount_paid = $2,
+			payment_amount_requested = COALESCE(payment_amount_requested, $3),
+			payment_status = $4,
+			sspd_pembayaran_status = $5,
+			updated_at = now()
+		WHERE nobooking = $1
+	`, nb, amount, tagihan.Int64, paymentStatus, sspdStatus)
 	if err != nil {
 		return err
 	}

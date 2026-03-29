@@ -21,6 +21,7 @@ import (
 	"github.com/joho/godotenv"
 	"ebphtb/backend/internal/config"
 	"ebphtb/backend/internal/handler"
+	"ebphtb/backend/internal/payment"
 	"ebphtb/backend/internal/repository"
 	"ebphtb/backend/internal/worker"
 )
@@ -373,6 +374,13 @@ func main() {
 			ALTER TABLE public.pat_1_bookingsspd
 				ADD COLUMN IF NOT EXISTS sspd_pembayaran_status character varying(40) DEFAULT 'BELUM_LUNAS';
 			COMMENT ON COLUMN public.pat_1_bookingsspd.sspd_pembayaran_status IS 'BELUM_LUNAS | LUNAS — diisi otomatis saat gateway PAID';
+			ALTER TABLE public.pat_1_bookingsspd
+				ADD COLUMN IF NOT EXISTS billing_id character varying(64),
+				ADD COLUMN IF NOT EXISTS billing_expires_at timestamp with time zone,
+				ADD COLUMN IF NOT EXISTS payment_amount_requested bigint,
+				ADD COLUMN IF NOT EXISTS payment_amount_paid bigint,
+				ADD COLUMN IF NOT EXISTS payment_status character varying(40) DEFAULT 'WAITING_FOR_PAYMENT';
+			COMMENT ON COLUMN public.pat_1_bookingsspd.payment_status IS 'WAITING_FOR_PAYMENT | PAID | KURANG_BAYAR';
 			ALTER TABLE public.bank_1_cek_hasil_transaksi
 				ADD COLUMN IF NOT EXISTS gateway_nominal_received bigint,
 				ADD COLUMN IF NOT EXISTS gateway_status character varying(32),
@@ -416,6 +424,8 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/laporan-bulanan/submit", ppatHandler.SubmitLaporanBulanan)
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/unblock", ppatHandler.PostMonitoringUnblock)
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/notify", ppatHandler.PostMonitoringNotify)
+	mux.HandleFunc("POST /api/ppat/request-billing", ppatHandler.RequestBilling)
+	mux.HandleFunc("GET /api/ppat/billing/pending", ppatHandler.PendingBillingSummary)
 
 	// WP — Libatkan WP flow (validate, invite, list, approve)
 	wpSign := handler.NewWpSignHandler(userRepo, ppatRepo)
@@ -451,6 +461,9 @@ func main() {
 
 	paymentWebhookHandler := handler.NewPaymentGatewayWebhookHandler(cfg, bankRepo)
 	mux.HandleFunc("POST /api/webhooks/payment-gateway", paymentWebhookHandler.Handle)
+
+	// (Mock) Bank BJB Billing client is constructed in handler when needed.
+	_ = payment.MockBJBClient{}
 
 	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo, ppatRepo)
 	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd", ltbHandler.ListTerimaBerkas)

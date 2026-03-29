@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"ebphtb/backend/internal/config"
+	"ebphtb/backend/internal/payment"
 	"ebphtb/backend/internal/pdf"
 	"ebphtb/backend/internal/repository"
 
@@ -53,11 +54,14 @@ type PpatHandler struct {
 	userRepo     *repository.UserRepo
 	laporanRepo  *repository.PpatLaporanRepo
 	cfg          *config.Config
+	bjb          payment.BJBClient
 }
 
 // NewPpatHandler creates a PpatHandler.
 func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo, userRepo *repository.UserRepo, laporanRepo *repository.PpatLaporanRepo) *PpatHandler {
-	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, userRepo: userRepo, laporanRepo: laporanRepo, cfg: cfg}
+	// Default to mock client until production BJB integration is configured.
+	mock := &payment.MockBJBClient{TTL: 2 * time.Hour}
+	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, userRepo: userRepo, laporanRepo: laporanRepo, cfg: cfg, bjb: mock}
 }
 
 type createPermohonanValidasiInput struct {
@@ -1442,4 +1446,106 @@ func ppatJSONError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": message})
+}
+
+// RequestBilling handles POST /api/ppat/request-billing.
+// It registers a BJB Billing ID (mock for now) and stores it for the booking.
+func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if h.repo == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
+		return
+	}
+	var in struct {
+		Nobooking string `json:"nobooking"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	nb := strings.TrimSpace(in.Nobooking)
+	if nb == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking wajib")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// Use BPHTB yang telah dibayar as requested amount for now (production will use final SSPD tagihan).
+	// We intentionally avoid including PII in billing description.
+	amountRequested := int64(0)
+	_ = h.repo.Pool().QueryRow(ctx, `
+		SELECT COALESCE(p2.bphtb_yangtelah_dibayar, 0)::bigint
+		FROM pat_2_bphtb_perhitungan p2
+		WHERE p2.nobooking = $1
+		LIMIT 1
+	`, nb).Scan(&amountRequested)
+	if amountRequested <= 0 {
+		ppatJSONError(w, http.StatusBadRequest, "Nominal tagihan belum tersedia (bphtb_yangtelah_dibayar kosong).")
+		return
+	}
+
+	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
+		Nobooking:        nb,
+		AmountRequested:  amountRequested,
+		Description:      "E-BPHTB BPHTB Payment",
+	})
+	if err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := h.repo.SetBookingBilling(ctx, userid, nb, resp.BillingID, resp.Amount, resp.ExpiresAt); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":       true,
+		"nobooking":     nb,
+		"billing_id":    resp.BillingID,
+		"amount":        resp.Amount,
+		"expires_at":    resp.ExpiresAt.Format(time.RFC3339),
+		"provider":      resp.Provider,
+		"mocked":        resp.Mocked,
+		"instructions":  "Silakan bayar melalui ATM, Mobile Banking, atau Teller Bank BJB menggunakan ID Billing di atas.",
+	})
+}
+
+// PendingBillingSummary handles GET /api/ppat/billing/pending.
+func (h *PpatHandler) PendingBillingSummary(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if h.repo == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Service unavailable")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 6*time.Second)
+	defer cancel()
+	cnt, nearest, err := h.repo.PendingBillingCount(ctx, userid)
+	if err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memuat status billing")
+		return
+	}
+	out := map[string]interface{}{"success": true, "count": cnt}
+	if nearest != nil {
+		out["nearest_expires_at"] = nearest.Format(time.RFC3339)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
 }

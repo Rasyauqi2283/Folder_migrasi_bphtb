@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import styles from "./GreetingCard.module.css";
 import QuotaCalendar from "./QuotaCalendar";
+import { getApiBase } from "../../lib/api";
 
 export interface GreetingCardProps {
   /** Nama user untuk teks "Selamat Datang, {nama}" */
@@ -31,6 +32,7 @@ export default function GreetingCard({
   const isPerempuan = normalizedGender === "perempuan" || normalizedGender === "female";
   const isLakiLaki = normalizedGender === "laki-laki" || normalizedGender === "laki laki" || normalizedGender === "male";
   const [sapaan, setSapaan] = useState("Halo");
+  const [billingReminder, setBillingReminder] = useState<null | { count: number; nearest_expires_at?: string }>(null);
 
   useEffect(() => {
     if (isPerempuan) {
@@ -43,6 +45,27 @@ export default function GreetingCard({
     }
     setSapaan("Halo");
   }, [isLakiLaki, isPerempuan, normalizedGender]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${getApiBase()}/api/ppat/billing/pending`, { credentials: "include" });
+        const j = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok && j?.success && typeof j?.count === "number" && j.count > 0) {
+          setBillingReminder({ count: j.count, nearest_expires_at: typeof j.nearest_expires_at === "string" ? j.nearest_expires_at : undefined });
+        } else {
+          setBillingReminder(null);
+        }
+      } catch {
+        if (!cancelled) setBillingReminder(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const svgSrc = isPerempuan ? SVG_PEREMPUAN : SVG_LAKI;
   const renderKey = `${nama}-${normalizedGender}-${pageLabel}`;
@@ -69,6 +92,12 @@ export default function GreetingCard({
             )}
           </h2>
           <h5 className={styles.subtitle}>{subtitle}</h5>
+          {billingReminder && (
+            <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "rgba(245,158,11,0.14)", border: "1px solid rgba(245,158,11,0.35)", color: "#92400e", fontWeight: 700, fontSize: 13 }}>
+              Anda memiliki <strong>{billingReminder.count}</strong> tagihan dengan status <strong>WAITING_FOR_PAYMENT</strong>.
+              {billingReminder.nearest_expires_at ? ` Batas terdekat: ${new Date(billingReminder.nearest_expires_at).toLocaleString("id-ID")}.` : ""}
+            </div>
+          )}
         </div>
         <div className={styles.heroWrap}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

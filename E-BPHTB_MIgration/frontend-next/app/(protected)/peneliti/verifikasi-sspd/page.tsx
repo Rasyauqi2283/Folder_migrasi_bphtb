@@ -40,6 +40,9 @@ interface VerifikasiItem {
   assignment_status?: string | null;
   last_edited_by?: string | null;
   peneliti_edited_fields?: Record<string, boolean> | string;
+  payment_status?: string | null;
+  payment_amount_requested?: number | null;
+  payment_amount_paid?: number | null;
   [key: string]: unknown;
 }
 
@@ -693,11 +696,21 @@ export default function PenelitiVerifikasiSspdPage() {
                 const lockedBy = String(r.locked_by_user_id ?? "");
                 const isLockedByOther = !!lockedBy && !!myUserid && lockedBy !== myUserid;
                 const unassigned = needsClaim(r);
+                const paySt = String(r.payment_status ?? "").toUpperCase();
+                const isUnderpaid = paySt === "KURANG_BAYAR";
+                const reqAmt = Number(r.payment_amount_requested ?? 0);
+                const paidAmt = Number(r.payment_amount_paid ?? 0);
+                const diff = paidAmt - reqAmt;
                 return (
                 <Fragment key={r.nobooking ?? String(idx)}>
                   <tr
                     key={`${r.nobooking ?? idx}-main`}
-                    style={{ borderBottom: "1px solid var(--border_color)", cursor: "pointer", opacity: isLockedByOther ? 0.65 : 1 }}
+                    style={{
+                      borderBottom: "1px solid var(--border_color)",
+                      cursor: "pointer",
+                      opacity: isLockedByOther ? 0.65 : 1,
+                      background: isUnderpaid ? "rgba(245, 158, 11, 0.12)" : undefined,
+                    }}
                     onClick={() => setExpandedBooking((prev) => (prev === r.nobooking ? null : String(r.nobooking ?? "")))}
                   >
                     <td style={{ ...tdStyle, textAlign: "center" }}>{start + idx + 1}</td>
@@ -749,6 +762,20 @@ export default function PenelitiVerifikasiSspdPage() {
                     <tr key={`${r.nobooking ?? idx}-detail`}>
                       <td colSpan={8} style={{ ...tdStyle, background: "var(--card_bg_grey)" }}>
                         <div style={{ display: "grid", gap: 10 }}>
+                          {isUnderpaid && (
+                            <div style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.16)", color: "#92400e" }}>
+                              <div style={{ fontWeight: 900, marginBottom: 4 }}>Peringatan: Pembayaran Kurang Bayar</div>
+                              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                                Tagihan: Rp {reqAmt.toLocaleString("id-ID")} — Bayar: Rp {paidAmt.toLocaleString("id-ID")} — Selisih:{" "}
+                                <span style={{ color: diff < 0 ? "#b91c1c" : "#065f46" }}>
+                                  Rp {diff.toLocaleString("id-ID")}
+                                </span>
+                              </div>
+                              <div style={{ marginTop: 6, fontSize: 12, fontWeight: 700 }}>
+                                Catatan otomatis: <span style={{ fontWeight: 900 }}>Pembayaran kurang sebesar Rp {Math.abs(Math.min(diff, 0)).toLocaleString("id-ID")}.</span> Perlu tindak lanjut STPD.
+                              </div>
+                            </div>
+                          )}
                           <div style={sectionCardStyle}>
                             <strong style={{ display: "block", marginBottom: 8 }}>Penugasan &amp; koreksi data PU</strong>
                             <p style={{ margin: "0 0 10px", color: "var(--color_font_muted)", fontSize: 13 }}>

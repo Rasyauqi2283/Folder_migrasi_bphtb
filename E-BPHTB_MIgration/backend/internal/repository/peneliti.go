@@ -63,6 +63,9 @@ type PenelitiBerkasFromLtbRow struct {
 	AssignmentStatus *string `json:"assignment_status"`
 	LastEditedBy     *string `json:"last_edited_by"`
 	PenelitiEditedFields json.RawMessage `json:"peneliti_edited_fields,omitempty"`
+	PaymentStatus        *string        `json:"payment_status,omitempty"`
+	PaymentAmountRequested *int64       `json:"payment_amount_requested,omitempty"`
+	PaymentAmountPaid    *int64         `json:"payment_amount_paid,omitempty"`
 }
 
 type RejectionEmailInfo struct {
@@ -376,7 +379,10 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			p.verified_by, p.verified_by_nama,
 			b.alamatwajibpajak, b.alamatpemilikobjekpajak,
 			p.assigned_to, p.assignment_status, p.last_edited_by,
-			COALESCE(p.peneliti_edited_fields::text, '{}')::text
+			COALESCE(p.peneliti_edited_fields::text, '{}')::text,
+			COALESCE(b.payment_status, 'WAITING_FOR_PAYMENT')::text,
+			b.payment_amount_requested,
+			b.payment_amount_paid
 		FROM p_1_verifikasi p
 		LEFT JOIN pat_1_bookingsspd b ON p.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users v ON v.userid = $1
@@ -417,7 +423,7 @@ func (r *PenelitiRepo) GetBerkasFromLtb(ctx context.Context, penelitiUserid stri
 			&row.LockedByUserID, &row.LockedByNama, &row.LockedAt, &row.VerifiedAt, &row.VerifiedBy, &row.VerifiedByNama,
 			&row.Alamatwajibpajak, &row.Alamatpemilikobjekpajak,
 			&row.AssignedTo, &row.AssignmentStatus, &row.LastEditedBy,
-			&editedJSON); err != nil {
+			&editedJSON, &row.PaymentStatus, &row.PaymentAmountRequested, &row.PaymentAmountPaid); err != nil {
 			continue
 		}
 		row.PenelitiEditedFields = json.RawMessage(editedJSON)

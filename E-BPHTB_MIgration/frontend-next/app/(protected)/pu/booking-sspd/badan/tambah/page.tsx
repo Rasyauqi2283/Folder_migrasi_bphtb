@@ -287,7 +287,6 @@ type CreatePayload = {
   nomor_sertifikat?: string;
   tanggal_perolehan?: string;
   tanggal_pembayaran?: string;
-  nomor_bukti_pembayaran?: string;
   luas_tanah?: number;
   njop_tanah?: number;
   luas_bangunan?: number;
@@ -540,13 +539,15 @@ export default function TambahBookingBadanPage() {
     jenisPerolehan: "",
     keterangan: "",
     nomor_sertifikat: "",
-    nomor_bukti_pembayaran: "",
     luas_tanah: undefined,
     njop_tanah: undefined,
     luas_bangunan: undefined,
     njop_bangunan: undefined,
     bphtb_yangtelah_dibayar: undefined,
   });
+
+  const [billingModal, setBillingModal] = useState<null | { billing_id: string; amount: number; expires_at: string }>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const updateForm = useCallback((key: string, value: string | number | undefined) => {
     setForm((prev) => {
@@ -877,7 +878,6 @@ export default function TambahBookingBadanPage() {
       jenisPerolehan: jp,
       keterangan: str("keterangan"),
       nomor_sertifikat: str("nomor_sertifikat"),
-      nomor_bukti_pembayaran: "",
       luas_tanah: num("luas_tanah"),
       njop_tanah: num("njop_tanah"),
       luas_bangunan: num("luas_bangunan"),
@@ -1014,7 +1014,6 @@ export default function TambahBookingBadanPage() {
       nomor_sertifikat: form.nomor_sertifikat?.toString(),
       tanggal_perolehan: tanggalOlehStr,
       tanggal_pembayaran: tanggalBayarStr,
-      nomor_bukti_pembayaran: form.nomor_bukti_pembayaran?.toString(),
       luas_tanah: form.luas_tanah != null ? Number(form.luas_tanah) : undefined,
       njop_tanah: form.njop_tanah != null ? Number(form.njop_tanah) : undefined,
       luas_bangunan: form.luas_bangunan != null ? Number(form.luas_bangunan) : undefined,
@@ -1050,7 +1049,32 @@ export default function TambahBookingBadanPage() {
       if (data?.success && data?.nobooking) {
         setSuccess(`Booking berhasil dibuat. No. Booking: ${data.nobooking}`);
         setNobookingValue(String(data.nobooking));
-        setTimeout(() => router.push("/pu/booking-sspd/badan"), 2500);
+        // Trigger Billing ID generation (mock BJB) so user can pay using generated ID.
+        setBillingLoading(true);
+        try {
+          const base2 = getBackendBaseUrl();
+          const rbUrl = base2 ? `${base2}/api/ppat/request-billing` : "/api/ppat/request-billing";
+          const rbRes = await fetch(rbUrl, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nobooking: String(data.nobooking) }),
+          });
+          const rb = await rbRes.json().catch(() => ({}));
+          if (rbRes.ok && rb?.success && rb?.billing_id) {
+            setBillingModal({
+              billing_id: String(rb.billing_id),
+              amount: Number(rb.amount || 0),
+              expires_at: String(rb.expires_at || ""),
+            });
+            return;
+          }
+          setError(typeof rb?.message === "string" ? rb.message : "Gagal membuat ID Billing.");
+          setTimeout(() => router.push("/pu/booking-sspd/badan"), 1500);
+          return;
+        } finally {
+          setBillingLoading(false);
+        }
         return;
       }
       setError(data?.message || "Gagal membuat booking.");
@@ -1986,13 +2010,10 @@ export default function TambahBookingBadanPage() {
                 </div>
               </div>
               <div style={sectionStyle}>
-                <label style={labelStyle}>Nomor Bukti Pembayaran</label>
-                <input
-                  style={inputStyle}
-                  value={form.nomor_bukti_pembayaran ?? ""}
-                  onChange={(e) => updateForm("nomor_bukti_pembayaran", e.target.value)}
-                  placeholder="Nomor bukti pembayaran"
-                />
+                <label style={labelStyle}>ID Billing Bank (otomatis)</label>
+                <div style={{ ...hintStyle, color: "var(--color_font_muted)", fontSize: 13, fontWeight: 600 }}>
+                  ID Billing akan dibuat otomatis setelah Anda menekan tombol simpan/proses. Tidak perlu input manual.
+                </div>
               </div>
             </div>
           )}
@@ -2064,7 +2085,7 @@ export default function TambahBookingBadanPage() {
               cursor: loading || editLoading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Menyimpan..." : (isEditMode ? "Simpan Perubahan" : "Simpan Perhitungan booking dan perhitungan BPHTB")}
+            {loading || billingLoading ? "Memproses..." : (isEditMode ? "Simpan Perubahan" : "Simpan & Proses (Generate ID Billing)")}
           </button>
           <Link
             href="/pu/booking-sspd/badan"
@@ -2103,6 +2124,113 @@ export default function TambahBookingBadanPage() {
           }}
         >
           {wpToast}
+        </div>
+      )}
+
+      {billingModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 200,
+            backdropFilter: "blur(6px)",
+          }}
+          onClick={() => setBillingModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 520,
+              background: "#fff",
+              borderRadius: 14,
+              border: "1px solid rgba(15,23,42,0.12)",
+              overflow: "hidden",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+            }}
+          >
+            <div style={{ padding: "14px 18px", background: "linear-gradient(135deg, #0a3d62, #00529B)", color: "#fff" }}>
+              <div style={{ fontWeight: 900, letterSpacing: "0.02em" }}>ID Billing Bank BJB</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>Gunakan ID ini untuk pembayaran (ATM / Mobile Banking / Teller)</div>
+            </div>
+            <div style={{ padding: 18, color: "#0f172a" }}>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>ID BILLING</div>
+                  <div style={{ fontFamily: "ui-monospace, Consolas, monospace", fontSize: 18, fontWeight: 900 }}>
+                    {billingModal.billing_id}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>NOMINAL TAGIHAN</div>
+                  <div style={{ fontFamily: "ui-monospace, Consolas, monospace", fontSize: 22, fontWeight: 900, color: "#0a3d62" }}>
+                    Rp {Number(billingModal.amount || 0).toLocaleString("id-ID")}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>BATAS WAKTU</div>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>
+                    {billingModal.expires_at ? new Date(billingModal.expires_at).toLocaleString("id-ID") : "—"}
+                  </div>
+                </div>
+                <div style={{ padding: 12, borderRadius: 10, background: "rgba(0,82,155,0.08)", border: "1px solid rgba(0,82,155,0.18)" }}>
+                  <div style={{ fontWeight: 900, color: "#0a3d62", marginBottom: 4 }}>Instruksi</div>
+                  <div style={{ fontSize: 13, color: "#0f172a" }}>
+                    Silakan bayar melalui ATM, Mobile Banking, atau Teller <strong>Bank BJB</strong> menggunakan <strong>ID Billing</strong> di atas.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(billingModal.billing_id);
+                      setSuccess("ID Billing disalin.");
+                    } catch {
+                      setSuccess("Tidak bisa menyalin otomatis. Silakan salin manual.");
+                    }
+                  }}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "#00529B",
+                    color: "#fff",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Salin ID Billing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillingModal(null);
+                    router.push("/pu/booking-sspd/badan");
+                  }}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(15,23,42,0.18)",
+                    background: "#fff",
+                    color: "#0f172a",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Kembali ke daftar booking
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
