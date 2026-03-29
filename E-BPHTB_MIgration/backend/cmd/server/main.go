@@ -379,8 +379,10 @@ func main() {
 				ADD COLUMN IF NOT EXISTS billing_expires_at timestamp with time zone,
 				ADD COLUMN IF NOT EXISTS payment_amount_requested bigint,
 				ADD COLUMN IF NOT EXISTS payment_amount_paid bigint,
-				ADD COLUMN IF NOT EXISTS payment_status character varying(40) DEFAULT 'WAITING_FOR_PAYMENT';
+				ADD COLUMN IF NOT EXISTS payment_status character varying(40) DEFAULT 'WAITING_FOR_PAYMENT',
+				ADD COLUMN IF NOT EXISTS is_calculation_completed boolean NOT NULL DEFAULT false;
 			COMMENT ON COLUMN public.pat_1_bookingsspd.payment_status IS 'WAITING_FOR_PAYMENT | PAID | KURANG_BAYAR';
+			COMMENT ON COLUMN public.pat_1_bookingsspd.is_calculation_completed IS 'true jika PU sudah mengisi perhitungan NJOP/BPHTB + tanggal setelah bayar';
 			ALTER TABLE public.bank_1_cek_hasil_transaksi
 				ADD COLUMN IF NOT EXISTS gateway_nominal_received bigint,
 				ADD COLUMN IF NOT EXISTS gateway_status character varying(32),
@@ -409,6 +411,8 @@ func main() {
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}/callback", ppatHandler.GetBookingCallbackBadan)
 	mux.HandleFunc("GET /api/ppat/pbb/lookup-nop", ppatHandler.LookupNopPBB)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}", ppatHandler.GetBooking)
+	mux.HandleFunc("PUT /api/ppat/booking/{nobooking}/calculation", ppatHandler.SavePostPaymentCalculation)
+	mux.HandleFunc("PATCH /api/ppat/booking/{nobooking}/calculation", ppatHandler.SavePostPaymentCalculation)
 	mux.HandleFunc("PUT /api/ppat/update-trackstatus/{nobooking}", ppatHandler.UpdateTrackstatus)
 	mux.HandleFunc("DELETE /api/ppat/booking/{nobooking}", ppatHandler.DeleteBooking)
 	mux.HandleFunc("GET /api/ppat/quota", ppatHandler.GetQuota)
@@ -425,6 +429,7 @@ func main() {
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/unblock", ppatHandler.PostMonitoringUnblock)
 	mux.HandleFunc("POST /api/ppat/monitoring-keterlambatan/notify", ppatHandler.PostMonitoringNotify)
 	mux.HandleFunc("POST /api/ppat/request-billing", ppatHandler.RequestBilling)
+	mux.HandleFunc("POST /api/ppat/request-billing-first", ppatHandler.RequestBillingFirst)
 	mux.HandleFunc("GET /api/ppat/billing/pending", ppatHandler.PendingBillingSummary)
 
 	// WP — Libatkan WP flow (validate, invite, list, approve)

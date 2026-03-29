@@ -371,6 +371,10 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 			payment_amount_requested = COALESCE(payment_amount_requested, $3),
 			payment_status = $4,
 			sspd_pembayaran_status = $5,
+			trackstatus = CASE
+				WHEN LOWER(COALESCE(trackstatus,'')) = 'awaiting_billing' THEN 'Draft'
+				ELSE trackstatus
+			END,
 			updated_at = now()
 		WHERE nobooking = $1
 	`, nb, amount, tagihan.Int64, paymentStatus, sspdStatus)

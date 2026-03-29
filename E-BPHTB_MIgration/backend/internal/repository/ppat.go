@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -444,11 +445,24 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 	}
 
 	var currentStatus string
-	err = tx.QueryRow(ctx, `SELECT trackstatus FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2`, nobooking, userid).Scan(&currentStatus)
+	var payStatus sql.NullString
+	var calcDone bool
+	err = tx.QueryRow(ctx, `
+		SELECT trackstatus, COALESCE(payment_status,''), COALESCE(is_calculation_completed,false)
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+	`, nobooking, userid).Scan(&currentStatus, &payStatus, &calcDone)
 	if err != nil {
 		return nil, err
 	}
 	if currentStatus != "Draft" && currentStatus != "Pending" {
+		return nil, ErrPpatBookingNotSendable
+	}
+	ps := strings.TrimSpace(payStatus.String)
+	if ps != "PAID" && ps != "KURANG_BAYAR" {
+		return nil, ErrPpatBookingNotSendable
+	}
+	if !calcDone {
 		return nil, ErrPpatBookingNotSendable
 	}
 
@@ -1495,6 +1509,17 @@ type CreateBookingParams struct {
 	TotalNjoppbb   *float64 `json:"total_njoppbb"`
 }
 
+// CreateBookingForBillingParams is a minimal payload for Stage-1 billing request.
+// This intentionally avoids NJOP/BPHTB/tanggal perolehan/pembayaran which will be filled post-payment.
+type CreateBookingForBillingParams struct {
+	JenisWajibPajak        string `json:"jenis_wajib_pajak"` // "Badan Usaha" | "Perorangan"
+	Noppbb                 string `json:"noppbb"`
+	Namawajibpajak         string `json:"namawajibpajak"`
+	Namapemilikobjekpajak  string `json:"namapemilikobjekpajak"`
+	Npwpwp                 string `json:"npwpwp"` // NPWP (badan) atau NIK (perorangan)
+	Npwpop                 string `json:"npwpop"` // NPWP (badan) atau NIK (perorangan)
+}
+
 // BillingInfo holds stored billing state for one booking.
 type BillingInfo struct {
 	Nobooking       string
@@ -1554,6 +1579,194 @@ func (r *PpatRepo) SetBookingBilling(ctx context.Context, userid, nobooking, bil
 	_, _ = tx.Exec(ctx, `UPDATE pat_4_objek_pajak SET nomor_bukti_pembayaran = $1 WHERE nobooking = $2`, bid, nb)
 	_, _ = tx.Exec(ctx, `UPDATE bank_1_cek_hasil_transaksi SET nomor_bukti_pembayaran = COALESCE(nomor_bukti_pembayaran, $1) WHERE nobooking = $2`, bid, nb)
 
+	return tx.Commit(ctx)
+}
+
+// CreateBookingForBilling creates a minimal booking row in pat_1_bookingsspd for Stage-1 "Minta Billing ke Bank".
+// trackstatus is set to AWAITING_BILLING and detail forms are expected to be filled later (is_calculation_completed=false).
+func (r *PpatRepo) CreateBookingForBilling(ctx context.Context, userid string, p *CreateBookingForBillingParams) (string, error) {
+	if r.pool == nil {
+		return "", fmt.Errorf("database not configured")
+	}
+	if strings.TrimSpace(userid) == "" {
+		return "", fmt.Errorf("userid wajib")
+	}
+	if p == nil {
+		return "", fmt.Errorf("payload wajib")
+	}
+	jwp := strings.TrimSpace(p.JenisWajibPajak)
+	if jwp == "" {
+		jwp = "Badan Usaha"
+	}
+	nop := strings.TrimSpace(p.Noppbb)
+	if nop == "" {
+		return "", fmt.Errorf("noppbb wajib")
+	}
+	namaWp := strings.TrimSpace(p.Namawajibpajak)
+	if namaWp == "" {
+		return "", fmt.Errorf("nama wajib pajak wajib")
+	}
+	namaOp := strings.TrimSpace(p.Namapemilikobjekpajak)
+	if namaOp == "" {
+		return "", fmt.Errorf("nama pemilik objek pajak wajib")
+	}
+	npwpwp := strings.TrimSpace(p.Npwpwp)
+	npwpop := strings.TrimSpace(p.Npwpop)
+	if npwpwp == "" || npwpop == "" {
+		return "", fmt.Errorf("identitas WP/Objek wajib diisi")
+	}
+
+	now := time.Now()
+	tanggal := now.Format("02-01-2006") // mengikuti format UI lama (DD-MM-YYYY)
+	tahun := now.Format("2006")
+
+	// Keep non-essential columns as empty string defaults to avoid breaking older queries expecting string.
+	var nobooking string
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO pat_1_bookingsspd (
+			jenis_wajib_pajak, userid, noppbb, namawajibpajak, alamatwajibpajak, namapemilikobjekpajak, alamatpemilikobjekpajak,
+			tanggal, tahunajb, kabupatenkotawp, kecamatanwp, kelurahandesawp, rtrwwp, npwpwp, kodeposwp,
+			kabupatenkotaop, kecamatanop, kelurahandesaop, rtrwop, npwpop, kodeposop,
+			trackstatus, is_calculation_completed
+		) VALUES (
+			$1,$2,$3,$4,'',$5,'',
+			$6,$7,'','','','',$8,'',
+			'Kabupaten Bogor','','','',$9,'',
+			'AWAITING_BILLING', false
+		)
+		RETURNING nobooking
+	`, jwp, userid, nop, namaWp, namaOp, tanggal, tahun, npwpwp, npwpop).Scan(&nobooking)
+	if err != nil {
+		return "", err
+	}
+	return nobooking, nil
+}
+
+// PostPaymentCalculationParams is saved in Stage-2 dropdown after payment is confirmed.
+type PostPaymentCalculationParams struct {
+	// NJOP
+	LuasTanah   *float64 `json:"luas_tanah"`
+	NjopTanah   *float64 `json:"njop_tanah"`
+	LuasBangunan *float64 `json:"luas_bangunan"`
+	NjopBangunan *float64 `json:"njop_bangunan"`
+	// Pajak
+	NilaiPerolehanObjekPajakTidakKenaPajak *float64 `json:"nilaiPerolehanObjekPajakTidakKenaPajak"`
+	BphtbYangtelahDibayar                  *float64 `json:"bphtb_yangtelah_dibayar"`
+	// Tanggal
+	TanggalPerolehan  string `json:"tanggal_perolehan"`  // ISO (YYYY-MM-DD)
+	TanggalPembayaran string `json:"tanggal_pembayaran"` // ISO (YYYY-MM-DD)
+}
+
+// SavePostPaymentCalculation persists NJOP/BPHTB/tanggal after payment confirmation and marks is_calculation_completed=true.
+// It also updates payment_amount_requested from bphtb_yangtelah_dibayar and recalculates KURANG_BAYAR if needed.
+func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, nobooking string, p *PostPaymentCalculationParams) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(userid)
+	if nb == "" || u == "" {
+		return fmt.Errorf("nobooking dan userid wajib")
+	}
+	if p == nil {
+		return fmt.Errorf("payload wajib")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var payStatus string
+	var paid sql.NullInt64
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE(payment_status,''), payment_amount_paid
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+	`, nb, u).Scan(&payStatus, &paid)
+	if err != nil {
+		return err
+	}
+	if payStatus != "PAID" && payStatus != "KURANG_BAYAR" {
+		return fmt.Errorf("belum ada konfirmasi pembayaran dari bank")
+	}
+
+	// pat_5 (NJOP)
+	lt, nt, lb, nbng := 0.0, 0.0, 0.0, 0.0
+	if p.LuasTanah != nil {
+		lt = *p.LuasTanah
+	}
+	if p.NjopTanah != nil {
+		nt = *p.NjopTanah
+	}
+	if p.LuasBangunan != nil {
+		lb = *p.LuasBangunan
+	}
+	if p.NjopBangunan != nil {
+		nbng = *p.NjopBangunan
+	}
+	tot := (lt * nt) + (lb * nbng)
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  luas_tanah = EXCLUDED.luas_tanah,
+		  njop_tanah = EXCLUDED.njop_tanah,
+		  luas_bangunan = EXCLUDED.luas_bangunan,
+		  njop_bangunan = EXCLUDED.njop_bangunan,
+		  total_njoppbb = EXCLUDED.total_njoppbb,
+		  updated_at = now()
+	`, lt, nt, lb, nbng, tot, nb)
+
+	// pat_2 (BPHTB)
+	npoptkp := 0.0
+	bphtb := 0.0
+	if p.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
+		npoptkp = *p.NilaiPerolehanObjekPajakTidakKenaPajak
+	}
+	if p.BphtbYangtelahDibayar != nil {
+		bphtb = *p.BphtbYangtelahDibayar
+	}
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
+		VALUES ($1,$2,$3)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  nilaiperolehanobjekpajaktidakkenapajak = EXCLUDED.nilaiperolehanobjekpajaktidakkenapajak,
+		  bphtb_yangtelah_dibayar = EXCLUDED.bphtb_yangtelah_dibayar
+	`, npoptkp, bphtb, nb)
+
+	// pat_4 (tanggal)
+	_, _ = tx.Exec(ctx, `
+		INSERT INTO pat_4_objek_pajak (tanggal_perolehan, tanggal_pembayaran, nobooking)
+		VALUES ($1,$2,$3)
+		ON CONFLICT (nobooking) DO UPDATE SET
+		  tanggal_perolehan = EXCLUDED.tanggal_perolehan,
+		  tanggal_pembayaran = EXCLUDED.tanggal_pembayaran
+	`, p.TanggalPerolehan, p.TanggalPembayaran, nb)
+
+	// Update canonical requested amount and completion flag, then re-evaluate underpayment.
+	req := int64(bphtb)
+	paymentStatus2 := payStatus
+	sspdStatus2 := "LUNAS"
+	if payStatus == "KURANG_BAYAR" {
+		sspdStatus2 = "KURANG_BAYAR"
+	}
+	if paid.Valid && req > 0 && paid.Int64 < req-100 {
+		paymentStatus2 = "KURANG_BAYAR"
+		sspdStatus2 = "KURANG_BAYAR"
+	}
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd SET
+		  is_calculation_completed = true,
+		  payment_amount_requested = NULLIF($3, 0),
+		  payment_status = $4,
+		  sspd_pembayaran_status = $5,
+		  updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+	`, nb, u, req, paymentStatus2, sspdStatus2)
+	if err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 

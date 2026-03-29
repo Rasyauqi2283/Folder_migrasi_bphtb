@@ -44,8 +44,8 @@ func (c *MockBJBClient) RequestBillingID(ctx context.Context, req BillingRequest
 	if nb == "" {
 		return BillingResponse{}, fmt.Errorf("nobooking wajib")
 	}
-	if req.AmountRequested <= 0 {
-		return BillingResponse{}, fmt.Errorf("amount_requested wajib > 0")
+	if req.AmountRequested < 0 {
+		return BillingResponse{}, fmt.Errorf("amount_requested tidak boleh negatif")
 	}
 	ttl := c.TTL
 	if ttl <= 0 {

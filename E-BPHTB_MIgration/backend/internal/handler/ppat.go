@@ -707,6 +707,92 @@ func (h *PpatHandler) CreateBookingPerorangan(w http.ResponseWriter, r *http.Req
 	})
 }
 
+// RequestBillingFirst handles POST /api/ppat/request-billing-first.
+// Stage-1: create minimal booking (AWAITING_BILLING) then request BJB Billing ID.
+func (h *PpatHandler) RequestBillingFirst(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	var body repository.CreateBookingForBillingParams
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	// normalize jenis_wajib_pajak from UI (badan/perorangan) into canonical labels.
+	jwp := strings.TrimSpace(body.JenisWajibPajak)
+	switch strings.ToLower(jwp) {
+	case "badan", "badan_usaha", "badan usaha":
+		body.JenisWajibPajak = "Badan Usaha"
+	case "perorangan", "per", "pribadi":
+		body.JenisWajibPajak = "Perorangan"
+	default:
+		if jwp == "" {
+			body.JenisWajibPajak = "Badan Usaha"
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	nb, err := h.repo.CreateBookingForBilling(ctx, userid, &body)
+	if err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// Request billing ID; if amount not known yet, backend will store requested amount=0.
+	billing, err := h.requestBillingByNobooking(ctx, userid, nb)
+	if err != nil {
+		log.Printf("[PPAT] RequestBillingFirst: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal meminta billing ke bank")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":    true,
+		"nobooking":  nb,
+		"billing_id": billing.BillingID,
+		"amount":     billing.Amount,
+		"expires_at": billing.ExpiresAt,
+	})
+}
+
+// SavePostPaymentCalculation handles PUT /api/ppat/booking/{nobooking}/calculation.
+// Stage-2: PU fills calculation/date after bank marked payment PAID.
+func (h *PpatHandler) SavePostPaymentCalculation(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nb := strings.TrimSpace(r.PathValue("nobooking"))
+	if nb == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	var in repository.PostPaymentCalculationParams
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	if err := h.repo.SavePostPaymentCalculation(ctx, userid, nb, &in); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "OK"})
+}
+
 // UpdateBookingBadan handles PUT /api/ppat/update-booking/{nobooking}.
 // Only allowed for Draft bookings.
 func (h *PpatHandler) UpdateBookingBadan(w http.ResponseWriter, r *http.Request) {
@@ -1448,6 +1534,53 @@ func ppatJSONError(w http.ResponseWriter, code int, message string) {
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": message})
 }
 
+// requestBillingByNobooking runs the core billing-ID request logic and persists the billing state.
+// Amount can be 0 in the new 2-stage workflow (tagihan final diinput setelah bayar).
+func (h *PpatHandler) requestBillingByNobooking(ctx context.Context, userid, nobooking string) (*payment.BillingResponse, error) {
+	if h.repo == nil {
+		return nil, fmt.Errorf("service unavailable")
+	}
+	if h.bjb == nil {
+		return nil, fmt.Errorf("bank client unavailable")
+	}
+	nb := strings.TrimSpace(nobooking)
+	if nb == "" {
+		return nil, fmt.Errorf("nobooking wajib")
+	}
+	amountRequested := int64(0)
+	// Prefer canonical requested amount column if already set (e.g. from earlier calculation / imported SSPD).
+	_ = h.repo.Pool().QueryRow(ctx, `
+		SELECT COALESCE(payment_amount_requested, 0)::bigint
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1
+		LIMIT 1
+	`, nb).Scan(&amountRequested)
+	if amountRequested <= 0 {
+		// Fallback to pat_2 if available (legacy flow).
+		_ = h.repo.Pool().QueryRow(ctx, `
+			SELECT COALESCE(p2.bphtb_yangtelah_dibayar, 0)::bigint
+			FROM pat_2_bphtb_perhitungan p2
+			WHERE p2.nobooking = $1
+			LIMIT 1
+		`, nb).Scan(&amountRequested)
+		if amountRequested < 0 {
+			amountRequested = 0
+		}
+	}
+	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
+		Nobooking:       nb,
+		AmountRequested: amountRequested,
+		Description:     "E-BPHTB BPHTB Payment",
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := h.repo.SetBookingBilling(ctx, userid, nb, resp.BillingID, resp.Amount, resp.ExpiresAt); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 // RequestBilling handles POST /api/ppat/request-billing.
 // It registers a BJB Billing ID (mock for now) and stores it for the booking.
 func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
@@ -1480,30 +1613,8 @@ func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	// Use BPHTB yang telah dibayar as requested amount for now (production will use final SSPD tagihan).
-	// We intentionally avoid including PII in billing description.
-	amountRequested := int64(0)
-	_ = h.repo.Pool().QueryRow(ctx, `
-		SELECT COALESCE(p2.bphtb_yangtelah_dibayar, 0)::bigint
-		FROM pat_2_bphtb_perhitungan p2
-		WHERE p2.nobooking = $1
-		LIMIT 1
-	`, nb).Scan(&amountRequested)
-	if amountRequested <= 0 {
-		ppatJSONError(w, http.StatusBadRequest, "Nominal tagihan belum tersedia (bphtb_yangtelah_dibayar kosong).")
-		return
-	}
-
-	resp, err := h.bjb.RequestBillingID(ctx, payment.BillingRequest{
-		Nobooking:        nb,
-		AmountRequested:  amountRequested,
-		Description:      "E-BPHTB BPHTB Payment",
-	})
+	resp, err := h.requestBillingByNobooking(ctx, userid, nb)
 	if err != nil {
-		ppatJSONError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if err := h.repo.SetBookingBilling(ctx, userid, nb, resp.BillingID, resp.Amount, resp.ExpiresAt); err != nil {
 		ppatJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}

@@ -587,7 +587,6 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
   });
 
   const [billingModal, setBillingModal] = useState<null | { billing_id: string; amount: number; expires_at: string }>(null);
-  const [billingLoading, setBillingLoading] = useState(false);
 
   const updateForm = useCallback((key: string, value: string | number | undefined) => {
     setForm((prev) => {
@@ -1069,119 +1068,43 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       return;
     }
 
-    const tanggalOlehErr = validateDateParts(tanggalOleh, minYear, maxYear);
-    const tanggalBayarErr = validateDateParts(tanggalBayar, minYear, maxYear);
-    if (tanggalOlehErr || tanggalBayarErr) {
-      setError(tanggalOlehErr || tanggalBayarErr || "Tanggal tidak valid.");
-      return;
-    }
-
-    const tanggalOlehStr = partsToIsoDate(tanggalOleh);
-    const tanggalBayarStr = partsToIsoDate(tanggalBayar);
-
-    const payload: CreatePayload = {
-      jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
-      noppbb,
-      namawajibpajak: String(form.namawajibpajak ?? ""),
-      alamatwajibpajak: String(form.alamatwajibpajak ?? ""),
-      namapemilikobjekpajak: String(form.namapemilikobjekpajak ?? ""),
-      alamatpemilikobjekpajak: String(form.alamatpemilikobjekpajak ?? ""),
-      tanggal,
-      tahunajb: String(form.tahunajb ?? ""),
-      kabupatenkotawp: String(form.kabupatenkotawp ?? ""),
-      kecamatanwp: String(form.kecamatanwp ?? ""),
-      kelurahandesawp: String(form.kelurahandesawp ?? ""),
-      rtrwwp: String(form.rtrwwp ?? ""),
-      npwpwp,
-      kodeposwp: String(form.kodeposwp ?? ""),
-      kabupatenkotaop: String(form.kabupatenkotaop ?? ""),
-      kecamatanop: String(form.kecamatanop ?? ""),
-      kelurahandesaop: String(form.kelurahandesaop ?? ""),
-      rtrwop: String(form.rtrwop ?? ""),
-      npwpop,
-      kodeposop: String(form.kodeposop ?? ""),
-      trackstatus: "Draft",
-      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkp,
-      bphtb_yangtelah_dibayar: form.bphtb_yangtelah_dibayar != null ? Number(form.bphtb_yangtelah_dibayar) : undefined,
-      hargatransaksi: form.hargatransaksi?.toString(),
-      letaktanahdanbangunan: form.letaktanahdanbangunan?.toString(),
-      rt_rwobjekpajak: form.rt_rwobjekpajak?.toString(),
-      kecamatanlp: form.kecamatanlp?.toString(),
-      kelurahandesalp: form.kelurahandesalp?.toString(),
-      status_kepemilikan: form.status_kepemilikan?.toString(),
-      jenisPerolehan: form.jenisPerolehan?.toString(),
-      keterangan: form.keterangan?.toString(),
-      nomor_sertifikat: form.nomor_sertifikat?.toString(),
-      tanggal_perolehan: tanggalOlehStr,
-      tanggal_pembayaran: tanggalBayarStr,
-      luas_tanah: form.luas_tanah != null ? Number(form.luas_tanah) : undefined,
-      njop_tanah: form.njop_tanah != null ? Number(form.njop_tanah) : undefined,
-      luas_bangunan: form.luas_bangunan != null ? Number(form.luas_bangunan) : undefined,
-      njop_bangunan: form.njop_bangunan != null ? Number(form.njop_bangunan) : undefined,
-    };
-
     setLoading(true);
     try {
       const base = getBackendBaseUrl();
-      const createPath =
-        entityKind === "badan"
-          ? "/api/ppat_create-booking-and-bphtb"
-          : "/api/ppat_create-booking-and-bphtb-perorangan";
-      const url = isEditMode && nobookingValue
-        ? (base ? `${base}/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}` : `/api/ppat/update-booking/${encodeURIComponent(nobookingValue)}`)
-        : (base ? `${base}${createPath}` : createPath);
+      if (isEditMode && nobookingValue) {
+        setError("Mode edit tidak mendukung alur 2-tahap (billing dulu). Silakan buat booking baru.");
+        return;
+      }
+      const url = base ? `${base}/api/ppat/request-billing-first` : "/api/ppat/request-billing-first";
       const res = await fetch(url, {
-        method: isEditMode ? "PUT" : "POST",
+        method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
+          noppbb,
+          namawajibpajak: String(form.namawajibpajak ?? ""),
+          namapemilikobjekpajak: String(form.namapemilikobjekpajak ?? ""),
+          npwpwp,
+          npwpop,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.message || "Gagal membuat booking.");
+        setError(data?.message || "Gagal meminta billing ke bank.");
         return;
       }
-      if (isEditMode) {
-        if (data?.success) {
-          setSuccess("Data Booking berhasil diperbarui!");
-          setTimeout(() => router.push(listPath), 1200);
-          return;
-        }
-        setError(data?.message || "Gagal memperbarui booking.");
-        return;
-      }
-      if (data?.success && data?.nobooking) {
-        setSuccess(`Booking berhasil dibuat. No. Booking: ${data.nobooking}`);
+      if (data?.success && data?.billing_id && data?.nobooking) {
         setNobookingValue(String(data.nobooking));
-        // Trigger Billing ID generation (mock BJB) so user can pay using generated ID.
-        setBillingLoading(true);
-        try {
-          const base2 = getBackendBaseUrl();
-          const rbUrl = base2 ? `${base2}/api/ppat/request-billing` : "/api/ppat/request-billing";
-          const rbRes = await fetch(rbUrl, {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nobooking: String(data.nobooking) }),
-          });
-          const rb = await rbRes.json().catch(() => ({}));
-          if (rbRes.ok && rb?.success && rb?.billing_id) {
-            setBillingModal({
-              billing_id: String(rb.billing_id),
-              amount: Number(rb.amount || 0),
-              expires_at: String(rb.expires_at || ""),
-            });
-            return;
-          }
-          setError(typeof rb?.message === "string" ? rb.message : "Gagal membuat ID Billing.");
-          setTimeout(() => router.push(listPath), 1500);
-          return;
-        } finally {
-          setBillingLoading(false);
-        }
+        setSuccess(`Billing berhasil dibuat. No. Booking: ${data.nobooking} (status: AWAITING_BILLING)`);
+        setBillingModal({
+          billing_id: String(data.billing_id),
+          amount: Number(data.amount || 0),
+          expires_at: String(data.expires_at || ""),
+        });
         return;
       }
-      setError(data?.message || "Gagal membuat booking.");
+      setError(data?.message || "Gagal meminta billing ke bank.");
     } catch {
       setError("Network error. Coba lagi.");
     } finally {
@@ -1617,6 +1540,21 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           )}
         </div>
 
+        <div style={sectionStyle}>
+          <label style={labelStyle}>Nama Pemilik Objek Pajak</label>
+          <input
+            style={inputStyle}
+            value={form.namapemilikobjekpajak ?? ""}
+            onChange={(e) => updateForm("namapemilikobjekpajak", e.target.value)}
+            placeholder="Nama pemilik objek pajak"
+            required
+          />
+          <p style={hintStyle}>Detail perhitungan/berkas akan dilengkapi setelah pembayaran terkonfirmasi.</p>
+        </div>
+
+        {/* Stage-2 fields are filled post-payment on dashboard dropdown */}
+        {false && (
+        <>
         {/* Pemilik Objek Pajak BPHTB */}
         <h3 style={judulStyle}>Pemilik Objek Pajak BPHTB</h3>
         <div style={sectionStyle}>
@@ -2227,6 +2165,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
             </div>
           )}
         </div>
+        </>
+        )}
 
         <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
           <button
@@ -2242,7 +2182,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
               cursor: loading || editLoading ? "not-allowed" : "pointer",
             }}
           >
-            {loading || billingLoading ? "Memproses..." : (isEditMode ? "Simpan Perubahan" : "Simpan & Proses (Generate ID Billing)")}
+            {loading ? "Memproses..." : (isEditMode ? "Simpan Perubahan" : "Minta Billing ke Bank")}
           </button>
           <Link
             href={listPath}
