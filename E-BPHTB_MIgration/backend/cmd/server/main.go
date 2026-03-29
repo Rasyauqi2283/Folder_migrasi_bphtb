@@ -417,11 +417,16 @@ func main() {
 	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/approve", bankHandler.Approve)
 	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/reject", bankHandler.Reject)
 
-	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo)
+	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo, ppatRepo)
 	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd", ltbHandler.ListTerimaBerkas)
 	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd/{nobooking}/documents", ltbHandler.GetDocuments)
 	mux.HandleFunc("POST /api/ltb/terima-berkas-sspd/{nobooking}/reject", ltbHandler.Reject)
 	mux.HandleFunc("POST /api/ltb/terima-berkas-sspd/{nobooking}/send", ltbHandler.SendToVerifikasi)
+	mux.HandleFunc("GET /api/ltb/offline/drafts/{nobooking}", ltbHandler.GetOfflineDraft)
+	mux.HandleFunc("GET /api/ltb/offline/drafts", ltbHandler.ListOfflineDrafts)
+	mux.HandleFunc("POST /api/ltb/offline/booking/{nobooking}/generate-registrasi", ltbHandler.GenerateOfflineRegistration)
+	mux.HandleFunc("PUT /api/ltb/offline/booking/{nobooking}", ltbHandler.UpdateOfflineBooking)
+	mux.HandleFunc("POST /api/ltb/offline/booking", ltbHandler.CreateOfflineBooking)
 
 	penelitiHandler := handler.NewPenelitiHandler(penelitiRepo, userRepo)
 	mux.HandleFunc("GET /api/peneliti_get-berkas-fromltb", penelitiHandler.GetBerkasFromLtb)

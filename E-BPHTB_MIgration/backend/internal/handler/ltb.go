@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"ebphtb/backend/internal/repository"
 )
@@ -22,11 +24,12 @@ func ltbUseridFromCookie(r *http.Request) string {
 type LtbHandler struct {
 	repo     *repository.LtbRepo
 	userRepo *repository.UserRepo
+	ppatRepo *repository.PpatRepo
 }
 
-// NewLtbHandler creates an LtbHandler.
-func NewLtbHandler(repo *repository.LtbRepo, userRepo *repository.UserRepo) *LtbHandler {
-	return &LtbHandler{repo: repo, userRepo: userRepo}
+// NewLtbHandler creates an LtbHandler. ppatRepo may be nil (offline booking endpoints disabled).
+func NewLtbHandler(repo *repository.LtbRepo, userRepo *repository.UserRepo, ppatRepo *repository.PpatRepo) *LtbHandler {
+	return &LtbHandler{repo: repo, userRepo: userRepo, ppatRepo: ppatRepo}
 }
 
 func (h *LtbHandler) requireLTBUser(r *http.Request) (userid string, ok bool) {
@@ -168,7 +171,7 @@ func (h *LtbHandler) SendToVerifikasi(w http.ResponseWriter, r *http.Request) {
 		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "No PBB pemeriksaan wajib diisi"})
 		return
 	}
-	err := h.repo.SendToVerifikasi(r.Context(), nobooking, userid, body.PBBCheckNo)
+	res, err := h.repo.SendToVerifikasi(r.Context(), nobooking, userid, body.PBBCheckNo)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Data tidak ditemukan"})
@@ -178,5 +181,174 @@ func (h *LtbHandler) SendToVerifikasi(w http.ResponseWriter, r *http.Request) {
 		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
 		return
 	}
+	out := map[string]interface{}{"success": true}
+	if res != nil {
+		out["no_registrasi"] = res.NoRegistrasi
+		out["peneliti_userid"] = res.PenelitiUserid
+		out["peneliti_nama"] = res.PenelitiNama
+		out["assignment_status"] = res.AssignmentStatus
+	}
+	ltbJSON(w, http.StatusOK, out)
+}
+
+// ListOfflineDrafts handles GET /api/ltb/offline/drafts.
+func (h *LtbHandler) ListOfflineDrafts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	rows, err := h.repo.ListOfflineDrafts(r.Context(), userid)
+	if err != nil {
+		log.Printf("[LTB] ListOfflineDrafts: %v", err)
+		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
+		return
+	}
+	if rows == nil {
+		rows = []repository.LtbOfflineDraftRow{}
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true, "rows": rows})
+}
+
+// GetOfflineDraft handles GET /api/ltb/offline/drafts/{nobooking}.
+func (h *LtbHandler) GetOfflineDraft(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	if h.ppatRepo == nil {
+		ltbJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"success": false, "message": "Layanan tidak tersedia"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	data, err := h.ppatRepo.GetOfflineDraftFormData(r.Context(), userid, nobooking)
+	if err != nil {
+		ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Draf tidak ditemukan"})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true, "data": data})
+}
+
+// CreateOfflineBooking handles POST /api/ltb/offline/booking — body: CreateBookingParams + optional jenis "badan"|"perorangan".
+func (h *LtbHandler) CreateOfflineBooking(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	if h.ppatRepo == nil {
+		ltbJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"success": false, "message": "Layanan tidak tersedia"})
+		return
+	}
+	var body struct {
+		Jenis string `json:"jenis"` // "badan" | "perorangan" (default badan)
+		repository.CreateBookingParams
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Invalid JSON"})
+		return
+	}
+	params := body.CreateBookingParams
+	if params.Trackstatus == "" {
+		params.Trackstatus = "Draft"
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	j := strings.ToLower(strings.TrimSpace(body.Jenis))
+	var nobooking string
+	var err error
+	if j == "perorangan" {
+		nobooking, err = h.ppatRepo.CreateBookingPerorangan(ctx, userid, &params)
+	} else {
+		nobooking, err = h.ppatRepo.CreateBookingBadan(ctx, userid, &params)
+	}
+	if err != nil {
+		log.Printf("[LTB] CreateOfflineBooking: %v", err)
+		ltbJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true, "nobooking": nobooking})
+}
+
+// UpdateOfflineBooking handles PUT /api/ltb/offline/booking/{nobooking}.
+func (h *LtbHandler) UpdateOfflineBooking(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	if h.ppatRepo == nil {
+		ltbJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"success": false, "message": "Layanan tidak tersedia"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	var params repository.CreateBookingParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "Invalid JSON"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	if err := h.ppatRepo.UpdateBookingBadan(ctx, userid, nobooking, &params); err != nil {
+		log.Printf("[LTB] UpdateOfflineBooking: %v", err)
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
 	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+}
+
+// GenerateOfflineRegistration handles POST /api/ltb/offline/booking/{nobooking}/generate-registrasi.
+func (h *LtbHandler) GenerateOfflineRegistration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ltbJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"success": false, "message": "Method Not Allowed"})
+		return
+	}
+	userid, ok := h.requireLTBUser(r)
+	if !ok {
+		ltbJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
+		return
+	}
+	if h.ppatRepo == nil {
+		ltbJSON(w, http.StatusServiceUnavailable, map[string]interface{}{"success": false, "message": "Layanan tidak tersedia"})
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	noReg, err := h.ppatRepo.GenerateOfflineRegistration(ctx, userid, nobooking)
+	if err != nil {
+		log.Printf("[LTB] GenerateOfflineRegistration: %v", err)
+		ltbJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": err.Error()})
+		return
+	}
+	ltbJSON(w, http.StatusOK, map[string]interface{}{"success": true, "no_registrasi": noReg, "nobooking": nobooking})
 }

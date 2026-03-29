@@ -538,7 +538,13 @@ export default function BookingSSPDPeroranganPage() {
                           openModalKirim(row);
                         }}
                       >
-                        {status(row.trackstatus) === "diolah" ? "Sedang Diolah" : status(row.trackstatus) === "pending" ? "Menunggu Kirim" : "Kirim ke Bappenda"}
+                        {status(row.trackstatus) === "diolah"
+                          ? "Sedang Diolah"
+                          : status(row.trackstatus) === "diterima"
+                            ? "Dalam penanganan Peneliti"
+                            : status(row.trackstatus) === "pending"
+                              ? "Menunggu Kirim"
+                              : "Kirim ke Bappenda"}
                       </button>
                     </td>
                   </tr>

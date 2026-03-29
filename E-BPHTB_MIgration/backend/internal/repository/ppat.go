@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -487,19 +488,10 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 		return nil, err
 	}
 
-	year := time.Now().Year()
-	prefix := fmt.Sprintf("%dO", year)
-	likePattern := prefix + "%"
-	var nextSeq int
-	err = tx.QueryRow(ctx, `
-		SELECT COALESCE(MAX(CAST(right(no_registrasi, 6) AS integer)), 0) + 1
-		FROM ltb_1_terima_berkas_sspd
-		WHERE no_registrasi LIKE $1
-	`, likePattern).Scan(&nextSeq)
+	noRegistrasi, err := NextNoRegistrasiLtbTx(ctx, tx, 'O')
 	if err != nil {
 		return nil, err
 	}
-	noRegistrasi := fmt.Sprintf("%s%06d", prefix, nextSeq)
 
 	// Upsert LTB relation row.
 	cmd, err := tx.Exec(ctx, `
@@ -590,6 +582,113 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 			"no_registrasi":          noRegistrasi,
 		},
 	}, nil
+}
+
+// GenerateOfflineRegistration assigns YYYYV######, upserts ltb_1_terima_berkas_sspd and bank_1_cek_hasil_transaksi,
+// and sets pat_1_bookingsspd.trackstatus to Diolah. For LTB-created Draft bookings only (no PPAT quota/send queue).
+func (r *PpatRepo) GenerateOfflineRegistration(ctx context.Context, ltbUserid, nobooking string) (noRegistrasi string, err error) {
+	if r.pool == nil {
+		return "", fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(ltbUserid)
+	if nb == "" || u == "" {
+		return "", fmt.Errorf("nobooking dan userid wajib diisi")
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+
+	var ts string
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE(LOWER(TRIM(trackstatus)), '')
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+		FOR UPDATE
+	`, nb, u).Scan(&ts)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", fmt.Errorf("booking tidak ditemukan atau bukan milik akun LTB ini")
+		}
+		return "", err
+	}
+	if ts != "draft" {
+		return "", fmt.Errorf("hanya booking berstatus Draft yang dapat diberi nomor registrasi")
+	}
+
+	var ltbExists bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM ltb_1_terima_berkas_sspd WHERE nobooking = $1)`, nb).Scan(&ltbExists); err != nil {
+		return "", err
+	}
+	if ltbExists {
+		return "", fmt.Errorf("booking sudah terdaftar di antrean LTB")
+	}
+
+	var namaWP, namaOP *string
+	var jenisWP *string
+	var bphtbDibayar *float64
+	var noBukti, tglPerolehan, tglPembayaran *string
+	err = tx.QueryRow(ctx, `
+		SELECT
+			p.namawajibpajak,
+			p.namapemilikobjekpajak,
+			p.jenis_wajib_pajak::text,
+			bp.bphtb_yangtelah_dibayar::float8,
+			o.nomor_bukti_pembayaran,
+			o.tanggal_perolehan::text,
+			o.tanggal_pembayaran::text
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2
+	`, nb, u).Scan(&namaWP, &namaOP, &jenisWP, &bphtbDibayar, &noBukti, &tglPerolehan, &tglPembayaran)
+	if err != nil {
+		return "", err
+	}
+
+	noRegistrasi, err = NextNoRegistrasiLtbTx(ctx, tx, 'V')
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking = $1 AND userid = $2`, nb, u)
+	if err != nil {
+		return "", err
+	}
+
+	jwp := "Badan Usaha"
+	if jenisWP != nil && strings.TrimSpace(*jenisWP) != "" {
+		jwp = strings.TrimSpace(*jenisWP)
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ltb_1_terima_berkas_sspd (
+			nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, jenis_wajib_pajak, no_registrasi, updated_at
+		) VALUES (
+			$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diolah', $5::jenis_wajib_pajak, $6, now()
+		)
+	`, nb, u, namaWP, namaOP, jwp, noRegistrasi)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO bank_1_cek_hasil_transaksi (
+			nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, status_dibank, no_registrasi
+		) VALUES (
+			$1, $2, $3::int, $4, $5, $6, 'Pending', 'Dicheck', $7
+		)
+	`, nb, u, bphtbDibayar, noBukti, tglPerolehan, tglPembayaran, noRegistrasi)
+	if err != nil {
+		return "", err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return "", err
+	}
+	return noRegistrasi, nil
 }
 
 // ErrPpatQuotaFull is returned when daily quota is exceeded.
@@ -998,6 +1097,106 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 	}
 	out := map[string]interface{}{
 		"noppbb": val(noppbb),
+		"namawajibpajak": val(namawp), "alamatwajibpajak": val(alamatwp),
+		"namapemilikobjekpajak": val(namaop), "alamatpemilikobjekpajak": val(alamatop),
+		"tahunajb": val(tahunajb),
+		"kabupatenkotawp": val(kabwp), "kecamatanwp": val(kecwp), "kelurahandesawp": val(kelwp),
+		"rtrwwp": val(rtrwwp), "kodeposwp": val(kodeposwp),
+		"kabupatenkotaop": val(kabop), "kecamatanop": val(kecop), "kelurahandesaop": val(kelop),
+		"rtrwop": val(rtrwop), "kodeposop": val(kodeposop),
+		"npwpwp": val(npwpwp), "npwpop": val(npwpop),
+		"nilaiPerolehanObjekPajakTidakKenaPajak": valF(npoptkp),
+		"hargatransaksi": val(harga), "letaktanahdanbangunan": val(letak),
+		"rt_rwobjekpajak": val(rtop), "status_kepemilikan": val(statusKm),
+		"keterangan": val(ket), "nomor_sertifikat": val(nomorSert),
+		"tanggal_perolehan": val(tglPeroleh), "tanggal_pembayaran": val(tglBayar),
+		"nomor_bukti_pembayaran": val(nomorBukti), "jenisPerolehan": val(jenisPerolehan),
+		"kelurahandesalp": val(kelLp), "kecamatanlp": val(kecLp),
+		"luas_tanah": valF(luasT), "njop_tanah": valF(njopT), "luas_bangunan": valF(luasB), "njop_bangunan": valF(njopB),
+	}
+	if bphtb != nil {
+		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
+	}
+	return out, nil
+}
+
+// GetOfflineDraftFormData returns callback-shaped fields for an LTB-owned Draft booking without ltb_1 row yet.
+func (r *PpatRepo) GetOfflineDraftFormData(ctx context.Context, ltbUserid, nobooking string) (map[string]interface{}, error) {
+	if r.pool == nil {
+		return nil, fmt.Errorf("database not configured")
+	}
+	nb := strings.TrimSpace(nobooking)
+	u := strings.TrimSpace(ltbUserid)
+	if nb == "" || u == "" {
+		return nil, fmt.Errorf("nobooking dan userid wajib")
+	}
+	row := r.pool.QueryRow(ctx, `
+		SELECT
+			p.jenis_wajib_pajak::text,
+			p.noppbb,
+			p.namawajibpajak, p.alamatwajibpajak, p.namapemilikobjekpajak, p.alamatpemilikobjekpajak,
+			p.tahunajb::text,
+			p.kabupatenkotawp, p.kecamatanwp, p.kelurahandesawp, p.rtrwwp, p.kodeposwp,
+			p.kabupatenkotaop, p.kecamatanop, p.kelurahandesaop, p.rtrwop, p.kodeposop,
+			p.npwpwp, p.npwpop,
+			bp.nilaiperolehanobjekpajaktidakkenapajak, bp.bphtb_yangtelah_dibayar,
+			o.harga_transaksi, o.letaktanahdanbangunan, o.rt_rwobjekpajak, o.status_kepemilikan, o.keterangan, o.nomor_sertifikat,
+			o.tanggal_perolehan, o.tanggal_pembayaran, o.nomor_bukti_pembayaran, o.jenis_perolehan, o.kelurahandesalp, o.kecamatanlp,
+			pp.luas_tanah, pp.njop_tanah, pp.luas_bangunan, pp.njop_bangunan
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		LEFT JOIN pat_5_penghitungan_njop pp ON pp.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2
+		  AND LOWER(TRIM(COALESCE(p.trackstatus, ''))) = 'draft'
+		  AND NOT EXISTS (SELECT 1 FROM ltb_1_terima_berkas_sspd l WHERE l.nobooking = p.nobooking)
+	`, nb, u)
+
+	var (
+		jenisJwp *string
+		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb *string
+		kabwp, kecwp, kelwp, rtrwwp, kodeposwp *string
+		kabop, kecop, kelop, rtrwop, kodeposop *string
+		npwpwp, npwpop *string
+		npoptkp *float64
+		bphtb   *int32
+		harga, letak, rtop, statusKm, ket, nomorSert *string
+		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
+		luasT, njopT, luasB, njopB *float64
+	)
+	err := row.Scan(
+		&jenisJwp,
+		&noppbb,
+		&namawp, &alamatwp, &namaop, &alamatop,
+		&tahunajb,
+		&kabwp, &kecwp, &kelwp, &rtrwwp, &kodeposwp,
+		&kabop, &kecop, &kelop, &rtrwop, &kodeposop,
+		&npwpwp, &npwpop,
+		&npoptkp, &bphtb,
+		&harga, &letak, &rtop, &statusKm, &ket, &nomorSert,
+		&tglPeroleh, &tglBayar, &nomorBukti, &jenisPerolehan, &kelLp, &kecLp,
+		&luasT, &njopT, &luasB, &njopB,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	val := func(s *string) interface{} {
+		if s == nil {
+			return nil
+		}
+		return *s
+	}
+	valF := func(f *float64) interface{} {
+		if f == nil {
+			return nil
+		}
+		return *f
+	}
+	out := map[string]interface{}{
+		"nobooking":       nb,
+		"jenis_wajib_pajak": val(jenisJwp),
+		"noppbb":          val(noppbb),
 		"namawajibpajak": val(namawp), "alamatwajibpajak": val(alamatwp),
 		"namapemilikobjekpajak": val(namaop), "alamatpemilikobjekpajak": val(alamatop),
 		"tahunajb": val(tahunajb),

@@ -62,6 +62,7 @@ export default function LTBTerimaBerkasSSPDPage() {
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [pbbCheckNo, setPbbCheckNo] = useState("");
+  const [sendFeedback, setSendFeedback] = useState<string | null>(null);
   const searchRef = useRef(search);
   searchRef.current = search;
 
@@ -165,6 +166,7 @@ export default function LTBTerimaBerkasSSPDPage() {
     }
     setActionLoading(true);
     setMessage(null);
+    setSendFeedback(null);
     try {
       const res = await fetch(`${getApiBase()}/api/ltb/terima-berkas-sspd/${encodeURIComponent(nobooking)}/send`, {
         method: "POST",
@@ -174,7 +176,13 @@ export default function LTBTerimaBerkasSSPDPage() {
       });
       const data = await res.json().catch(() => ({ success: false }));
       if (!res.ok || !data?.success) throw new Error(data?.message || "Gagal kirim ke role Peneliti");
-      setMessage(`Booking ${nobooking} berhasil dikirim ke role Peneliti.`);
+      const noReg = typeof data.no_registrasi === "string" ? data.no_registrasi.trim() : "";
+      const pn = typeof data.peneliti_nama === "string" ? data.peneliti_nama.trim() : "";
+      const pu = typeof data.peneliti_userid === "string" ? data.peneliti_userid.trim() : "";
+      setSendFeedback(
+        `Form ${nobooking} dengan ${noReg || "(No. Registrasi)"} telah diterima dan masuk dalam pengerjaan oleh Peneliti ${pn || "—"} - ${pu || "—"}. Terima kasih.`
+      );
+      setMessage(null);
       await load(currentPage);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Gagal kirim ke role Peneliti");
@@ -314,6 +322,24 @@ export default function LTBTerimaBerkasSSPDPage() {
       {message && (
         <div style={{ marginBottom: 12, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border_color)", background: "var(--card_bg_grey)", color: "var(--color_font_main)" }}>
           {message}
+        </div>
+      )}
+      {sendFeedback && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 12,
+            padding: "14px 16px",
+            borderRadius: 12,
+            border: "1px solid rgba(37,99,235,0.35)",
+            background: "linear-gradient(135deg, rgba(219,234,254,0.95) 0%, rgba(191,219,254,0.9) 100%)",
+            color: "#1e3a8a",
+            fontSize: 15,
+            lineHeight: 1.5,
+            boxShadow: "0 4px 14px rgba(37,99,235,0.12)",
+          }}
+        >
+          {sendFeedback}
         </div>
       )}
 

@@ -38,6 +38,23 @@ type LtbDocument struct {
 	Name string `json:"name"`
 }
 
+// SendToPenelitiResult is returned after LTB forwards a booking to Peneliti (verifikasi).
+type SendToPenelitiResult struct {
+	NoRegistrasi     string `json:"no_registrasi"`
+	PenelitiUserid   string `json:"peneliti_userid"`
+	PenelitiNama     string `json:"peneliti_nama"`
+	AssignmentStatus string `json:"assignment_status"`
+}
+
+// LtbOfflineDraftRow is one draft booking created at the LTB offline counter (no LTB queue row yet).
+type LtbOfflineDraftRow struct {
+	Nobooking       string `json:"nobooking"`
+	Noppbb          string `json:"noppbb"`
+	Namawajibpajak  string `json:"namawajibpajak"`
+	JenisWajibPajak string `json:"jenis_wajib_pajak"`
+	Trackstatus     string `json:"trackstatus"`
+}
+
 func toDocRelativePath(p string) string {
 	rel := strings.TrimPrefix(strings.TrimSpace(p), "/")
 	rel = strings.TrimPrefix(rel, "storage/ppat/")
@@ -174,6 +191,43 @@ func (r *LtbRepo) GetDocumentsByBooking(ctx context.Context, nobooking string) (
 	return out, nil
 }
 
+// ListOfflineDrafts returns pat_1 Draft rows for this LTB user that are not yet on ltb_1 (belum nomor registrasi).
+func (r *LtbRepo) ListOfflineDrafts(ctx context.Context, ltbUserid string) ([]LtbOfflineDraftRow, error) {
+	if r.pool == nil {
+		return nil, nil
+	}
+	u := strings.TrimSpace(ltbUserid)
+	if u == "" {
+		return nil, fmt.Errorf("userid required")
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT
+			COALESCE(p.nobooking, ''),
+			COALESCE(p.noppbb, ''),
+			COALESCE(p.namawajibpajak, ''),
+			COALESCE(p.jenis_wajib_pajak::text, ''),
+			COALESCE(p.trackstatus, '')
+		FROM pat_1_bookingsspd p
+		WHERE p.userid = $1
+		  AND LOWER(TRIM(COALESCE(p.trackstatus, ''))) = 'draft'
+		  AND NOT EXISTS (SELECT 1 FROM ltb_1_terima_berkas_sspd l WHERE l.nobooking = p.nobooking)
+		ORDER BY p.bookingid DESC
+	`, u)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []LtbOfflineDraftRow
+	for rows.Next() {
+		var row LtbOfflineDraftRow
+		if err := rows.Scan(&row.Nobooking, &row.Noppbb, &row.Namawajibpajak, &row.JenisWajibPajak, &row.Trackstatus); err != nil {
+			continue
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 // RejectBerkas updates LTB row as rejected.
 func (r *LtbRepo) RejectBerkas(ctx context.Context, nobooking, ltbUserid, _ string) error {
 	if r.pool == nil {
@@ -193,14 +247,14 @@ func (r *LtbRepo) RejectBerkas(ctx context.Context, nobooking, ltbUserid, _ stri
 	return nil
 }
 
-// SendToVerifikasi pushes one LTB record into p_1_verifikasi and updates LTB status.
-func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pbbCheckNo string) error {
+// SendToVerifikasi pushes one LTB record into p_1_verifikasi and updates LTB + pat trackstatus (sinkron dengan PU/Peneliti).
+func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pbbCheckNo string) (*SendToPenelitiResult, error) {
 	if r.pool == nil {
-		return fmt.Errorf("database not configured")
+		return nil, fmt.Errorf("database not configured")
 	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback(ctx)
 
@@ -219,9 +273,9 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 	`, nobooking).Scan(&noReg, &bookingUser, &namaWP, &namaOP)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return fmt.Errorf("booking not found")
+			return nil, fmt.Errorf("booking not found")
 		}
-		return err
+		return nil, err
 	}
 
 	tag, err := tx.Exec(ctx, `
@@ -239,7 +293,7 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 		WHERE nobooking = $1
 	`, nobooking, bookingUser, namaWP, namaOP, ltbUserid, noReg, strings.TrimSpace(pbbCheckNo))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if tag.RowsAffected() == 0 {
 		_, err = tx.Exec(ctx, `
@@ -252,7 +306,7 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 			)
 		`, nobooking, bookingUser, namaWP, namaOP, ltbUserid, noReg, strings.TrimSpace(pbbCheckNo))
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -262,12 +316,59 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 		WHERE nobooking = $1
 	`, nobooking, ltbUserid)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = 'Diterima', updated_at = NOW()
+		WHERE nobooking = $1
+	`, nobooking)
+	if err != nil {
+		return nil, err
+	}
+
 	if r.peneliti != nil {
 		if err := r.peneliti.AssignTaskToPenelitiTx(ctx, tx, nobooking); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return tx.Commit(ctx)
+
+	noRegStr := ""
+	if noReg != nil {
+		noRegStr = strings.TrimSpace(*noReg)
+	}
+
+	var assignedTo *string
+	var asgStatus *string
+	_ = tx.QueryRow(ctx, `
+		SELECT assigned_to, assignment_status
+		FROM p_1_verifikasi
+		WHERE nobooking = $1
+	`, nobooking).Scan(&assignedTo, &asgStatus)
+
+	res := &SendToPenelitiResult{NoRegistrasi: noRegStr}
+	if asgStatus != nil {
+		res.AssignmentStatus = strings.TrimSpace(*asgStatus)
+	}
+	if assignedTo != nil && strings.TrimSpace(*assignedTo) != "" {
+		uid := strings.TrimSpace(*assignedTo)
+		res.PenelitiUserid = uid
+		var nama string
+		_ = tx.QueryRow(ctx, `
+			SELECT COALESCE(NULLIF(TRIM(nama), ''), $1)
+			FROM a_2_verified_users
+			WHERE userid = $1
+			LIMIT 1
+		`, uid).Scan(&nama)
+		res.PenelitiNama = strings.TrimSpace(nama)
+	} else {
+		res.PenelitiUserid = "UNASSIGNED"
+		res.PenelitiNama = "Antrean UNASSIGNED"
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return res, nil
 }

@@ -247,6 +247,7 @@ export default function BookingSSPDBadanPage() {
   const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
     const st = status(trackStatus || "");
     if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
+    if (st === "diterima") return { background: "#e0e7ff", color: "#4338ca" };
     if (st === "wp_approved") return { background: "#dbeafe", color: "#1d4ed8" };
     if (st.includes("pending")) return { background: "#fff7ed", color: "#9a3412" };
     if (st.includes("valid") || st.includes("diverifikasi")) return { background: "#ecfdf5", color: "#166534" };
@@ -1033,7 +1034,13 @@ export default function BookingSSPDBadanPage() {
                           openModalKirim(row);
                         }}
                       >
-                        {status(row.trackstatus) === "diolah" ? "Sedang Diolah" : status(row.trackstatus) === "pending" ? "Menunggu Kirim" : "Kirim ke Bappenda"}
+                        {status(row.trackstatus) === "diolah"
+                          ? "Sedang Diolah"
+                          : status(row.trackstatus) === "diterima"
+                            ? "Dalam penanganan Peneliti"
+                            : status(row.trackstatus) === "pending"
+                              ? "Menunggu Kirim"
+                              : "Kirim ke Bappenda"}
                       </button>
                     </td>
                   </tr>
