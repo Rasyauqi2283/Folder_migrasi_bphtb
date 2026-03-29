@@ -490,6 +490,10 @@ export default function TambahBookingBadanPage() {
   const kecamatanDropdownRef = useRef<HTMLDivElement>(null);
   const kelurahanDropdownRef = useRef<HTMLDivElement>(null);
   const callbackDropdownRef = useRef<HTMLDivElement>(null);
+  /** Setelah lookup NIK/NPWP sukses, NOP tidak menimpa nama WP (subjek). */
+  const wpSubjekAutofillDoneRef = useRef(false);
+  const nopLookupAbortRef = useRef<AbortController | null>(null);
+  const wpLookupAbortRef = useRef<AbortController | null>(null);
 
   const [callbackOpen, setCallbackOpen] = useState(false);
   const [callbackSearch, setCallbackSearch] = useState("");
@@ -498,6 +502,13 @@ export default function TambahBookingBadanPage() {
   const [callbackListLoading, setCallbackListLoading] = useState(false);
   const [callbackApplyLoading, setCallbackApplyLoading] = useState(false);
   const [callbackNotice, setCallbackNotice] = useState<string | null>(null);
+  const [nopLookupLoading, setNopLookupLoading] = useState(false);
+  const [nopLookupNotice, setNopLookupNotice] = useState<string | null>(null);
+  const [jenisIdentitasWp, setJenisIdentitasWp] = useState<"badan" | "perorangan">("badan");
+  const [wpIdentityInput, setWpIdentityInput] = useState("");
+  const [wpLookupLoading, setWpLookupLoading] = useState(false);
+  const [wpToast, setWpToast] = useState<string | null>(null);
+  const [wpTeleponHint, setWpTeleponHint] = useState<string | null>(null);
   const minYear = 1900;
   const maxYear = today.getFullYear() + 1;
   const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => String(minYear + i));
@@ -545,6 +556,146 @@ export default function TambahBookingBadanPage() {
     });
     setError(null);
   }, []);
+
+  const fetchLookupNop = useCallback(async () => {
+    wpLookupAbortRef.current?.abort();
+    const noppbb = buildNopPbb(nopDigits);
+    const clean = noppbb.replace(/\D/g, "");
+    if (!clean || clean.length < 10 || /^0+$/.test(clean)) {
+      setNopLookupNotice(null);
+      return;
+    }
+    nopLookupAbortRef.current?.abort();
+    const ac = new AbortController();
+    nopLookupAbortRef.current = ac;
+    setNopLookupLoading(true);
+    setNopLookupNotice(null);
+    setError(null);
+    try {
+      const base = getBackendBaseUrl();
+      const url = `${base ? base : ""}/api/ppat/pbb/lookup-nop?nop=${encodeURIComponent(noppbb)}`;
+      const res = await fetch(url, { credentials: "include", signal: ac.signal });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success || !json?.data) {
+        const msg = typeof json?.message === "string" ? json.message : "NOP tidak ditemukan atau gagal mengambil data.";
+        setNopLookupNotice(null);
+        setError(msg);
+        return;
+      }
+      const d = json.data as Record<string, unknown>;
+      const str = (k: string) => (d[k] != null && String(d[k]).trim() !== "" ? String(d[k]).trim() : undefined);
+      const num = (k: string): number | undefined => {
+        const v = d[k];
+        if (typeof v === "number" && !Number.isNaN(v)) return v;
+        if (typeof v === "string" && v.trim() !== "") return parseFloat(v.replace(/\./g, "").replace(",", "."));
+        return undefined;
+      };
+      const skipNamaWp = wpSubjekAutofillDoneRef.current;
+      setForm((prev) => ({
+        ...prev,
+        namawajibpajak: skipNamaWp ? prev.namawajibpajak : (str("namawajibpajak") ?? prev.namawajibpajak),
+        letaktanahdanbangunan: str("alamat_objek") ?? prev.letaktanahdanbangunan,
+        luas_tanah: num("luas_tanah") ?? prev.luas_tanah,
+        njop_tanah: num("njop_tanah") ?? prev.njop_tanah,
+        luas_bangunan: num("luas_bangunan") ?? prev.luas_bangunan,
+        njop_bangunan: num("njop_bangunan") ?? prev.njop_bangunan,
+      }));
+      const src = str("source") ?? "internal_db";
+      setNopLookupNotice(
+        skipNamaWp
+          ? `Data objek pajak dimuat (sumber: ${src}). Nama WP tidak diubah karena sudah diisi dari NIK/NPWP.`
+          : `Referensi objek pajak dimuat (sumber: ${src}). Silakan sesuaikan jika ada perbedaan dengan dokumen.`
+      );
+      setOpenPerhitungan(true);
+      window.setTimeout(() => setNopLookupNotice(null), 8000);
+    } catch (e: unknown) {
+      const aborted = typeof e === "object" && e !== null && "name" in e && (e as { name: string }).name === "AbortError";
+      if (aborted) return;
+      setError("Gagal menghubungi layanan pencarian NOP.");
+    } finally {
+      if (nopLookupAbortRef.current === ac) {
+        setNopLookupLoading(false);
+      }
+    }
+  }, [nopDigits]);
+
+  const fetchWPData = useCallback(async () => {
+    const raw = wpIdentityInput.trim();
+    const digits = raw.replace(/\D/g, "");
+    if (!raw) {
+      setWpToast(null);
+      return;
+    }
+    if (jenisIdentitasWp === "perorangan" && digits.length !== 16) {
+      setWpToast("NIK harus 16 digit.");
+      window.setTimeout(() => setWpToast(null), 5000);
+      return;
+    }
+    if (jenisIdentitasWp === "badan" && digits.length < 15) {
+      setWpToast("NPWP minimal 15 digit.");
+      window.setTimeout(() => setWpToast(null), 5000);
+      return;
+    }
+
+    nopLookupAbortRef.current?.abort();
+    wpLookupAbortRef.current?.abort();
+    const ac = new AbortController();
+    wpLookupAbortRef.current = ac;
+
+    setWpLookupLoading(true);
+    setWpToast(null);
+    setWpTeleponHint(null);
+    setError(null);
+    try {
+      const base = getBackendBaseUrl();
+      const kind = jenisIdentitasWp === "perorangan" ? "nik" : "npwp";
+      const q = new URLSearchParams({
+        identity_number: raw,
+        identity_kind: kind,
+      });
+      const url = `${base ? base : ""}/api/user/lookup?${q.toString()}`;
+      const res = await fetch(url, { credentials: "include", signal: ac.signal });
+      const json = await res.json().catch(() => ({}));
+      if (!json?.success || !json?.data) {
+        const msg = typeof json?.message === "string" ? json.message : "Data belum terdaftar, silakan isi manual";
+        setWpToast(msg);
+        window.setTimeout(() => setWpToast(null), 6000);
+        return;
+      }
+      const d = json.data as Record<string, unknown>;
+      const str = (k: string) => (d[k] != null && String(d[k]).trim() !== "" ? String(d[k]).trim() : undefined);
+      wpSubjekAutofillDoneRef.current = true;
+
+      const alamatL = str("alamat_lengkap");
+      const alamatParts = [str("kelurahan"), str("kecamatan"), str("kabupaten_kota")].filter(Boolean).join(", ");
+      const npwpRaw = str("npwp_badan");
+      if (npwpRaw && jenisIdentitasWp === "badan") {
+        setNpwpWpDigits(parseNpwpToDigits(npwpRaw));
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        namawajibpajak: str("nama") ?? prev.namawajibpajak,
+        alamatwajibpajak: alamatL || (alamatParts ? alamatParts : prev.alamatwajibpajak),
+        kabupatenkotawp: str("kabupaten_kota") ?? prev.kabupatenkotawp,
+        kecamatanwp: str("kecamatan") ?? prev.kecamatanwp,
+        kelurahandesawp: str("kelurahan") ?? prev.kelurahandesawp,
+        rtrwwp: str("rtrw") ?? prev.rtrwwp,
+      }));
+
+      const tel = str("telepon");
+      setWpTeleponHint(tel ? `Telepon terdaftar: ${tel} (salin ke keterangan jika diperlukan)` : null);
+    } catch (e: unknown) {
+      const aborted = typeof e === "object" && e !== null && "name" in e && (e as { name: string }).name === "AbortError";
+      if (aborted) return;
+      setWpToast("Gagal menghubungi layanan pencarian data WP.");
+      window.setTimeout(() => setWpToast(null), 6000);
+    } finally {
+      if (wpLookupAbortRef.current === ac) {
+        setWpLookupLoading(false);
+      }
+    }
+  }, [wpIdentityInput, jenisIdentitasWp]);
 
   const filteredKecamatan = KECAMATAN_OBJEK_LIST.filter((k) =>
     k.toLowerCase().includes((kecamatanSearch || "").toLowerCase().trim())
@@ -1047,9 +1198,119 @@ export default function TambahBookingBadanPage() {
 
         {/* Pembayar Pajak BPHTB */}
         <h3 style={judulStyle}>Pembayar Pajak BPHTB</h3>
+        <div style={{ ...sectionStyle, padding: 16, background: "var(--card_bg_grey)", borderRadius: 8, border: "1px solid var(--border_color)" }}>
+          <p style={{ ...hintStyle, marginTop: 0, marginBottom: 12, fontWeight: 600, color: "var(--color_font_main)" }}>
+            Langkah 1 — Data subjek (wajib pajak): isi NIK atau NPWP terlebih dahulu, lalu Langkah 2 — NOP PBB untuk data objek.
+          </p>
+          <label style={labelStyle}>Jenis wajib pajak (untuk pencarian)</label>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 600 }}>
+              <input
+                type="radio"
+                name="jenisIdentitasWp"
+                checked={jenisIdentitasWp === "badan"}
+                onChange={() => {
+                  setJenisIdentitasWp("badan");
+                  setWpIdentityInput("");
+                  setWpTeleponHint(null);
+                }}
+              />
+              Badan Usaha (NPWP)
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontWeight: 600 }}>
+              <input
+                type="radio"
+                name="jenisIdentitasWp"
+                checked={jenisIdentitasWp === "perorangan"}
+                onChange={() => {
+                  setJenisIdentitasWp("perorangan");
+                  setWpIdentityInput("");
+                  setWpTeleponHint(null);
+                }}
+              />
+              Perorangan (NIK)
+            </label>
+          </div>
+          <label style={labelStyle}>{jenisIdentitasWp === "badan" ? "NPWP Wajib Pajak" : "NIK Wajib Pajak"}</label>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 400 }}>
+              {wpLookupLoading && (
+                <span
+                  title="Mencari data…"
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    top: "50%",
+                    transform: "translateY(-40%)",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    pointerEvents: "none",
+                  }}
+                >
+                  ⏳
+                </span>
+              )}
+              <input
+                style={{ ...inputStyle, marginTop: 0, paddingRight: 40, paddingLeft: wpLookupLoading ? 36 : 12 }}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder={jenisIdentitasWp === "badan" ? "15 digit NPWP (boleh dengan tanda pemisah)" : "16 digit NIK"}
+                value={wpIdentityInput}
+                onChange={(e) => setWpIdentityInput(e.target.value)}
+                onBlur={() => {
+                  if (wpIdentityInput.trim()) void fetchWPData();
+                }}
+                disabled={wpLookupLoading || editLoading}
+              />
+              <span
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-30%)",
+                  fontSize: 18,
+                  opacity: 0.55,
+                  pointerEvents: "none",
+                }}
+                aria-hidden
+              >
+                🔍
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={wpLookupLoading || editLoading}
+              onClick={() => void fetchWPData()}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "1px solid var(--border_color)",
+                background: "var(--accent)",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: wpLookupLoading ? "not-allowed" : "pointer",
+                fontSize: 14,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {wpLookupLoading ? "Mengecek…" : "Cek Data WP"}
+            </button>
+          </div>
+          <p style={hintStyle}>
+            Data diambil dari pengguna terdaftar E-BPHTB. Setelah ini, gunakan NOP PBB untuk objek pajak (luas/NJOP).
+          </p>
+          {wpTeleponHint && (
+            <p style={{ ...hintStyle, color: "#0369a1", fontWeight: 600 }}>{wpTeleponHint}</p>
+          )}
+        </div>
+
         <div style={sectionStyle}>
           <label style={labelStyle}>NOP PBB</label>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4 }}>
             {([2, 2, 3, 3, 3, 4, 1] as const).map((len, i) => (
               <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 <input
@@ -1070,6 +1331,9 @@ export default function TambahBookingBadanPage() {
                       nopRefs.current[i + 1]?.focus();
                     }
                   }}
+                  onBlur={() => {
+                    if (i === 6) void fetchLookupNop();
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Backspace" && !nopDigits[i] && i > 0) {
                       nopRefs.current[i - 1]?.focus();
@@ -1080,8 +1344,30 @@ export default function TambahBookingBadanPage() {
                 {i < 6 && <span style={{ color: "var(--color_font_main_muted)" }}>.</span>}
               </span>
             ))}
+            </div>
+            <button
+              type="button"
+              disabled={nopLookupLoading || editLoading}
+              onClick={() => void fetchLookupNop()}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "1px solid var(--border_color)",
+                background: "var(--accent)",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: nopLookupLoading ? "not-allowed" : "pointer",
+                fontSize: 14,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {nopLookupLoading ? "Mencari…" : "Cek NOP"}
+            </button>
           </div>
-          <p style={hintStyle}>Format: 32.01.001.001.001.0001.1 — otomatis pindah ke kolom berikutnya</p>
+          <p style={hintStyle}>Format: 32.01.001.001.001.0001.1 — isi lengkap lalu klik &quot;Cek NOP&quot; atau tab keluar dari kolom terakhir untuk tarik data referensi PBB.</p>
+          {nopLookupNotice && (
+            <p style={{ ...hintStyle, color: "#047857", fontWeight: 600 }}>{nopLookupNotice}</p>
+          )}
         </div>
 
         <div style={sectionStyle}>
@@ -1795,6 +2081,30 @@ export default function TambahBookingBadanPage() {
           ← Kembali ke Booking SSPD Badan
         </Link>
       </p>
+
+      {wpToast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            bottom: 28,
+            left: "50%",
+            transform: "translateX(-50%)",
+            maxWidth: "min(420px, calc(100vw - 32px))",
+            padding: "12px 18px",
+            borderRadius: 10,
+            background: "#1e293b",
+            color: "#f8fafc",
+            fontSize: 14,
+            fontWeight: 600,
+            boxShadow: "0 12px 40px rgba(0,0,0,0.25)",
+            zIndex: 100,
+            textAlign: "center",
+          }}
+        >
+          {wpToast}
+        </div>
+      )}
     </div>
   );
 }

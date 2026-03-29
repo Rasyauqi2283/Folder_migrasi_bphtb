@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -22,6 +23,10 @@ type Config struct {
 	PpatStorageBaseDir  string // Base path untuk dokumen PPAT (akta, sertifikat, pelengkap)
 	TandaTanganBaseDir  string // Base path untuk tanda tangan per-booking (folderttdwp)
 	PDFLogoPath        string // Path ke logo BAPPENDA untuk PDF SSPD (mis. ../frontend-next/asset/Logobappenda_pdf.png)
+	// PBB NOP lookup: URL kantor (opsional). Gunakan {nop} sebagai placeholder NOP terformat, atau akhiri dengan ?nop=
+	PbbNopLookupURL string
+	// Secret header/body untuk POST /api/webhooks/payment-gateway (callback PAID dari payment gateway)
+	PaymentGatewayWebhookSecret string
 }
 
 func Load() *Config {
@@ -93,6 +98,8 @@ func Load() *Config {
 	if pdfLogoPath == "" {
 		pdfLogoPath = "../frontend-next/asset/Logobappenda_pdf.png"
 	}
+	pbbNopLookupURL := strings.TrimSpace(os.Getenv("PBB_NOP_LOOKUP_URL"))
+	paymentWebhookSecret := strings.TrimSpace(os.Getenv("PAYMENT_GATEWAY_WEBHOOK_SECRET"))
 	return &Config{
 		Port:                port,
 		Env:                 env,
@@ -109,7 +116,9 @@ func Load() *Config {
 		EasyOCRTimeout:      easyOCRTimeout,
 		PpatStorageBaseDir:  ppatStorageDir,
 		TandaTanganBaseDir:  tandaTanganDir,
-		PDFLogoPath:        pdfLogoPath,
+		PDFLogoPath:                 pdfLogoPath,
+		PbbNopLookupURL:             pbbNopLookupURL,
+		PaymentGatewayWebhookSecret: paymentWebhookSecret,
 	}
 }
 

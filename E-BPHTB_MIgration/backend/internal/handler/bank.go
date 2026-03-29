@@ -20,7 +20,7 @@ func bankUseridFromCookie(r *http.Request) string {
 
 // BankHandler handles /api/bank/* (Go-native, no legacy proxy).
 type BankHandler struct {
-	repo    *repository.BankRepo
+	repo     *repository.BankRepo
 	userRepo *repository.UserRepo
 }
 
@@ -53,6 +53,7 @@ func bankJSON(w http.ResponseWriter, status int, v interface{}) {
 }
 
 // ListTransaksi handles GET /api/bank/transaksi.
+// Tab: all | discrepancy | matched (legacy: pending → all, reviewed → matched).
 func (h *BankHandler) ListTransaksi(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		bankJSON(w, http.StatusMethodNotAllowed, map[string]string{"success": "false", "message": "Method Not Allowed"})
@@ -71,9 +72,12 @@ func (h *BankHandler) ListTransaksi(w http.ResponseWriter, r *http.Request) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	tab := q.Get("tab")
-	if tab == "" {
-		tab = "pending"
+	tab := strings.TrimSpace(q.Get("tab"))
+	if tab == "" || tab == "pending" {
+		tab = "all"
+	}
+	if tab == "reviewed" {
+		tab = "matched"
 	}
 	statusFilter := strings.TrimSpace(q.Get("status"))
 	search := strings.TrimSpace(q.Get("q"))
@@ -89,14 +93,13 @@ func (h *BankHandler) ListTransaksi(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Approve handles POST /api/bank/transaksi/{nobooking}/approve.
-func (h *BankHandler) Approve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+// GetTransaksiDetail handles GET /api/bank/transaksi/{nobooking}/detail (modal Periksa).
+func (h *BankHandler) GetTransaksiDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		bankJSON(w, http.StatusMethodNotAllowed, map[string]string{"success": "false", "message": "Method Not Allowed"})
 		return
 	}
-	userid, ok := h.requireBankUser(r)
-	if !ok {
+	if _, ok := h.requireBankUser(r); !ok {
 		bankJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
 		return
 	}
@@ -105,47 +108,15 @@ func (h *BankHandler) Approve(w http.ResponseWriter, r *http.Request) {
 		bankJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
 		return
 	}
-	var body struct {
-		Catatan string `json:"catatan"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-
-	if err := h.repo.UpsertBankVerification(r.Context(), nobooking, "Disetujui", body.Catatan, userid, ""); err != nil {
-		log.Printf("[BANK] Approve: %v", err)
+	d, err := h.repo.GetTransaksiDetail(r.Context(), nobooking)
+	if err != nil {
+		log.Printf("[BANK] GetTransaksiDetail: %v", err)
 		bankJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
 		return
 	}
-	bankJSON(w, http.StatusOK, map[string]interface{}{"success": true})
-}
-
-// Reject handles POST /api/bank/transaksi/{nobooking}/reject.
-func (h *BankHandler) Reject(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		bankJSON(w, http.StatusMethodNotAllowed, map[string]string{"success": "false", "message": "Method Not Allowed"})
+	if d == nil {
+		bankJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Tidak ditemukan"})
 		return
 	}
-	userid, ok := h.requireBankUser(r)
-	if !ok {
-		bankJSON(w, http.StatusForbidden, map[string]interface{}{"success": false, "message": "Unauthorized or Forbidden"})
-		return
-	}
-	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
-	if nobooking == "" {
-		bankJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "nobooking wajib"})
-		return
-	}
-	var body struct {
-		Catatan string `json:"catatan"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	if strings.TrimSpace(body.Catatan) == "" {
-		bankJSON(w, http.StatusBadRequest, map[string]interface{}{"success": false, "message": "catatan wajib untuk penolakan"})
-		return
-	}
-	if err := h.repo.UpsertBankVerification(r.Context(), nobooking, "Ditolak", body.Catatan, userid, ""); err != nil {
-		log.Printf("[BANK] Reject: %v", err)
-		bankJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Internal server error"})
-		return
-	}
-	bankJSON(w, http.StatusOK, map[string]interface{}{"success": true})
+	bankJSON(w, http.StatusOK, map[string]interface{}{"success": true, "data": d})
 }

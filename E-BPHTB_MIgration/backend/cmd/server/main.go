@@ -179,6 +179,9 @@ func main() {
 	mux.HandleFunc("DELETE /api/users/{userid}", usersHandler.DeleteUser)
 	mux.HandleFunc("PUT /api/users/{userid}/status-ppat", usersHandler.PutStatusPpat)
 
+	userLookupHandler := handler.NewUserLookupHandler(userRepo)
+	mux.HandleFunc("GET /api/user/lookup", userLookupHandler.Lookup)
+
 	var systemStatusRepo *repository.SystemStatusRepo
 	if pool != nil {
 		systemStatusRepo = repository.NewSystemStatusRepo(pool)
@@ -357,6 +360,24 @@ func main() {
 		}
 	}
 
+	// Gateway + SSPD lunas columns (idempotent; mirror database/migrations/022_bank_gateway_sspd_lunas.sql)
+	if pool != nil {
+		_, err := pool.Exec(context.Background(), `
+			ALTER TABLE public.pat_1_bookingsspd
+				ADD COLUMN IF NOT EXISTS sspd_pembayaran_status character varying(40) DEFAULT 'BELUM_LUNAS';
+			COMMENT ON COLUMN public.pat_1_bookingsspd.sspd_pembayaran_status IS 'BELUM_LUNAS | LUNAS — diisi otomatis saat gateway PAID';
+			ALTER TABLE public.bank_1_cek_hasil_transaksi
+				ADD COLUMN IF NOT EXISTS gateway_nominal_received bigint,
+				ADD COLUMN IF NOT EXISTS gateway_status character varying(32),
+				ADD COLUMN IF NOT EXISTS gateway_reference character varying(255),
+				ADD COLUMN IF NOT EXISTS gateway_paid_at timestamp with time zone,
+				ADD COLUMN IF NOT EXISTS gateway_channel character varying(64);
+		`)
+		if err != nil {
+			log.Printf("[BOOT] ensure gateway/bank columns: %v", err)
+		}
+	}
+
 	ppatHandler := handler.NewPpatHandler(cfg, ppatRepo, bookingRepo)
 	mux.HandleFunc("GET /api/ppat_generate-pdf-badan/{nobooking}", ppatHandler.GeneratePdfBadan)
 	mux.HandleFunc("GET /api/ppat/generate-pdf-mohon-validasi/{nobooking}", ppatHandler.GeneratePdfMohonValidasi)
@@ -371,6 +392,7 @@ func main() {
 	mux.HandleFunc("POST /api/ppat_create-booking-and-bphtb-perorangan", ppatHandler.CreateBookingPerorangan)
 	mux.HandleFunc("GET /api/ppat/booking/history", ppatHandler.BookingHistoryBadan)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}/callback", ppatHandler.GetBookingCallbackBadan)
+	mux.HandleFunc("GET /api/ppat/pbb/lookup-nop", ppatHandler.LookupNopPBB)
 	mux.HandleFunc("GET /api/ppat/booking/{nobooking}", ppatHandler.GetBooking)
 	mux.HandleFunc("PUT /api/ppat/update-trackstatus/{nobooking}", ppatHandler.UpdateTrackstatus)
 	mux.HandleFunc("DELETE /api/ppat/booking/{nobooking}", ppatHandler.DeleteBooking)
@@ -414,8 +436,10 @@ func main() {
 	}
 	bankHandler := handler.NewBankHandler(bankRepo, userRepo)
 	mux.HandleFunc("GET /api/bank/transaksi", bankHandler.ListTransaksi)
-	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/approve", bankHandler.Approve)
-	mux.HandleFunc("POST /api/bank/transaksi/{nobooking}/reject", bankHandler.Reject)
+	mux.HandleFunc("GET /api/bank/transaksi/{nobooking}/detail", bankHandler.GetTransaksiDetail)
+
+	paymentWebhookHandler := handler.NewPaymentGatewayWebhookHandler(cfg, bankRepo)
+	mux.HandleFunc("POST /api/webhooks/payment-gateway", paymentWebhookHandler.Handle)
 
 	ltbHandler := handler.NewLtbHandler(ltbRepo, userRepo, ppatRepo)
 	mux.HandleFunc("GET /api/ltb/terima-berkas-sspd", ltbHandler.ListTerimaBerkas)
