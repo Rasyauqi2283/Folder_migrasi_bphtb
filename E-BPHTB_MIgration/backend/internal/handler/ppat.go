@@ -801,7 +801,8 @@ func (h *PpatHandler) CreateBookingBadan(w http.ResponseWriter, r *http.Request)
 	nobooking, err := h.repo.CreateBookingBadan(ctx, userid, &params)
 	if err != nil {
 		log.Printf("[PPAT] CreateBookingBadan: %v", err)
-		ppatJSONError(w, http.StatusInternalServerError, err.Error())
+		// Most errors here are input/step validation (e.g., NJOP invalid); treat as 400 for UX.
+		ppatJSONError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

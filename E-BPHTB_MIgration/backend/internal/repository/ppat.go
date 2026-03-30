@@ -720,10 +720,46 @@ func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params
 	if r.pool == nil {
 		return "", fmt.Errorf("database not configured")
 	}
+	if strings.TrimSpace(userid) == "" {
+		return "", fmt.Errorf("userid wajib")
+	}
+	if params == nil {
+		return "", fmt.Errorf("payload wajib")
+	}
 	jwp := "Badan Usaha"
 	if params.JenisWajibPajak != "" {
 		jwp = params.JenisWajibPajak
 	}
+
+	// Step-1 strictness: NJOP must be present and meaningful (pat_5 is the only strict table at creation time).
+	// We require that the total NJOP base (luas × njop) is > 0, otherwise billing preview will be 0.
+	lt := 0.0
+	nt := 0.0
+	lb := 0.0
+	nb := 0.0
+	if params.LuasTanah != nil {
+		lt = *params.LuasTanah
+	}
+	if params.NjopTanah != nil {
+		nt = *params.NjopTanah
+	}
+	if params.LuasBangunan != nil {
+		lb = *params.LuasBangunan
+	}
+	if params.NjopBangunan != nil {
+		nb = *params.NjopBangunan
+	}
+	totalBase := (lt * nt) + (lb * nb)
+	if params.LuasTanah == nil && params.LuasBangunan == nil && params.TotalNjoppbb == nil {
+		return "", fmt.Errorf("data NJOP wajib diisi (luas/njop tanah/bangunan)")
+	}
+	if totalBase <= 0 {
+		// allow caller to pass explicit total if they have it (e.g., from stored PBB), otherwise reject.
+		if params.TotalNjoppbb == nil || *params.TotalNjoppbb <= 0 {
+			return "", fmt.Errorf("data NJOP belum valid (total NJOP = 0). Lengkapi luas & NJOP tanah/bangunan")
+		}
+	}
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -744,44 +780,18 @@ func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params
 	if err != nil {
 		return "", err
 	}
-	// 2. Setelah nobooking tersedia, insert pat_2, pat_4, pat_5
-	if params.NilaiPerolehanObjekPajakTidakKenaPajak != nil || params.BphtbYangtelahDibayar != nil {
-		np := 0.0
-		bp := 0.0
-		if params.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
-			np = *params.NilaiPerolehanObjekPajakTidakKenaPajak
-		}
-		if params.BphtbYangtelahDibayar != nil {
-			bp = *params.BphtbYangtelahDibayar
-		}
-		_, _ = tx.Exec(ctx, `INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking) VALUES ($1,$2,$3)`, np, bp, nobooking)
+	// 2. Step-1: Always insert pat_5 (NJOP). Other tables are filled in later steps.
+	tot := 0.0
+	if params.TotalNjoppbb != nil && *params.TotalNjoppbb > 0 {
+		tot = *params.TotalNjoppbb
+	} else {
+		tot = totalBase
 	}
-	if params.Letaktanahdanbangunan != "" || params.Hargatransaksi != "" {
-		_, _ = tx.Exec(ctx, `
-			INSERT INTO pat_4_objek_pajak (letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-			params.Letaktanahdanbangunan, params.RtRwobjekpajak, normStatusKepemilikan(params.StatusKepemilikan), params.Keterangan, params.NomorSertifikat, params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, nobooking, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan)
-	}
-	if params.LuasTanah != nil || params.NjopTanah != nil || params.LuasBangunan != nil || params.NjopBangunan != nil || params.TotalNjoppbb != nil {
-		lt, nt, lb, nb, tot := 0.0, 0.0, 0.0, 0.0, 0.0
-		if params.LuasTanah != nil {
-			lt = *params.LuasTanah
-		}
-		if params.NjopTanah != nil {
-			nt = *params.NjopTanah
-		}
-		if params.LuasBangunan != nil {
-			lb = *params.LuasBangunan
-		}
-		if params.NjopBangunan != nil {
-			nb = *params.NjopBangunan
-		}
-		if params.TotalNjoppbb != nil {
-			tot = *params.TotalNjoppbb
-		} else {
-			tot = (lt * nt) + (lb * nb)
-		}
-		_, _ = tx.Exec(ctx, `INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking) VALUES ($1,$2,$3,$4,$5,$6)`, lt, nt, lb, nb, tot, nobooking)
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO pat_5_penghitungan_njop (luas_tanah, njop_tanah, luas_bangunan, njop_bangunan, total_njoppbb, nobooking)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, lt, nt, lb, nb, tot, nobooking); err != nil {
+		return "", err
 	}
 	return nobooking, tx.Commit(ctx)
 }

@@ -50,7 +50,7 @@ export default function Footer() {
         <div className="footer-wave-strip">{waveStrip(waveGradId1)}</div>
         <div className="footer-wave-strip footer-wave-strip--slow">{waveStrip(waveGradId2)}</div>
       </div>
-      <p style={{ margin: 0, position: "relative", zIndex: 1 }}>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+      <p style={{ margin: 0, position: "relative", zIndex: 1 }}>© 2026 BAPPENDA | Kabupaten Bogor</p>
 
       <div
         className="app-footer-right"
