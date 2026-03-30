@@ -503,124 +503,291 @@ func terbilang(n int64) string {
 	return strings.TrimSpace(f(n))
 }
 
+/////////////////////////////////////////////////////////////
+
 // GenerateMohonValidasi writes Permohonan Validasi PDF to w.
 func GenerateMohonValidasi(w io.Writer, data *repository.MohonValidasiPDFData) error {
 	if data == nil {
 		return fmt.Errorf("data is nil")
 	}
-	pdf := gofpdf.New("P", "pt", "A4", "")
-	pdf.SetMargins(20, 20, 20)
-	pdf.SetAutoPageBreak(true, 20)
+	// Match Node.js PDFKit layout: units are "points". We render with mm and convert.
+	const ptToMm = 0.3527
+	mm := func(pt float64) float64 { return pt * ptToMm }
+
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.SetMargins(0, 0, 0)
+	pdf.SetAutoPageBreak(false, 0)
 	pdf.AddPage()
-	pdf.SetFont("Helvetica", "", 12)
 
-	xLeft, xMid := 20.0, 150.0
-	y := 50.0
+	// Coordinates from JS (points)
+	leftColumnX := 20.0
+	middleColumnX := 150.0
+	currentY := 50.0
 
-	pdf.SetFont("Helvetica", "B", 14)
-	pdf.SetXY(xLeft, 60)
-	pdf.CellFormat(400, 14, "FORMULIR PERMOHONAN PENELITIAN SSPD BPHTB", "", 1, "C", false, 0, "")
-	y = 90
+	bold := "B"
+	normal := ""
 
-	pdf.SetFont("Helvetica", "", 12)
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(0, 12, "Lamp  : 1 (satu) set", "", 1, "L", false, 0, "")
-	pdf.SetXY(xLeft, pdf.GetY())
-	pdf.CellFormat(0, 12, "Perihal : Penyampaian SSPD BPHTB untuk Diteliti", "", 1, "L", false, 0, "")
-	y = pdf.GetY() + 30
+	// Header grey bar
+	headerHeight := 60.0
+	footerHeight := 30.0
+	pdf.SetFillColor(105, 105, 105)
+	pdf.Rect(0, mm(headerHeight-10), 210, mm(footerHeight), "F")
+	pdf.SetTextColor(0, 0, 0)
 
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(0, 12, "Yth. Kepala Dinas ______", "", 1, "L", false, 0, "")
-	pdf.SetXY(xLeft, pdf.GetY())
-	pdf.CellFormat(0, 12, "Kabupaten Bogor", "", 1, "L", false, 0, "")
-	y = pdf.GetY() + 20
+	// Title centered
+	pdf.SetFont("Helvetica", bold, 14)
+	pdf.SetXY(mm(leftColumnX), mm(60))
+	pdf.CellFormat(mm(500), mm(14), "FORMULIR PERMOHONAN PENELITIAN SSPD BPHTB", "", 0, "C", false, 0, "")
+	currentY = headerHeight + footerHeight + 10 // 100
 
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(0, 12, "Yang bertanda tangan di bawah ini :", "", 1, "L", false, 0, "")
-	y = pdf.GetY() + 20
+	// Intro lines
+	pdf.SetFont("Helvetica", normal, 12)
+	pdf.SetXY(mm(leftColumnX), mm(currentY))
+	pdf.CellFormat(0, mm(12), "Lamp  : 1 (satu) set", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(leftColumnX), mm(currentY+10))
+	pdf.CellFormat(0, mm(12), "Perihal : Penyampaian SSPD BPHTB untuk Diteliti", "", 0, "L", false, 0, "")
+	currentY += 50
 
-	row := func(label, val string) {
-		pdf.SetFont("Helvetica", "", 12)
-		pdf.SetXY(xLeft, y)
-		pdf.CellFormat(120, 12, label, "", 0, "L", false, 0, "")
-		pdf.SetXY(xMid-10, y)
-		pdf.CellFormat(20, 12, ":", "", 0, "L", false, 0, "")
-		pdf.SetXY(xMid, y)
-		pdf.CellFormat(350, 12, val, "", 0, "L", false, 0, "")
-		y += 12
+	// Addressee
+	paraf := "______"
+	if strings.TrimSpace(data.SpecialField) != "" {
+		// Keep placeholder behavior: actual "parafv" is not available in this data struct; use blank.
+		paraf = "______"
 	}
-	row("Nama Pemohon", data.NamaPembuat)
-	row("Alamat", data.AlamatPemohon)
-	row("No. Telepon", data.Telepon)
-	y += 18
-	row("Nama Wajib Pajak", data.Namawajibpajak)
-	row("Alamat", data.Alamatwajibpajak)
-	row("Desa / Kelurahan", data.Kelurahandesawp)
-	row("Kecamatan", data.Kecamatanwp)
-	row("Kabupaten/Kota", data.Kabupatenkotawp)
-	y += 20
+	pdf.SetXY(mm(leftColumnX), mm(currentY))
+	pdf.CellFormat(0, mm(12), "Yth. Kepala Dinas "+paraf, "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(leftColumnX), mm(currentY+10))
+	pdf.CellFormat(0, mm(12), "Kabupaten Bogor", "", 0, "L", false, 0, "")
+	currentY += 30
 
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(500, 24, "Bersama ini disampaikan SSPD BPHTB untuk diteliti atas perolehan hak atas tanah dan/atau bangunan sebagai berikut :", "", 1, "L", false, 0, "")
-	y = pdf.GetY() + 30
+	pdf.SetXY(mm(leftColumnX), mm(currentY))
+	pdf.CellFormat(0, mm(12), "Yang bertanda tangan di bawah ini :", "", 0, "L", false, 0, "")
+	currentY += 20
 
-	row("NOP", data.Noppbb)
-	row("Atas Nama", data.Namapemilikobjekpajak)
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(120, 12, "Luas", "", 0, "L", false, 0, "")
-	pdf.SetXY(xMid-10, y)
-	pdf.CellFormat(20, 12, ":", "", 0, "L", false, 0, "")
-	pdf.SetXY(xMid, y)
-	pdf.CellFormat(350, 12, fmt.Sprintf("Tanah %s m²   Bangunan %s m²", formatNumberID(data.LuasTanah), formatNumberID(data.LuasBangunan)), "", 0, "L", false, 0, "")
-	y += 12
-	row("Alamat", data.Letaktanahdanbangunan)
-	row("Kampung", data.Kampungop)
-	row("Desa/Kelurahan", data.Kelurahanop)
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(120, 12, "Kecamatan", "", 0, "L", false, 0, "")
-	pdf.SetXY(xMid-10, y)
-	pdf.CellFormat(20, 12, ":", "", 0, "L", false, 0, "")
-	pdf.SetXY(xMid, y)
-	pdf.CellFormat(350, 12, data.Kecamatanopj+" Kabupaten Bogor", "", 0, "L", false, 0, "")
-	y += 25
-
-	pdf.SetFont("Helvetica", "B", 12)
-	pdf.SetXY(xLeft, y)
-	pdf.CellFormat(0, 12, "Terlampir dokumen sebagai berikut :", "", 1, "L", false, 0, "")
-	y = pdf.GetY() + 15
-
-	pdf.SetFont("Helvetica", "", 12)
-	docList := []string{
-		"a. SSPD BPHTB yang telah diregistrasi.",
-		"b. Fotocopy KTP Pemohon/Wajib Pajak, apabila dikuasakan disertakan Surat Kuasa dan fotocopy KTP penerima kuasa.",
-		"c. Foto Copy SPPT PBB dan STTS Terakhir.",
-		"d. Surat Setoran Bank/bukti penerimaan bank.",
-		"e. Dokumen yang membuktikan/menunjukan terjadinya perolehan hak atas tanah dan/atau bangunan yang dijadikan dasar pembuatan akta.",
-		"f. Bukti tidak memiliki tunggakan PBB.",
-		"g. Fotocopy Sertifikat Tanah.",
-		"h. " + data.Keterangan,
+	// Helper: label ":" value, with fixed X like JS.
+	drawRow := func(label, value string, y float64) float64 {
+		pdf.SetFont("Helvetica", normal, 12)
+		pdf.SetXY(mm(leftColumnX), mm(y))
+		pdf.CellFormat(mm(middleColumnX-leftColumnX-20), mm(12), label, "", 0, "L", false, 0, "")
+		pdf.SetXY(mm(middleColumnX-10), mm(y))
+		pdf.CellFormat(mm(10), mm(12), ":", "", 0, "L", false, 0, "")
+		pdf.SetXY(mm(middleColumnX), mm(y))
+		pdf.CellFormat(mm(500-middleColumnX), mm(12), value, "", 0, "L", false, 0, "")
+		return y + 12
 	}
-	for _, line := range docList {
-		pdf.SetXY(xLeft, y)
-		pdf.CellFormat(0, 12, line, "", 1, "L", false, 0, "")
-		y = pdf.GetY()
+	// Multi-line value (wrap within width 500-middleColumnX).
+	drawRowMulti := func(label, value string, y float64) float64 {
+		pdf.SetFont("Helvetica", normal, 12)
+		pdf.SetXY(mm(leftColumnX), mm(y))
+		pdf.CellFormat(mm(middleColumnX-leftColumnX-20), mm(12), label, "", 0, "L", false, 0, "")
+		pdf.SetXY(mm(middleColumnX-10), mm(y))
+		pdf.CellFormat(mm(10), mm(12), ":", "", 0, "L", false, 0, "")
+		pdf.SetXY(mm(middleColumnX), mm(y))
+		pdf.MultiCell(mm(500-middleColumnX), mm(12), value, "", "L", false)
+		return (pdf.GetY() / ptToMm) // convert back to pt-ish baseline for subsequent y math
 	}
 
-	y += 40
-	pdf.SetFont("Helvetica", "", 12)
-	pdf.SetXY(350, y-25)
-	pdf.CellFormat(0, 12, "Cibinong,", "", 1, "L", false, 0, "")
-	pdf.SetXY(420, y-25)
-	pdf.CellFormat(0, 12, formatTanggal(data.Tanggal)+" 20__", "", 1, "L", false, 0, "")
-	pdf.SetXY(80, y)
-	pdf.CellFormat(150, 12, "Petugas Penerima Berkas,", "", 0, "L", false, 0, "")
-	pdf.SetXY(350, y)
-	pdf.CellFormat(150, 12, "Pemohon", "", 0, "L", false, 0, "")
-	y += 100
-	pdf.SetXY(20, y)
-	pdf.CellFormat(200, 12, data.NamaPengirim, "", 0, "C", false, 0, "")
-	pdf.SetXY(350, y)
-	pdf.CellFormat(200, 12, data.SpecialField, "", 0, "C", false, 0, "")
+	namaPemohon := strings.TrimSpace(data.NamaPembuat)
+	if namaPemohon == "" {
+		namaPemohon = "______"
+	}
+	alamatPemohon := strings.TrimSpace(data.AlamatPemohon)
+	if alamatPemohon == "" {
+		alamatPemohon = "______"
+	}
+	telepon := strings.TrimSpace(data.Telepon)
+	if telepon == "" {
+		telepon = "______"
+	}
+	currentY = drawRow("Nama Pemohon", namaPemohon, currentY)
+	currentY = drawRow("Alamat", alamatPemohon, currentY)
+	currentY = drawRow("No. Telepon", telepon, currentY)
+	currentY += 30
+
+	// WP block
+	namaWp := strings.TrimSpace(data.Namawajibpajak)
+	if namaWp == "" {
+		namaWp = "______"
+	}
+	alamatWp := strings.TrimSpace(data.Alamatwajibpajak)
+	if alamatWp == "" {
+		alamatWp = "______"
+	}
+	kelWp := strings.TrimSpace(data.Kelurahandesawp)
+	if kelWp == "" {
+		kelWp = "______"
+	}
+	kecWp := strings.TrimSpace(data.Kecamatanwp)
+	if kecWp == "" {
+		kecWp = "______"
+	}
+	kabWp := strings.TrimSpace(data.Kabupatenkotawp)
+	if kabWp == "" {
+		kabWp = "______"
+	}
+	currentY = drawRow("Nama Wajib Pajak", namaWp, currentY)
+	currentY = drawRow("Alamat", alamatWp, currentY)
+	currentY = drawRow("Desa / Kelurahan", kelWp, currentY)
+	currentY = drawRow("Kecamatan", kecWp, currentY)
+	currentY = drawRow("Kabupaten/Kota", kabWp, currentY)
+	currentY += 20
+
+	// Description paragraph
+	pdf.SetFont("Helvetica", normal, 12)
+	pdf.SetXY(mm(leftColumnX), mm(currentY))
+	pdf.MultiCell(mm(500), mm(12), "Bersama ini disampaikan SSPD BPHTB untuk diteliti atas perolehan hak atas tanah dan/atau bangunan sebagai berikut :", "", "L", false)
+	currentY = (pdf.GetY() / ptToMm) + 28 // match JS +40 (approx after wrapping)
+
+	// Object data
+	nop := strings.TrimSpace(data.Noppbb)
+	if nop == "" {
+		nop = "______"
+	}
+	atasNama := strings.TrimSpace(data.Namapemilikobjekpajak)
+	if atasNama == "" {
+		atasNama = "______"
+	}
+	letak := strings.TrimSpace(data.Letaktanahdanbangunan)
+	if letak == "" {
+		letak = "______"
+	}
+	luasStr := fmt.Sprintf("Tanah %s m²   Bangunan %s m²", formatNumberID(data.LuasTanah), formatNumberID(data.LuasBangunan))
+	currentY = drawRow("NOP", nop, currentY)
+	currentY = drawRow("Atas Nama", atasNama, currentY)
+	currentY = drawRow("Luas", luasStr, currentY)
+	currentY = drawRowMulti("Alamat", letak, currentY)
+
+	// Sub rows start at x=150/250 like JS
+	kampung := strings.TrimSpace(data.Kampungop)
+	if kampung == "" {
+		kampung = "_______________"
+	}
+	kelOp := strings.TrimSpace(data.Kelurahanop)
+	if kelOp == "" {
+		kelOp = "_______________"
+	}
+	kecOp := strings.TrimSpace(data.Kecamatanopj)
+	if kecOp == "" {
+		kecOp = "_______________"
+	}
+	pdf.SetFont("Helvetica", normal, 12)
+	pdf.SetXY(mm(150), mm(currentY))
+	pdf.CellFormat(mm(100), mm(12), "Kampung", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(240), mm(currentY))
+	pdf.CellFormat(mm(10), mm(12), ":", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(250), mm(currentY))
+	pdf.CellFormat(mm(260), mm(12), kampung, "", 0, "L", false, 0, "")
+	currentY += 12
+
+	pdf.SetXY(mm(150), mm(currentY))
+	pdf.CellFormat(mm(100), mm(12), "Desa/Kelurahan", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(240), mm(currentY))
+	pdf.CellFormat(mm(10), mm(12), ":", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(250), mm(currentY))
+	pdf.CellFormat(mm(260), mm(12), kelOp, "", 0, "L", false, 0, "")
+	currentY += 12
+
+	pdf.SetXY(mm(150), mm(currentY))
+	pdf.CellFormat(mm(100), mm(12), "Kecamatan", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(240), mm(currentY))
+	pdf.CellFormat(mm(10), mm(12), ":", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(250), mm(currentY))
+	pdf.CellFormat(mm(260), mm(12), kecOp+" Kabupaten Bogor", "", 0, "L", false, 0, "")
+	currentY += 20
+
+	// Attachment header
+	pdf.SetFont("Helvetica", bold, 12)
+	pdf.SetXY(mm(leftColumnX), mm(currentY))
+	pdf.CellFormat(0, mm(12), "Terlampir dokumen sebagai berikut :", "", 0, "L", false, 0, "")
+	currentY += 15
+
+	// Attachment list uses fixed Y in JS; mimic for exact look.
+	pdf.SetFont("Helvetica", normal, 12)
+	keterangan := strings.TrimSpace(data.Keterangan)
+	if keterangan == "" {
+		keterangan = "______"
+	}
+	type fixedLine struct {
+		txt string
+		x   float64
+		y   float64
+	}
+	lines := []fixedLine{
+		{txt: "a.", x: 20, y: 475}, {txt: "SSPD BPHTB yang telah diregistrasi.", x: 32, y: 475},
+		{txt: "b.", x: 20, y: 488}, {txt: "Fotocopy KTP Pemohon/Wajib Pajak, apabila dikuasakan disertakan Surat Kuasa dan fotocopy KTP", x: 32, y: 488},
+		{txt: "penerima kuasa.", x: 32, y: 501},
+		{txt: "c.", x: 20, y: 514}, {txt: "Foto Copy SPPT PBB dan STTS Terakhir.", x: 32, y: 514},
+		{txt: "d.", x: 20, y: 527}, {txt: "Surat Setoran Bank/bukti penerimaan bank.", x: 32, y: 527},
+		{txt: "e.", x: 20, y: 540}, {txt: "Dokumen yang membuktikan/menunjukan terjadinya perolehan hak atas tanah dan/atau bangunan", x: 32, y: 540},
+		{txt: "yang dijadikan dasar pembuatan akta.", x: 32, y: 553},
+		{txt: "f.", x: 20, y: 566}, {txt: "Bukti tidak memiliki tunggakan PBB.", x: 32, y: 566},
+		{txt: "g.", x: 20, y: 579}, {txt: "Fotocopy Sertifikat Tanah.", x: 32, y: 579},
+		{txt: "h.", x: 20, y: 592}, {txt: keterangan, x: 32, y: 592},
+	}
+	for _, ln := range lines {
+		pdf.SetXY(mm(ln.x), mm(ln.y))
+		pdf.CellFormat(0, mm(12), ln.txt, "", 0, "L", false, 0, "")
+	}
+
+	// Signature block (computed like JS)
+	currentY += 140
+	baseY := currentY + 40
+	leftSigX := 80.0
+	rightSigX := 350.0
+
+	// Date & location
+	pdf.SetFont("Helvetica", normal, 12)
+	pdf.SetXY(mm(rightSigX+20), mm(baseY-25))
+	pdf.CellFormat(0, mm(12), "Cibinong,", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(rightSigX+70), mm(baseY-25))
+	pdf.CellFormat(0, mm(12), formatTanggal(data.Tanggal)+" 20__", "", 0, "L", false, 0, "")
+
+	// Labels
+	pdf.SetXY(mm(leftSigX-35), mm(baseY))
+	pdf.CellFormat(0, mm(12), "Petugas Penerima Berkas,", "", 0, "L", false, 0, "")
+	pdf.SetXY(mm(rightSigX+60), mm(baseY))
+	pdf.CellFormat(0, mm(12), "Pemohon", "", 0, "L", false, 0, "")
+
+	// Signature image (best-effort). We only render if a local file is reachable.
+	if p := strings.TrimSpace(data.TandaTanganPath); p != "" && !strings.HasPrefix(p, "http://") && !strings.HasPrefix(p, "https://") {
+		candidates := []string{p}
+		if strings.HasPrefix(p, "/") {
+			candidates = append(candidates, strings.TrimPrefix(p, "/"))
+		}
+		var sigPath string
+		for _, c := range candidates {
+			if c == "" {
+				continue
+			}
+			if _, err := os.Stat(c); err == nil {
+				sigPath = c
+				break
+			}
+			// try relative to current working directory
+			if _, err := os.Stat(filepath.Clean(c)); err == nil {
+				sigPath = filepath.Clean(c)
+				break
+			}
+		}
+		if sigPath != "" {
+			pdf.ImageOptions(sigPath, mm(rightSigX+40), mm(baseY+20), mm(35), 0, false, gofpdf.ImageOptions{ReadDpi: true}, 0, "")
+		}
+	}
+
+	// Names
+	nameY := baseY + 100
+	namaPengirim := strings.TrimSpace(data.NamaPengirim)
+	if namaPengirim == "" {
+		namaPengirim = "_____________________"
+	}
+	special := strings.TrimSpace(data.SpecialField)
+	if special == "" {
+		special = "_____________________"
+	}
+	pdf.SetXY(mm(leftSigX-60), mm(nameY))
+	pdf.CellFormat(mm(200), mm(12), namaPengirim, "", 0, "C", false, 0, "")
+	pdf.SetXY(mm(rightSigX), mm(nameY))
+	pdf.CellFormat(mm(200), mm(12), special, "", 0, "C", false, 0, "")
 
 	return pdf.Output(w)
 }

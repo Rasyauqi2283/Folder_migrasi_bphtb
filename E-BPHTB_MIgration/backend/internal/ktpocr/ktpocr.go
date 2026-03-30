@@ -460,6 +460,22 @@ func binarizeOtsu(src image.Image) *image.Gray {
 	return binarizeThreshold(g, thr)
 }
 
+// preprocessKTPImage converts an image into high-contrast grayscale suitable for OCR.
+// It intentionally avoids full binarization so callers can choose Otsu/threshold per variant.
+func preprocessKTPImage(src image.Image) image.Image {
+	if src == nil {
+		return src
+	}
+	img := imaging.Grayscale(src)
+	// Reduce high-frequency background patterns (e.g., KTP blue texture) without destroying edges.
+	img = imaging.Blur(img, 0.6)
+	// Make text pop.
+	img = imaging.AdjustContrast(img, 60)
+	// Light sharpen to define glyph edges.
+	img = imaging.Sharpen(img, 1.1)
+	return img
+}
+
 func preprocess(imagePath string, method string, rotationDeg float64) (string, error) {
 	img, err := imaging.Open(imagePath, imaging.AutoOrientation(true))
 	if err != nil {
@@ -492,31 +508,24 @@ func preprocess(imagePath string, method string, rotationDeg float64) (string, e
 		return tmp, nil
 	}
 
-	img = imaging.Grayscale(img)
-	img = imaging.AdjustContrast(img, 20)
+	// Base preprocessing: high-contrast grayscale.
+	img = preprocessKTPImage(img)
 
 	switch method {
 	case "otsu":
-		// KTP: grayscale → denoise ringan → sharpen → Otsu binarization.
-		img = imaging.Blur(img, 0.8)
-		img = imaging.Sharpen(img, 1.3)
-		img = imaging.AdjustContrast(img, 55)
+		// High accuracy: Otsu binarization on preprocessed grayscale.
 		img = binarizeOtsu(img)
 	case "adaptive":
-		img = imaging.Sharpen(img, 1.5)
-		img = imaging.AdjustContrast(img, 50)
+		// Keep grayscale but slightly stronger sharpening for some photos.
+		img = imaging.Sharpen(img, 1.4)
 	case "threshold":
-		img = imaging.Sharpen(img, 1.2)
-		img = imaging.AdjustContrast(img, 55)
 		img = binarizeThreshold(img, 140)
 	case "grayscale":
-		img = imaging.Sharpen(img, 1.0)
+		// Already grayscale; keep as-is.
 	case "deblur":
-		img = imaging.Sharpen(img, 2.0)
-		img = imaging.AdjustContrast(img, 55)
+		img = imaging.Sharpen(img, 1.9)
 	default:
-		img = imaging.Sharpen(img, 1.2)
-		img = imaging.AdjustContrast(img, 45)
+		img = imaging.Sharpen(img, 1.15)
 	}
 
 	// Rotasi untuk perbaiki gambar miring

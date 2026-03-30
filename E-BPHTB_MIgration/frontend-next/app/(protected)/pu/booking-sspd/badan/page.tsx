@@ -694,10 +694,26 @@ export default function BookingSSPDBadanPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
-          const j = await res.json().catch(() => ({}));
-          if (!res.ok || j?.success === false) {
-            setActionMessage(j?.message || "Gagal menyimpan perhitungan.");
-            return;
+          const ct = res.headers.get("content-type") || "";
+          let msg = "";
+          if (ct.includes("application/json")) {
+            const j = await res.json().catch(() => ({} as any));
+            msg = String(j?.message ?? "");
+            if (!res.ok || j?.success === false) {
+              setActionMessage(msg?.trim() ? msg : `Gagal menyimpan perhitungan (HTTP ${res.status}).`);
+              return;
+            }
+          } else {
+            const t = await res.text().catch(() => "");
+            msg = t;
+            if (!res.ok) {
+              const cleaned = String(msg || "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+              setActionMessage(cleaned ? `${cleaned} (HTTP ${res.status})` : `Gagal menyimpan perhitungan (HTTP ${res.status}).`);
+              return;
+            }
           }
           setActionMessage("Perhitungan tersimpan.");
           setPostCalcOpen(null);
