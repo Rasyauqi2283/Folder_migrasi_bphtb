@@ -8,7 +8,7 @@ import { CHROME_PRELOAD_CONSOLE_SCRIPT } from "../lib/suppressChromePreloadConso
 
 export const metadata: Metadata = {
   title: {
-    default: "Selamat Datang",
+    default: "E-BPHTB | BAPPENDA",
     template: "%s | E-BPHTB",
   },
   description: "Layanan resmi Bea Perolehan Hak atas Tanah dan Bangunan Kabupaten Bogor",

@@ -1,28 +1,11 @@
-"use client";
+import type { Metadata } from "next";
 
-import { SidebarProvider } from "../../context/SidebarContext";
+import ProfileClientLayout from "./profileClientLayout";
 
-/** Layout Profile: satu latar saja (main_bg), no layering. */
-export default function ProfileLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <SidebarProvider>
-      <main
-        style={{
-          marginTop: 0,
-          minHeight: 0,
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-          background: "var(--main_bg)",
-        }}
-      >
-        {children}
-      </main>
-    </SidebarProvider>
-  );
+export const metadata: Metadata = {
+  title: "Profile",
+};
+
+export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+  return <ProfileClientLayout>{children}</ProfileClientLayout>;
 }
