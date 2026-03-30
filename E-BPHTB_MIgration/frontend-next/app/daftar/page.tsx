@@ -12,26 +12,16 @@ const PENDING_REGISTRATION_KEY = "pending_registration_v1";
 /** Batas waktu klien — selaras dengan batas pipeline OCR di server (~15 detik). */
 const KTP_OCR_CLIENT_DEADLINE_MS = 15_000;
 
-/** Data hasil OCR KTP dari real-ktp-verification */
+/** Data hasil OCR: inti NIK & Nama; alamat + wilayah untuk verifikasi (tanpa TTL/JK/agama/dll.). */
 interface KTPOcrData {
   nik?: string;
   nama?: string;
   provinsi?: string;
   kabupatenKota?: string;
-  jenisKelamin?: string;
   alamat?: string;
-  tempatLahir?: string;
-  tanggalLahir?: string;
   rtRw?: string;
   kelurahan?: string;
   kecamatan?: string;
-  golonganDarah?: string;
-  agama?: string;
-  statusPerkawinan?: string;
-  pekerjaan?: string;
-  kewarganegaraan?: string;
-  berlakuHingga?: string;
-  /** Teks OCR mentah dari server (potongan). */
   rawText?: string;
   is_readable?: boolean;
 }
@@ -215,19 +205,10 @@ function DaftarContent() {
         nama: str(raw.nama),
         provinsi: str(raw.provinsi),
         kabupatenKota: str(raw.kabupatenKota),
-        jenisKelamin: str(raw.jenisKelamin),
         alamat: str(raw.alamat),
-        tempatLahir: str(raw.tempatLahir),
-        tanggalLahir: str(raw.tanggalLahir),
         rtRw: str(raw.rtRw),
         kelurahan: str(raw.kelurahan),
         kecamatan: str(raw.kecamatan),
-        golonganDarah: str(raw.golonganDarah),
-        agama: str(raw.agama),
-        statusPerkawinan: str(raw.statusPerkawinan),
-        pekerjaan: str(raw.pekerjaan),
-        kewarganegaraan: str(raw.kewarganegaraan),
-        berlakuHingga: str(raw.berlakuHingga),
         rawText: str(raw.rawText),
         is_readable: typeof raw.is_readable === "boolean" ? raw.is_readable : undefined,
       };
@@ -242,9 +223,6 @@ function DaftarContent() {
       );
       if (d.nama) setNama(d.nama);
       if (d.nik) setNik(d.nik);
-      if (d.jenisKelamin && ["Laki-laki", "Perempuan"].includes(d.jenisKelamin)) {
-        setGender(d.jenisKelamin);
-      }
     } catch (e) {
       setKtpStatus("error");
       if (e instanceof DOMException && e.name === "AbortError") {
@@ -595,29 +573,13 @@ function DaftarContent() {
               </h4>
 
               <div className="daftar-ktp-lampiran-section">
-                <h5 className="daftar-ktp-lampiran-section-title">Data Diri</h5>
+                <h5 className="daftar-ktp-lampiran-section-title">Identitas (wajib dari OCR)</h5>
                 <div className="daftar-ktp-lampiran-grid">
                   {ocrData.nik && (
                     <p><strong>NIK:</strong> <span>{ocrData.nik}</span></p>
                   )}
                   {ocrData.nama && (
                     <p><strong>Nama:</strong> <span>{ocrData.nama}</span></p>
-                  )}
-                  {(ocrData.tempatLahir || ocrData.tanggalLahir) && (
-                    <p>
-                      <strong>TTL:</strong>{" "}
-                      <span>
-                        {[ocrData.tempatLahir, ocrData.tanggalLahir]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
-                    </p>
-                  )}
-                  {ocrData.jenisKelamin && (
-                    <p><strong>Jenis Kelamin:</strong> <span>{ocrData.jenisKelamin}</span></p>
-                  )}
-                  {ocrData.golonganDarah && (
-                    <p><strong>Gol. Darah:</strong> <span>{ocrData.golonganDarah}</span></p>
                   )}
                 </div>
               </div>
@@ -645,34 +607,13 @@ function DaftarContent() {
                   )}
                 </div>
               </div>
-
-              <div className="daftar-ktp-lampiran-section">
-                <h5 className="daftar-ktp-lampiran-section-title">Lain-lain</h5>
-                <div className="daftar-ktp-lampiran-grid">
-                  {ocrData.agama && (
-                    <p><strong>Agama:</strong> <span>{ocrData.agama}</span></p>
-                  )}
-                  {ocrData.statusPerkawinan && (
-                    <p><strong>Status Perkawinan:</strong> <span>{ocrData.statusPerkawinan}</span></p>
-                  )}
-                  {ocrData.pekerjaan && (
-                    <p><strong>Pekerjaan:</strong> <span>{ocrData.pekerjaan}</span></p>
-                  )}
-                  {ocrData.kewarganegaraan && (
-                    <p><strong>Kewarganegaraan:</strong> <span>{ocrData.kewarganegaraan}</span></p>
-                  )}
-                  {ocrData.berlakuHingga && (
-                    <p><strong>Berlaku Hingga:</strong> <span>{ocrData.berlakuHingga}</span></p>
-                  )}
-                </div>
-              </div>
             </div>
           )}
           {ocrData && (
             <div className="daftar-ktp-json-block">
               <h4 className="daftar-ktp-json-title">Hasil pembacaan (JSON)</h4>
               <p className="daftar-ktp-json-hint">
-                Tesseract mode akurasi tinggi; jika <code>KTP_INDOROBERTA_URL</code> aktif di server, IndoROBERTa digabung paralel (target metrik: akurasi baca ~70%, analisis struktur ~65%).
+                Pipeline membaca NIK &amp; Nama (wajib), lalu alamat, RT/RW, Kel/Desa, Kecamatan (+ Prov/Kab bila ada). Field TTL, JK, golongan darah, agama, dll. tidak diekstrak.
               </p>
               <pre className="daftar-ktp-json-view" tabIndex={0}>
                 {JSON.stringify(

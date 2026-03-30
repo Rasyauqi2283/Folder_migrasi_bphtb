@@ -648,21 +648,6 @@ func EnrichExtendedFields(r *Result, rawOCR string) {
 	r.RtRw = extractRTRW(text, trimmed)
 	r.Kelurahan = extractKelurahan(text, trimmed)
 	r.Kecamatan = extractKecamatan(text)
-	r.Agama = extractAgama(text)
-	r.StatusPerkawinan = extractStatusPerkawinan(text)
-	r.Pekerjaan = extractPekerjaan(text)
-	r.BerlakuHingga = extractBerlakuHingga(text)
-	r.Kewarganegaraan = extractKewarganegaraanIfExplicit(text)
-
-	if ttl := extractTTL(text); ttl != nil {
-		t := ttl.Tempat
-		tl := ttl.Tanggal
-		r.TempatLahir = &t
-		r.TanggalLahir = &tl
-	}
-	jk, gol := extractJenisKelaminAndGolonganDarah(text)
-	r.JenisKelamin = jk
-	r.GolonganDarah = gol
 }
 
 // MergeExtendedFieldsFromTesseract mengisi field ekstra di dst dari hasil Tesseract jika dst masih kosong.
@@ -685,16 +670,8 @@ func MergeExtendedFieldsFromTesseract(dst, src *Result) {
 	}
 	fill(&dst.Provinsi, src.Provinsi)
 	fill(&dst.KabupatenKota, src.KabupatenKota)
-	fill(&dst.JenisKelamin, src.JenisKelamin)
-	fill(&dst.GolonganDarah, src.GolonganDarah)
-	fill(&dst.TempatLahir, src.TempatLahir)
-	fill(&dst.TanggalLahir, src.TanggalLahir)
 	fill(&dst.RtRw, src.RtRw)
 	fill(&dst.Kelurahan, src.Kelurahan)
 	fill(&dst.Kecamatan, src.Kecamatan)
-	fill(&dst.Agama, src.Agama)
-	fill(&dst.StatusPerkawinan, src.StatusPerkawinan)
-	fill(&dst.Pekerjaan, src.Pekerjaan)
-	fill(&dst.Kewarganegaraan, src.Kewarganegaraan)
-	fill(&dst.BerlakuHingga, src.BerlakuHingga)
+	fill(&dst.Alamat, src.Alamat)
 }

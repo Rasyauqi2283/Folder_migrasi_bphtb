@@ -246,6 +246,27 @@ func clipKtpRawTextForAPI(s string) string {
 	return s[:ktpRawTextAPIMaxRunes] + "\n…"
 }
 
+// sniffKTPImageKind returns "jpeg", "png", or "" from file magic bytes (lebih andal daripada Content-Type browser).
+func sniffKTPImageKind(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	var buf [12]byte
+	n, err := f.Read(buf[:])
+	if err != nil || n < 3 {
+		return ""
+	}
+	if buf[0] == 0xFF && buf[1] == 0xD8 && buf[2] == 0xFF {
+		return "jpeg"
+	}
+	if n >= 8 && buf[0] == 0x89 && buf[1] == 0x50 && buf[2] == 0x4E && buf[3] == 0x47 && buf[4] == 0x0D && buf[5] == 0x0A && buf[6] == 0x1A && buf[7] == 0x0A {
+		return "png"
+	}
+	return ""
+}
+
 func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 	if r == nil {
 		return nil
@@ -375,8 +396,12 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	mime := header.Header.Get("Content-Type")
-	if mime != "image/jpeg" && mime != "image/jpg" && mime != "image/png" {
+	mimeRaw := strings.ToLower(strings.TrimSpace(header.Header.Get("Content-Type")))
+	mimeBase := strings.TrimSpace(strings.Split(mimeRaw, ";")[0])
+	// Banyak klien mengirim kosong / octet-stream meski file JPG asli — verifikasi setelah simpan dengan magic bytes.
+	if mimeBase != "" && mimeBase != "application/octet-stream" &&
+		mimeBase != "image/jpeg" && mimeBase != "image/jpg" && mimeBase != "image/png" &&
+		mimeBase != "image/pjpeg" && mimeBase != "image/x-png" {
 		jsonError(w, http.StatusBadRequest, "Format tidak didukung. Gunakan JPG atau PNG.")
 		return
 	}
@@ -403,6 +428,11 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer os.Remove(tmpPath)
+
+	if sniffKTPImageKind(tmpPath) == "" {
+		jsonError(w, http.StatusBadRequest, "File bukan gambar JPG/PNG yang valid (header file tidak dikenali).")
+		return
+	}
 
 	result, _, err := h.runKtpOCR(r.Context(), tmpPath)
 	if err != nil {
@@ -437,18 +467,9 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		"manual_verification_required": false,
 		"provinsi":                     result.Provinsi,
 		"kabupatenKota":                result.KabupatenKota,
-		"jenisKelamin":                 result.JenisKelamin,
-		"golonganDarah":                result.GolonganDarah,
-		"tempatLahir":                  result.TempatLahir,
-		"tanggalLahir":                 result.TanggalLahir,
 		"rtRw":                         result.RtRw,
 		"kelurahan":                    result.Kelurahan,
 		"kecamatan":                    result.Kecamatan,
-		"agama":                        result.Agama,
-		"statusPerkawinan":             result.StatusPerkawinan,
-		"pekerjaan":                    result.Pekerjaan,
-		"kewarganegaraan":              result.Kewarganegaraan,
-		"berlakuHingga":                result.BerlakuHingga,
 		"rawText":                      clipKtpRawTextForAPI(result.RawText),
 	}
 
@@ -463,6 +484,20 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	if payload.IsReadable && (payload.Alamat == nil || len(strings.TrimSpace(*payload.Alamat)) < 5) {
 		decision = "needs_review"
 		message = "NIK dan Nama terbaca. Alamat belum terbaca jelas — silakan lanjut dan isi alamat secara manual."
+	}
+	addrParts := 0
+	if result.RtRw != nil && strings.TrimSpace(*result.RtRw) != "" {
+		addrParts++
+	}
+	if result.Kelurahan != nil && strings.TrimSpace(*result.Kelurahan) != "" {
+		addrParts++
+	}
+	if result.Kecamatan != nil && strings.TrimSpace(*result.Kecamatan) != "" {
+		addrParts++
+	}
+	if payload.IsReadable && payload.Alamat != nil && len(strings.TrimSpace(*payload.Alamat)) >= 5 && addrParts < 2 {
+		decision = "needs_review"
+		message = "NIK, Nama, dan alamat utama terbaca. RT/RW, Kel/Desa, atau Kecamatan belum lengkap dari OCR — mohon cek manual."
 	}
 
 	w.Header().Set("Content-Type", "application/json")

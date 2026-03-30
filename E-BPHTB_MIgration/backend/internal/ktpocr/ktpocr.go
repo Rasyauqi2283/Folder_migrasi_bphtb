@@ -155,20 +155,38 @@ func runTesseract(parentCtx context.Context, imagePath string, psm string) (stri
 	}
 	invokeCtx, cancel := context.WithTimeout(parentCtx, time.Duration(ocrTimeoutSec)*time.Second)
 	defer cancel()
-	// --oem 3: LSTM + legacy — mode akurasi tertinggi untuk Tesseract CLI pada KTP bernoise.
-	// -c tessedit_pageseg_mode diset via --psm
-	cmd := exec.CommandContext(invokeCtx, "tesseract", imagePath, "stdout", "-l", "ind+eng", "--oem", "3", "--psm", psm,
-		"-c", "preserve_interword_spaces=1",
-	)
+	uw := tesseractUserWordsArgs()
+	text, err, stderr := execTesseractCLI(invokeCtx, imagePath, psm, uw)
+	if err != nil && len(uw) > 0 {
+		sl := strings.ToLower(stderr)
+		if strings.Contains(sl, "user-words") || strings.Contains(sl, "user words") ||
+			strings.Contains(sl, "unknown command line") || strings.Contains(sl, "unrecognized option") ||
+			strings.Contains(sl, "invalid parameter") {
+			log.Printf("[KTP OCR] tesseract --user-words ditolak, ulang tanpa daftar kata: %v", err)
+			invokeCtx2, cancel2 := context.WithTimeout(parentCtx, time.Duration(ocrTimeoutSec)*time.Second)
+			defer cancel2()
+			text, err, stderr = execTesseractCLI(invokeCtx2, imagePath, psm, nil)
+		}
+	}
+	if err != nil {
+		log.Printf("[KTP OCR] tesseract psm=%s error: %v stderr: %s", psm, err, stderr)
+		return "", err
+	}
+	return text, nil
+}
+
+// execTesseractCLI menjalankan tesseract; uwArgs biasanya dari tesseractUserWordsArgs() (opsi ringan: user words).
+func execTesseractCLI(ctx context.Context, imagePath, psm string, uwArgs []string) (stdout string, err error, stderr string) {
+	args := []string{imagePath, "stdout", "-l", "ind+eng", "--oem", "3", "--psm", psm}
+	args = append(args, uwArgs...)
+	args = append(args, "-c", "preserve_interword_spaces=1")
+	cmd := exec.CommandContext(ctx, "tesseract", args...)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
-	if err := cmd.Run(); err != nil {
-		log.Printf("[KTP OCR] tesseract psm=%s error: %v stderr: %s", psm, err, errOut.String())
-		return "", err
-	}
-	return out.String(), nil
+	err = cmd.Run()
+	return out.String(), err, errOut.String()
 }
 
 // runTesseractDigitsOnly: satu baris angka — dipakai untuk crop NIK (whitelist mengurangi salah baca huruf sebagai angka).
@@ -716,18 +734,9 @@ func cloneResult(in *Result) *Result {
 	out.Alamat = cloneStringPtr(in.Alamat)
 	out.Provinsi = cloneStringPtr(in.Provinsi)
 	out.KabupatenKota = cloneStringPtr(in.KabupatenKota)
-	out.JenisKelamin = cloneStringPtr(in.JenisKelamin)
-	out.GolonganDarah = cloneStringPtr(in.GolonganDarah)
-	out.TempatLahir = cloneStringPtr(in.TempatLahir)
-	out.TanggalLahir = cloneStringPtr(in.TanggalLahir)
 	out.RtRw = cloneStringPtr(in.RtRw)
 	out.Kelurahan = cloneStringPtr(in.Kelurahan)
 	out.Kecamatan = cloneStringPtr(in.Kecamatan)
-	out.Agama = cloneStringPtr(in.Agama)
-	out.StatusPerkawinan = cloneStringPtr(in.StatusPerkawinan)
-	out.Pekerjaan = cloneStringPtr(in.Pekerjaan)
-	out.Kewarganegaraan = cloneStringPtr(in.Kewarganegaraan)
-	out.BerlakuHingga = cloneStringPtr(in.BerlakuHingga)
 	return &out
 }
 
@@ -957,10 +966,7 @@ func countExtendedFilled(r *Result) int {
 		return 0
 	}
 	n := 0
-	for _, p := range []*string{
-		r.Provinsi, r.KabupatenKota, r.JenisKelamin, r.GolonganDarah, r.TempatLahir, r.TanggalLahir,
-		r.RtRw, r.Kelurahan, r.Kecamatan, r.Agama, r.StatusPerkawinan, r.Pekerjaan, r.Kewarganegaraan, r.BerlakuHingga,
-	} {
+	for _, p := range []*string{r.Provinsi, r.KabupatenKota, r.RtRw, r.Kelurahan, r.Kecamatan} {
 		if p != nil && strings.TrimSpace(*p) != "" {
 			n++
 		}
@@ -986,7 +992,7 @@ func estimateConfidence(r *Result) float64 {
 		score += 12
 	}
 	ext := countExtendedFilled(r)
-	bonusCap := 15.0
+	bonusCap := 12.0
 	bonus := math.Min(bonusCap, float64(ext)*2.1)
 	total += bonusCap
 	score += bonus
@@ -1006,8 +1012,12 @@ func getExtractionStats(r *Result, accuracy float64) *Stats {
 	}
 	ext := countExtendedFilled(r)
 	isValidNIK := r.NIK != nil && validateNIK(*r.NIK)
-	totalFields := 3 + 14
+	// 3 inti (NIK, Nama, Alamat) + 5 wilayah (Prov, Kab, RT/RW, Kel, Kec)
+	totalFields := 8
 	extracted := count + ext
+	if extracted > totalFields {
+		extracted = totalFields
+	}
 	completenessRatio := float64(extracted) / float64(totalFields)
 	if completenessRatio > 1 {
 		completenessRatio = 1
