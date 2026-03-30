@@ -61,7 +61,7 @@ type PpatHandler struct {
 // NewPpatHandler creates a PpatHandler.
 func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *repository.BookingRepo, userRepo *repository.UserRepo, laporanRepo *repository.PpatLaporanRepo) *PpatHandler {
 	// Default to mock client until production BJB integration is configured.
-	mock := &payment.MockBJBClient{TTL: 2 * time.Hour}
+	mock := &payment.MockBJBClient{TTL: 30 * 24 * time.Hour}
 	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, userRepo: userRepo, laporanRepo: laporanRepo, cfg: cfg, bjb: mock}
 }
 

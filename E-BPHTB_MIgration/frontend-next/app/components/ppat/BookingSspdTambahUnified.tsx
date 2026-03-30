@@ -831,21 +831,33 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           hargaStr = n > 0 ? String(n) : "";
         }
 
+        const first = (rec: Record<string, unknown>, keys: string[]) => {
+          for (const k of keys) {
+            const v = rec[k];
+            if (v != null && String(v).trim() !== "") return String(v);
+          }
+          return "";
+        };
+
         setForm((prev) => ({
           ...prev,
           namawajibpajak: str(d, "nama_wajib_pajak") || prev.namawajibpajak,
           alamatwajibpajak: str(d, "alamat_wajib_pajak") || prev.alamatwajibpajak,
           namapemilikobjekpajak: str(d, "atas_nama") || prev.namapemilikobjekpajak,
+          alamatpemilikobjekpajak: first(d, ["alamatpemilikobjekpajak", "alamat_pemilik_objek_pajak", "alamatpemilikop", "alamat_pemilik_objek"]) || prev.alamatpemilikobjekpajak,
           npwpwp: isPer2 ? (str(d, "npwpwp") || prev.npwpwp) : prev.npwpwp,
           npwpop: isPer2 ? (str(d, "npwpop") || prev.npwpop) : prev.npwpop,
           tahunajb: str(d, "tahunajb") || prev.tahunajb,
-          kabupatenkotawp: str(d, "kabupaten_kota") || prev.kabupatenkotawp,
-          kecamatanwp: str(d, "kecamatan") || prev.kecamatanwp,
-          kelurahandesawp: str(d, "kelurahan") || prev.kelurahandesawp,
+          kabupatenkotawp: first(d, ["kabupatenkotawp", "kabupaten_kota", "kabupaten_kota_wp"]) || prev.kabupatenkotawp,
+          kecamatanwp: first(d, ["kecamatanwp", "kecamatan", "kecamatan_wp"]) || prev.kecamatanwp,
+          kelurahandesawp: first(d, ["kelurahandesawp", "kelurahan", "kelurahan_wp"]) || prev.kelurahandesawp,
+          rtrwwp: first(d, ["rtrwwp", "rt_rwwp", "rtrw_wp"]) || prev.rtrwwp,
           kodeposwp: str(d, "kodeposwp") || prev.kodeposwp,
           kabupatenkotaop: str(d, "kabupatenkotaop") || prev.kabupatenkotaop,
-          kecamatanop: str(d, "kecamatanopj") || prev.kecamatanop,
-          kelurahandesaop: str(d, "kelurahanop") || prev.kelurahandesaop,
+          kecamatanop: first(d, ["kecamatanop", "kecamatanopj", "kecamatanop_objek"]) || prev.kecamatanop,
+          kelurahandesaop: first(d, ["kelurahandesaop", "kelurahanop", "kelurahanop_objek"]) || prev.kelurahandesaop,
+          rtrwop: first(d, ["rtrwop", "rt_rwop", "rtrw_op"]) || prev.rtrwop,
+          kodeposop: first(d, ["kodeposop", "kode_pos_op"]) || prev.kodeposop,
           letaktanahdanbangunan: str(d, "Alamatop") || str(d, "letaktanahdanbangunan") || prev.letaktanahdanbangunan,
           keterangan: str(d, "keterangan") || prev.keterangan,
           hargatransaksi: hargaStr || (prev.hargatransaksi as string),

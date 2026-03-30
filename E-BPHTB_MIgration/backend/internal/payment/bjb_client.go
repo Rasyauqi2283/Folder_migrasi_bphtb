@@ -49,7 +49,8 @@ func (c *MockBJBClient) RequestBillingID(ctx context.Context, req BillingRequest
 	}
 	ttl := c.TTL
 	if ttl <= 0 {
-		ttl = 2 * time.Hour
+		// Default masa berlaku billing (demo/dev). Production mengikuti ketentuan bank/daerah.
+		ttl = 30 * 24 * time.Hour
 	}
 	buf := make([]byte, 5)
 	_, _ = rand.Read(buf)

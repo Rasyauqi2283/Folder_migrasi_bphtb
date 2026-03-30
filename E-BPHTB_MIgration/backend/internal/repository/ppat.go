@@ -998,16 +998,20 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 			p.namawajibpajak AS nama_wajib_pajak,
 			p.alamatwajibpajak AS alamat_wajib_pajak,
 			p.namapemilikobjekpajak AS atas_nama,
+			p.alamatpemilikobjekpajak AS alamat_pemilik_objek_pajak,
 			p.npwpwp,
 			p.npwpop,
 			p.tahunajb,
-			p.kelurahandesawp AS kelurahan,
-			p.kecamatanwp AS kecamatan,
-			p.kabupatenkotawp AS kabupaten_kota,
+			p.kabupatenkotawp,
+			p.kecamatanwp,
+			p.kelurahandesawp,
+			p.rtrwwp,
 			p.kodeposwp,
-			p.kelurahandesaop AS kelurahanop,
-			p.kecamatanop AS kecamatanopj,
 			p.kabupatenkotaop,
+			p.kecamatanop,
+			p.kelurahandesaop,
+			p.rtrwop,
+			p.kodeposop,
 			p.trackstatus,
 			p.jenis_wajib_pajak,
 			p.created_at,
@@ -1027,11 +1031,46 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
 		WHERE p.nobooking = $1 AND p.userid = $2
 	`, nobooking, userid)
-	var nobookingOut, nop, namaWp, alamatWp, atasNama, npwpwp, npwpop, kelurahan, kecamatan, kabupatenKota, kodeposwp, kelurahanop, kecamatanopj, kabupatenkotaop, trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon, alamatPemohon *string
+	var nobookingOut, nop, namaWp, alamatWp, atasNama, alamatPemilikOp, npwpwp, npwpop *string
+	var kabWp, kecWp, kelWp, rtrwWp, kodeposwp *string
+	var kabOp, kecOp, kelOp, rtrwOp, kodeposop *string
+	var trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon, alamatPemohon *string
 	var tahunajb *string
 	var createdAt, updatedAt *time.Time
 	var luasTanah, luasBangunan, bphtbDibayar *float64
-	err := row.Scan(&nobookingOut, &nop, &namaWp, &alamatWp, &atasNama, &npwpwp, &npwpop, &tahunajb, &kelurahan, &kecamatan, &kabupatenKota, &kodeposwp, &kelurahanop, &kecamatanopj, &kabupatenkotaop, &trackstatus, &jenisWp, &createdAt, &updatedAt, &alamatop, &keterangan, &luasTanah, &luasBangunan, &namaPemohon, &noTelepon, &alamatPemohon, &bphtbDibayar)
+	err := row.Scan(
+		&nobookingOut,
+		&nop,
+		&namaWp,
+		&alamatWp,
+		&atasNama,
+		&alamatPemilikOp,
+		&npwpwp,
+		&npwpop,
+		&tahunajb,
+		&kabWp,
+		&kecWp,
+		&kelWp,
+		&rtrwWp,
+		&kodeposwp,
+		&kabOp,
+		&kecOp,
+		&kelOp,
+		&rtrwOp,
+		&kodeposop,
+		&trackstatus,
+		&jenisWp,
+		&createdAt,
+		&updatedAt,
+		&alamatop,
+		&keterangan,
+		&luasTanah,
+		&luasBangunan,
+		&namaPemohon,
+		&noTelepon,
+		&alamatPemohon,
+		&bphtbDibayar,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,9 +1079,10 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 	valFloat := func(f *float64) interface{} { if f != nil { return *f }; return nil }
 	out := map[string]interface{}{
 		"nobooking": val(nobookingOut), "nop": val(nop), "nama_wajib_pajak": val(namaWp), "alamat_wajib_pajak": val(alamatWp),
-		"atas_nama": val(atasNama), "npwpwp": val(npwpwp), "npwpop": val(npwpop), "tahunajb": val(tahunajb),
-		"kelurahan": val(kelurahan), "kecamatan": val(kecamatan), "kabupaten_kota": val(kabupatenKota), "kodeposwp": val(kodeposwp),
-		"kelurahanop": val(kelurahanop), "kecamatanopj": val(kecamatanopj), "kabupatenkotaop": val(kabupatenkotaop),
+		"atas_nama": val(atasNama), "alamatpemilikobjekpajak": val(alamatPemilikOp),
+		"npwpwp": val(npwpwp), "npwpop": val(npwpop), "tahunajb": val(tahunajb),
+		"kabupatenkotawp": val(kabWp), "kecamatanwp": val(kecWp), "kelurahandesawp": val(kelWp), "rtrwwp": val(rtrwWp), "kodeposwp": val(kodeposwp),
+		"kabupatenkotaop": val(kabOp), "kecamatanop": val(kecOp), "kelurahandesaop": val(kelOp), "rtrwop": val(rtrwOp), "kodeposop": val(kodeposop),
 		"trackstatus": val(trackstatus), "jenis_wajib_pajak": val(jenisWp), "created_at": valTime(createdAt), "updated_at": valTime(updatedAt),
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
