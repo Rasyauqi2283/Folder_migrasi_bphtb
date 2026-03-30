@@ -20,18 +20,23 @@ import (
 )
 
 const (
-	ocrTimeoutSec   = 30
+	ocrTimeoutSec   = 12  // per tesseract invocation (avoid long hangs)
 	maxFileSize     = 10 * 1024 * 1024
 	minWidthUpscale = 1000
-	targetWidthLow  = 1600
-	targetWidthHigh = 2400
+	targetWidthLow  = 1800 // Slightly higher default width for OCR
+	targetWidthHigh = 2200
+	// early exit when we already have strong NIK + nama + confidence
+	earlyExitMinConf = 78.0
 )
 
 var supportedExts = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".bmp": true}
 
 // tesseract PSM modes:
-// 6=block, 11=sparse (keep small set for speed in production)
+// 6=uniform block (KTP layout), 11=sparse, 4=single column (some photos)
 var tesseractPSMs = []string{"6", "11"}
+
+// tesseractPSMsFast: first pass only block (fastest; often enough for clear KTP)
+var tesseractPSMsFast = []string{"6"}
 
 // preprocessVariant defines method + optional rotation angle (degrees)
 type preprocessVariant struct {
@@ -89,16 +94,89 @@ func buildPreprocessVariants(q qualityMetrics) []preprocessVariant {
 	return dedup
 }
 
+// variantsForQuality limits preprocessing depth: gambar bagus = lebih sedikit panggilan Tesseract (produksi).
+func variantsForQuality(q qualityMetrics) []preprocessVariant {
+	switch q.Class {
+	case "good":
+		return []preprocessVariant{
+			{method: "raw", rotation: 0},
+			{method: "otsu", rotation: 0},
+		}
+	case "moderate":
+		return []preprocessVariant{
+			{method: "raw", rotation: 0},
+			{method: "otsu", rotation: 0},
+			{method: "adaptive", rotation: 0},
+			{method: "threshold", rotation: 0},
+		}
+	case "hard", "very_hard":
+		// Tahap pertama: setengah jalan antara moderate vs full (cepat), sweep penuh hanya jika masih gagal
+		return []preprocessVariant{
+			{method: "raw", rotation: 0},
+			{method: "otsu", rotation: 0},
+			{method: "adaptive", rotation: 0},
+			{method: "threshold", rotation: 0},
+			{method: "deblur", rotation: 0},
+			{method: "rotate_only", rotation: -1.5},
+			{method: "rotate_only", rotation: 1.5},
+		}
+	default: // unknown → anggap moderate
+		return []preprocessVariant{
+			{method: "raw", rotation: 0},
+			{method: "otsu", rotation: 0},
+			{method: "adaptive", rotation: 0},
+			{method: "threshold", rotation: 0},
+		}
+	}
+}
+
+func earlyExitOK(r *Result, conf float64) bool {
+	if r == nil || r.NIK == nil || !validateNIK(*r.NIK) || r.Nama == nil {
+		return false
+	}
+	if len(strings.TrimSpace(*r.Nama)) < 4 {
+		return false
+	}
+	if conf >= earlyExitMinConf+6 && r.Alamat != nil && len(strings.TrimSpace(*r.Alamat)) >= 8 {
+		return true
+	}
+	if conf >= earlyExitMinConf+12 {
+		return true
+	}
+	if conf >= earlyExitMinConf && r.Alamat != nil && len(strings.TrimSpace(*r.Alamat)) >= 5 {
+		return true
+	}
+	return false
+}
+
 func runTesseract(imagePath string, psm string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ocrTimeoutSec)*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "tesseract", imagePath, "stdout", "-l", "ind+eng", "--psm", psm)
+	// --oem 1: LSTM only (faster than legacy + LSTM on most builds)
+	cmd := exec.CommandContext(ctx, "tesseract", imagePath, "stdout", "-l", "ind+eng", "--oem", "1", "--psm", psm)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
 	if err := cmd.Run(); err != nil {
 		log.Printf("[KTP OCR] tesseract psm=%s error: %v stderr: %s", psm, err, errOut.String())
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// runTesseractDigitsOnly: satu baris angka — dipakai untuk crop NIK (whitelist mengurangi salah baca huruf sebagai angka).
+func runTesseractDigitsOnly(imagePath string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ocrTimeoutSec)*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "tesseract", imagePath, "stdout", "-l", "eng", "--oem", "1", "--psm", "7",
+		"-c", "tessedit_char_whitelist=0123456789",
+	)
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errOut
+	if err := cmd.Run(); err != nil {
 		return "", err
 	}
 	return out.String(), nil
@@ -132,63 +210,112 @@ func extractWithTesseract(imagePath string, start time.Time) (*Result, error) {
 	if qErr != nil {
 		quality = qualityMetrics{Class: "unknown"}
 	}
-	preprocessVariants := buildPreprocessVariants(quality)
+	variants := variantsForQuality(quality)
 
 	var candidates []ocrCandidate
 	var bestCandidate *ocrCandidate
-	for _, variant := range preprocessVariants {
+	variantCount := len(variants)
+
+	earlyStop := false
+	processOne := func(variant preprocessVariant, psm string) bool {
 		imgPath := imagePath
 		var toRemove string
 		if variant.method != "raw" {
 			preprocessed, errPre := preprocess(imagePath, variant.method, variant.rotation)
 			if errPre != nil {
-				continue
+				return false
 			}
 			imgPath = preprocessed
 			toRemove = preprocessed
 		} else if variant.rotation != 0 {
 			rotated, errRot := preprocess(imagePath, "rotate_only", variant.rotation)
 			if errRot != nil {
-				continue
+				return false
 			}
 			imgPath = rotated
 			toRemove = rotated
 		}
 
-		for _, psm := range tesseractPSMs {
-			text, err := runTesseract(imgPath, psm)
-			if err != nil || text == "" {
-				continue
-			}
-
-			lines := strings.Split(text, "\n")
-			trimmed := make([]string, 0, len(lines))
-			for _, l := range lines {
-				trimmed = append(trimmed, strings.TrimSpace(l))
-			}
-			norm := normalizeText(text)
-			extracted := extractAllFields(norm, trimmed)
-			conf := estimateConfidence(extracted)
-			extracted.Confidence = conf
-			extracted.RawText = text
-			extracted.ProcessingTime = time.Since(start).Milliseconds()
-
-			score := calcScore(extracted, conf)
-			c := ocrCandidate{
-				result:  extracted,
-				score:   score,
-				variant: variant,
-				psm:     psm,
-			}
-			candidates = append(candidates, c)
-			if bestCandidate == nil || score > bestCandidate.score {
-				copied := c
-				bestCandidate = &copied
-			}
-		}
-
+		text, err := runTesseract(imgPath, psm)
 		if toRemove != "" {
 			os.Remove(toRemove)
+		}
+		if err != nil || text == "" {
+			return false
+		}
+
+		lines := strings.Split(text, "\n")
+		trimmed := make([]string, 0, len(lines))
+		for _, l := range lines {
+			trimmed = append(trimmed, strings.TrimSpace(l))
+		}
+		norm := normalizeText(text)
+		extracted := extractAllFields(norm, trimmed)
+		conf := estimateConfidence(extracted)
+		extracted.Confidence = conf
+		extracted.RawText = text
+		extracted.ProcessingTime = time.Since(start).Milliseconds()
+
+		score := calcScore(extracted, conf)
+		c := ocrCandidate{
+			result:  extracted,
+			score:   score,
+			variant: variant,
+			psm:     psm,
+		}
+		candidates = append(candidates, c)
+		if bestCandidate == nil || score > bestCandidate.score {
+			copied := c
+			bestCandidate = &copied
+		}
+		return earlyExitOK(extracted, conf)
+	}
+
+	// Sweep 1: gambar bagus → hanya PSM 6 (blok) dulu (paling cepat)
+	psmsA := tesseractPSMsFast
+	if quality.Class == "moderate" || quality.Class == "hard" || quality.Class == "very_hard" {
+		psmsA = tesseractPSMs
+	}
+outer1:
+	for _, variant := range variants {
+		for _, psm := range psmsA {
+			if processOne(variant, psm) {
+				earlyStop = true
+				break outer1
+			}
+		}
+	}
+
+	// Sweep 2: gambar "good" — tambahkan PSM sparse jika belum cukup
+	if !earlyStop && quality.Class == "good" && bestCandidate != nil && !earlyExitOK(bestCandidate.result, bestCandidate.result.Confidence) {
+	outer2:
+		for _, variant := range variants {
+			if processOne(variant, "11") {
+				earlyStop = true
+				break outer2
+			}
+		}
+	}
+
+	// Sweep 3: fallback penuh untuk kasus sulit / hasil lemah
+	weak := bestCandidate == nil
+	if !weak {
+		weak = !bestCandidate.result.IsReadable ||
+			calcScore(bestCandidate.result, bestCandidate.result.Confidence) < 0.52
+	}
+	if !earlyStop && weak {
+		full := buildPreprocessVariants(quality)
+		if len(full) > variantCount {
+			variants = full
+			variantCount = len(full)
+		outer3:
+			for _, variant := range variants {
+				for _, psm := range tesseractPSMs {
+					if processOne(variant, psm) {
+						break outer3
+					}
+				}
+			}
 		}
 	}
 
@@ -206,8 +333,8 @@ func extractWithTesseract(imagePath string, start time.Time) (*Result, error) {
 	finalScore := calcScore(out, conf)
 	out.Stats = getExtractionStats(out, finalScore*100)
 
-	log.Printf("[KTP OCR] class=%s hard_case=%t variants=%d candidates=%d score=%.2f acc=%.2f",
-		quality.Class, quality.IsHardCase, len(preprocessVariants), len(candidates), finalScore, out.Stats.Accuracy)
+	log.Printf("[KTP OCR] class=%s hard_case=%t variants_used=%d candidates=%d score=%.2f acc=%.2f ms=%d",
+		quality.Class, quality.IsHardCase, variantCount, len(candidates), finalScore, out.Stats.Accuracy, out.ProcessingTime)
 
 	return out, nil
 }
@@ -539,24 +666,40 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 	}
 	defer os.Remove(nikPath)
 
-	recoverFromTexts := func(p string) {
-		for _, psm := range []string{"6", "11"} {
-			txt, err := runTesseract(p, psm)
-			if err != nil || txt == "" {
-				continue
+	// Crop atas: NIK sering salah baca huruf sebagai angka — pakai whitelist digit-only.
+	if base.NIK == nil {
+		if txt, err := runTesseractDigitsOnly(nikPath); err == nil && txt != "" {
+			d := keepDigits(txt)
+			if len(d) >= 16 {
+				for i := 0; i <= len(d)-16; i++ {
+					cand := d[i : i+16]
+					if validateNIK(cand) {
+						base.NIK = &cand
+						break
+					}
+				}
 			}
-			lines := strings.Split(txt, "\n")
-			trimmed := make([]string, 0, len(lines))
-			for _, l := range lines {
-				trimmed = append(trimmed, strings.TrimSpace(l))
-			}
-			ex := extractAllFields(normalizeText(txt), trimmed)
-			fillMissingFields(base, ex)
 		}
 	}
 
+	recoverFromTexts := func(p string) {
+		txt, err := runTesseract(p, "6")
+		if err != nil || txt == "" {
+			return
+		}
+		lines := strings.Split(txt, "\n")
+		trimmed := make([]string, 0, len(lines))
+		for _, l := range lines {
+			trimmed = append(trimmed, strings.TrimSpace(l))
+		}
+		ex := extractAllFields(normalizeText(txt), trimmed)
+		fillMissingFields(base, ex)
+	}
+
 	recoverFromTexts(leftPath)
-	recoverFromTexts(nikPath)
+	if base.NIK == nil || base.Nama == nil {
+		recoverFromTexts(nikPath)
+	}
 	base.IsReadable = base.NIK != nil && validateNIK(*base.NIK) && base.Nama != nil && strings.TrimSpace(*base.Nama) != ""
 	return base
 }

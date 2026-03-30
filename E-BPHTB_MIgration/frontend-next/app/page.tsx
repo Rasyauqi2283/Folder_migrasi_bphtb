@@ -19,8 +19,6 @@ export default function HomePage() {
       <LandingAmbientEffect />
       <LandingHeader />
       <main className={`landing-main ${styles.landingMain}`}>
-        <LandingBanners />
-
         {/* Hero — Stripe Sessions style, tema BPHTB, navy */}
         <section className={styles.hero}>
           <h1 className={styles.heroHeadline}>
@@ -86,6 +84,8 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+      {/* Di luar <main>: agar z-index overlay iklan menang atas .landing-header (fixed z-100); di dalam main z-1 overlay tidak pernah di atas header */}
+      <LandingBanners />
       <footer className="landing-footer">
         <span className="landing-footer-left"><BackendHealth /></span>
         <span className="landing-footer-center">2026-Bappenda Kabupaten Bogor</span>

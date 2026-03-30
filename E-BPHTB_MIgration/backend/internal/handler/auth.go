@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -20,6 +21,7 @@ import (
 	"ebphtb/backend/internal/idgen"
 	"ebphtb/backend/internal/ktpocr"
 	"ebphtb/backend/internal/repository"
+	"ebphtb/backend/internal/service"
 
 	mail "ebphtb/backend/internal/email"
 	"github.com/google/uuid"
@@ -228,6 +230,91 @@ type ktpExtractJSON struct {
 	CreatedAt        int64    `json:"createdAt"`
 }
 
+func ptrTrim(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return strings.TrimSpace(*s)
+}
+
+func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
+	if r == nil {
+		return nil
+	}
+	nf := 0
+	if r.NIK != nil && strings.TrimSpace(*r.NIK) != "" {
+		nf++
+	}
+	if r.Nama != nil && strings.TrimSpace(*r.Nama) != "" {
+		nf++
+	}
+	if r.Alamat != nil && strings.TrimSpace(*r.Alamat) != "" {
+		nf++
+	}
+	valid := r.NIK != nil && ktpocr.ValidNIK(*r.NIK)
+	acc := 75.0
+	if nf >= 3 {
+		acc = 85
+	}
+	return &ktpocr.Result{
+		NIK:        r.NIK,
+		Nama:       r.Nama,
+		Alamat:     r.Alamat,
+		IsReadable: true,
+		RawText:    r.RawText,
+		Confidence: 0.85,
+		Stats: &ktpocr.Stats{
+			TotalFields:     3,
+			ExtractedFields: nf,
+			Confidence:      0.85,
+			Accuracy:        acc,
+			IsValidNIK:      valid,
+			Completeness:    float64(nf) / 3.0 * 100,
+		},
+	}
+}
+
+// runKtpOCR memanggil microservice IndoROBERTa (jika KTP_INDOROBERTA_URL diset), lalu menggabungkan dengan ExtractHybrid.
+// manualVerificationRequested true jika setelah gabungan tidak ada NIK valid (perlu verifikasi manual).
+func (h *AuthHandler) runKtpOCR(ctx context.Context, tmpPath string) (*ktpocr.Result, bool, error) {
+	t := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
+	var indo *service.KtpIndorobertaResponse
+	if u := strings.TrimSpace(h.cfg.KtpIndorobertaURL); u != "" {
+		var err error
+		indo, err = service.ExtractKtpIndoroberta(ctx, u, tmpPath, t)
+		if err != nil {
+			log.Printf("[KTP_INDOROBERTA] %v", err)
+		}
+	}
+	hy, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, t)
+	if err != nil {
+		if indo != nil {
+			return indorobertaToResult(indo), indo.ManualVerificationRequired, nil
+		}
+		return nil, false, err
+	}
+	if indo != nil && indo.NIK != nil && ktpocr.ValidNIK(*indo.NIK) {
+		r := indorobertaToResult(indo)
+		if ptrTrim(r.Nama) == "" && hy != nil && hy.Nama != nil {
+			r.Nama = hy.Nama
+		}
+		if ptrTrim(r.Alamat) == "" && hy != nil && hy.Alamat != nil {
+			r.Alamat = hy.Alamat
+		}
+		return r, false, nil
+	}
+	if hy != nil && hy.NIK != nil && ktpocr.ValidNIK(*hy.NIK) {
+		return hy, false, nil
+	}
+	if hy != nil {
+		return hy, true, nil
+	}
+	if indo != nil {
+		return indorobertaToResult(indo), true, nil
+	}
+	return nil, true, fmt.Errorf("tidak ada hasil OCR")
+}
+
 // UploadKTP handles POST /api/v1/auth/upload-ktp.
 // Tidak menulis file ke temp_uploads sebelum OTP; hanya return OCR JSON. Client kirim ktpOcrJson di register/verify-otp-finalize.
 func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
@@ -275,8 +362,7 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.Remove(tmpPath)
 
-	easyTimeout := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
-	result, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTimeout)
+	result, _, err := h.runKtpOCR(r.Context(), tmpPath)
 	if err != nil {
 		log.Printf("[UPLOAD_KTP] OCR error: %v", err)
 		jsonError(w, http.StatusInternalServerError, "OCR gagal: "+err.Error())
@@ -287,7 +373,9 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
-		jsonError(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.")
+		jsonErrorExtra(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.", map[string]interface{}{
+			"manual_verification_required": true,
+		})
 		return
 	}
 	if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
@@ -300,10 +388,11 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	uploadId := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(*result.NIK), createdAt)
 
 	responseData := map[string]interface{}{
-		"nik":    payload.NIK,
-		"nama":   payload.Nama,
-		"alamat": payload.Alamat,
-		"is_readable": payload.IsReadable,
+		"nik":                          payload.NIK,
+		"nama":                         payload.Nama,
+		"alamat":                       payload.Alamat,
+		"is_readable":                  payload.IsReadable,
+		"manual_verification_required": false,
 	}
 
 	decision := "success"
@@ -367,8 +456,7 @@ func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request
 	}
 	defer os.Remove(tmpPath)
 
-	easyTimeout := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
-	result, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTimeout)
+	result, manualKTP, err := h.runKtpOCR(r.Context(), tmpPath)
 	if err != nil {
 		log.Printf("[OCR REAL] Extract error: %v", err)
 		jsonError(w, http.StatusInternalServerError, "OCR gagal: "+err.Error())
@@ -385,11 +473,12 @@ func (h *AuthHandler) RealKTPVerification(w http.ResponseWriter, r *http.Request
 	}
 
 	data := map[string]interface{}{
-		"nik":         result.NIK,
-		"nama":        result.Nama,
-		"alamat":      result.Alamat,
-		"is_readable": result.IsReadable,
-		"status":      "VERIFIED_BY_OCR",
+		"nik":                          result.NIK,
+		"nama":                         result.Nama,
+		"alamat":                       result.Alamat,
+		"is_readable":                  result.IsReadable,
+		"status":                       "VERIFIED_BY_OCR",
+		"manual_verification_required": manualKTP,
 	}
 
 	// Decision policy OCR: success / needs_review / reject.
@@ -2268,6 +2357,16 @@ func jsonError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "message": msg})
+}
+
+func jsonErrorExtra(w http.ResponseWriter, code int, msg string, extra map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	m := map[string]interface{}{"success": false, "message": msg}
+	for k, v := range extra {
+		m[k] = v
+	}
+	json.NewEncoder(w).Encode(m)
 }
 
 func generateOTP() string {

@@ -144,7 +144,31 @@ func fuzzyMatch(text string, options interface{}, minSim float64) *string {
 	return nil
 }
 
+func extractNIKSlidingWindow(text string) *string {
+	d := keepDigits(text)
+	if len(d) < 16 {
+		return nil
+	}
+	for i := 0; i <= len(d)-16; i++ {
+		cand := d[i : i+16]
+		if validateNIK(cand) {
+			c := cand
+			return &c
+		}
+		if c := correctNIK(cand); c != nil {
+			return c
+		}
+	}
+	return nil
+}
+
 func extractNIK(text string, lines []string) *string {
+	if s := extractNIKSlidingWindow(text); s != nil {
+		return s
+	}
+	if s := extractNIKSlidingWindow(strings.Join(lines, " ")); s != nil {
+		return s
+	}
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`\b(\d{16})\b`),
 		regexp.MustCompile(`(?i)NIK\s*[:.]?\s*([\d\s]{16,24})`),
@@ -202,9 +226,9 @@ func stripSuffix(s string) string {
 
 func extractNama(text string, lines []string) *string {
 	patterns := []*regexp.Regexp{
-		regexp.MustCompile(`(?i)NAMA\s*[:.]?\s*([A-Za-z\s]{4,50})`),
-		regexp.MustCompile(`(?i)NM\s*[:.]?\s*([A-Za-z\s]{4,50})`),
-		regexp.MustCompile(`Nama\s*[:.]?\s*([A-Za-z\s]{4,50})`),
+		regexp.MustCompile(`(?i)NAMA\s*[:.]?\s*([A-Za-z][A-Za-z\s'.-]{3,49})`),
+		regexp.MustCompile(`(?i)NM\s*[:.]?\s*([A-Za-z][A-Za-z\s'.-]{3,49})`),
+		regexp.MustCompile(`Nama\s*[:.]?\s*([A-Za-z][A-Za-z\s'.-]{3,49})`),
 	}
 	for _, p := range patterns {
 		m := p.FindStringSubmatch(text)

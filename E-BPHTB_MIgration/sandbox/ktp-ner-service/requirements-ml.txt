@@ -1,0 +1,5 @@
+# Untuk inference IndoROBERTa / IndoBERT NER (sesuaikan versi dengan CUDA/CPU Anda)
+-r requirements.txt
+torch>=2.0.0
+transformers>=4.36.0
+safetensors>=0.4.0

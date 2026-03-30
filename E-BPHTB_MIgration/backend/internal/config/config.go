@@ -20,6 +20,8 @@ type Config struct {
 	EasyOCRURL          string // URL service EasyOCR (endpoint /ocr)
 	EasyOCREnabled      bool   // Aktifkan EasyOCR sebagai OCR utama
 	EasyOCRTimeout      int    // Timeout request EasyOCR dalam milidetik
+	// KTP_INDOROBERTA_URL: microservice Python (EasyOCR + IndoBERT NER), endpoint POST /extract-ktp. Kosong = tidak dipanggil.
+	KtpIndorobertaURL string
 	PpatStorageBaseDir  string // Base path untuk dokumen PPAT (akta, sertifikat, pelengkap)
 	TandaTanganBaseDir  string // Base path untuk tanda tangan per-booking (folderttdwp)
 	PDFLogoPath        string // Path ke logo BAPPENDA untuk PDF SSPD (mis. ../frontend-next/asset/Logobappenda_pdf.png)
@@ -100,6 +102,7 @@ func Load() *Config {
 	}
 	pbbNopLookupURL := strings.TrimSpace(os.Getenv("PBB_NOP_LOOKUP_URL"))
 	paymentWebhookSecret := strings.TrimSpace(os.Getenv("PAYMENT_GATEWAY_WEBHOOK_SECRET"))
+	ktpIndorobertaURL := strings.TrimSpace(os.Getenv("KTP_INDOROBERTA_URL"))
 	return &Config{
 		Port:                port,
 		Env:                 env,
@@ -114,6 +117,7 @@ func Load() *Config {
 		EasyOCRURL:          easyOCRURL,
 		EasyOCREnabled:      easyOCREnabled,
 		EasyOCRTimeout:      easyOCRTimeout,
+		KtpIndorobertaURL:   ktpIndorobertaURL,
 		PpatStorageBaseDir:  ppatStorageDir,
 		TandaTanganBaseDir:  tandaTanganDir,
 		PDFLogoPath:                 pdfLogoPath,

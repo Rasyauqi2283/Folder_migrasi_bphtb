@@ -18,16 +18,18 @@ const SESSION_DISMISSED_KEY = "ebphtb_landing_banner_dismissed_v1";
 
 const SWIPE_THRESHOLD_PX = 56;
 
+// Harus di-render sebagai anak langsung .landing-page (bukan di dalam <main>), supaya di atas .landing-header (z-index: 100).
 const overlayBackdrop: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  zIndex: 100000,
+  zIndex: 200000,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: "1rem",
   background: "rgba(0, 0, 0, 0.58)",
   backdropFilter: "blur(3px)",
+  pointerEvents: "auto",
 };
 
 export default function LandingBanners() {
