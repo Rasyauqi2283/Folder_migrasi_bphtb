@@ -237,6 +237,15 @@ func ptrTrim(s *string) string {
 	return strings.TrimSpace(*s)
 }
 
+const ktpRawTextAPIMaxRunes = 8000
+
+func clipKtpRawTextForAPI(s string) string {
+	if len(s) <= ktpRawTextAPIMaxRunes {
+		return s
+	}
+	return s[:ktpRawTextAPIMaxRunes] + "\n…"
+}
+
 func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 	if r == nil {
 		return nil
@@ -256,7 +265,7 @@ func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 	if nf >= 3 {
 		acc = 85
 	}
-	return &ktpocr.Result{
+	out := &ktpocr.Result{
 		NIK:        r.NIK,
 		Nama:       r.Nama,
 		Alamat:     r.Alamat,
@@ -272,47 +281,80 @@ func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 			Completeness:    float64(nf) / 3.0 * 100,
 		},
 	}
+	ktpocr.EnrichExtendedFields(out, r.RawText)
+	ktpocr.RefreshResultStats(out)
+	return out
 }
 
-// runKtpOCR memanggil microservice IndoROBERTa (jika KTP_INDOROBERTA_URL diset), lalu menggabungkan dengan ExtractHybrid.
+// runKtpOCR: IndoROBERTa (opsional) + Tesseract paralel, gabungan hasil; batas waktu total ctx (~15s di handler).
 // manualVerificationRequested true jika setelah gabungan tidak ada NIK valid (perlu verifikasi manual).
 func (h *AuthHandler) runKtpOCR(ctx context.Context, tmpPath string) (*ktpocr.Result, bool, error) {
-	t := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
-	var indo *service.KtpIndorobertaResponse
-	if u := strings.TrimSpace(h.cfg.KtpIndorobertaURL); u != "" {
-		var err error
-		indo, err = service.ExtractKtpIndoroberta(ctx, u, tmpPath, t)
-		if err != nil {
-			log.Printf("[KTP_INDOROBERTA] %v", err)
-		}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	easyTO := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
+	var (
+		indo         *service.KtpIndorobertaResponse
+		hy           *ktpocr.Result
+		indoErr, hyErr error
+	)
+	var wg sync.WaitGroup
+	u := strings.TrimSpace(h.cfg.KtpIndorobertaURL)
+	if u != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			indo, indoErr = service.ExtractKtpIndoroberta(ctx, u, tmpPath, 14*time.Second)
+		}()
 	}
-	hy, err := ktpocr.ExtractHybrid(tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, t)
-	if err != nil {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		hy, hyErr = ktpocr.ExtractHybrid(ctx, tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTO)
+	}()
+	wg.Wait()
+
+	if u != "" && indoErr != nil {
+		log.Printf("[KTP_INDOROBERTA] %v", indoErr)
+	}
+	if hyErr != nil {
+		log.Printf("[KTP_OCR] ExtractHybrid: %v", hyErr)
+	}
+
+	if hyErr != nil {
 		if indo != nil {
 			return indorobertaToResult(indo), indo.ManualVerificationRequired, nil
 		}
-		return nil, false, err
+		return nil, false, hyErr
 	}
+	if hy == nil {
+		if indo != nil {
+			return indorobertaToResult(indo), indo.ManualVerificationRequired, nil
+		}
+		return nil, false, fmt.Errorf("tidak ada hasil OCR")
+	}
+
 	if indo != nil && indo.NIK != nil && ktpocr.ValidNIK(*indo.NIK) {
 		r := indorobertaToResult(indo)
-		if ptrTrim(r.Nama) == "" && hy != nil && hy.Nama != nil {
+		if ptrTrim(r.Nama) == "" && hy.Nama != nil {
 			r.Nama = hy.Nama
 		}
-		if ptrTrim(r.Alamat) == "" && hy != nil && hy.Alamat != nil {
+		if ptrTrim(r.Alamat) == "" && hy.Alamat != nil {
 			r.Alamat = hy.Alamat
 		}
+		ktpocr.MergeExtendedFieldsFromTesseract(r, hy)
+		ktpocr.RefreshResultStats(r)
 		return r, false, nil
 	}
-	if hy != nil && hy.NIK != nil && ktpocr.ValidNIK(*hy.NIK) {
+	if hy.NIK != nil && ktpocr.ValidNIK(*hy.NIK) {
 		return hy, false, nil
 	}
-	if hy != nil {
-		return hy, true, nil
-	}
 	if indo != nil {
-		return indorobertaToResult(indo), true, nil
+		r := indorobertaToResult(indo)
+		ktpocr.MergeExtendedFieldsFromTesseract(r, hy)
+		ktpocr.RefreshResultStats(r)
+		return r, true, nil
 	}
-	return nil, true, fmt.Errorf("tidak ada hasil OCR")
+	return hy, true, nil
 }
 
 // UploadKTP handles POST /api/v1/auth/upload-ktp.
@@ -393,6 +435,21 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		"alamat":                       payload.Alamat,
 		"is_readable":                  payload.IsReadable,
 		"manual_verification_required": false,
+		"provinsi":                     result.Provinsi,
+		"kabupatenKota":                result.KabupatenKota,
+		"jenisKelamin":                 result.JenisKelamin,
+		"golonganDarah":                result.GolonganDarah,
+		"tempatLahir":                  result.TempatLahir,
+		"tanggalLahir":                 result.TanggalLahir,
+		"rtRw":                         result.RtRw,
+		"kelurahan":                    result.Kelurahan,
+		"kecamatan":                    result.Kecamatan,
+		"agama":                        result.Agama,
+		"statusPerkawinan":             result.StatusPerkawinan,
+		"pekerjaan":                    result.Pekerjaan,
+		"kewarganegaraan":              result.Kewarganegaraan,
+		"berlakuHingga":                result.BerlakuHingga,
+		"rawText":                      clipKtpRawTextForAPI(result.RawText),
 	}
 
 	decision := "success"

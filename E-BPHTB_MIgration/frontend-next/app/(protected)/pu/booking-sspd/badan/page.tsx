@@ -47,6 +47,7 @@ type BookingDetail = {
   bphtb_yangtelah_dibayar?: number;
   trackstatus?: string;
   payment_status?: string;
+  sspd_pembayaran_status?: string;
   billing_id?: string;
   billing_expires_at?: string | null;
   is_calculation_completed?: boolean;
@@ -119,7 +120,12 @@ function toDateInputValue(v: unknown): string {
 
 function paymentConfirmedFromDetail(d: BookingDetail | null | undefined): boolean {
   const ps = String(d?.payment_status ?? "").trim().toUpperCase();
-  return ps === "PAID" || ps === "KURANG_BAYAR";
+  if (ps === "PAID" || ps === "KURANG_BAYAR") return true;
+  const sspd = String(d?.sspd_pembayaran_status ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  return sspd === "LUNAS";
 }
 
 function detailFromPostCalcForm(d: BookingDetail | null | undefined): PostCalcForm {
@@ -1506,6 +1512,7 @@ export default function BookingSSPDBadanPage() {
                           const njopBangunan = toNum(detail?.njop_bangunan);
                           const totalNjopTanah = luasTanah * njopTanah;
                           const totalNjopBangunan = luasBangunan * njopBangunan;
+                          const detailLoading = expandedRow === row.nobooking && !detail;
                           const payOk = paymentConfirmedFromDetail(detail);
                           const showBillingBtn = canMintaBillingRow(row, detail);
                           const pendingBilling = hasActivePendingBilling(detail, nowTick);
@@ -1611,17 +1618,23 @@ export default function BookingSSPDBadanPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    title={!payOk ? "Aktif setelah bank mengonfirmasi pembayaran (PAID / KURANG_BAYAR)." : undefined}
+                                    title={
+                                      detailLoading
+                                        ? "Memuat detail booking…"
+                                        : !payOk
+                                          ? "Aktif setelah bank mengonfirmasi pembayaran (PAID / KURANG_BAYAR / LUNAS)."
+                                          : undefined
+                                    }
                                     style={{
                                       ...btnStyle,
-                                      background: payOk ? "#7c3aed" : "#9ca3af",
+                                      background: payOk && !detailLoading ? "#7c3aed" : "#9ca3af",
                                       color: "#fff",
-                                      cursor: payOk ? "pointer" : "not-allowed",
-                                      opacity: payOk ? 1 : 0.75,
+                                      cursor: payOk && !detailLoading ? "pointer" : "not-allowed",
+                                      opacity: payOk && !detailLoading ? 1 : 0.75,
                                     }}
-                                    disabled={!payOk}
+                                    disabled={detailLoading || !payOk}
                                     onClick={() => {
-                                      if (!payOk) return;
+                                      if (detailLoading || !payOk || !detail) return;
                                       if (postCalcOpen === row.nobooking) {
                                         setPostCalcOpen(null);
                                       } else {

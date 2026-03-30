@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,6 +47,7 @@ func main() {
 	stats := make([]imageStats, 0, len(images))
 	for _, img := range images {
 		r, err := ktpocr.ExtractHybrid(
+			context.Background(),
 			img,
 			cfg.EasyOCREnabled,
 			cfg.EasyOCRURL,

@@ -58,7 +58,9 @@ func ExtractKtpIndoroberta(ctx context.Context, baseURL, imagePath string, timeo
 	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	client := &http.Client{Timeout: timeout}
+	// Batas waktu utama dari context (mis. 15s di handler); tanpa Timeout ganda pada Client.
+	_ = timeout
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

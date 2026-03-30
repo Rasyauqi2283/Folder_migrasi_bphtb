@@ -1396,6 +1396,90 @@ a {
   color: #00c8ff;
 }
 
+.daftar-ktp-preview-bw-wrap {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.daftar-ktp-preview-bw-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+
+.daftar-ktp-preview-bw-inner {
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid #1e1e1e;
+  max-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daftar-ktp-preview-bw-img {
+  max-width: 100%;
+  max-height: 260px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  image-rendering: crisp-edges;
+  filter: contrast(1.02);
+}
+
+.daftar-ktp-json-block {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.daftar-ktp-json-title {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.daftar-ktp-json-hint {
+  margin: 0 0 10px 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.daftar-ktp-json-hint code {
+  font-size: 0.75rem;
+  color: #7dd3fc;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.daftar-ktp-json-view {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #020617;
+  color: #e2e8f0;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  overflow: auto;
+  max-height: 360px;
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .daftar-actions {
   display: flex;
   gap: 12px;

@@ -1013,6 +1013,12 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 			p.rtrwop,
 			p.kodeposop,
 			p.trackstatus,
+			COALESCE(p.payment_status::text, '') AS payment_status,
+			COALESCE(p.billing_id::text, '') AS billing_id,
+			p.billing_expires_at,
+			COALESCE(p.is_calculation_completed, false) AS is_calculation_completed,
+			p.payment_amount_requested,
+			COALESCE(p.sspd_pembayaran_status::text, '') AS sspd_pembayaran_status,
 			p.jenis_wajib_pajak,
 			p.created_at,
 			p.updated_at,
@@ -1035,8 +1041,12 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 	var kabWp, kecWp, kelWp, rtrwWp, kodeposwp *string
 	var kabOp, kecOp, kelOp, rtrwOp, kodeposop *string
 	var trackstatus, jenisWp, alamatop, keterangan, namaPemohon, noTelepon, alamatPemohon *string
+	var paymentStatus, billingID, sspdBayarStatus string
 	var tahunajb *string
 	var createdAt, updatedAt *time.Time
+	var billingExpires sql.NullTime
+	var calcDone bool
+	var paymentAmtReq sql.NullInt64
 	var luasTanah, luasBangunan, bphtbDibayar *float64
 	err := row.Scan(
 		&nobookingOut,
@@ -1059,6 +1069,12 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		&rtrwOp,
 		&kodeposop,
 		&trackstatus,
+		&paymentStatus,
+		&billingID,
+		&billingExpires,
+		&calcDone,
+		&paymentAmtReq,
+		&sspdBayarStatus,
 		&jenisWp,
 		&createdAt,
 		&updatedAt,
@@ -1087,6 +1103,18 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
 		"bphtb_yangtelah_dibayar": valFloat(bphtbDibayar),
+		"payment_status":            paymentStatus,
+		"billing_id":                billingID,
+		"is_calculation_completed":  calcDone,
+		"sspd_pembayaran_status":    sspdBayarStatus,
+	}
+	if billingExpires.Valid {
+		out["billing_expires_at"] = billingExpires.Time.UTC().Format(time.RFC3339)
+	} else {
+		out["billing_expires_at"] = nil
+	}
+	if paymentAmtReq.Valid {
+		out["payment_amount_requested"] = paymentAmtReq.Int64
 	}
 	return out, nil
 }
@@ -1177,7 +1205,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		calcDone                 bool
 		paymentAmtReq            sql.NullInt64
 		npoptkp *float64
-		bphtb   *int32
+		bphtb   *float64
 		harga, letak, rtop, statusKm, ket, nomorSert *string
 		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
 		luasT, njopT, luasB, njopB *float64
@@ -1249,7 +1277,7 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 	out["luas_bangunan"] = valF(luasB)
 	out["njop_bangunan"] = valF(njopB)
 	if bphtb != nil {
-		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
+		out["bphtb_yangtelah_dibayar"] = int64(math.Round(*bphtb))
 	}
 	if paymentAmtReq.Valid {
 		out["payment_amount_requested"] = paymentAmtReq.Int64
@@ -1417,7 +1445,7 @@ func (r *PpatRepo) GetOfflineDraftFormData(ctx context.Context, ltbUserid, noboo
 		kabop, kecop, kelop, rtrwop, kodeposop *string
 		npwpwp, npwpop *string
 		npoptkp *float64
-		bphtb   *int32
+		bphtb   *float64
 		harga, letak, rtop, statusKm, ket, nomorSert *string
 		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
 		luasT, njopT, luasB, njopB *float64
@@ -1473,7 +1501,7 @@ func (r *PpatRepo) GetOfflineDraftFormData(ctx context.Context, ltbUserid, noboo
 		"luas_tanah": valF(luasT), "njop_tanah": valF(njopT), "luas_bangunan": valF(luasB), "njop_bangunan": valF(njopB),
 	}
 	if bphtb != nil {
-		out["bphtb_yangtelah_dibayar"] = int(*bphtb)
+		out["bphtb_yangtelah_dibayar"] = int64(math.Round(*bphtb))
 	}
 	return out, nil
 }

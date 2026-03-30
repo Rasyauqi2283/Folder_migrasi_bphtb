@@ -619,3 +619,82 @@ func extractBerlakuHingga(text string) *string {
 	}
 	return nil
 }
+
+func extractKewarganegaraanIfExplicit(text string) *string {
+	if regexp.MustCompile(`(?i)\bWNI\b|INDONESIA`).MatchString(text) {
+		s := "WNI"
+		return &s
+	}
+	if regexp.MustCompile(`(?i)\bWNA\b`).MatchString(text) {
+		s := "WNA"
+		return &s
+	}
+	return nil
+}
+
+// EnrichExtendedFields mengisi field KTP tambahan dari teks OCR mentah (best pass).
+func EnrichExtendedFields(r *Result, rawOCR string) {
+	if r == nil || strings.TrimSpace(rawOCR) == "" {
+		return
+	}
+	text := normalizeText(rawOCR)
+	lines := strings.Split(text, "\n")
+	trimmed := make([]string, 0, len(lines))
+	for _, l := range lines {
+		trimmed = append(trimmed, strings.TrimSpace(l))
+	}
+	r.Provinsi = extractProvinsi(text, trimmed)
+	r.KabupatenKota = extractKabupatenKota(text, trimmed)
+	r.RtRw = extractRTRW(text, trimmed)
+	r.Kelurahan = extractKelurahan(text, trimmed)
+	r.Kecamatan = extractKecamatan(text)
+	r.Agama = extractAgama(text)
+	r.StatusPerkawinan = extractStatusPerkawinan(text)
+	r.Pekerjaan = extractPekerjaan(text)
+	r.BerlakuHingga = extractBerlakuHingga(text)
+	r.Kewarganegaraan = extractKewarganegaraanIfExplicit(text)
+
+	if ttl := extractTTL(text); ttl != nil {
+		t := ttl.Tempat
+		tl := ttl.Tanggal
+		r.TempatLahir = &t
+		r.TanggalLahir = &tl
+	}
+	jk, gol := extractJenisKelaminAndGolonganDarah(text)
+	r.JenisKelamin = jk
+	r.GolonganDarah = gol
+}
+
+// MergeExtendedFieldsFromTesseract mengisi field ekstra di dst dari hasil Tesseract jika dst masih kosong.
+func MergeExtendedFieldsFromTesseract(dst, src *Result) {
+	if dst == nil || src == nil {
+		return
+	}
+	fill := func(d **string, s *string) {
+		if d == nil {
+			return
+		}
+		if *d != nil && strings.TrimSpace(**d) != "" {
+			return
+		}
+		if s == nil || strings.TrimSpace(*s) == "" {
+			return
+		}
+		v := strings.TrimSpace(*s)
+		*d = &v
+	}
+	fill(&dst.Provinsi, src.Provinsi)
+	fill(&dst.KabupatenKota, src.KabupatenKota)
+	fill(&dst.JenisKelamin, src.JenisKelamin)
+	fill(&dst.GolonganDarah, src.GolonganDarah)
+	fill(&dst.TempatLahir, src.TempatLahir)
+	fill(&dst.TanggalLahir, src.TanggalLahir)
+	fill(&dst.RtRw, src.RtRw)
+	fill(&dst.Kelurahan, src.Kelurahan)
+	fill(&dst.Kecamatan, src.Kecamatan)
+	fill(&dst.Agama, src.Agama)
+	fill(&dst.StatusPerkawinan, src.StatusPerkawinan)
+	fill(&dst.Pekerjaan, src.Pekerjaan)
+	fill(&dst.Kewarganegaraan, src.Kewarganegaraan)
+	fill(&dst.BerlakuHingga, src.BerlakuHingga)
+}

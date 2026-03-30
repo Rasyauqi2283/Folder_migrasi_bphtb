@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { getBackendBaseUrl, getLegacyBaseUrl } from "../../lib/api";
 
 type Verse = "wp" | "karyawan" | "pu";
 
 const PENDING_REGISTRATION_KEY = "pending_registration_v1";
+/** Batas waktu klien — selaras dengan batas pipeline OCR di server (~15 detik). */
+const KTP_OCR_CLIENT_DEADLINE_MS = 15_000;
 
 /** Data hasil OCR KTP dari real-ktp-verification */
 interface KTPOcrData {
@@ -29,6 +31,9 @@ interface KTPOcrData {
   pekerjaan?: string;
   kewarganegaraan?: string;
   berlakuHingga?: string;
+  /** Teks OCR mentah dari server (potongan). */
+  rawText?: string;
+  is_readable?: boolean;
 }
 
 function verseToBackend(v: string): "WP" | "Karyawan" | "PU" {
@@ -64,6 +69,8 @@ function DaftarContent() {
   const [ktpStatus, setKtpStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [ktpMessage, setKtpMessage] = useState("");
   const [ocrData, setOcrData] = useState<KTPOcrData | null>(null);
+  const [ocrStats, setOcrStats] = useState<Record<string, unknown> | null>(null);
+  const [ktpBwPreviewUrl, setKtpBwPreviewUrl] = useState<string | null>(null);
 
   const [wpSubtype, setWpSubtype] = useState<"Perorangan" | "Badan Usaha">("Perorangan");
   const [npwpBadan, setNpwpBadan] = useState("");
@@ -85,12 +92,91 @@ function DaftarContent() {
         ? "Pendaftaran Karyawan (LTB, LSB, Peneliti, Peneliti Validasi, Bank) — isi NIP."
         : "Pendaftaran PPAT/PPATS — isi data pejabat pembuat akta.";
 
+  /** Pratinjau hitam-putih kontras untuk KTP (setara “biner lembut” dari kecerahan lokal). */
+  useEffect(() => {
+    if (!ktpFile) {
+      setKtpBwPreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(ktpFile);
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => {
+      if (cancelled) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      try {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w < 2 || h < 2) {
+          setKtpBwPreviewUrl(objectUrl);
+          return;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const c2 = canvas.getContext("2d");
+        if (!c2) {
+          setKtpBwPreviewUrl(objectUrl);
+          return;
+        }
+        c2.drawImage(img, 0, 0);
+        const id = c2.getImageData(0, 0, w, h);
+        const px = id.data;
+        const gray = new Float64Array(w * h);
+        let sum = 0;
+        for (let i = 0, p = 0; i < px.length; i += 4, p++) {
+          const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          gray[p] = y;
+          sum += y;
+        }
+        const mean = sum / gray.length;
+        let vsum = 0;
+        for (let p = 0; p < gray.length; p++) {
+          const t = gray[p] - mean;
+          vsum += t * t;
+        }
+        const std = Math.sqrt(vsum / gray.length) || 1;
+        const lo = mean - 0.38 * std;
+        const hi = mean + 0.48 * std;
+        const span = Math.max(1e-6, hi - lo);
+        for (let i = 0, p = 0; i < px.length; i += 4, p++) {
+          const g = gray[p];
+          let v: number;
+          if (g <= lo) v = 0;
+          else if (g >= hi) v = 255;
+          else v = Math.round(((g - lo) / span) * 255);
+          px[i] = px[i + 1] = px[i + 2] = v;
+        }
+        c2.putImageData(id, 0, 0);
+        setKtpBwPreviewUrl(canvas.toDataURL("image/png"));
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      if (!cancelled) setKtpBwPreviewUrl(null);
+    };
+    img.src = objectUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [ktpFile]);
+
+  const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim() ? v : undefined;
+
   const uploadKtp = useCallback(async (file: File) => {
     setKtpStatus("loading");
-    setKtpMessage("Memproses OCR KTP...");
+    setKtpMessage("Memproses OCR KTP (maks. 15 detik)…");
     setKtpUploadId(null);
     setOcrData(null);
+    setOcrStats(null);
     const base = apiBase || legacyBase;
+    const ac = new AbortController();
+    const deadline = window.setTimeout(() => ac.abort(), KTP_OCR_CLIENT_DEADLINE_MS);
     try {
       const formData = new FormData();
       formData.append("fotoktp", file);
@@ -98,8 +184,16 @@ function DaftarContent() {
         method: "POST",
         credentials: "include",
         body: formData,
+        signal: ac.signal,
       });
-      let result: { success?: boolean; data?: KTPOcrData; message?: string; decision?: string; uploadId?: string } = {};
+      let result: {
+        success?: boolean;
+        data?: Record<string, unknown>;
+        message?: string;
+        decision?: string;
+        uploadId?: string;
+        stats?: Record<string, unknown>;
+      } = {};
       try {
         result = await res.json();
       } catch {
@@ -115,9 +209,31 @@ function DaftarContent() {
         );
         return;
       }
-      const d = result.data;
+      const raw = result.data;
+      const d: KTPOcrData = {
+        nik: str(raw.nik),
+        nama: str(raw.nama),
+        provinsi: str(raw.provinsi),
+        kabupatenKota: str(raw.kabupatenKota),
+        jenisKelamin: str(raw.jenisKelamin),
+        alamat: str(raw.alamat),
+        tempatLahir: str(raw.tempatLahir),
+        tanggalLahir: str(raw.tanggalLahir),
+        rtRw: str(raw.rtRw),
+        kelurahan: str(raw.kelurahan),
+        kecamatan: str(raw.kecamatan),
+        golonganDarah: str(raw.golonganDarah),
+        agama: str(raw.agama),
+        statusPerkawinan: str(raw.statusPerkawinan),
+        pekerjaan: str(raw.pekerjaan),
+        kewarganegaraan: str(raw.kewarganegaraan),
+        berlakuHingga: str(raw.berlakuHingga),
+        rawText: str(raw.rawText),
+        is_readable: typeof raw.is_readable === "boolean" ? raw.is_readable : undefined,
+      };
       setKtpUploadId(result.uploadId);
       setOcrData(d);
+      setOcrStats(result.stats && typeof result.stats === "object" ? result.stats : null);
       setKtpStatus("success");
       setKtpMessage(
         result.decision === "needs_review"
@@ -131,12 +247,20 @@ function DaftarContent() {
       }
     } catch (e) {
       setKtpStatus("error");
+      if (e instanceof DOMException && e.name === "AbortError") {
+        setKtpMessage(
+          "Pemindaian memakan waktu lebih dari 15 detik dan dihentikan. Periksa backend (termasuk layanan IndoROBERTa jika aktif), atau gunakan foto lebih kecil."
+        );
+        return;
+      }
       const errMsg = e instanceof Error ? e.message : "";
       setKtpMessage(
         errMsg.includes("fetch") || errMsg.includes("network")
           ? "Tidak bisa terhubung. Pastikan Next.js (port 3000) dan backend Go (port 8000) sudah jalan."
           : "Tidak bisa terhubung ke server. Cek koneksi dan pastikan kedua server berjalan."
       );
+    } finally {
+      window.clearTimeout(deadline);
     }
   }, [apiBase, legacyBase]);
 
@@ -193,6 +317,7 @@ function DaftarContent() {
     setKtpFile(file || null);
     setKtpUploadId(null);
     setOcrData(null);
+    setOcrStats(null);
     setKtpStatus("idle");
     setKtpMessage("");
     if (file) {
@@ -455,6 +580,14 @@ function DaftarContent() {
           {ktpStatus !== "idle" && (
             <div className={`daftar-ktp-status ${ktpStatus}`}>{ktpMessage}</div>
           )}
+          {ktpBwPreviewUrl && (
+            <div className="daftar-ktp-preview-bw-wrap">
+              <div className="daftar-ktp-preview-bw-label">Pratinjau hitam-putih (kontras untuk OCR)</div>
+              <div className="daftar-ktp-preview-bw-inner">
+                <img src={ktpBwPreviewUrl} alt="Pratinjau KTP hitam putih" className="daftar-ktp-preview-bw-img" />
+              </div>
+            </div>
+          )}
           {ocrData && (
             <div className="daftar-ktp-lampiran">
               <h4 className="daftar-ktp-lampiran-title">
@@ -533,6 +666,24 @@ function DaftarContent() {
                   )}
                 </div>
               </div>
+            </div>
+          )}
+          {ocrData && (
+            <div className="daftar-ktp-json-block">
+              <h4 className="daftar-ktp-json-title">Hasil pembacaan (JSON)</h4>
+              <p className="daftar-ktp-json-hint">
+                Tesseract mode akurasi tinggi; jika <code>KTP_INDOROBERTA_URL</code> aktif di server, IndoROBERTa digabung paralel (target metrik: akurasi baca ~70%, analisis struktur ~65%).
+              </p>
+              <pre className="daftar-ktp-json-view" tabIndex={0}>
+                {JSON.stringify(
+                  {
+                    fields: ocrData,
+                    stats: ocrStats,
+                  },
+                  null,
+                  2
+                )}
+              </pre>
             </div>
           )}
         </div>
