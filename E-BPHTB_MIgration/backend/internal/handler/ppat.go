@@ -65,6 +65,149 @@ func NewPpatHandler(cfg *config.Config, repo *repository.PpatRepo, bookingRepo *
 	return &PpatHandler{repo: repo, bookingRepo: bookingRepo, userRepo: userRepo, laporanRepo: laporanRepo, cfg: cfg, bjb: mock}
 }
 
+// MockPayment handles POST /api/ppat/mock-payment (PU-authenticated).
+// Tujuan: simulasi demo ketika gateway asli belum tersedia.
+// Efek: menandai booking sebagai PAID dan mengisi kolom gateway pada bank_1_cek_hasil_transaksi.
+func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	if h.repo == nil || h.repo.Pool() == nil {
+		ppatJSONError(w, http.StatusServiceUnavailable, "Database not configured")
+		return
+	}
+	var in struct {
+		Nobooking string `json:"nobooking"`
+		// amount optional: jika kosong akan memakai payment_amount_requested dari booking.
+		Amount *int64 `json:"amount,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		ppatJSONError(w, http.StatusBadRequest, "Invalid JSON")
+		return
+	}
+	nb := strings.TrimSpace(in.Nobooking)
+	if nb == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking wajib")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	tx, err := h.repo.Pool().Begin(ctx)
+	if err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal memulai transaksi")
+		return
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var billingID string
+	var payStatus string
+	var amountReq int64
+	err = tx.QueryRow(ctx, `
+		SELECT COALESCE(billing_id,''), COALESCE(payment_status,''), COALESCE(payment_amount_requested, 0)::bigint
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+		LIMIT 1
+	`, nb, userid).Scan(&billingID, &payStatus, &amountReq)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) || strings.Contains(err.Error(), "no rows") {
+			ppatJSONError(w, http.StatusNotFound, "Booking tidak ditemukan")
+			return
+		}
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal membaca booking")
+		return
+	}
+	ps := strings.ToUpper(strings.TrimSpace(payStatus))
+	if ps == "PAID" || ps == "KURANG_BAYAR" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "already_paid": true, "nobooking": nb})
+		return
+	}
+	if strings.TrimSpace(billingID) == "" {
+		ppatJSONError(w, http.StatusBadRequest, "Belum ada billing_id. Silakan klik 'Minta Billing' terlebih dahulu.")
+		return
+	}
+
+	amt := amountReq
+	if in.Amount != nil && *in.Amount > 0 {
+		amt = *in.Amount
+	}
+	if amt <= 0 {
+		ppatJSONError(w, http.StatusBadRequest, "Nominal tagihan belum terbentuk (Rp0). Lengkapi data perhitungan/NJOP/harga transaksi.")
+		return
+	}
+
+	ref := fmt.Sprintf("MOCK-%s-%d", nb, time.Now().Unix())
+	paidAt := time.Now()
+
+	// Update/insert bank gateway row for monitoring (opsional tapi membantu demo).
+	cmd, err := tx.Exec(ctx, `
+		UPDATE bank_1_cek_hasil_transaksi SET
+			gateway_nominal_received = $2,
+			gateway_status = 'PAID',
+			gateway_reference = COALESCE(gateway_reference, $3),
+			gateway_paid_at = $4,
+			gateway_channel = COALESCE(gateway_channel, 'SIMULATOR'),
+			status_verifikasi = COALESCE(status_verifikasi, 'Sinkron Otomatis'),
+			status_dibank = 'Tercheck'
+		WHERE nobooking = $1
+	`, nb, amt, ref, paidAt)
+	if err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal update bank transaksi")
+		return
+	}
+	if cmd.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO bank_1_cek_hasil_transaksi (
+				nobooking, userid, status_verifikasi, status_dibank,
+				gateway_nominal_received, gateway_status, gateway_reference, gateway_paid_at, gateway_channel,
+				nomor_bukti_pembayaran
+			) VALUES ($1, $2, 'Sinkron Otomatis', 'Tercheck', $3, 'PAID', $4, $5, 'SIMULATOR', $6)
+		`, nb, userid, amt, ref, paidAt, billingID)
+		if err != nil {
+			ppatJSONError(w, http.StatusInternalServerError, "Gagal insert bank transaksi")
+			return
+		}
+	}
+
+	// Canonical payment state in pat_1_bookingsspd.
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd SET
+			payment_amount_paid = $3,
+			payment_amount_requested = COALESCE(NULLIF(payment_amount_requested, 0), $3),
+			payment_status = 'PAID',
+			sspd_pembayaran_status = 'LUNAS',
+			needs_stpd = false,
+			updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+	`, nb, userid, amt)
+	if err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menandai lunas")
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menyimpan transaksi")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"nobooking":   nb,
+		"payment":     "PAID",
+		"amount_paid": amt,
+		"reference":   ref,
+	})
+}
+
 type createPermohonanValidasiInput struct {
 	Nobooking       string `json:"nobooking"`
 	NamaPemohon     string `json:"nama_pemohon"`

@@ -207,6 +207,7 @@ export default function BookingSSPDBadanPage() {
   const [correctionBusy, setCorrectionBusy] = useState(false);
 
   const [billingShare, setBillingShare] = useState<{ billingId: string; amount: number; expiresAtISO?: string } | null>(null);
+  const [mockPayBusyNb, setMockPayBusyNb] = useState<string | null>(null);
   const [postCalcOpen, setPostCalcOpen] = useState<string | null>(null);
   const [postCalcForm, setPostCalcForm] = useState<PostCalcForm>({
     bphtb_yangtelah_dibayar: "",
@@ -611,6 +612,35 @@ export default function BookingSSPDBadanPage() {
         setActionMessage("Gagal minta billing.");
       } finally {
         setBillingBusyNb(null);
+      }
+    })();
+  };
+
+  const simulatePayment = (nobooking: string) => {
+    void (async () => {
+      setMockPayBusyNb(nobooking);
+      setActionMessage(null);
+      try {
+        const detail = cekBookingDetail && cekBookingDetail.nobooking === nobooking ? cekBookingDetail : null;
+        const amt = detail?.payment_amount_requested != null && typeof detail.payment_amount_requested === "number" ? detail.payment_amount_requested : undefined;
+        const res = await fetch(`${getApiBase()}/api/ppat/mock-payment`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nobooking, amount: typeof amt === "number" && amt > 0 ? Math.round(amt) : undefined }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || j?.success === false) {
+          setActionMessage(j?.message || "Gagal simulasi pembayaran.");
+          return;
+        }
+        setActionMessage("Simulasi pembayaran berhasil: status PAID/LUNAS.");
+        setCekBookingNobooking(nobooking);
+        loadTable(page, searchQuery);
+      } catch {
+        setActionMessage("Gagal simulasi pembayaran.");
+      } finally {
+        setMockPayBusyNb(null);
       }
     })();
   };
@@ -1451,6 +1481,7 @@ export default function BookingSSPDBadanPage() {
                           const rowBillingBusy =
                             billingBusyNb === row.nobooking ||
                             (billingPreviewNb === row.nobooking && billingPreviewLoading);
+                          const rowMockPayBusy = mockPayBusyNb === row.nobooking;
                           const payPreview =
                             detail?.payment_amount_requested != null && typeof detail.payment_amount_requested === "number"
                               ? detail.payment_amount_requested
@@ -1498,6 +1529,17 @@ export default function BookingSSPDBadanPage() {
                                       : "—"}
                                     . Tombol &quot;Minta Billing&quot; dinonaktifkan sampai pembayaran tercatat atau masa berlaku habis (gagal bayar).
                                   </p>
+                                  <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                                    <button
+                                      type="button"
+                                      style={{ ...btnStyle, background: "#0ea5e9", color: "#fff" }}
+                                      disabled={rowMockPayBusy || payOk}
+                                      onClick={() => simulatePayment(row.nobooking)}
+                                      title="Untuk simulasi demo (gateway asli belum tersedia)."
+                                    >
+                                      {rowMockPayBusy ? "Menyimulasikan..." : "Simulasikan Pembayaran"}
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                               <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>

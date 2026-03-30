@@ -460,6 +460,8 @@ func main() {
 	mux.HandleFunc("GET /api/ppat/request-billing", ppatHandler.RequestBilling)
 	mux.HandleFunc("POST /api/ppat/request-billing-first", ppatHandler.RequestBillingFirst)
 	mux.HandleFunc("GET /api/ppat/billing/pending", ppatHandler.PendingBillingSummary)
+	// Simulasi pembayaran (untuk demo/staging): menandai billing sebagai PAID tanpa gateway asli.
+	mux.HandleFunc("POST /api/ppat/mock-payment", ppatHandler.MockPayment)
 
 	// WP — Libatkan WP flow (validate, invite, list, approve)
 	wpSign := handler.NewWpSignHandler(userRepo, ppatRepo)
