@@ -24,6 +24,8 @@ const NPOPTKP_MAP: Record<string, number> = {
   "03": 300_000_000,
   "04": 400_000_000,
   "05": 400_000_000,
+  // 08 (Penunjukan Pembeli dalam Lelang) — dipakai di simulasi/demo
+  "08": 80_000_000,
   "24": 300_000_000,
   "30": 300_000_000,
   "28": 40_000_000,
@@ -567,10 +569,27 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
         return undefined;
       };
       const skipNamaWp = wpSubjekAutofillDoneRef.current;
+      // Jika layanan lookup mengembalikan luas/NJOP, kita isi agar pratinjau tagihan tidak bernilai 0.
+      const nx = (v: unknown): string | undefined => {
+        if (v == null) return undefined;
+        if (typeof v === "number" && !Number.isNaN(v)) return String(Math.round(v));
+        const n = parseRupiah(String(v));
+        return n >= 0 ? String(n) : undefined;
+      };
+      const nLuas = (v: unknown): string | undefined => {
+        if (v == null) return undefined;
+        if (typeof v === "number" && !Number.isNaN(v)) return String(v);
+        const t = String(v).trim();
+        return t ? t : undefined;
+      };
       setForm((prev) => ({
         ...prev,
         namawajibpajak: skipNamaWp ? prev.namawajibpajak : (str("namawajibpajak") ?? prev.namawajibpajak),
         letaktanahdanbangunan: str("alamat_objek") ?? prev.letaktanahdanbangunan,
+        luas_tanah: nLuas(d["luas_tanah"]) ?? prev.luas_tanah,
+        njop_tanah: nx(d["njop_tanah"]) ?? prev.njop_tanah,
+        luas_bangunan: nLuas(d["luas_bangunan"]) ?? prev.luas_bangunan,
+        njop_bangunan: nx(d["njop_bangunan"]) ?? prev.njop_bangunan,
       }));
       const src = str("source") ?? "internal_db";
       setNopLookupNotice(
@@ -1048,7 +1067,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       setError("Jika luas bangunan diisi, NJOP bangunan wajib diisi (lebih dari nol).");
       return;
     }
-    const npoptkpNum = parseRupiah(String(form.nilaiPerolehanObjekPajakTidakKenaPajak ?? ""));
+    const npoptkpRaw = String(form.nilaiPerolehanObjekPajakTidakKenaPajak ?? "").trim();
+    const npoptkpNum = parseRupiah(npoptkpRaw);
 
     const payload: CreatePayload = {
       jenis_wajib_pajak: entityKind === "badan" ? "Badan Usaha" : "Perorangan",
@@ -1081,7 +1101,9 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       jenisPerolehan: form.jenisPerolehan?.toString(),
       keterangan: form.keterangan?.toString(),
       nomor_sertifikat: form.nomor_sertifikat?.toString(),
-      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpNum > 0 ? npoptkpNum : undefined,
+      // Kirim NPOPTKP walaupun 0 jika user memilih jenis perolehan yang memetakannya.
+      // Ini memastikan pat_2_bphtb_perhitungan terbentuk untuk kebutuhan audit/trace.
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpRaw !== "" ? npoptkpNum : undefined,
       luas_tanah: Number.isFinite(lt) && lt > 0 ? lt : undefined,
       njop_tanah: nt > 0 ? nt : undefined,
       luas_bangunan: Number.isFinite(lb) && lb > 0 ? lb : undefined,

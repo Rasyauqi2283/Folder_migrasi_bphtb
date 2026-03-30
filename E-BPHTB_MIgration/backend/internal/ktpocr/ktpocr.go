@@ -152,8 +152,9 @@ func earlyExitOK(r *Result, conf float64) bool {
 func runTesseract(imagePath string, psm string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ocrTimeoutSec)*time.Second)
 	defer cancel()
-	// --oem 1: LSTM only (faster than legacy + LSTM on most builds)
-	cmd := exec.CommandContext(ctx, "tesseract", imagePath, "stdout", "-l", "ind+eng", "--oem", "1", "--psm", psm)
+	// --oem 3: default (legacy + LSTM) tends to be more tolerant on noisy KTP backgrounds.
+	// Note: This is heavier than OEM 1, but more robust for KTP (banyak noise/pattern).
+	cmd := exec.CommandContext(ctx, "tesseract", imagePath, "stdout", "-l", "ind+eng", "--oem", "3", "--psm", psm)
 	var out bytes.Buffer
 	var errOut bytes.Buffer
 	cmd.Stdout = &out
@@ -406,6 +407,59 @@ func binarizeThreshold(src image.Image, thr uint8) *image.Gray {
 	return gray
 }
 
+// otsuThreshold computes Otsu threshold for an 8-bit grayscale image.
+func otsuThreshold(gray *image.Gray) uint8 {
+	if gray == nil || len(gray.Pix) == 0 {
+		return 140
+	}
+	var hist [256]int
+	for _, p := range gray.Pix {
+		hist[int(p)]++
+	}
+	total := len(gray.Pix)
+	sumAll := 0
+	for t := 0; t < 256; t++ {
+		sumAll += t * hist[t]
+	}
+	sumB := 0
+	wB := 0
+	varMax := -1.0
+	thr := 140
+	for t := 0; t < 256; t++ {
+		wB += hist[t]
+		if wB == 0 {
+			continue
+		}
+		wF := total - wB
+		if wF == 0 {
+			break
+		}
+		sumB += t * hist[t]
+		mB := float64(sumB) / float64(wB)
+		mF := float64(sumAll-sumB) / float64(wF)
+		v := float64(wB) * float64(wF) * (mB - mF) * (mB - mF)
+		if v > varMax {
+			varMax = v
+			thr = t
+		}
+	}
+	if thr < 60 {
+		thr = 60
+	}
+	if thr > 200 {
+		thr = 200
+	}
+	return uint8(thr)
+}
+
+func binarizeOtsu(src image.Image) *image.Gray {
+	b := src.Bounds()
+	g := image.NewGray(b)
+	draw.Draw(g, b, src, b.Min, draw.Src)
+	thr := otsuThreshold(g)
+	return binarizeThreshold(g, thr)
+}
+
 func preprocess(imagePath string, method string, rotationDeg float64) (string, error) {
 	img, err := imaging.Open(imagePath, imaging.AutoOrientation(true))
 	if err != nil {
@@ -443,8 +497,11 @@ func preprocess(imagePath string, method string, rotationDeg float64) (string, e
 
 	switch method {
 	case "otsu":
-		img = imaging.Sharpen(img, 1.2)
-		img = imaging.AdjustContrast(img, 40)
+		// KTP: grayscale → denoise ringan → sharpen → Otsu binarization.
+		img = imaging.Blur(img, 0.8)
+		img = imaging.Sharpen(img, 1.3)
+		img = imaging.AdjustContrast(img, 55)
+		img = binarizeOtsu(img)
 	case "adaptive":
 		img = imaging.Sharpen(img, 1.5)
 		img = imaging.AdjustContrast(img, 50)
@@ -635,10 +692,8 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 	if base == nil {
 		return base
 	}
+	// High-accuracy mode: crop-per-field is useful even if fields exist (to refine).
 	missingCritical := base.NIK == nil || base.Nama == nil || base.Alamat == nil
-	if !missingCritical {
-		return base
-	}
 
 	img, err := imaging.Open(imagePath, imaging.AutoOrientation(true))
 	if err != nil {
@@ -650,10 +705,17 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 		return base
 	}
 
-	leftRect := image.Rect(0, 0, int(float64(w)*0.72), int(float64(h)*0.96))
-	nikRect := image.Rect(0, 0, int(float64(w)*0.80), int(float64(h)*0.32))
-	leftImg := imaging.Crop(img, leftRect)
+	// Template KTP relatif (perkiraan). Crop per field meningkatkan akurasi jauh dibanding full-card OCR.
+	// Koordinat dibuat longgar agar tetap bekerja meski foto sedikit miring/zoom.
+	nikRect := image.Rect(int(float64(w)*0.22), int(float64(h)*0.18), int(float64(w)*0.92), int(float64(h)*0.30))
+	namaRect := image.Rect(int(float64(w)*0.18), int(float64(h)*0.29), int(float64(w)*0.92), int(float64(h)*0.40))
+	alamatRect := image.Rect(int(float64(w)*0.10), int(float64(h)*0.40), int(float64(w)*0.92), int(float64(h)*0.68))
+	leftRect := image.Rect(0, 0, int(float64(w)*0.74), int(float64(h)*0.96))
+
 	nikImg := imaging.Crop(img, nikRect)
+	namaImg := imaging.Crop(img, namaRect)
+	alamatImg := imaging.Crop(img, alamatRect)
+	leftImg := imaging.Crop(img, leftRect)
 
 	leftPath, err := saveTempImage(leftImg)
 	if err != nil {
@@ -665,25 +727,33 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 		return base
 	}
 	defer os.Remove(nikPath)
+	namaPath, err := saveTempImage(namaImg)
+	if err != nil {
+		return base
+	}
+	defer os.Remove(namaPath)
+	alamatPath, err := saveTempImage(alamatImg)
+	if err != nil {
+		return base
+	}
+	defer os.Remove(alamatPath)
 
 	// Crop atas: NIK sering salah baca huruf sebagai angka — pakai whitelist digit-only.
-	if base.NIK == nil {
-		if txt, err := runTesseractDigitsOnly(nikPath); err == nil && txt != "" {
-			d := keepDigits(txt)
-			if len(d) >= 16 {
-				for i := 0; i <= len(d)-16; i++ {
-					cand := d[i : i+16]
-					if validateNIK(cand) {
-						base.NIK = &cand
-						break
-					}
+	if txt, err := runTesseractDigitsOnly(nikPath); err == nil && txt != "" {
+		d := keepDigits(txt)
+		if len(d) >= 16 {
+			for i := 0; i <= len(d)-16; i++ {
+				cand := d[i : i+16]
+				if validateNIK(cand) {
+					base.NIK = &cand
+					break
 				}
 			}
 		}
 	}
 
-	recoverFromTexts := func(p string) {
-		txt, err := runTesseract(p, "6")
+	recoverFromTexts := func(p string, psm string) {
+		txt, err := runTesseract(p, psm)
 		if err != nil || txt == "" {
 			return
 		}
@@ -696,9 +766,12 @@ func recoverCriticalFieldsByROI(imagePath string, base *Result) *Result {
 		fillMissingFields(base, ex)
 	}
 
-	recoverFromTexts(leftPath)
-	if base.NIK == nil || base.Nama == nil {
-		recoverFromTexts(nikPath)
+	// Field-specific OCR uses PSM 6 (uniform block).
+	recoverFromTexts(namaPath, "6")
+	recoverFromTexts(alamatPath, "6")
+	// Fallback broader crop(s)
+	if missingCritical {
+		recoverFromTexts(leftPath, "11")
 	}
 	base.IsReadable = base.NIK != nil && validateNIK(*base.NIK) && base.Nama != nil && strings.TrimSpace(*base.Nama) != ""
 	return base

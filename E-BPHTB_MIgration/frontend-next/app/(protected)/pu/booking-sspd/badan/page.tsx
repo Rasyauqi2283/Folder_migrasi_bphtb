@@ -665,6 +665,14 @@ export default function BookingSSPDBadanPage() {
             setCalcSaveBusy(false);
             return;
           }
+          const letak = String((src as any)?.letaktanahdanbangunan ?? "").trim();
+          if (!letak) {
+            setActionMessage(
+              "Data objek pajak belum lengkap (Letak Tanah & Bangunan kosong). Silakan Edit Data, isi letak tanah/bangunan, simpan, lalu ulangi proses ini."
+            );
+            setCalcSaveBusy(false);
+            return;
+          }
           const body: Record<string, unknown> = {
             tanggal_perolehan: postCalcForm.tanggal_perolehan.trim(),
             tanggal_pembayaran: postCalcForm.tanggal_pembayaran.trim(),
@@ -802,6 +810,13 @@ export default function BookingSSPDBadanPage() {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1000,
+  };
+  // Some flows open a second confirmation modal while another modal is still open
+  // (e.g., billing preview -> final confirm). This ensures the final confirmation
+  // is always on top regardless of render order.
+  const modalOverlayTopStyle: React.CSSProperties = {
+    ...modalOverlayStyle,
+    zIndex: 1100,
   };
   const modalBoxStyle: React.CSSProperties = {
     background: "var(--card_bg)",
@@ -1112,7 +1127,7 @@ export default function BookingSSPDBadanPage() {
 
       {/* Correction modal */}
       {docConfirmOpen && (
-        <div style={modalOverlayStyle} onClick={cancelDocConfirm}>
+        <div style={modalOverlayTopStyle} onClick={cancelDocConfirm}>
           <div style={{ ...modalBoxStyle, maxWidth: 420 }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="doc-confirm-title">
             <h3 id="doc-confirm-title" style={{ margin: "0 0 12px", color: "#0f172a" }}>Konfirmasi</h3>
             <p style={{ margin: "0 0 20px", fontSize: 15, color: "#334155", lineHeight: 1.5 }}>
@@ -1594,6 +1609,15 @@ export default function BookingSSPDBadanPage() {
                                       if (postCalcOpen === row.nobooking) {
                                         setPostCalcOpen(null);
                                       } else {
+                                        // Guard: older bookings may not have pat_4_objek_pajak row yet.
+                                        // The stage-2 calculation endpoint requires pat_4 to exist (letak is NOT NULL).
+                                        const letak = String((detail as any)?.letaktanahdanbangunan ?? "").trim();
+                                        if (!letak) {
+                                          setActionMessage(
+                                            "Data objek pajak (alamat letak tanah/bangunan) belum lengkap. Silakan klik Edit Data, isi 'Letak Tanah & Bangunan', simpan, lalu coba lagi."
+                                          );
+                                          return;
+                                        }
                                         setPostCalcForm(detailFromPostCalcForm(detail));
                                         setPostCalcOpen(row.nobooking);
                                       }
