@@ -33,10 +33,9 @@ func normalizeJenisPerolehanKode(kode string) string {
 func NPOPTKPFromJenisPerolehan(kode string) float64 {
 	k := strings.TrimSpace(strings.ToUpper(normalizeJenisPerolehanKode(kode)))
 	switch k {
-	case "03", "24", "30":
+	case "04", "05", "24":
+		// Waris & Hibah Wasiat (minimal nasional) — lihat docs/jenis_perolehan.md
 		return 300_000_000
-	case "04", "05":
-		return 400_000_000
 	case "28":
 		return 40_000_000
 	case "29":

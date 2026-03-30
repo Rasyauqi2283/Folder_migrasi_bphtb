@@ -20,18 +20,34 @@ const today = new Date();
 const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 const defaultTanggal = `${pad(today.getDate())}-${pad(today.getMonth() + 1)}-${today.getFullYear()}`;
 
+// NPOPTKP default (minimal nasional) mengacu UU No. 1 Tahun 2022 (HKPD).
+// - Umum: 80.000.000
+// - Waris & Hibah Wasiat (keluarga sedarah lurus 1 derajat / suami-istri): 300.000.000
+// - Kode historis tertentu di aplikasi lama: 28=40jt, 29=49jt, 34=bebas (0)
+const NPOPTKP_DEFAULT = 80_000_000;
 const NPOPTKP_MAP: Record<string, number> = {
-  "03": 300_000_000,
-  "04": 400_000_000,
-  "05": 400_000_000,
-  // 08 (Penunjukan Pembeli dalam Lelang) — dipakai di simulasi/demo
-  "08": 80_000_000,
-  "24": 300_000_000,
-  "30": 300_000_000,
+  // Keluarga (minimal nasional)
+  "04": 300_000_000, // Hibah Wasiat
+  "05": 300_000_000, // Waris
+  "24": 300_000_000, // Waris (historis < 2011)
+
+  // Kode historis aplikasi
   "28": 40_000_000,
   "29": 49_000_000,
-  "34": 0,
+  "34": 0, // Bebas
 };
+
+function normalizeJenisPerolehanCode(raw: string | null | undefined): string {
+  const s = String(raw ?? "").trim();
+  if (s.length >= 2 && /^\d{2}/.test(s)) return s.slice(0, 2);
+  return s;
+}
+
+function npoptkpFromJenisPerolehan(raw: string | null | undefined): number {
+  const k = normalizeJenisPerolehanCode(raw);
+  if (!k) return 0;
+  return NPOPTKP_MAP[k] ?? NPOPTKP_DEFAULT;
+}
 
 /** 40 Kecamatan di Kabupaten Bogor (sumber: denah_kabupatenbogor.md) */
 const KECAMATAN_OBJEK_LIST = [
@@ -528,8 +544,13 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
   const updateForm = useCallback((key: string, value: string | number | undefined) => {
     setForm((prev) => {
-      const next = { ...prev, [key]: value };
+      const next: Record<string, string | number | undefined> = { ...prev, [key]: value };
       if (key === "kecamatanop") next.kelurahandesaop = "";
+      if (key === "jenisPerolehan") {
+        // Pastikan NPOPTKP ikut berubah setiap kali jenis perolehan berubah (mencegah nilai stale).
+        const v = typeof value === "string" ? value : String(value ?? "");
+        next.nilaiPerolehanObjekPajakTidakKenaPajak = String(npoptkpFromJenisPerolehan(v));
+      }
       return next;
     });
     setError(null);
@@ -799,9 +820,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           const n = typeof npRaw === "number" ? Math.round(npRaw) : parseRupiah(String(npRaw));
           npoptkpStr = n >= 0 ? String(n) : "";
         }
-        const npDef = NPOPTKP_MAP[jp];
-        if (!npoptkpStr && npDef !== undefined) {
-          npoptkpStr = String(npDef);
+        if (!npoptkpStr && jp) {
+          npoptkpStr = String(npoptkpFromJenisPerolehan(jp));
         }
 
         const htRaw = d.hargatransaksi ?? d.harga_transaksi;
@@ -919,9 +939,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       const n = typeof npoptkpRaw === "number" ? Math.round(npoptkpRaw) : parseRupiah(String(npoptkpRaw));
       npoptkpStr = n >= 0 ? String(n) : "";
     }
-    const npFromJenis = NPOPTKP_MAP[jp];
-    if (!npoptkpStr && npFromJenis !== undefined) {
-      npoptkpStr = String(npFromJenis);
+    if (!npoptkpStr && jp) {
+      npoptkpStr = String(npoptkpFromJenisPerolehan(jp));
     }
 
     setKecamatanSearch("");
@@ -988,16 +1007,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
   const handleJenisPerolehanChange = useCallback((val: string) => {
     setJenisPerolehan(val);
-    setForm((prev) => {
-      const next: Record<string, string | number | undefined> = { ...prev, jenisPerolehan: val };
-      const np = NPOPTKP_MAP[val];
-      if (np !== undefined) {
-        next.nilaiPerolehanObjekPajakTidakKenaPajak = String(np);
-      }
-      return next;
-    });
-    setError(null);
-  }, []);
+    updateForm("jenisPerolehan", val);
+  }, [updateForm]);
 
   const njopPreview = useMemo(() => {
     const lt = parseDecimalInput(String(form.luas_tanah ?? ""));

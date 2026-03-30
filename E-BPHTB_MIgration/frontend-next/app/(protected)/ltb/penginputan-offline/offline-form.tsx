@@ -8,16 +8,27 @@ const today = new Date();
 const pad = (n: number, len = 2) => String(n).padStart(len, "0");
 const defaultTanggal = `${pad(today.getDate())}-${pad(today.getMonth() + 1)}-${today.getFullYear()}`;
 
+const NPOPTKP_DEFAULT = 80_000_000;
 const NPOPTKP_MAP: Record<string, number> = {
-  "03": 300_000_000,
-  "04": 400_000_000,
-  "05": 400_000_000,
-  "24": 300_000_000,
-  "30": 300_000_000,
+  "04": 300_000_000, // Hibah Wasiat
+  "05": 300_000_000, // Waris
+  "24": 300_000_000, // Waris (historis < 2011)
   "28": 40_000_000,
   "29": 49_000_000,
   "34": 0,
 };
+
+function normalizeJenisPerolehanCode(raw: string | null | undefined): string {
+  const s = String(raw ?? "").trim();
+  if (s.length >= 2 && /^\d{2}/.test(s)) return s.slice(0, 2);
+  return s;
+}
+
+function npoptkpFromJenisPerolehan(raw: string | null | undefined): number {
+  const k = normalizeJenisPerolehanCode(raw);
+  if (!k) return 0;
+  return NPOPTKP_MAP[k] ?? NPOPTKP_DEFAULT;
+}
 
 /** 40 Kecamatan di Kabupaten Bogor (sumber: denah_kabupatenbogor.md) */
 const KECAMATAN_OBJEK_LIST = [
@@ -558,7 +569,7 @@ export default function OfflineSspdBookingForm({ prefillNobooking, prefillTick, 
 
     const jp = str("jenisPerolehan");
     setJenisPerolehan(jp);
-    setNpoptkp(NPOPTKP_MAP[jp] ?? 80_000_000);
+    setNpoptkp(npoptkpFromJenisPerolehan(jp));
     const npopt = d.nilaiPerolehanObjekPajakTidakKenaPajak;
     if (typeof npopt === "number" && !Number.isNaN(npopt)) setNpoptkp(npopt);
 
@@ -651,7 +662,7 @@ export default function OfflineSspdBookingForm({ prefillNobooking, prefillTick, 
 
   const handleJenisPerolehanChange = useCallback((val: string) => {
     setJenisPerolehan(val);
-    setNpoptkp(NPOPTKP_MAP[val] ?? 80_000_000);
+    setNpoptkp(npoptkpFromJenisPerolehan(val));
     updateForm("jenisPerolehan", val);
   }, [updateForm]);
 

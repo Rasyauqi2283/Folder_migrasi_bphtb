@@ -1576,7 +1576,7 @@ export default function BookingSSPDBadanPage() {
                               <div style={{ ...sectionCardStyle, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
                                 <strong style={{ color: "#0f172a" }}>Detail No. Booking: {row.nobooking}</strong>
                                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                  {canEditBookingData(row) && (
+                                  {canEditBookingData(row) && !paymentConfirmedFromDetail(detail) && !hasActivePendingBilling(detail, nowTick) && (
                                     <Link
                                       href={`/pu/booking-sspd/badan/tambah?edit=1&nobooking=${encodeURIComponent(row.nobooking)}`}
                                       prefetch={false}

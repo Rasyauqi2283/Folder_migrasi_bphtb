@@ -185,6 +185,10 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 			payment_status = 'PAID',
 			sspd_pembayaran_status = 'LUNAS',
 			needs_stpd = false,
+			trackstatus = CASE
+				WHEN LOWER(COALESCE(trackstatus,'')) = 'awaiting_billing' THEN 'Draft'
+				ELSE trackstatus
+			END,
 			updated_at = now()
 		WHERE nobooking = $1 AND userid = $2
 	`, nb, userid, amt)
