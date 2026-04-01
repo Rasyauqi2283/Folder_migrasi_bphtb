@@ -260,10 +260,24 @@ func (h *UsersHandler) AssignUserIDAndDivisi(w http.ResponseWriter, r *http.Requ
 		jsonResponse(w, http.StatusNotFound, AssignUserIDResponse{Status: "error", Message: "User tidak ditemukan atau sudah memiliki UserID"})
 		return
 	}
-	newUserID, err := idgen.GenerateUserID(ctx, tx, divisiName)
-	if err != nil {
-		jsonResponse(w, http.StatusBadRequest, AssignUserIDResponse{Status: "error", Message: err.Error()})
-		return
+	// WP Badan pending harus tetap memakai divisi "Wajib Pajak B" saat di-complete.
+	if pending.Verse != nil && strings.EqualFold(strings.TrimSpace(*pending.Verse), "WP") &&
+		pending.Divisi != nil && strings.Contains(strings.ToLower(strings.TrimSpace(*pending.Divisi)), "wajib pajak b") {
+		divisiName = "Wajib Pajak B"
+	}
+	newUserID := ""
+	if pending.Userid != nil && strings.TrimSpace(*pending.Userid) != "" {
+		newUserID = strings.TrimSpace(*pending.Userid)
+	} else {
+		idSeedDivisi := divisiName
+		if divisiName == "Wajib Pajak B" {
+			idSeedDivisi = "Wajib Pajak"
+		}
+		newUserID, err = idgen.GenerateUserID(ctx, tx, idSeedDivisi)
+		if err != nil {
+			jsonResponse(w, http.StatusBadRequest, AssignUserIDResponse{Status: "error", Message: err.Error()})
+			return
+		}
 	}
 	var ppatKhusus string
 	if divisiName == "PPAT" || divisiName == "PPATS" {
@@ -485,7 +499,8 @@ func (h *UsersHandler) ApproveWPBadan(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// RejectWPBadan rejects WP Badan Usaha registration and deletes its pending record.
+// RejectWPBadan rejects pending account and deletes its pending record.
+// Endpoint path dipertahankan untuk kompatibilitas frontend lama.
 func (h *UsersHandler) RejectWPBadan(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -508,17 +523,10 @@ func (h *UsersHandler) RejectWPBadan(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan"})
 		return
 	}
-	if u.Verse == nil || strings.ToUpper(strings.TrimSpace(*u.Verse)) != "WP" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP"})
-		return
-	}
-	if u.Divisi == nil || strings.TrimSpace(*u.Divisi) != "Wajib Pajak B" {
-		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Bukan pending WP Badan Usaha"})
-		return
-	}
-
-	// Best-effort delete NIB doc file (privacy): file located in TEMP_UPLOADS_DIR/nib_docs/<uploadId>.pdf
-	if h.tempUploadsDir != "" && u.NibDocPath != nil && strings.TrimSpace(*u.NibDocPath) != "" {
+	isWPBadan := u.Verse != nil && strings.EqualFold(strings.TrimSpace(*u.Verse), "WP") &&
+		u.Divisi != nil && strings.Contains(strings.ToLower(strings.TrimSpace(*u.Divisi)), "wajib pajak b")
+	// Best-effort delete NIB doc file (privacy) hanya untuk WP Badan.
+	if isWPBadan && h.tempUploadsDir != "" && u.NibDocPath != nil && strings.TrimSpace(*u.NibDocPath) != "" {
 		p := strings.TrimSpace(*u.NibDocPath)
 		// allow both "nib_docs/<id>.pdf" and "/api/uploads/nib/<id>.pdf"
 		base := filepath.Base(p)
@@ -530,7 +538,7 @@ func (h *UsersHandler) RejectWPBadan(w http.ResponseWriter, r *http.Request) {
 
 	cmd, err := h.repo.Pool().Exec(ctx, `
 		DELETE FROM a_2_verified_users
-		WHERE id=$1 AND verifiedstatus='pending' AND verse='WP' AND divisi='Wajib Pajak B'
+		WHERE id=$1 AND verifiedstatus IN ('pending','verified_pending')
 	`, id)
 	if err != nil {
 		log.Printf("[WP_BADAN] reject delete: %v", err)
@@ -541,9 +549,12 @@ func (h *UsersHandler) RejectWPBadan(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusNotFound, map[string]string{"error": "Data tidak ditemukan atau sudah diproses"})
 		return
 	}
+	if delErr := h.repo.DeleteCekKtpOcrByIdentity(ctx, u.NIK, u.Email); delErr != nil {
+		log.Printf("[PENDING_REJECT] DeleteCekKtpOcrByIdentity(%s,%s): %v", u.NIK, u.Email, delErr)
+	}
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"success": true,
-		"message": "WP Badan Usaha ditolak",
+		"message": "Data pending ditolak dan dihapus",
 	})
 }
 

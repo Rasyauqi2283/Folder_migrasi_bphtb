@@ -45,6 +45,11 @@ interface PendingUser {
 }
 
 const PAGE_SIZE = 10;
+const PU_CODE_BY_LABEL: Record<string, string> = {
+  PPAT: "PAT",
+  PPATS: "PATS",
+  NOTARIS: "NOTARIS",
+};
 
 export default function AdminDataUserPendingPage() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -55,7 +60,8 @@ export default function AdminDataUserPendingPage() {
   const [selectedEmail, setSelectedEmail] = useState("");
   const [selectedNama, setSelectedNama] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [assignTipe, setAssignTipe] = useState<"karyawan" | "pu">("karyawan");
+  const [assignTipe, setAssignTipe] = useState<"karyawan" | "pu" | "wp">("karyawan");
+  const [selectedPending, setSelectedPending] = useState<PendingUser | null>(null);
   const [divisiCode, setDivisiCode] = useState("-");
   const [generatedUserid, setGeneratedUserid] = useState("");
   const [generatedDivisi, setGeneratedDivisi] = useState("");
@@ -68,6 +74,7 @@ export default function AdminDataUserPendingPage() {
 
   const [wpActionId, setWpActionId] = useState<number | null>(null);
   const [wpActionError, setWpActionError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<PendingUser | null>(null);
 
   const loadPending = useCallback(async () => {
     setLoading(true);
@@ -89,8 +96,7 @@ export default function AdminDataUserPendingPage() {
     loadPending();
   }, [loadPending]);
 
-  const divisiOptions =
-    assignTipe === "karyawan" ? DIVISI_KARYAWAN : DIVISI_PU;
+  const divisiOptions = DIVISI_KARYAWAN;
 
   // Filter dulu per kategori agar data WP Badan tidak "hilang" karena slicing campuran.
   const karyawanAll = pendingUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
@@ -115,27 +121,7 @@ export default function AdminDataUserPendingPage() {
     return `${getApiBase()}/api/uploads/nib/${encodeURIComponent(base)}`;
   };
 
-  const approveWPBadan = async (id: number) => {
-    setWpActionError(null);
-    setWpActionId(id);
-    try {
-      const res = await fetch(`${getApiBase()}/api/users/wp-badan/${id}/approve`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || "Gagal menyetujui WP Badan Usaha");
-      }
-      await loadPending();
-    } catch (e) {
-      setWpActionError(e instanceof Error ? e.message : "Gagal menyetujui");
-    } finally {
-      setWpActionId(null);
-    }
-  };
-
-  const rejectWPBadan = async (id: number) => {
+  const rejectPending = async (id: number) => {
     setWpActionError(null);
     setWpActionId(id);
     try {
@@ -145,8 +131,10 @@ export default function AdminDataUserPendingPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || data?.message || "Gagal menolak WP Badan Usaha");
+        throw new Error(data?.error || data?.message || "Gagal menolak data pending");
       }
+      if (activeAssignId === id) setActiveAssignId(null);
+      setRejectTarget(null);
       await loadPending();
     } catch (e) {
       setWpActionError(e instanceof Error ? e.message : "Gagal menolak");
@@ -278,25 +266,31 @@ export default function AdminDataUserPendingPage() {
                         </div>
 
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          <select
-                            value={divisiCode}
-                            onChange={(e) => setDivisiCode(e.target.value)}
-                            style={{
-                              padding: "8px 10px",
-                              borderRadius: 6,
-                              border: "1px solid rgba(255,255,255,0.3)",
-                              background: "#1b263b",
-                              color: "#e2e8f0",
-                              minWidth: 180,
-                            }}
-                          >
-                            <option value="-">Pilih Divisi</option>
-                            {Object.entries(divisiOptions).map(([code, name]) => (
-                              <option key={code} value={code}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
+                          {tipe === "karyawan" ? (
+                            <select
+                              value={divisiCode}
+                              onChange={(e) => setDivisiCode(e.target.value)}
+                              style={{
+                                padding: "8px 10px",
+                                borderRadius: 6,
+                                border: "1px solid rgba(255,255,255,0.3)",
+                                background: "#1b263b",
+                                color: "#e2e8f0",
+                                minWidth: 180,
+                              }}
+                            >
+                              <option value="-">Pilih Divisi</option>
+                              {Object.entries(divisiOptions).map(([code, name]) => (
+                                <option key={code} value={code}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                              Status: {u.pejabat_umum ?? "PU"}
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={handleSave}
@@ -325,6 +319,20 @@ export default function AdminDataUserPendingPage() {
                             }}
                           >
                             Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRejectTarget(u)}
+                            style={{
+                              padding: "8px 14px",
+                              background: "#dc2626",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Tolak
                           </button>
                         </div>
 
@@ -374,9 +382,15 @@ export default function AdminDataUserPendingPage() {
     setSelectedEmail(u.email);
     setSelectedNama(u.nama);
     setSelectedId(u.id);
+    setSelectedPending(u);
     setAssignTipe(tipe);
     setActiveAssignId(u.id);
-    setDivisiCode("-");
+    if (tipe === "pu") {
+      const puLabel = (u.pejabat_umum ?? "").toUpperCase();
+      setDivisiCode(PU_CODE_BY_LABEL[puLabel] ?? "NOTARIS");
+    } else {
+      setDivisiCode("-");
+    }
     setGeneratedUserid("");
     setGeneratedDivisi("");
     setPpatKhusus("");
@@ -399,7 +413,7 @@ export default function AdminDataUserPendingPage() {
       if (!res.ok || !data.success)
         throw new Error(data.message || "Gagal generate ID");
       setGeneratedUserid(data.newUserID || "");
-      setGeneratedDivisi(data.divisi || DIVISI_OPTIONS[divisiCode] || "");
+      setGeneratedDivisi(divisiCode === "WP" ? "Wajib Pajak B" : (data.divisi || DIVISI_OPTIONS[divisiCode] || ""));
       setPpatKhusus(data.ppat_khusus ?? "");
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Gagal generate ID");
@@ -407,13 +421,40 @@ export default function AdminDataUserPendingPage() {
   }, [divisiCode]);
 
   useEffect(() => {
+    if (assignTipe === "wp" && selectedPending?.userid?.trim()) {
+      setGeneratedUserid(selectedPending.userid.trim());
+      setGeneratedDivisi("Wajib Pajak B");
+      setPpatKhusus("");
+      return;
+    }
     if (divisiCode !== "-") generateUserid();
     else {
       setGeneratedUserid("");
       setGeneratedDivisi("");
       setPpatKhusus("");
     }
-  }, [divisiCode, generateUserid]);
+  }, [assignTipe, divisiCode, generateUserid, selectedPending]);
+
+  const openAssignWp = (u: PendingUser) => {
+    const isSameRow = activeAssignId === u.id && assignTipe === "wp";
+    if (isSameRow) {
+      setActiveAssignId(null);
+      return;
+    }
+    setSelectedEmail(u.email);
+    setSelectedNama(u.nama);
+    setSelectedId(u.id);
+    setSelectedPending(u);
+    setAssignTipe("wp");
+    setActiveAssignId(u.id);
+    setDivisiCode("WP");
+    setGeneratedUserid((u.userid ?? "").trim());
+    setGeneratedDivisi("Wajib Pajak B");
+    setPpatKhusus("");
+    setSaveError(null);
+    setKtpPreviewData(null);
+    setKtpError(null);
+  };
 
   const handleSave = async () => {
     if (!generatedUserid || !generatedDivisi) {
@@ -423,6 +464,7 @@ export default function AdminDataUserPendingPage() {
     setSaving(true);
     setSaveError(null);
     try {
+      const payloadDivisi = assignTipe === "wp" ? "WP" : divisiCode;
       const res = await fetch(`${getApiBase()}/api/users/assign-userid-and-divisi`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -430,7 +472,7 @@ export default function AdminDataUserPendingPage() {
           email: selectedEmail,
           nama: selectedNama,
           user_email: selectedEmail,
-          divisi: divisiCode,
+          divisi: payloadDivisi,
         }),
         credentials: "include",
       });
@@ -439,6 +481,7 @@ export default function AdminDataUserPendingPage() {
       if (data.status !== "success")
         throw new Error(data.message || "Respon server tidak valid");
       setActiveAssignId(null);
+      setSelectedPending(null);
       loadPending();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Gagal menyimpan");
@@ -527,63 +570,146 @@ export default function AdminDataUserPendingPage() {
                     ) : (
                       wpBadanRows.map((u) => {
                         const url = nibDocUrl(u);
-                        const busy = wpActionId === u.id;
+                        const expanded = activeAssignId === u.id && assignTipe === "wp";
                         return (
-                          <tr key={u.id} style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                            <td style={tdStyle}>{u.nama}</td>
-                            <td style={tdStyle}>{u.email}</td>
-                            <td style={tdStyle}>{u.nik}</td>
-                            <td style={tdStyle}>{u.npwp_badan ?? "—"}</td>
-                            <td style={tdStyle}>{u.nib ?? "—"}</td>
-                            <td style={tdStyle}>
-                              {url ? (
-                                <a
-                                  href={url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
-                                >
-                                  Lihat PDF
-                                </a>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
-                            <td style={tdStyle}>
-                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                                <button
-                                  type="button"
-                                  onClick={() => approveWPBadan(u.id)}
-                                  disabled={busy}
-                                  style={{
-                                    padding: "6px 12px",
-                                    background: busy ? "#6b7280" : "#10b981",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: 6,
-                                    cursor: busy ? "wait" : "pointer",
-                                  }}
-                                >
-                                  {busy ? "Memproses..." : "Approve"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => rejectWPBadan(u.id)}
-                                  disabled={busy}
-                                  style={{
-                                    padding: "6px 12px",
-                                    background: busy ? "#6b7280" : "#ef4444",
-                                    color: "#fff",
-                                    border: "none",
-                                    borderRadius: 6,
-                                    cursor: busy ? "wait" : "pointer",
-                                  }}
-                                >
-                                  {busy ? "Memproses..." : "Reject"}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
+                          <Fragment key={`wp-row-${u.id}`}>
+                            <tr
+                              style={{
+                                borderBottom: expanded ? "none" : "1px solid rgba(65,90,119,0.2)",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => openAssignWp(u)}
+                            >
+                              <td style={tdStyle}>{u.nama}</td>
+                              <td style={tdStyle}>{u.email}</td>
+                              <td style={tdStyle}>{u.nik}</td>
+                              <td style={tdStyle}>{u.npwp_badan ?? "—"}</td>
+                              <td style={tdStyle}>{u.nib ?? "—"}</td>
+                              <td style={tdStyle}>
+                                {url ? (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Lihat PDF
+                                  </a>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
+                            </tr>
+
+                            {expanded && (
+                              <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
+                                <td style={tdStyle} colSpan={7}>
+                                  <div
+                                    style={{
+                                      background: "#0d1b2a",
+                                      border: "1px solid rgba(65,90,119,0.45)",
+                                      borderRadius: 8,
+                                      padding: 12,
+                                      display: "grid",
+                                      gap: 10,
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                      <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
+                                      <span style={{ color: "#94a3b8" }}>{u.email}</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          loadKtpPreview();
+                                        }}
+                                        disabled={ktpLoading}
+                                        style={{
+                                          marginLeft: "auto",
+                                          padding: "6px 10px",
+                                          background: ktpLoading ? "#6b7280" : "#3b82f6",
+                                          color: "#fff",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          cursor: ktpLoading ? "wait" : "pointer",
+                                        }}
+                                      >
+                                        {ktpLoading ? "Memuat KTP..." : "Preview KTP"}
+                                      </button>
+                                    </div>
+                                    <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                      Divisi: <strong>Wajib Pajak B</strong> | UserID: <strong>{generatedUserid || "(otomatis saat assign)"}</strong>
+                                    </p>
+                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                      <button
+                                        type="button"
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        style={{
+                                          padding: "8px 14px",
+                                          background: saving ? "#6b7280" : "#10b981",
+                                          color: "#fff",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          cursor: saving ? "not-allowed" : "pointer",
+                                        }}
+                                      >
+                                        {saving ? "Memproses..." : "Simpan Assign"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveAssignId(null)}
+                                        style={{
+                                          padding: "8px 14px",
+                                          background: "rgba(255,255,255,0.1)",
+                                          color: "#e2e8f0",
+                                          border: "1px solid rgba(255,255,255,0.3)",
+                                          borderRadius: 6,
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Batal
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setRejectTarget(u)}
+                                        style={{
+                                          padding: "8px 14px",
+                                          background: "#dc2626",
+                                          color: "#fff",
+                                          border: "none",
+                                          borderRadius: 6,
+                                          cursor: "pointer",
+                                        }}
+                                      >
+                                        Tolak
+                                      </button>
+                                    </div>
+                                    {saveError && <p style={{ margin: 0, color: "#fca5a5" }}>{saveError}</p>}
+                                    {ktpError && <p style={{ margin: 0, color: "#fca5a5" }}>{ktpError}</p>}
+                                    {ktpPreviewData && (
+                                      <pre
+                                        style={{
+                                          margin: 0,
+                                          padding: 10,
+                                          borderRadius: 6,
+                                          background: "#111827",
+                                          color: "#93c5fd",
+                                          maxHeight: 240,
+                                          overflow: "auto",
+                                          fontSize: 12,
+                                        }}
+                                      >
+                                        {JSON.stringify(ktpPreviewData, null, 2)}
+                                      </pre>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
                         );
                       })
                     )}
@@ -665,6 +791,65 @@ export default function AdminDataUserPendingPage() {
             </div>
           )}
         </>
+      )}
+      {rejectTarget && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(2,6,23,0.75)",
+            zIndex: 2000,
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              background: "#0f172a",
+              border: "1px solid rgba(239,68,68,0.45)",
+              borderRadius: 12,
+              padding: 16,
+            }}
+          >
+            <h3 style={{ color: "#fecaca", margin: "0 0 8px" }}>Yakin menghapus user secara permanen?</h3>
+            <p style={{ color: "#e2e8f0", margin: "0 0 14px" }}>
+              Data pending <strong>{rejectTarget.nama}</strong> ({rejectTarget.email}) akan dihapus dari database.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={() => setRejectTarget(null)}
+                style={{
+                  padding: "8px 14px",
+                  background: "rgba(255,255,255,0.1)",
+                  color: "#e2e8f0",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => rejectPending(rejectTarget.id)}
+                style={{
+                  padding: "8px 14px",
+                  background: "#dc2626",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                Ya, Hapus Permanen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

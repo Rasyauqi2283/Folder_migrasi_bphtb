@@ -383,7 +383,7 @@ func (r *UserRepo) GetPendingByEmail(ctx context.Context, email string) (*Pendin
 		 gender, verse, special_field, pejabat_umum,
 		 npwp_badan, nib, nib_doc_path
 		 FROM a_2_verified_users
-		 WHERE email = $1 AND verifiedstatus = 'verified_pending'`,
+		 WHERE email = $1 AND verifiedstatus IN ('verified_pending','pending')`,
 		email,
 	).Scan(&u.ID, &u.Nama, &u.Email, &u.NIK, &u.Telepon, &u.Userid, &u.Divisi, &u.PpatKhusus,
 		&u.Gender, &u.Verse, &u.SpecialField, &u.PejabatUmum,
@@ -516,12 +516,12 @@ func (r *UserRepo) DeleteCekKtpOcrByIdentity(ctx context.Context, nik, email str
 	return err
 }
 
-// UpdateToCompleteTx updates a_2_verified_users: set userid, divisi, verifiedstatus='complete', fotoprofil, ppat_khusus where email and verified_pending. tx must be from an active transaction.
+// UpdateToCompleteTx updates a_2_verified_users: set userid, divisi, verifiedstatus='complete', fotoprofil, ppat_khusus where email and pending status. tx must be from an active transaction.
 func (r *UserRepo) UpdateToCompleteTx(ctx context.Context, tx pgx.Tx, email, userid, divisi, fotoprofil, ppatKhusus string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE a_2_verified_users
 		 SET userid = $1, divisi = $2, verifiedstatus = 'complete', fotoprofil = $3, ppat_khusus = NULLIF($4,'')
-		 WHERE email = $5 AND verifiedstatus = 'verified_pending'`,
+		 WHERE email = $5 AND verifiedstatus IN ('verified_pending','pending')`,
 		userid, divisi, fotoprofil, ppatKhusus, email,
 	)
 	return err
