@@ -71,24 +71,24 @@ export default function VerifikasiOtpPage() {
       return;
     }
 
-    const pendingRaw = typeof window !== "undefined" ? sessionStorage.getItem(PENDING_REGISTRATION_KEY) : null;
-    if (!pendingRaw) {
-      setMessage({ type: "error", text: "Data pendaftaran tidak ditemukan. Silakan daftar ulang." });
-      setTimeout(() => router.push("/daftar"), 1200);
-      return;
-    }
-
     let pendingRegistration: Record<string, unknown> | null = null;
-    try {
-      pendingRegistration = JSON.parse(pendingRaw) as Record<string, unknown>;
-    } catch {
-      setMessage({ type: "error", text: "Data pendaftaran rusak. Silakan daftar ulang." });
-      if (typeof window !== "undefined") sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
-      setTimeout(() => router.push("/daftar"), 1200);
-      return;
+    const pendingRaw = typeof window !== "undefined" ? sessionStorage.getItem(PENDING_REGISTRATION_KEY) : null;
+    if (pendingRaw) {
+      try {
+        pendingRegistration = JSON.parse(pendingRaw) as Record<string, unknown>;
+      } catch {
+        pendingRegistration = null;
+        if (typeof window !== "undefined") sessionStorage.removeItem(PENDING_REGISTRATION_KEY);
+      }
     }
 
     setMessage(null);
+    if (!pendingRegistration) {
+      setMessage({
+        type: "success",
+        text: "Data lokal tidak ditemukan, sistem akan melanjutkan verifikasi menggunakan data aman di server.",
+      });
+    }
     setSubmitting(true);
     try {
       const res = await fetch(verifyUrl, {

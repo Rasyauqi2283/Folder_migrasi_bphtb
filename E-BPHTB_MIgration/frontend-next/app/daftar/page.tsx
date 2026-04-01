@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useState, useCallback, useEffect } from "react";
+import { Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { getBackendBaseUrl, getLegacyBaseUrl } from "../../lib/api";
 
@@ -16,6 +16,7 @@ const KTP_OCR_CLIENT_DEADLINE_MS = 15_000;
 interface KTPOcrData {
   nik?: string;
   nama?: string;
+  jenisKelamin?: string;
   provinsi?: string;
   kabupatenKota?: string;
   alamat?: string;
@@ -24,6 +25,12 @@ interface KTPOcrData {
   kecamatan?: string;
   rawText?: string;
   is_readable?: boolean;
+}
+
+interface KtpCoreData {
+  nik?: string;
+  nama?: string;
+  jenisKelamin?: string;
 }
 
 function verseToBackend(v: string): "WP" | "Karyawan" | "PU" {
@@ -58,8 +65,11 @@ function DaftarContent() {
   const [ktpUploadId, setKtpUploadId] = useState<string | null>(null);
   const [ktpStatus, setKtpStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [ktpMessage, setKtpMessage] = useState("");
+  const [ocrCoreData, setOcrCoreData] = useState<KtpCoreData | null>(null);
+  const [ocrJsonStage, setOcrJsonStage] = useState<"idle" | "loading" | "ready">("idle");
   const [ocrData, setOcrData] = useState<KTPOcrData | null>(null);
   const [ocrStats, setOcrStats] = useState<Record<string, unknown> | null>(null);
+  const ocrStageTimerRef = useRef<number | null>(null);
   const [ktpBwPreviewUrl, setKtpBwPreviewUrl] = useState<string | null>(null);
 
   const [wpSubtype, setWpSubtype] = useState<"Perorangan" | "Badan Usaha">("Perorangan");
@@ -101,13 +111,23 @@ function DaftarContent() {
     }
   }, [isWPBadan, gender]);
 
+  useEffect(() => {
+    return () => {
+      if (ocrStageTimerRef.current) {
+        window.clearTimeout(ocrStageTimerRef.current);
+      }
+    };
+  }, []);
+
   const str = (v: unknown): string | undefined =>
     typeof v === "string" && v.trim() ? v : undefined;
 
   const uploadKtp = useCallback(async (file: File) => {
     setKtpStatus("loading");
-    setKtpMessage("Memproses OCR KTP (maks. 15 detik)…");
+    setKtpMessage("Tahap 1/2: membaca identitas inti (NIK, Nama, Jenis Kelamin)...");
     setKtpUploadId(null);
+    setOcrCoreData(null);
+    setOcrJsonStage("idle");
     setOcrData(null);
     setOcrStats(null);
     const base = apiBase || legacyBase;
@@ -149,6 +169,7 @@ function DaftarContent() {
       const d: KTPOcrData = {
         nik: str(raw.nik),
         nama: str(raw.nama),
+        jenisKelamin: str(raw.jenisKelamin),
         provinsi: str(raw.provinsi),
         kabupatenKota: str(raw.kabupatenKota),
         alamat: str(raw.alamat),
@@ -159,16 +180,33 @@ function DaftarContent() {
         is_readable: typeof raw.is_readable === "boolean" ? raw.is_readable : undefined,
       };
       setKtpUploadId(result.uploadId);
-      setOcrData(d);
-      setOcrStats(result.stats && typeof result.stats === "object" ? result.stats : null);
-      setKtpStatus("success");
-      setKtpMessage(
-        result.decision === "needs_review"
-          ? "OCR diproses, tetapi beberapa field perlu Anda cek manual."
-          : "KTP berhasil dipindai."
-      );
+      setOcrCoreData({
+        nik: d.nik,
+        nama: d.nama,
+        jenisKelamin: d.jenisKelamin,
+      });
+      setOcrJsonStage("loading");
+      setKtpStatus("loading");
+      setKtpMessage("Tahap 2/2: menyusun hasil pembacaan JSON...");
+      if (ocrStageTimerRef.current) {
+        window.clearTimeout(ocrStageTimerRef.current);
+      }
+      ocrStageTimerRef.current = window.setTimeout(() => {
+        setOcrData(d);
+        setOcrStats(result.stats && typeof result.stats === "object" ? result.stats : null);
+        setOcrJsonStage("ready");
+        setKtpStatus("success");
+        setKtpMessage(
+          result.decision === "needs_review"
+            ? "OCR diproses, tetapi beberapa field perlu Anda cek manual."
+            : "KTP berhasil dipindai."
+        );
+      }, 700);
       if (d.nama) setNama(d.nama);
       if (d.nik) setNik(d.nik);
+      if (d.jenisKelamin && (d.jenisKelamin === "Perempuan" || d.jenisKelamin === "Laki-laki")) {
+        setGender(d.jenisKelamin);
+      }
     } catch (e) {
       setKtpStatus("error");
       if (e instanceof DOMException && e.name === "AbortError") {
@@ -238,8 +276,14 @@ function DaftarContent() {
 
   const onKtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (ocrStageTimerRef.current) {
+      window.clearTimeout(ocrStageTimerRef.current);
+      ocrStageTimerRef.current = null;
+    }
     setKtpFile(file || null);
     setKtpUploadId(null);
+    setOcrCoreData(null);
+    setOcrJsonStage("idle");
     setOcrData(null);
     setOcrStats(null);
     setKtpStatus("idle");
@@ -512,7 +556,7 @@ function DaftarContent() {
               </div>
             </div>
           )}
-          {ocrData && (
+          {ocrCoreData && (
             <div className="daftar-ktp-lampiran">
               <h4 className="daftar-ktp-lampiran-title">
                 Data lampiran (hasil scan KTP)
@@ -521,15 +565,28 @@ function DaftarContent() {
               <div className="daftar-ktp-lampiran-section">
                 <h5 className="daftar-ktp-lampiran-section-title">Identitas (wajib dari OCR)</h5>
                 <div className="daftar-ktp-lampiran-grid">
-                  {ocrData.nik && (
-                    <p><strong>NIK:</strong> <span>{ocrData.nik}</span></p>
+                  {ocrCoreData.nik && (
+                    <p><strong>NIK:</strong> <span>{ocrCoreData.nik}</span></p>
                   )}
-                  {ocrData.nama && (
-                    <p><strong>Nama:</strong> <span>{ocrData.nama}</span></p>
+                  {ocrCoreData.nama && (
+                    <p><strong>Nama:</strong> <span>{ocrCoreData.nama}</span></p>
+                  )}
+                  {ocrCoreData.jenisKelamin && (
+                    <p><strong>Jenis Kelamin:</strong> <span>{ocrCoreData.jenisKelamin}</span></p>
                   )}
                 </div>
               </div>
 
+              {ocrJsonStage === "loading" && (
+                <div className="daftar-ktp-lampiran-section">
+                  <h5 className="daftar-ktp-lampiran-section-title">Menyusun hasil JSON...</h5>
+                  <p style={{ margin: 0, color: "var(--color_font_muted)" }}>
+                    Mohon tunggu, sistem sedang menyelesaikan tahap kedua OCR.
+                  </p>
+                </div>
+              )}
+
+              {ocrData && (
               <div className="daftar-ktp-lampiran-section">
                 <h5 className="daftar-ktp-lampiran-section-title">Alamat</h5>
                 <div className="daftar-ktp-lampiran-grid">
@@ -553,9 +610,18 @@ function DaftarContent() {
                   )}
                 </div>
               </div>
+              )}
             </div>
           )}
-          {ocrData && (
+          {ocrJsonStage === "loading" && (
+            <div className="daftar-ktp-json-block">
+              <h4 className="daftar-ktp-json-title">Hasil pembacaan (JSON)</h4>
+              <p className="daftar-ktp-json-hint">
+                Tahap kedua sedang berjalan: menyusun JSON hasil OCR.
+              </p>
+            </div>
+          )}
+          {ocrData && ocrJsonStage === "ready" && (
             <div className="daftar-ktp-json-block">
               <h4 className="daftar-ktp-json-title">Hasil pembacaan (JSON)</h4>
               <p className="daftar-ktp-json-hint">

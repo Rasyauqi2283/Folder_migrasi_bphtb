@@ -38,8 +38,9 @@ var allowedExtensions = map[string]bool{".jpg": true, ".jpeg": true, ".png": tru
 const pendingOTPTTL = 10 * time.Minute
 
 type pendingOTPEntry struct {
-	OTP       string
-	ExpiresAt time.Time
+	OTP                 string
+	ExpiresAt           time.Time
+	PendingRegistration map[string]interface{}
 }
 
 var (
@@ -69,10 +70,19 @@ func removeKTPTempFiles(dir, uploadId string) {
 	}
 }
 
-func setPendingOTP(email, otp string) {
+func setPendingOTP(email, otp string, pending map[string]interface{}) {
 	pendingOTPMu.Lock()
 	defer pendingOTPMu.Unlock()
-	pendingOTP[email] = pendingOTPEntry{OTP: otp, ExpiresAt: time.Now().Add(pendingOTPTTL)}
+	if pending == nil {
+		if prev, ok := pendingOTP[email]; ok {
+			pending = prev.PendingRegistration
+		}
+	}
+	pendingOTP[email] = pendingOTPEntry{
+		OTP:                 otp,
+		ExpiresAt:           time.Now().Add(pendingOTPTTL),
+		PendingRegistration: pending,
+	}
 }
 
 func getPendingOTP(email string) (pendingOTPEntry, bool) {
@@ -282,6 +292,18 @@ func stage2FilterKtpRawText(raw string) string {
 	return strings.Join(cleaned, "\n")
 }
 
+func extractJenisKelamin(raw string) string {
+	upper := strings.ToUpper(raw)
+	switch {
+	case strings.Contains(upper, "LAKI-LAKI"), strings.Contains(upper, "LAKI LAKI"):
+		return "Laki-laki"
+	case strings.Contains(upper, "PEREMPUAN"):
+		return "Perempuan"
+	default:
+		return ""
+	}
+}
+
 // sniffKTPImageKind returns "jpeg", "png", or "" from file magic bytes (lebih andal daripada Content-Type browser).
 func sniffKTPImageKind(path string) string {
 	f, err := os.Open(path)
@@ -453,6 +475,7 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	responseData := map[string]interface{}{
 		"nik":                          payload.NIK,
 		"nama":                         payload.Nama,
+		"jenisKelamin":                 extractJenisKelamin(result.RawText),
 		"alamat":                       payload.Alamat,
 		"is_readable":                  payload.IsReadable,
 		"manual_verification_required": false,
@@ -1221,7 +1244,7 @@ func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	otp := generateOTP()
-	setPendingOTP(email, otp)
+	setPendingOTP(email, otp, p)
 	var nipPtr, specialFieldPtr, pejabatUmumPtr, divisiPtr, ocrPtr *string
 	if strings.TrimSpace(nip) != "" {
 		nipPtr = &nip
@@ -1320,6 +1343,12 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	}
 
 	p := req.PendingRegistration
+	if p == nil {
+		p = entry.PendingRegistration
+	}
+	if p == nil {
+		p = map[string]interface{}{}
+	}
 	if h.repo == nil || h.repo.Pool() == nil {
 		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
 		return
@@ -2520,7 +2549,7 @@ func (h *AuthHandler) ResendOTP(w http.ResponseWriter, r *http.Request) {
 	// 1) Sesi in-memory (request-otp): cukup perbarui memory dan kirim email
 	entry, ok := getPendingOTP(email)
 	if ok && entry.OTP != "" {
-		setPendingOTP(email, otp)
+		setPendingOTP(email, otp, entry.PendingRegistration)
 		if err := mail.SendOTP(email, otp); err != nil {
 			log.Printf("[RESEND_OTP] Email gagal ke %s: %v. OTP: %s", email, err, otp)
 			jsonError(w, http.StatusInternalServerError, "Gagal mengirim OTP ke email: "+err.Error())
