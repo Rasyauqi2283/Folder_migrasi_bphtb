@@ -308,70 +308,20 @@ func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 func (h *AuthHandler) runKtpOCR(ctx context.Context, tmpPath string) (*ktpocr.Result, bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	easyTO := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
-	var (
-		indo           *service.KtpIndorobertaResponse
-		hy             *ktpocr.Result
-		indoErr, hyErr error
-	)
-	var wg sync.WaitGroup
-	u := strings.TrimSpace(h.cfg.KtpIndorobertaURL)
-	if u != "" {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			indo, indoErr = service.ExtractKtpIndoroberta(ctx, u, tmpPath, 14*time.Second)
-		}()
+	// MODE CEPAT (sementara untuk uji): hanya jalur tesseract tunggal seperti terminal.
+	// Pipeline lama (IndoROBERTA + merge + fallback) tidak dihapus, hanya dinonaktifkan.
+	//
+	// easyTO := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
+	// ... kode pipeline lama ...
+	res, err := ktpocr.ExtractHybrid(ctx, tmpPath, false, "", 0)
+	if err != nil {
+		log.Printf("[KTP_OCR_FAST] ExtractHybrid: %v", err)
+		return nil, false, err
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		hy, hyErr = ktpocr.ExtractHybrid(ctx, tmpPath, h.cfg.EasyOCREnabled, h.cfg.EasyOCRURL, easyTO)
-	}()
-	wg.Wait()
-
-	if u != "" && indoErr != nil {
-		log.Printf("[KTP_INDOROBERTA] %v", indoErr)
-	}
-	if hyErr != nil {
-		log.Printf("[KTP_OCR] ExtractHybrid: %v", hyErr)
-	}
-
-	if hyErr != nil {
-		if indo != nil {
-			return indorobertaToResult(indo), indo.ManualVerificationRequired, nil
-		}
-		return nil, false, hyErr
-	}
-	if hy == nil {
-		if indo != nil {
-			return indorobertaToResult(indo), indo.ManualVerificationRequired, nil
-		}
+	if res == nil {
 		return nil, false, fmt.Errorf("tidak ada hasil OCR")
 	}
-
-	if indo != nil && indo.NIK != nil && ktpocr.ValidNIK(*indo.NIK) {
-		r := indorobertaToResult(indo)
-		if ptrTrim(r.Nama) == "" && hy.Nama != nil {
-			r.Nama = hy.Nama
-		}
-		if ptrTrim(r.Alamat) == "" && hy.Alamat != nil {
-			r.Alamat = hy.Alamat
-		}
-		ktpocr.MergeExtendedFieldsFromTesseract(r, hy)
-		ktpocr.RefreshResultStats(r)
-		return r, false, nil
-	}
-	if hy.NIK != nil && ktpocr.ValidNIK(*hy.NIK) {
-		return hy, false, nil
-	}
-	if indo != nil {
-		r := indorobertaToResult(indo)
-		ktpocr.MergeExtendedFieldsFromTesseract(r, hy)
-		ktpocr.RefreshResultStats(r)
-		return r, true, nil
-	}
-	return hy, true, nil
+	return res, false, nil
 }
 
 // UploadKTP handles POST /api/v1/auth/upload-ktp.
@@ -440,20 +390,25 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "Tidak dapat membaca teks dari gambar KTP")
 		return
 	}
-	if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
-		jsonErrorExtra(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.", map[string]interface{}{
-			"manual_verification_required": true,
-		})
-		return
-	}
-	if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
-		jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Pastikan foto KTP tidak blur dan bagian nama terlihat jelas.")
-		return
-	}
+	// MODE CEPAT (sementara untuk uji): validasi keras NIK/Nama dimatikan.
+	// if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
+	// 	jsonErrorExtra(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.", map[string]interface{}{
+	// 		"manual_verification_required": true,
+	// 	})
+	// 	return
+	// }
+	// if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
+	// 	jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Pastikan foto KTP tidak blur dan bagian nama terlihat jelas.")
+	// 	return
+	// }
 
 	createdAt := time.Now().UnixMilli()
 	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
-	uploadId := fmt.Sprintf("%s_%d", sanitizeNIKForFilename(*result.NIK), createdAt)
+	uploadKey := "OCRRAW"
+	if result.NIK != nil && strings.TrimSpace(*result.NIK) != "" {
+		uploadKey = sanitizeNIKForFilename(*result.NIK)
+	}
+	uploadId := fmt.Sprintf("%s_%d", uploadKey, createdAt)
 
 	responseData := map[string]interface{}{
 		"nik":                          payload.NIK,
@@ -471,15 +426,18 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 
 	decision := "success"
 	message := "Data KTP berhasil dipindai."
+	manualVerification := false
 	if result.Stats != nil {
 		if !result.Stats.IsValidNIK || result.Stats.Accuracy < 50 || result.Stats.ExtractedFields < 2 {
 			decision = "needs_review"
+			manualVerification = true
 		}
 	}
 	// Best effort: allow progress if NIK + Nama are readable even when alamat is missing/unclear.
 	if payload.IsReadable && (payload.Alamat == nil || len(strings.TrimSpace(*payload.Alamat)) < 5) {
 		decision = "needs_review"
 		message = "NIK dan Nama terbaca. Alamat belum terbaca jelas — silakan lanjut dan isi alamat secara manual."
+		manualVerification = true
 	}
 	addrParts := 0
 	if result.RtRw != nil && strings.TrimSpace(*result.RtRw) != "" {
@@ -494,18 +452,25 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 	if payload.IsReadable && payload.Alamat != nil && len(strings.TrimSpace(*payload.Alamat)) >= 5 && addrParts < 2 {
 		decision = "needs_review"
 		message = "NIK, Nama, dan alamat utama terbaca. RT/RW, Kel/Desa, atau Kecamatan belum lengkap dari OCR — mohon cek manual."
+		manualVerification = true
+	}
+	if !payload.IsReadable {
+		decision = "needs_review"
+		message = "OCR mentah berhasil dijalankan, namun identitas inti belum terbaca utuh. Silakan cek/manual."
+		manualVerification = true
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":    true,
-		"message":    message,
-		"decision":   decision,
-		"uploadId":   uploadId,
-		"timestamp":  createdAt,
-		"ktpOcrJson": ktpOcrJsonStr,
-		"data":       responseData,
-		"stats":      result.Stats,
+		"success":                      true,
+		"message":                      message,
+		"decision":                     decision,
+		"uploadId":                     uploadId,
+		"timestamp":                    createdAt,
+		"ktpOcrJson":                   ktpOcrJsonStr,
+		"data":                         responseData,
+		"manual_verification_required": manualVerification,
+		"stats":                        result.Stats,
 	})
 }
 

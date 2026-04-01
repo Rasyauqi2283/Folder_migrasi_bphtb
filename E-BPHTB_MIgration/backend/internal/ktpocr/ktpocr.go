@@ -218,7 +218,44 @@ func ExtractHybrid(ctx context.Context, imagePath string, easyEnabled bool, easy
 	_ = easyEnabled
 	_ = easyEndpoint
 	_ = easyTimeout
-	return extractWithTesseract(ctx, imagePath, start)
+	// MODE CEPAT (sementara untuk uji): samakan dengan terminal:
+	// tesseract <image> stdout -l ind+eng --oem 3 --psm 6
+	//
+	// Pipeline lama tetap dipertahankan (tidak dihapus), hanya dimatikan.
+	// return extractWithTesseract(ctx, imagePath, start)
+	text, err := runTesseract(ctx, imagePath, "6")
+	if err != nil {
+		return errorResult(start, "OCR gagal dijalankan"), err
+	}
+	lines := strings.Split(text, "\n")
+	trimmed := make([]string, 0, len(lines))
+	for _, l := range lines {
+		trimmed = append(trimmed, strings.TrimSpace(l))
+	}
+	out := extractAllFields(normalizeText(text), trimmed)
+	out.RawText = text
+	out.ProcessingTime = time.Since(start).Milliseconds()
+	out.Confidence = 0
+	out.Stats = &Stats{
+		TotalFields:     3,
+		ExtractedFields: 0,
+		Confidence:      0,
+		Accuracy:        0,
+		ProcessingTime:  out.ProcessingTime,
+		IsValidNIK:      out.NIK != nil && validateNIK(*out.NIK),
+		Completeness:    0,
+	}
+	out.IsReadable = strings.TrimSpace(text) != ""
+	if out.NIK != nil {
+		out.Stats.ExtractedFields++
+	}
+	if out.Nama != nil {
+		out.Stats.ExtractedFields++
+	}
+	if out.Alamat != nil {
+		out.Stats.ExtractedFields++
+	}
+	return out, nil
 }
 
 // Extract runs OCR on imagePath and returns KTP fields.
@@ -1023,12 +1060,12 @@ func getExtractionStats(r *Result, accuracy float64) *Stats {
 		completenessRatio = 1
 	}
 	// Akurasi baca (dibatasi ~70%) — skor dari pipeline + field tambahan.
-	acc := math.Min(70, accuracy + float64(ext)*1.4)
+	acc := math.Min(70, accuracy+float64(ext)*1.4)
 	if acc < 50 && isValidNIK && count >= 2 {
 		acc = 55
 	}
 	// "Analisis" / kelengkapan terstruktur — target sekitar 65%.
-	analysis := math.Min(65, completenessRatio*62 + float64(ext)*1.1)
+	analysis := math.Min(65, completenessRatio*62+float64(ext)*1.1)
 	if analysis < 42 && ext >= 2 {
 		analysis = 48
 	}
