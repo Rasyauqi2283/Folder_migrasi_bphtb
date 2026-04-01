@@ -52,6 +52,16 @@ const PU_CODE_BY_LABEL: Record<string, string> = {
   NOTARIS: "NOTARIS",
 };
 type CategoryFilter = "all" | "wp" | "karyawan" | "pu";
+const GENDER_OPTIONS = ["Laki-laki", "Perempuan"] as const;
+const PU_SPECIAL_FIELD_OPTIONS = ["PPAT", "PPATS", "NOTARIS", "LAINNYA"] as const;
+
+function normalizeGenderValue(raw: string): string {
+  const v = raw.trim().toLowerCase();
+  if (!v) return "";
+  if (["l", "lk", "laki", "laki-laki", "laki laki", "pria"].includes(v)) return "Laki-laki";
+  if (["p", "pr", "perempuan", "wanita"].includes(v)) return "Perempuan";
+  return "";
+}
 
 export default function AdminDataUserPendingPage() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -73,6 +83,8 @@ export default function AdminDataUserPendingPage() {
   const [generatedUserid, setGeneratedUserid] = useState("");
   const [generatedDivisi, setGeneratedDivisi] = useState("");
   const [ppatKhusus, setPpatKhusus] = useState("");
+  const [genderDraft, setGenderDraft] = useState("");
+  const [puSpecialFieldDraft, setPuSpecialFieldDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [ktpPreviewData, setKtpPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -172,13 +184,17 @@ export default function AdminDataUserPendingPage() {
   };
 
   const genderLabel = (u: PendingUser): string => {
-    const g = (u.gender ?? "").trim();
-    if (g) return g;
+    const gRaw = (u.gender ?? "").trim();
+    const gNorm = normalizeGenderValue(gRaw);
+    if (gNorm) return gNorm;
     const isWpBadan =
       (u.verse ?? "").toUpperCase() === "WP" &&
       (u.divisi ?? "").toLowerCase().includes("wajib pajak b");
     return isWpBadan ? "Tidak berlaku (WP Badan)" : "Belum diisi";
   };
+
+  const genderSelectValue = (u: PendingUser): string =>
+    activeAssignId === u.id ? genderDraft : normalizeGenderValue((u.gender ?? "").trim());
 
   const rejectPending = async (id: number) => {
     setWpActionError(null);
@@ -250,7 +266,16 @@ export default function AdminDataUserPendingPage() {
                     <>
                       <td style={tdStyle}>{u.email}</td>
                       <td style={tdStyle}>{u.nik}</td>
-                      <td style={tdStyle}>{genderLabel(u)}</td>
+                      <td style={tdStyle}>
+                        <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
+                          <option value="">Pilih gender</option>
+                          {GENDER_OPTIONS.map((g) => (
+                            <option key={g} value={g}>
+                              {g}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -272,8 +297,26 @@ export default function AdminDataUserPendingPage() {
                     <>
                       <td style={tdStyle}>{u.nik}</td>
                       <td style={tdStyle}>{u.email}</td>
-                      <td style={tdStyle}>{u.special_field ?? "—"}</td>
-                      <td style={tdStyle}>{genderLabel(u)}</td>
+                      <td style={tdStyle}>
+                        <select value={activeAssignId === u.id ? puSpecialFieldDraft : (u.special_field ?? "")} disabled style={compactSelectStyle}>
+                          <option value="">Pilih special field</option>
+                          {PU_SPECIAL_FIELD_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={tdStyle}>
+                        <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
+                          <option value="">Pilih gender</option>
+                          {GENDER_OPTIONS.map((g) => (
+                            <option key={g} value={g}>
+                              {g}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -313,7 +356,21 @@ export default function AdminDataUserPendingPage() {
                             <p style={{ margin: 0, color: "#cbd5e1" }}>Nama: <strong>{u.nama}</strong></p>
                             <p style={{ margin: 0, color: "#cbd5e1" }}>Email: <strong>{u.email}</strong></p>
                             <p style={{ margin: 0, color: "#cbd5e1" }}>NIK: <strong>{u.nik}</strong></p>
-                            <p style={{ margin: 0, color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></p>
+                            <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4 }}>
+                              Gender
+                              <select
+                                value={genderDraft}
+                                onChange={(e) => setGenderDraft(e.target.value)}
+                                style={detailSelectStyle}
+                              >
+                                <option value="">Pilih gender</option>
+                                {GENDER_OPTIONS.map((g) => (
+                                  <option key={g} value={g}>
+                                    {g}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
                           </div>
                         </div>
 
@@ -367,9 +424,26 @@ export default function AdminDataUserPendingPage() {
                               ))}
                             </div>
                           ) : (
-                            <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
-                              Status: {u.pejabat_umum ?? "PU"}
-                            </span>
+                            <div style={{ display: "grid", gap: 8 }}>
+                              <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
+                                Status: {u.pejabat_umum ?? "PU"}
+                              </span>
+                              <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4, maxWidth: 280 }}>
+                                Special Field
+                                <select
+                                  value={puSpecialFieldDraft}
+                                  onChange={(e) => setPuSpecialFieldDraft(e.target.value)}
+                                  style={detailSelectStyle}
+                                >
+                                  <option value="">Pilih special field</option>
+                                  {PU_SPECIAL_FIELD_OPTIONS.map((opt) => (
+                                    <option key={opt} value={opt}>
+                                      {opt}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
                           )}
                           <p style={{ margin: 0, color: "#cbd5e1" }}>
                             UserID: <strong>{generatedUserid || "Belum tergenerate"}</strong> | Divisi: <strong>{generatedDivisi || "Belum dipilih"}</strong>
@@ -466,6 +540,8 @@ export default function AdminDataUserPendingPage() {
     setSelectedPending(u);
     setAssignTipe(tipe);
     setActiveAssignId(u.id);
+    setGenderDraft(normalizeGenderValue((u.gender ?? "").trim()));
+    setPuSpecialFieldDraft((u.special_field ?? "").trim());
     if (tipe === "pu") {
       const puLabel = (u.pejabat_umum ?? "").toUpperCase();
       setDivisiCode(PU_CODE_BY_LABEL[puLabel] ?? "NOTARIS");
@@ -528,6 +604,8 @@ export default function AdminDataUserPendingPage() {
     setSelectedPending(u);
     setAssignTipe("wp");
     setActiveAssignId(u.id);
+    setGenderDraft(normalizeGenderValue((u.gender ?? "").trim()));
+    setPuSpecialFieldDraft("");
     setDivisiCode("WP");
     setGeneratedUserid((u.userid ?? "").trim());
     setGeneratedDivisi("Wajib Pajak B");
@@ -554,6 +632,8 @@ export default function AdminDataUserPendingPage() {
           nama: selectedNama,
           user_email: selectedEmail,
           divisi: payloadDivisi,
+          gender: genderDraft || null,
+          special_field: assignTipe === "pu" ? (puSpecialFieldDraft || null) : null,
         }),
         credentials: "include",
       });
@@ -694,243 +774,263 @@ export default function AdminDataUserPendingPage() {
           Silakan lakukan pencarian untuk menampilkan data.
         </p>
       ) : (
-        <div style={{ display: "grid", gap: 16 }}>
-          {showWp && (
-            <UserTableContainer title="Pending - Wajib Pajak (Badan Usaha)" count={wpBadanAll.length}>
-              {wpActionError && (
-                <p style={{ color: "#dc2626", margin: "0 0 8px" }}>{wpActionError}</p>
-              )}
-              <div
-                style={{
-                  minWidth: 0,
-                  overflowX: "auto",
-                  background: "#1b263b",
-                  borderRadius: 8,
-                  border: "1px solid rgba(65,90,119,0.3)",
-                }}
-              >
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.5)" }}>
-                      <th style={thStyle}>Nama</th>
-                      <th style={thStyle}>Email</th>
-                      <th style={thStyle}>Gender</th>
-                      <th style={thStyle}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {wpBadanRows.length === 0 ? (
-                      <tr>
-                        <td style={tdStyle} colSpan={4}>
-                          Tidak ada data WP Badan Usaha untuk pencarian ini.
-                        </td>
-                      </tr>
-                    ) : (
-                      wpBadanRows.map((u) => {
-                        const url = nibDocUrl(u);
-                        const expanded = activeAssignId === u.id && assignTipe === "wp";
-                        return (
-                          <Fragment key={`wp-row-${u.id}`}>
-                            <tr
-                              style={{
-                                borderBottom: expanded ? "none" : "1px solid rgba(65,90,119,0.2)",
-                                cursor: "pointer",
-                              }}
-                              onClick={() => openAssignWp(u)}
-                            >
-                              <td style={tdStyle}>{u.nama}</td>
-                              <td style={tdStyle}>{u.email}</td>
-                              <td style={tdStyle}>{genderLabel(u)}</td>
-                              <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
-                            </tr>
-
-                            {expanded && (
-                              <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                                <td style={tdStyle} colSpan={4}>
-                                  <div
-                                    style={{
-                                      background: "#0d1b2a",
-                                      border: "1px solid rgba(65,90,119,0.45)",
-                                      borderRadius: 8,
-                                      padding: 12,
-                                      display: "grid",
-                                      gap: 10,
-                                    }}
-                                  >
-                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                                      <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
-                                      <span style={{ color: "#94a3b8" }}>{u.email}</span>
-                                      <span style={{ color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></span>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          loadKtpPreview();
-                                        }}
-                                        disabled={ktpLoading}
-                                        style={{
-                                          marginLeft: "auto",
-                                          padding: "6px 10px",
-                                          background: ktpLoading ? "#6b7280" : "#3b82f6",
-                                          color: "#fff",
-                                          border: "none",
-                                          borderRadius: 6,
-                                          cursor: ktpLoading ? "wait" : "pointer",
-                                        }}
-                                      >
-                                        {ktpLoading ? "Memuat KTP..." : "Preview KTP"}
-                                      </button>
-                                    </div>
-                                    <div
-                                      style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
-                                        gap: 8,
-                                        background: "#111827",
-                                        border: "1px solid rgba(148,163,184,0.25)",
-                                        borderRadius: 8,
-                                        padding: 10,
-                                      }}
-                                    >
-                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
-                                        NIK (PJ): <strong>{u.nik || "—"}</strong>
-                                      </p>
-                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
-                                        NPWP Badan: <strong>{u.npwp_badan ?? "—"}</strong>
-                                      </p>
-                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
-                                        NIB: <strong>{u.nib ?? "—"}</strong>
-                                      </p>
-                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
-                                        Dokumen:{" "}
-                                        {url ? (
-                                          <a
-                                            href={url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
-                                            onClick={(e) => e.stopPropagation()}
-                                          >
-                                            Lihat PDF
-                                          </a>
-                                        ) : (
-                                          "—"
-                                        )}
-                                      </p>
-                                    </div>
-                                    <p style={{ margin: 0, color: "#cbd5e1" }}>
-                                      Divisi: <strong>Wajib Pajak B</strong> | UserID: <strong>{generatedUserid || "(otomatis saat assign)"}</strong>
-                                    </p>
-                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                                      <button
-                                        type="button"
-                                        onClick={handleSave}
-                                        disabled={saving}
-                                        style={{
-                                          padding: "8px 14px",
-                                          background: saving ? "#6b7280" : "#10b981",
-                                          color: "#fff",
-                                          border: "none",
-                                          borderRadius: 6,
-                                          cursor: saving ? "not-allowed" : "pointer",
-                                        }}
-                                      >
-                                        {saving ? "Memproses..." : "Simpan Assign"}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveAssignId(null)}
-                                        style={{
-                                          padding: "8px 14px",
-                                          background: "rgba(255,255,255,0.1)",
-                                          color: "#e2e8f0",
-                                          border: "1px solid rgba(255,255,255,0.3)",
-                                          borderRadius: 6,
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        Batal
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setRejectTarget(u)}
-                                        style={{
-                                          padding: "8px 14px",
-                                          background: "#dc2626",
-                                          color: "#fff",
-                                          border: "none",
-                                          borderRadius: 6,
-                                          cursor: "pointer",
-                                        }}
-                                      >
-                                        Tolak
-                                      </button>
-                                    </div>
-                                    {saveError && <p style={{ margin: 0, color: "#fca5a5" }}>{saveError}</p>}
-                                    {ktpError && <p style={{ margin: 0, color: "#fca5a5" }}>{ktpError}</p>}
-                                    {ktpPreviewData && (
-                                      <pre
-                                        style={{
-                                          margin: 0,
-                                          padding: 10,
-                                          borderRadius: 6,
-                                          background: "#111827",
-                                          color: "#93c5fd",
-                                          maxHeight: 240,
-                                          overflow: "auto",
-                                          fontSize: 12,
-                                        }}
-                                      >
-                                        {JSON.stringify(ktpPreviewData, null, 2)}
-                                      </pre>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+        <div className="grid grid-cols-1 gap-6">
+          {showKaryawan && (
+            <UserTableContainer title="Pending - Karyawan" count={karyawanAll.length} isPriority>
+              {renderTable("karyawan")}
               <PaginationFooter
-                page={wpPage}
-                totalPages={wpTotalPages}
-                onChange={setWpPage}
+                page={karyawanPage}
+                totalPages={karyawanTotalPages}
+                onChange={setKaryawanPage}
               />
             </UserTableContainer>
           )}
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {showKaryawan && (
-              <UserTableContainer title="Pending - Karyawan" count={karyawanAll.length}>
-                {renderTable("karyawan")}
-                <PaginationFooter
-                  page={karyawanPage}
-                  totalPages={karyawanTotalPages}
-                  onChange={setKaryawanPage}
-                />
-              </UserTableContainer>
-            )}
-            {showPu && (
-              <UserTableContainer title="Pending - PU" count={puAll.length}>
-                {renderTable("pu")}
-                <PaginationFooter
-                  page={puPage}
-                  totalPages={puTotalPages}
-                  onChange={setPuPage}
-                />
-              </UserTableContainer>
-            )}
-          </div>
+          {(showWp || showPu) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {showWp && (
+                <UserTableContainer title="Pending - Wajib Pajak (Badan Usaha)" count={wpBadanAll.length}>
+                  {wpActionError && (
+                    <p style={{ color: "#dc2626", margin: "0 0 8px" }}>{wpActionError}</p>
+                  )}
+                  <div
+                    style={{
+                      minWidth: 0,
+                      overflowX: "auto",
+                      background: "#1b263b",
+                      borderRadius: 8,
+                      border: "1px solid rgba(65,90,119,0.3)",
+                    }}
+                  >
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.5)" }}>
+                          <th style={thStyle}>Nama</th>
+                          <th style={thStyle}>Email</th>
+                          <th style={thStyle}>Gender</th>
+                          <th style={thStyle}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {wpBadanRows.length === 0 ? (
+                          <tr>
+                            <td style={tdStyle} colSpan={4}>
+                              Tidak ada data WP Badan Usaha untuk pencarian ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          wpBadanRows.map((u) => {
+                            const url = nibDocUrl(u);
+                            const expanded = activeAssignId === u.id && assignTipe === "wp";
+                            return (
+                              <Fragment key={`wp-row-${u.id}`}>
+                                <tr
+                                  style={{
+                                    borderBottom: expanded ? "none" : "1px solid rgba(65,90,119,0.2)",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() => openAssignWp(u)}
+                                >
+                                  <td style={tdStyle}>{u.nama}</td>
+                                  <td style={tdStyle}>{u.email}</td>
+                                  <td style={tdStyle}>
+                                    <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
+                                      <option value="">Pilih gender</option>
+                                      {GENDER_OPTIONS.map((g) => (
+                                        <option key={g} value={g}>
+                                          {g}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
+                                </tr>
+
+                                {expanded && (
+                                  <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
+                                    <td style={tdStyle} colSpan={4}>
+                                      <div
+                                        style={{
+                                          background: "#0d1b2a",
+                                          border: "1px solid rgba(65,90,119,0.45)",
+                                          borderRadius: 8,
+                                          padding: 12,
+                                          display: "grid",
+                                          gap: 10,
+                                        }}
+                                      >
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                          <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
+                                          <span style={{ color: "#94a3b8" }}>{u.email}</span>
+                                          <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4 }}>
+                                            Gender
+                                            <select
+                                              value={genderDraft}
+                                              onChange={(e) => setGenderDraft(e.target.value)}
+                                              style={detailSelectStyle}
+                                            >
+                                              <option value="">Pilih gender</option>
+                                              {GENDER_OPTIONS.map((g) => (
+                                                <option key={g} value={g}>
+                                                  {g}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          </label>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              loadKtpPreview();
+                                            }}
+                                            disabled={ktpLoading}
+                                            style={{
+                                              marginLeft: "auto",
+                                              padding: "6px 10px",
+                                              background: ktpLoading ? "#6b7280" : "#3b82f6",
+                                              color: "#fff",
+                                              border: "none",
+                                              borderRadius: 6,
+                                              cursor: ktpLoading ? "wait" : "pointer",
+                                            }}
+                                          >
+                                            {ktpLoading ? "Memuat KTP..." : "Preview KTP"}
+                                          </button>
+                                        </div>
+                                        <div
+                                          style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                                            gap: 8,
+                                            background: "#111827",
+                                            border: "1px solid rgba(148,163,184,0.25)",
+                                            borderRadius: 8,
+                                            padding: 10,
+                                          }}
+                                        >
+                                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                            NIK (PJ): <strong>{u.nik || "—"}</strong>
+                                          </p>
+                                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                            NPWP Badan: <strong>{u.npwp_badan ?? "—"}</strong>
+                                          </p>
+                                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                            NIB: <strong>{u.nib ?? "—"}</strong>
+                                          </p>
+                                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                            Dokumen:{" "}
+                                            {url ? (
+                                              <a
+                                                href={url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                Lihat PDF
+                                              </a>
+                                            ) : (
+                                              "—"
+                                            )}
+                                          </p>
+                                        </div>
+                                        <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                          Divisi: <strong>Wajib Pajak B</strong> | UserID: <strong>{generatedUserid || "(otomatis saat assign)"}</strong>
+                                        </p>
+                                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                                          <button
+                                            type="button"
+                                            onClick={handleSave}
+                                            disabled={saving}
+                                            style={{
+                                              padding: "8px 14px",
+                                              background: saving ? "#6b7280" : "#10b981",
+                                              color: "#fff",
+                                              border: "none",
+                                              borderRadius: 6,
+                                              cursor: saving ? "not-allowed" : "pointer",
+                                            }}
+                                          >
+                                            {saving ? "Memproses..." : "Simpan Assign"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setActiveAssignId(null)}
+                                            style={{
+                                              padding: "8px 14px",
+                                              background: "rgba(255,255,255,0.1)",
+                                              color: "#e2e8f0",
+                                              border: "1px solid rgba(255,255,255,0.3)",
+                                              borderRadius: 6,
+                                              cursor: "pointer",
+                                            }}
+                                          >
+                                            Batal
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setRejectTarget(u)}
+                                            style={{
+                                              padding: "8px 14px",
+                                              background: "#dc2626",
+                                              color: "#fff",
+                                              border: "none",
+                                              borderRadius: 6,
+                                              cursor: "pointer",
+                                            }}
+                                          >
+                                            Tolak
+                                          </button>
+                                        </div>
+                                        {saveError && <p style={{ margin: 0, color: "#fca5a5" }}>{saveError}</p>}
+                                        {ktpError && <p style={{ margin: 0, color: "#fca5a5" }}>{ktpError}</p>}
+                                        {ktpPreviewData && (
+                                          <pre
+                                            style={{
+                                              margin: 0,
+                                              padding: 10,
+                                              borderRadius: 6,
+                                              background: "#111827",
+                                              color: "#93c5fd",
+                                              maxHeight: 240,
+                                              overflow: "auto",
+                                              fontSize: 12,
+                                            }}
+                                          >
+                                            {JSON.stringify(ktpPreviewData, null, 2)}
+                                          </pre>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <PaginationFooter
+                    page={wpPage}
+                    totalPages={wpTotalPages}
+                    onChange={setWpPage}
+                  />
+                </UserTableContainer>
+              )}
+
+              {showPu && (
+                <UserTableContainer title="Pending - PU" count={puAll.length}>
+                  {renderTable("pu")}
+                  <PaginationFooter
+                    page={puPage}
+                    totalPages={puTotalPages}
+                    onChange={setPuPage}
+                  />
+                </UserTableContainer>
+              )}
+            </div>
+          )}
         </div>
       )}
       {rejectTarget && (
@@ -999,16 +1099,20 @@ export default function AdminDataUserPendingPage() {
 function UserTableContainer({
   title,
   count,
+  isPriority = false,
   children,
 }: {
   title: string;
   count: number;
+  isPriority?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section
       style={{
-        border: "1px solid rgba(65,90,119,0.35)",
+        border: isPriority
+          ? "1px solid rgba(59,130,246,0.65)"
+          : "1px solid rgba(65,90,119,0.35)",
         borderRadius: 10,
         background: "#0f172a",
         boxShadow: "0 8px 22px rgba(2,6,23,0.25)",
@@ -1114,6 +1218,26 @@ const thStyle: React.CSSProperties = {
 const tdStyle: React.CSSProperties = {
   padding: "10px 12px",
   color: "rgba(255,255,255,0.85)",
+};
+const compactSelectStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 120,
+  height: 32,
+  borderRadius: 6,
+  border: "1px solid rgba(148,163,184,0.35)",
+  background: "#111827",
+  color: "#cbd5e1",
+  padding: "0 8px",
+};
+const detailSelectStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 180,
+  height: 34,
+  borderRadius: 6,
+  border: "1px solid rgba(148,163,184,0.35)",
+  background: "#0b1220",
+  color: "#e2e8f0",
+  padding: "0 10px",
 };
 const pageBtnStyle: React.CSSProperties = {
   minWidth: 34,

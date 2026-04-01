@@ -20,10 +20,9 @@ import (
 )
 
 const (
-	// Per pemanggilan tesseract: dibatasi agar total pipeline (+gabungan layanan) tetap masuk ~15s.
-	// Fast-mode saat ini menjalankan 1x tesseract mentah (psm 6), jadi timeout dinaikkan
-	// agar tidak sering ter-kill di mesin yang lebih lambat.
-	ocrTimeoutSec   = 14
+	// Per pemanggilan tesseract dibuka 60 detik agar mode raw tidak mudah ter-kill
+	// di mesin produksi/testing yang lebih lambat.
+	ocrTimeoutSec   = 60
 	maxFileSize     = 10 * 1024 * 1024
 	minWidthUpscale = 1000
 	targetWidthLow  = 2000 // Resolusi lebih tinggi untuk akurasi baca (~target kualitas lebih baik)

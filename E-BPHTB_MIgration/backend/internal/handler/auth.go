@@ -32,6 +32,7 @@ import (
 const maxUploadSize = 5 * 1024 * 1024
 const allowedMimes = "image/jpeg,image/jpg,image/png"
 const maxNIBDocSize = 10 * 1024 * 1024 // 10MB for NIB PDF
+const ktpOCRTimeout = 60 * time.Second
 
 var allowedExtensions = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
 
@@ -197,8 +198,8 @@ func isSecureRequest(r *http.Request) bool {
 	return false
 }
 
-func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
-	cleanedRaw := stage2FilterKtpRawText(result.RawText)
+func buildKtpExtractPayload(rawTextForStage2 string, result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
+	cleanedRaw := stage2FilterKtpRawText(rawTextForStage2)
 	payload := ktpExtractJSON{
 		NIK: result.NIK, Nama: result.Nama,
 		Alamat:     result.Alamat,
@@ -365,10 +366,11 @@ func indorobertaToResult(r *service.KtpIndorobertaResponse) *ktpocr.Result {
 	return out
 }
 
-// runKtpOCR: IndoROBERTa (opsional) + Tesseract paralel, gabungan hasil; batas waktu total ctx (~15s di handler).
+// runKtpOCR: jalur raw OCR terlebih dahulu, lalu field extraction dari raw text.
+// Timeout total dibuka 60 detik agar proses di mesin lambat tidak mudah ter-kill.
 // manualVerificationRequested true jika setelah gabungan tidak ada NIK valid (perlu verifikasi manual).
 func (h *AuthHandler) runKtpOCR(ctx context.Context, tmpPath string) (*ktpocr.Result, bool, error) {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, ktpOCRTimeout)
 	defer cancel()
 	// MODE CEPAT (sementara untuk uji): hanya jalur tesseract tunggal seperti terminal.
 	// Pipeline lama (IndoROBERTA + merge + fallback) tidak dihapus, hanya dinonaktifkan.
@@ -464,8 +466,9 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rawOCR := strings.TrimSpace(result.RawText)
 	createdAt := time.Now().UnixMilli()
-	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
+	payload, ktpOcrJsonStr := buildKtpExtractPayload(rawOCR, result, createdAt)
 	uploadKey := "OCRRAW"
 	if result.NIK != nil && strings.TrimSpace(*result.NIK) != "" {
 		uploadKey = sanitizeNIKForFilename(*result.NIK)
@@ -484,7 +487,7 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		"rtRw":                         result.RtRw,
 		"kelurahan":                    result.Kelurahan,
 		"kecamatan":                    result.Kecamatan,
-		"rawText":                      clipKtpRawTextForAPI(stage2FilterKtpRawText(result.RawText)),
+		"rawText":                      clipKtpRawTextForAPI(stage2FilterKtpRawText(rawOCR)),
 	}
 
 	decision := "success"
