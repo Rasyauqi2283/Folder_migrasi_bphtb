@@ -1130,7 +1130,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 type requestOTPReq struct {
-	Email string `json:"email"`
+	Email               string                 `json:"email"`
+	PendingRegistration map[string]interface{} `json:"pendingRegistration"`
 }
 
 type verifyOTPFinalizeReq struct {
@@ -1164,9 +1165,42 @@ func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "Email harus diisi.")
 		return
 	}
-	if h.repo == nil || h.repo.Pool() == nil {
-		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+	p := req.PendingRegistration
+	if p == nil {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak ditemukan.")
 		return
+	}
+	nama := getStringField(p, "nama")
+	nik := getStringField(p, "nik")
+	telepon := getStringField(p, "telepon")
+	password := getStringField(p, "password")
+	gender := getStringField(p, "gender")
+	verseValue := getStringField(p, "verse")
+	ktpUploadID := getStringField(p, "ktpUploadId")
+	ktpOcrJson := getStringField(p, "ktpOcrJson")
+	nip := getStringField(p, "nip")
+	specialField := getStringField(p, "special_field")
+	pejabatUmum := getStringField(p, "pejabat_umum")
+	divisi := strings.ToUpper(getStringField(p, "divisi"))
+	wpSubtype := getStringField(p, "wp_subtype")
+	isWPBadan := strings.EqualFold(verseValue, "WP") && (wpSubtype == "Badan Usaha" || wpSubtype == "Badan")
+	if isWPBadan && strings.TrimSpace(divisi) == "" {
+		divisi = "Wajib Pajak B"
+	}
+	if nama == "" || nik == "" || telepon == "" || password == "" {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap.")
+		return
+	}
+	if !isWPBadan && gender == "" {
+		jsonError(w, http.StatusBadRequest, "Jenis kelamin wajib diisi.")
+		return
+	}
+	if !isWPBadan && ktpUploadID == "" {
+		jsonError(w, http.StatusBadRequest, "Upload KTP wajib sebelum OTP.")
+		return
+	}
+	if verseValue == "" {
+		verseValue = "WP"
 	}
 
 	existsVerified, err := h.repo.GetByEmailVerified(r.Context(), email)
@@ -1188,6 +1222,62 @@ func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
 
 	otp := generateOTP()
 	setPendingOTP(email, otp)
+	var nipPtr, specialFieldPtr, pejabatUmumPtr, divisiPtr, ocrPtr *string
+	if strings.TrimSpace(nip) != "" {
+		nipPtr = &nip
+	}
+	if strings.TrimSpace(specialField) != "" {
+		specialFieldPtr = &specialField
+	}
+	if strings.TrimSpace(pejabatUmum) != "" {
+		pejabatUmumPtr = &pejabatUmum
+	}
+	if strings.TrimSpace(divisi) != "" {
+		divisiPtr = &divisi
+	}
+	if strings.TrimSpace(ktpOcrJson) != "" {
+		ocrPtr = &ktpOcrJson
+	}
+	existsUnverified, err := h.repo.GetByEmailUnverified(r.Context(), email)
+	if err != nil {
+		log.Printf("[REQUEST_OTP] GetByEmailUnverified error: %v", err)
+		jsonError(w, http.StatusInternalServerError, "Gagal memproses OTP.")
+		return
+	}
+	upsertArgs := &repository.InsertUnverifiedArgs{
+		Nama:     nama,
+		NIK:      nik,
+		Telepon:  telepon,
+		Email:    email,
+		Password: password,
+		Foto:     ktpUploadID,
+		OTP:      otp,
+		Gender: func() string {
+			if isWPBadan {
+				return ""
+			}
+			return gender
+		}(),
+		Verse:        verseValue,
+		NIP:          nipPtr,
+		SpecialField: specialFieldPtr,
+		PejabatUmum:  pejabatUmumPtr,
+		Divisi:       divisiPtr,
+		KtpOcrJson:   ocrPtr,
+	}
+	if existsUnverified {
+		if err := h.repo.UpdateUnverified(r.Context(), upsertArgs, email); err != nil {
+			log.Printf("[REQUEST_OTP] UpdateUnverified error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Gagal menyimpan data registrasi.")
+			return
+		}
+	} else {
+		if err := h.repo.InsertUnverified(r.Context(), upsertArgs); err != nil {
+			log.Printf("[REQUEST_OTP] InsertUnverified error: %v", err)
+			jsonError(w, http.StatusInternalServerError, "Gagal menyimpan data registrasi.")
+			return
+		}
+	}
 	if err := mail.SendOTP(email, otp); err != nil {
 		log.Printf("[REQUEST_OTP] Email gagal ke %s: %v. OTP: %s", email, err, otp)
 		jsonError(w, http.StatusInternalServerError, "Gagal mengirim OTP ke email.")
@@ -1230,31 +1320,68 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	}
 
 	p := req.PendingRegistration
-	if p == nil {
+	if h.repo == nil || h.repo.Pool() == nil {
+		jsonError(w, http.StatusServiceUnavailable, "Database tidak tersedia.")
+		return
+	}
+	unverified, err := h.repo.GetUnverifiedByEmail(r.Context(), email)
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
+		return
+	}
+	if unverified == nil {
 		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak ditemukan.")
 		return
 	}
 
-	nama := getStringField(p, "nama")
-	nik := getStringField(p, "nik")
-	telepon := getStringField(p, "telepon")
-	password := getStringField(p, "password")
-	gender := getStringField(p, "gender")
-	verseValue := getStringField(p, "verse")
-	ktpUploadID := getStringField(p, "ktpUploadId")
-	ktpOcrJson := getStringField(p, "ktpOcrJson")
-	nip := getStringField(p, "nip")
-	specialField := getStringField(p, "special_field")
-	pejabatUmum := getStringField(p, "pejabat_umum")
-	divisi := strings.ToUpper(getStringField(p, "divisi"))
+	nama := strings.TrimSpace(unverified.Nama)
+	nik := strings.TrimSpace(unverified.NIK)
+	telepon := strings.TrimSpace(unverified.Telepon)
+	password := strings.TrimSpace(unverified.Password)
+	gender := ""
+	if unverified.Gender != nil {
+		gender = strings.TrimSpace(*unverified.Gender)
+	}
+	verseValue := "WP"
+	if unverified.Verse != nil && strings.TrimSpace(*unverified.Verse) != "" {
+		verseValue = strings.TrimSpace(*unverified.Verse)
+	}
+	ktpUploadID := strings.TrimSpace(unverified.Foto)
+	ktpOcrJson := ""
+	if unverified.KtpOcrJson != nil {
+		ktpOcrJson = strings.TrimSpace(*unverified.KtpOcrJson)
+	}
+	nip := ""
+	if unverified.NIP != nil {
+		nip = strings.TrimSpace(*unverified.NIP)
+	}
+	specialField := ""
+	if unverified.SpecialField != nil {
+		specialField = strings.TrimSpace(*unverified.SpecialField)
+	}
+	pejabatUmum := ""
+	if unverified.PejabatUmum != nil {
+		pejabatUmum = strings.TrimSpace(*unverified.PejabatUmum)
+	}
+	divisi := ""
+	if unverified.Divisi != nil {
+		divisi = strings.ToUpper(strings.TrimSpace(*unverified.Divisi))
+	}
 	wpSubtype := getStringField(p, "wp_subtype")
+	if wpSubtype == "" && strings.Contains(strings.ToLower(divisi), "wajib pajak b") {
+		wpSubtype = "Badan Usaha"
+	}
 	npwpBadan := getStringField(p, "npwp_badan")
 	nib := getStringField(p, "nib")
 	nibDocUploadID := getStringField(p, "nib_doc_upload_id")
 
 	isWPBadan := verseValue == "WP" && (wpSubtype == "Badan Usaha" || wpSubtype == "Badan")
 
-	if nama == "" || nik == "" || telepon == "" || password == "" || gender == "" {
+	if nama == "" || nik == "" || telepon == "" || password == "" {
+		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap.")
+		return
+	}
+	if !isWPBadan && gender == "" {
 		jsonError(w, http.StatusBadRequest, "Data pendaftaran tidak lengkap.")
 		return
 	}
@@ -1331,21 +1458,22 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	if verseValue == "PU" || verseValue == "Karyawan" {
 		verseOut = verseValue
 	}
-	divisiOut := "Wajib Pajak"
+	divisiOut := ""
 	useridOut := ""
 	ppatKhususOut := ""
 	verifiedStatus := "verified_pending"
-	if verseOut == "WP" {
-		if isWPBadan {
-			divisiOut = "Wajib Pajak B"
-		} else {
-			divisiOut = "Wajib Pajak P"
-		}
-		if isWPBadan {
-			verifiedStatus = "pending"
-		} else {
-			verifiedStatus = "complete"
-		}
+	isAutoJoin := verseOut == "WP" && !isWPBadan
+	if isAutoJoin {
+		divisiOut = "Wajib Pajak P"
+		verifiedStatus = "complete"
+	} else if verseOut == "WP" && isWPBadan {
+		divisiOut = "Wajib Pajak B"
+		verifiedStatus = "pending"
+	} else if verseOut == "PU" {
+		divisiOut = divisi
+		verifiedStatus = "verified_pending"
+	} else {
+		verifiedStatus = "verified_pending"
 	}
 
 	pool := h.repo.Pool()
@@ -1356,26 +1484,12 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	}
 	defer tx.Rollback(r.Context())
 
-	if verseOut == "WP" {
-		if isWPBadan {
-			divisiOut = "Wajib Pajak B"
-		} else {
-			divisiOut = "Wajib Pajak P"
-		}
+	if isAutoJoin {
 		useridOut, err = idgen.GenerateUserID(r.Context(), tx, "Wajib Pajak")
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
 			return
 		}
-	} else if verseOut == "PU" {
-		divisiOut = divisi
-		useridOut, err = idgen.GenerateUserID(r.Context(), tx, divisiOut)
-		if err != nil {
-			jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
-			return
-		}
-	} else {
-		divisiOut = ""
 	}
 
 	var nipPtr, specialFieldPtr, pejabatUmumPtr *string
@@ -1399,7 +1513,11 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		nibDocPath := filepath.Join("nib_docs", nibDocUploadID+".pdf")
 		nibDocPathPtr = &nibDocPath
 	}
-	genderPtr := &gender
+	var genderPtr *string
+	if !isWPBadan && strings.TrimSpace(gender) != "" {
+		g := strings.TrimSpace(gender)
+		genderPtr = &g
+	}
 	log.Printf("[VERIFY_OTP_FINALIZE] preparing insert email=%s verse=%s is_wp_badan=%t divisi=%s npwp_set=%t nib_set=%t nib_doc_set=%t",
 		email, verseOut, isWPBadan, divisiOut, npwpBadanPtr != nil, nibPtr != nil, nibDocPathPtr != nil)
 
@@ -1434,11 +1552,15 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		jsonError(w, http.StatusInternalServerError, "Terjadi kesalahan saat verifikasi.")
 		return
 	}
+	// Hapus staging a_1 hanya setelah a_2 sukses commit.
+	if delErr := h.repo.DeleteUnverified(r.Context(), email); delErr != nil {
+		log.Printf("[VERIFY_OTP_FINALIZE] DeleteUnverified warning email=%s err=%v", email, delErr)
+	}
 	log.Printf("[VERIFY_OTP_FINALIZE] success email=%s verse=%s is_wp_badan=%t verified_status=%s userid=%s",
 		email, verseOut, isWPBadan, verifiedStatus, useridOut)
 
-	// Simpan ktp_ocr_json ke tabel OCR (terikat NIK/email) untuk preview admin
-	if h.repo != nil && ktpOcrJson != "" && nik != "" {
+	// Simpan OCR untuk jalur yang perlu review admin (Condition-2).
+	if h.repo != nil && verifiedStatus != "complete" && ktpOcrJson != "" && nik != "" {
 		if insErr := h.repo.InsertCekKtpOcr(r.Context(), email, nik, ktpOcrJson); insErr != nil {
 			log.Printf("[VERIFY_OTP_FINALIZE] InsertCekKtpOcr error: %v", insErr)
 		}
@@ -1457,13 +1579,16 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 
 	deletePendingOTP(email)
 
-	if verseOut == "WP" && !isWPBadan {
+	if isAutoJoin {
 		if err := mail.SendUserIDNotification(email, nama, useridOut); err != nil {
 			log.Printf("[VERIFY_OTP_FINALIZE] SendUserIDNotification error: %v", err)
 		}
 	}
 
-	msg := "Verifikasi Berhasil! Silakan masuk ke akun Anda."
+	msg := "Pendaftaran berhasil. Akun Anda menunggu verifikasi admin. Anda dapat login setelah disetujui."
+	if isAutoJoin {
+		msg = "Verifikasi Berhasil! Silakan masuk ke akun Anda."
+	}
 	if verseOut == "WP" && isWPBadan {
 		msg = "Pendaftaran berhasil. Akun Anda menunggu verifikasi admin. Anda dapat login setelah disetujui."
 	}

@@ -30,3 +30,36 @@ CREATE TABLE IF NOT EXISTS public.ppat_job_runs (
 );
 
 COMMENT ON TABLE public.ppat_job_runs IS 'Mencegah job suspend otomatis (missing laporan) berjalan ganda pada hari yang sama.';
+
+-- =====================================================================
+-- v025 — Konsistensi schema user terverifikasi (updated_at auto-maintained)
+-- Sinkron untuk local/serverless/Neon agar audit perubahan tetap konsisten.
+-- =====================================================================
+
+ALTER TABLE public.a_2_verified_users
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+
+CREATE OR REPLACE FUNCTION public.fn_set_updated_at_a2_verified_users()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at := NOW();
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'trg_set_updated_at_a2_verified_users'
+  ) THEN
+    CREATE TRIGGER trg_set_updated_at_a2_verified_users
+    BEFORE UPDATE ON public.a_2_verified_users
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_set_updated_at_a2_verified_users();
+  END IF;
+END;
+$$;

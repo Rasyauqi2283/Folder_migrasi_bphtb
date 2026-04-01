@@ -121,6 +121,15 @@ export default function AdminDataUserPendingPage() {
     return `${getApiBase()}/api/uploads/nib/${encodeURIComponent(base)}`;
   };
 
+  const genderLabel = (u: PendingUser): string => {
+    const g = (u.gender ?? "").trim();
+    if (g) return g;
+    const isWpBadan =
+      (u.verse ?? "").toUpperCase() === "WP" &&
+      (u.divisi ?? "").toLowerCase().includes("wajib pajak b");
+    return isWpBadan ? "Tidak berlaku (WP Badan)" : "Belum diisi";
+  };
+
   const rejectPending = async (id: number) => {
     setWpActionError(null);
     setWpActionId(id);
@@ -164,6 +173,7 @@ export default function AdminDataUserPendingPage() {
               <>
                 <th style={thStyle}>Email</th>
                 <th style={thStyle}>NIK</th>
+                <th style={thStyle}>Gender</th>
                 <th style={thStyle}>Aksi</th>
               </>
             ) : (
@@ -171,6 +181,7 @@ export default function AdminDataUserPendingPage() {
                 <th style={thStyle}>NIK</th>
                 <th style={thStyle}>Email</th>
                 <th style={thStyle}>Special Field</th>
+                <th style={thStyle}>Gender</th>
                 <th style={thStyle}>Aksi</th>
               </>
             )}
@@ -189,6 +200,7 @@ export default function AdminDataUserPendingPage() {
                     <>
                       <td style={tdStyle}>{u.email}</td>
                       <td style={tdStyle}>{u.nik}</td>
+                      <td style={tdStyle}>{genderLabel(u)}</td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -211,6 +223,7 @@ export default function AdminDataUserPendingPage() {
                       <td style={tdStyle}>{u.nik}</td>
                       <td style={tdStyle}>{u.email}</td>
                       <td style={tdStyle}>{u.special_field ?? "—"}</td>
+                      <td style={tdStyle}>{genderLabel(u)}</td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -233,7 +246,7 @@ export default function AdminDataUserPendingPage() {
 
                 {expanded && (
                   <tr key={`assign-${u.id}`} style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                    <td style={tdStyle} colSpan={tipe === "karyawan" ? 3 : 4}>
+                    <td style={tdStyle} colSpan={tipe === "karyawan" ? 4 : 5}>
                       <div
                         style={{
                           background: "#0d1b2a",
@@ -247,6 +260,7 @@ export default function AdminDataUserPendingPage() {
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                           <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
                           <span style={{ color: "#94a3b8" }}>{u.email}</span>
+                          <span style={{ color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></span>
                           <button
                             type="button"
                             onClick={loadKtpPreview}
@@ -557,13 +571,14 @@ export default function AdminDataUserPendingPage() {
                       <th style={thStyle}>NPWP Badan</th>
                       <th style={thStyle}>NIB</th>
                       <th style={thStyle}>Dokumen</th>
+                      <th style={thStyle}>Gender</th>
                       <th style={thStyle}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {wpBadanRows.length === 0 ? (
                       <tr>
-                        <td style={tdStyle} colSpan={7}>
+                        <td style={tdStyle} colSpan={8}>
                           Tidak ada pending WP Badan Usaha pada halaman ini.
                         </td>
                       </tr>
@@ -600,12 +615,13 @@ export default function AdminDataUserPendingPage() {
                                   "—"
                                 )}
                               </td>
+                              <td style={tdStyle}>{genderLabel(u)}</td>
                               <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
                             </tr>
 
                             {expanded && (
                               <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                                <td style={tdStyle} colSpan={7}>
+                                <td style={tdStyle} colSpan={8}>
                                   <div
                                     style={{
                                       background: "#0d1b2a",
@@ -619,6 +635,7 @@ export default function AdminDataUserPendingPage() {
                                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                       <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
                                       <span style={{ color: "#94a3b8" }}>{u.email}</span>
+                                      <span style={{ color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></span>
                                       <button
                                         type="button"
                                         onClick={(e) => {

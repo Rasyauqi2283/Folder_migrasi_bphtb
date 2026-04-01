@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { getApiBase } from "../../../../../lib/api";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface ChartMonth {
   month: number;
@@ -11,14 +11,24 @@ interface ChartMonth {
   total_bphtb: number;
 }
 
-interface PpatUser {
+interface PpatPaymentRow {
+  nobooking?: string;
+  no_registrasi?: string;
   userid?: string;
   user_nama?: string;
   divisi?: string;
   ppat_khusus?: string;
   nilai_formatted?: string;
   total_nilai_bphtb?: number;
-  total_booking?: number;
+  payment_status?: string;
+  status_verifikasi?: string;
+  status_dibank?: string;
+  paid_at?: string | null;
+}
+
+function formatRupiahTooltip(value: unknown): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return `Rp ${Number(raw ?? 0).toLocaleString("id-ID")}`;
 }
 
 export default function AdminPemutakhiranPpatPage() {
@@ -27,7 +37,7 @@ export default function AdminPemutakhiranPpatPage() {
     total_transaksi: 0,
     total_bphtb_formatted: "Rp 0",
   });
-  const [list, setList] = useState<PpatUser[]>([]);
+  const [list, setList] = useState<PpatPaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tahun, setTahun] = useState(new Date().getFullYear());
@@ -107,11 +117,6 @@ export default function AdminPemutakhiranPpatPage() {
     loadRenewal();
   };
 
-  const maxBphtb = Math.max(
-    ...chartData.map((m) => m.total_bphtb),
-    1
-  );
-
   const startIdx = (page - 1) * limit + 1;
   const endIdx = Math.min(page * limit, total);
 
@@ -131,17 +136,33 @@ export default function AdminPemutakhiranPpatPage() {
       if (!data?.success || !Array.isArray(data?.data)) {
         throw new Error(data?.message || "Gagal export");
       }
-      const headers = ["Nama PPAT", "UserID", "PPAT Khusus", "Total Nilai Pajak", "Total Booking"];
+      const headers = [
+        "No Booking",
+        "No Registrasi",
+        "Nama PPAT",
+        "UserID",
+        "PPAT Khusus",
+        "Status Pembayaran",
+        "Status Verifikasi Bank",
+        "Status di Bank",
+        "Total Nilai Pajak",
+        "Waktu Bayar",
+      ];
       const csvRows = [
         headers.join(","),
         ...data.data.map(
-          (u: PpatUser) =>
+          (u: PpatPaymentRow) =>
             [
+              `"${(u.nobooking ?? "").replace(/"/g, '""')}"`,
+              `"${(u.no_registrasi ?? "").replace(/"/g, '""')}"`,
               `"${(u.user_nama ?? "").replace(/"/g, '""')}"`,
               `"${(u.userid ?? "").replace(/"/g, '""')}"`,
               `"${(u.ppat_khusus ?? "").replace(/"/g, '""')}"`,
+              `"${(u.payment_status ?? "").replace(/"/g, '""')}"`,
+              `"${(u.status_verifikasi ?? "").replace(/"/g, '""')}"`,
+              `"${(u.status_dibank ?? "").replace(/"/g, '""')}"`,
               u.total_nilai_bphtb ?? 0,
-              u.total_booking ?? 0,
+              `"${(u.paid_at ?? "").replace(/"/g, '""')}"`,
             ].join(",")
         ),
       ];
@@ -156,6 +177,14 @@ export default function AdminPemutakhiranPpatPage() {
     }
   };
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      loadChart();
+      loadRenewal();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [loadChart, loadRenewal]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, justifyContent: "space-between" }}>
@@ -164,7 +193,7 @@ export default function AdminPemutakhiranPpatPage() {
             Pemutakhiran Data PPAT
           </h1>
           <p style={{ margin: 0, color: "var(--color_font_muted)", fontSize: "0.9rem" }}>
-            Chart bulanan dan daftar PPAT renewal
+            Chart bulanan dan rekap transaksi pembayaran BPHTB (real-time)
           </p>
         </div>
         {/* Rekap: jangkawaktu + tahun (sesuai legacy) */}
@@ -242,44 +271,22 @@ export default function AdminPemutakhiranPpatPage() {
             ))}
           </select>
         </div>
-        <div
-          style={{
-            padding: "1.5rem",
-            display: "grid",
-            gridTemplateColumns: "repeat(12, 1fr)",
-            gap: 8,
-            alignItems: "end",
-            minHeight: 160,
-          }}
-        >
-          {chartData.map((m) => (
-            <div
-              key={m.month}
-              title={`${m.monthName}: Rp ${m.total_bphtb.toLocaleString("id-ID")}`}
-              style={{
-                height: `${Math.max(4, (m.total_bphtb / maxBphtb) * 100)}%`,
-                minHeight: 4,
-                background: "var(--color_accent)",
-                borderRadius: 4,
-                opacity: 0.85,
-              }}
-            />
-          ))}
-        </div>
-        <div
-          style={{
-            padding: "0.5rem 1.25rem",
-            fontSize: "0.8rem",
-            color: "var(--color_font_muted)",
-            display: "flex",
-            gap: 24,
-          }}
-        >
-          {chartData.map((m) => (
-            <span key={m.month} style={{ flex: 1, textAlign: "center" }}>
-              {m.monthName}
-            </span>
-          ))}
+        <div style={{ padding: "1.5rem", height: 320 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border_color)" />
+              <XAxis dataKey="monthName" stroke="var(--color_font_muted)" />
+              <YAxis
+                stroke="var(--color_font_muted)"
+                tickFormatter={(v) => `${Math.round(Number(v) / 1_000_000)} jt`}
+              />
+              <Tooltip
+                formatter={(value) => formatRupiahTooltip(value)}
+                labelFormatter={(label) => `Bulan: ${String(label)}`}
+              />
+              <Bar dataKey="total_bphtb" name="Nilai BPHTB" fill="var(--color_accent)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
         <div
           style={{
@@ -321,7 +328,7 @@ export default function AdminPemutakhiranPpatPage() {
           }}
         >
           <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--color_accent)", flex: "1 1 100%" }}>
-            Data rekap pajak by nobooking
+            Data rekap pajak by No. Booking
           </h3>
           <input
             type="text"
@@ -418,41 +425,34 @@ export default function AdminPemutakhiranPpatPage() {
               >
                 <thead>
                   <tr style={{ borderBottom: "2px solid var(--border_color)" }}>
+                    <th style={thStyle}>No. Booking</th>
+                    <th style={thStyle}>No. Registrasi</th>
                     <th style={thStyle}>Nama PPAT</th>
                     <th style={thStyle}>UserID</th>
-                    <th style={thStyle}>PPAT Khusus</th>
-                    <th style={thStyle}>Nilai</th>
-                    <th style={thStyle}>Aksi</th>
+                    <th style={thStyle}>Status Bayar</th>
+                    <th style={thStyle}>Verifikasi Bank</th>
+                    <th style={thStyle}>Status di Bank</th>
+                    <th style={thStyle}>Nilai BPHTB</th>
+                    <th style={thStyle}>Waktu Bayar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.map((u, i) => (
                     <tr
-                      key={u.userid ?? i}
+                      key={`${u.nobooking ?? ""}-${u.userid ?? ""}-${i}`}
                       style={{ borderBottom: "1px solid var(--border_color)" }}
                     >
+                      <td style={tdStyle}>{u.nobooking ?? "—"}</td>
+                      <td style={tdStyle}>{u.no_registrasi ?? "—"}</td>
                       <td style={tdStyle}>{u.user_nama ?? "—"}</td>
                       <td style={tdStyle}>{u.userid ?? "—"}</td>
-                      <td style={tdStyle}>{u.ppat_khusus ?? "—"}</td>
+                      <td style={tdStyle}>{u.payment_status ?? "—"}</td>
+                      <td style={tdStyle}>{u.status_verifikasi ?? "—"}</td>
+                      <td style={tdStyle}>{u.status_dibank ?? "—"}</td>
                       <td style={tdStyle}>
                         {u.nilai_formatted ?? "Rp 0"}
                       </td>
-                      <td style={tdStyle}>
-                        <Link
-                          href={`/admin/referensi/pemutakhiran-ppat/${encodeURIComponent(u.userid ?? "")}`}
-                          style={{
-                            padding: "4px 12px",
-                            background: "var(--color_accent)",
-                            color: "#fff",
-                            borderRadius: 6,
-                            textDecoration: "none",
-                            fontSize: "0.85rem",
-                            display: "inline-block",
-                          }}
-                        >
-                          Lihat
-                        </Link>
-                      </td>
+                      <td style={tdStyle}>{u.paid_at ? new Date(u.paid_at).toLocaleString("id-ID") : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

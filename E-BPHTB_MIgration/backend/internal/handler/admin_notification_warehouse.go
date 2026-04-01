@@ -220,18 +220,18 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 			continue
 		}
 		out = append(out, map[string]interface{}{
-			"no_registrasi":      rr.noReg,
-			"nobooking":          rr.nobooking,
-			"userid":             valPtr(rr.userid),
-			"ppat_nama":          valPtr(rr.ppatNama),
-			"ppat_divisi":        valPtr(rr.ppatDivisi),
-			"ppat_khusus":        valPtr(rr.ppatKhusus),
-			"special_field":      valPtrOr(rr.specialField, "-"),
-			"jenis_wajib_pajak":  valPtr(rr.jenisWp),
-			"noppbb":             valPtr(rr.noppbb),
-			"ltb_status":         valPtr(rr.ltbStatus),
-			"ltb_trackstatus":    valPtr(rr.ltbTrack),
-			"updated_at":         rr.updatedAt,
+			"no_registrasi":     rr.noReg,
+			"nobooking":         rr.nobooking,
+			"userid":            valPtr(rr.userid),
+			"ppat_nama":         valPtr(rr.ppatNama),
+			"ppat_divisi":       valPtr(rr.ppatDivisi),
+			"ppat_khusus":       valPtr(rr.ppatKhusus),
+			"special_field":     valPtrOr(rr.specialField, "-"),
+			"jenis_wajib_pajak": valPtr(rr.jenisWp),
+			"noppbb":            valPtr(rr.noppbb),
+			"ltb_status":        valPtr(rr.ltbStatus),
+			"ltb_trackstatus":   valPtr(rr.ltbTrack),
+			"updated_at":        rr.updatedAt,
 		})
 	}
 
@@ -265,10 +265,15 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 		"success": true,
 		"data":    out,
 		"pagination": map[string]interface{}{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
-			"totalPages": func() int { if limit <= 0 { return 1 }; return (total + limit - 1) / limit }(),
+			"page":  page,
+			"limit": limit,
+			"total": total,
+			"totalPages": func() int {
+				if limit <= 0 {
+					return 1
+				}
+				return (total + limit - 1) / limit
+			}(),
 		},
 		"search": search,
 	})
@@ -353,20 +358,20 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtbDetail(w http.ResponseWrit
 	adminJSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"data": map[string]interface{}{
-			"no_registrasi":      noReg,
-			"nobooking":          nobooking,
-			"userid":             valPtr(userid),
-			"ppat_nama":          valPtr(ppatNama),
-			"ppat_divisi":        valPtr(ppatDivisi),
-			"ppat_khusus":        valPtr(ppatKhusus),
-			"special_field":      valPtrOr(specialField, "-"),
-			"jenis_wajib_pajak":  valPtr(jenisWp),
-			"noppbb":             valPtr(noppbb),
-			"ltb_status":         valPtr(ltbStatus),
-			"ltb_trackstatus":    valPtr(ltbTrack),
-			"ltb_pengirim":       valPtr(ltbPengirim),
-			"ltb_catatan":        valPtr(ltbCatatan),
-			"updated_at":         updatedAt,
+			"no_registrasi":     noReg,
+			"nobooking":         nobooking,
+			"userid":            valPtr(userid),
+			"ppat_nama":         valPtr(ppatNama),
+			"ppat_divisi":       valPtr(ppatDivisi),
+			"ppat_khusus":       valPtr(ppatKhusus),
+			"special_field":     valPtrOr(specialField, "-"),
+			"jenis_wajib_pajak": valPtr(jenisWp),
+			"noppbb":            valPtr(noppbb),
+			"ltb_status":        valPtr(ltbStatus),
+			"ltb_trackstatus":   valPtr(ltbTrack),
+			"ltb_pengirim":      valPtr(ltbPengirim),
+			"ltb_catatan":       valPtr(ltbCatatan),
+			"updated_at":        updatedAt,
 		},
 	})
 }
@@ -534,10 +539,15 @@ func (h *AdminNotificationWarehouseHandler) GetPenelitiLsb(w http.ResponseWriter
 		"success": true,
 		"data":    out,
 		"pagination": map[string]interface{}{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
-			"totalPages": func() int { if limit <= 0 { return 1 }; return (total + limit - 1) / limit }(),
+			"page":  page,
+			"limit": limit,
+			"total": total,
+			"totalPages": func() int {
+				if limit <= 0 {
+					return 1
+				}
+				return (total + limit - 1) / limit
+			}(),
 		},
 		"search": search,
 	})
@@ -675,10 +685,15 @@ func (h *AdminNotificationWarehouseHandler) GetLsbPpat(w http.ResponseWriter, r 
 		"success": true,
 		"data":    out,
 		"pagination": map[string]interface{}{
-			"page":       page,
-			"limit":      limit,
-			"total":      total,
-			"totalPages": func() int { if limit <= 0 { return 1 }; return (total + limit - 1) / limit }(),
+			"page":  page,
+			"limit": limit,
+			"total": total,
+			"totalPages": func() int {
+				if limit <= 0 {
+					return 1
+				}
+				return (total + limit - 1) / limit
+			}(),
 		},
 		"search": search,
 	})
@@ -884,11 +899,11 @@ func (h *AdminNotificationWarehouseHandler) PollPing(w http.ResponseWriter, r *h
 	defer rows.Close()
 
 	type nRow struct {
-		id         int
-		nobooking  string
-		noReg      string
-		createdAt  interface{}
-		status     *string
+		id        int
+		nobooking string
+		noReg     string
+		createdAt interface{}
+		status    *string
 	}
 	var notifs []map[string]interface{}
 	for rows.Next() {
@@ -901,13 +916,13 @@ func (h *AdminNotificationWarehouseHandler) PollPing(w http.ResponseWriter, r *h
 			continue
 		}
 		notifs = append(notifs, map[string]interface{}{
-			"ping_id":      id,
-			"nobooking":    nob,
+			"ping_id":       id,
+			"nobooking":     nob,
 			"no_registrasi": nr,
-			"division":     division,
-			"message":      "Ping dari Admin untuk No. Booking: " + nob,
-			"timestamp":    created,
-			"status":       valPtr(st),
+			"division":      division,
+			"message":       "Ping dari Admin untuk No. Booking: " + nob,
+			"timestamp":     created,
+			"status":        valPtr(st),
 		})
 	}
 
@@ -1077,8 +1092,8 @@ func (h *AdminNotificationWarehouseHandler) GetPpatUsers(w http.ResponseWriter, 
 		totalPages = (total + limit - 1) / limit
 	}
 	adminJSON(w, http.StatusOK, map[string]interface{}{
-		"success":    true,
-		"data":       formatted,
+		"success": true,
+		"data":    formatted,
 		"pagination": map[string]interface{}{
 			"page":       page,
 			"limit":      limit,
@@ -1162,10 +1177,10 @@ func (h *AdminNotificationWarehouseHandler) GetPpatChartData(w http.ResponseWrit
 	monthlyMaps := make([]map[string]interface{}, 0, len(data))
 	for _, m := range data {
 		monthlyMaps = append(monthlyMaps, map[string]interface{}{
-			"month":             m.Month,
-			"monthName":         m.MonthName,
-			"jumlah_transaksi":  m.JumlahTransaksi,
-			"total_bphtb":       m.TotalBphtb,
+			"month":            m.Month,
+			"monthName":        m.MonthName,
+			"jumlah_transaksi": m.JumlahTransaksi,
+			"total_bphtb":      m.TotalBphtb,
 		})
 	}
 
@@ -1174,8 +1189,8 @@ func (h *AdminNotificationWarehouseHandler) GetPpatChartData(w http.ResponseWrit
 		"data":    monthlyMaps,
 		"tahun":   tahun,
 		"summary": map[string]interface{}{
-			"total_transaksi":      totalTransaksi,
-			"total_bphtb":          totalBphtb,
+			"total_transaksi":       totalTransaksi,
+			"total_bphtb":           totalBphtb,
 			"total_bphtb_formatted": "Rp " + formatNumberID(int64(totalBphtb)),
 		},
 	})
@@ -1259,14 +1274,19 @@ func (h *AdminNotificationWarehouseHandler) GetPpatRenewal(w http.ResponseWriter
 	formatted := make([]map[string]interface{}, 0, len(res.Rows))
 	for _, row := range res.Rows {
 		formatted = append(formatted, map[string]interface{}{
-			"userid":          row.Userid,
-			"user_nama":       row.UserNama,
-			"divisi":          row.Divisi,
-			"ppat_khusus":     row.PpatKhusus,
-			"special_field":   row.SpecialField,
+			"nobooking":         row.Nobooking,
+			"no_registrasi":     row.NoRegistrasi,
+			"userid":            row.Userid,
+			"user_nama":         row.UserNama,
+			"divisi":            row.Divisi,
+			"ppat_khusus":       row.PpatKhusus,
+			"special_field":     row.SpecialField,
 			"total_nilai_bphtb": row.TotalNilaiBphtb,
-			"total_booking":   row.TotalBooking,
-			"nilai_formatted": "Rp " + formatNumberID(int64(row.TotalNilaiBphtb)),
+			"payment_status":    row.PaymentStatus,
+			"status_verifikasi": row.StatusVerifikasi,
+			"status_dibank":     row.StatusDibank,
+			"paid_at":           row.PaidAt,
+			"nilai_formatted":   "Rp " + formatNumberID(int64(row.TotalNilaiBphtb)),
 		})
 	}
 
@@ -1285,10 +1305,10 @@ func (h *AdminNotificationWarehouseHandler) GetPpatRenewal(w http.ResponseWriter
 			"totalPages": totalPages,
 		},
 		"summary": map[string]interface{}{
-			"total_bphtb":          res.SumBphtb,
+			"total_bphtb":           res.SumBphtb,
 			"total_bphtb_formatted": "Rp " + formatNumberID(int64(res.SumBphtb)),
-			"jangka_waktu":         jangkaWaktu,
-			"tahun":                tahun,
+			"jangka_waktu":          jangkaWaktu,
+			"tahun":                 tahun,
 			"date_range": map[string]interface{}{
 				"start": startDate.Format(time.RFC3339),
 				"end":   endDate.Format(time.RFC3339),

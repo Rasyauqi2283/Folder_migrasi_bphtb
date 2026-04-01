@@ -95,6 +95,12 @@ function DaftarContent() {
     };
   }, [ktpFile]);
 
+  useEffect(() => {
+    if (isWPBadan && gender !== "") {
+      setGender("");
+    }
+  }, [isWPBadan, gender]);
+
   const str = (v: unknown): string | undefined =>
     typeof v === "string" && v.trim() ? v : undefined;
 
@@ -285,7 +291,7 @@ function DaftarContent() {
       setMessageType("error");
       return false;
     }
-    if (!gender || !["Perempuan", "Laki-laki"].includes(gender)) {
+    if (!isWPBadan && (!gender || !["Perempuan", "Laki-laki"].includes(gender))) {
       setMessage("Pilih jenis kelamin.");
       setMessageType("error");
       return false;
@@ -368,7 +374,7 @@ function DaftarContent() {
         telepon,
         email,
         password: pwdVal || password,
-        gender,
+        gender: isWPBadan ? "" : gender,
         verse: verseToBackend(verse),
         ktpUploadId: isWPBadan ? "" : ktpUploadId,
         ktpOcrJson: isWPBadan ? "" : JSON.stringify(ocrData),
@@ -400,7 +406,7 @@ function DaftarContent() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, pendingRegistration: pendingPayload }),
       });
 
       let data: { success?: boolean; message?: string; code?: string } = {};
@@ -752,9 +758,10 @@ function DaftarContent() {
               id="gender"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              required
+              required={!isWPBadan}
+              disabled={isWPBadan}
             >
-              <option value="">Pilih...</option>
+              <option value="">{isWPBadan ? "Tidak berlaku untuk WP Badan Usaha" : "Pilih..."}</option>
               <option value="Perempuan">Perempuan</option>
               <option value="Laki-laki">Laki-laki</option>
             </select>

@@ -38,15 +38,39 @@ func (r *BookingRepo) PpatChartData(ctx context.Context, tahun int) ([]PpatChart
 		return EmptyChartData(tahun), 0, 0, nil
 	}
 	q := `
-		SELECT 
-			EXTRACT(MONTH FROM b.created_at)::int as bulan,
-			COUNT(b.nobooking)::int as jumlah_transaksi,
-			COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0)::float as total_bphtb
-		FROM pat_1_bookingsspd b
-		LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
-		WHERE b.trackstatus = 'Diserahkan'
-		AND EXTRACT(YEAR FROM b.created_at) = $1
-		GROUP BY EXTRACT(MONTH FROM b.created_at)
+		SELECT
+			EXTRACT(MONTH FROM t.paid_at)::int AS bulan,
+			COUNT(DISTINCT t.nobooking)::int AS jumlah_transaksi,
+			COALESCE(SUM(t.nominal), 0)::float AS total_bphtb
+		FROM (
+			SELECT DISTINCT ON (bk.nobooking)
+				bk.nobooking,
+				COALESCE(
+					bk.gateway_paid_at,
+					bk.verified_at,
+					b.updated_at,
+					b.created_at
+				) AS paid_at,
+				COALESCE(
+					bk.gateway_nominal_received::float8,
+					b.payment_amount_paid::float8,
+					b.payment_amount_requested::float8,
+					bp.bphtb_yangtelah_dibayar::float8,
+					0
+				) AS nominal
+			FROM bank_1_cek_hasil_transaksi bk
+			INNER JOIN pat_1_bookingsspd b ON b.nobooking = bk.nobooking
+			LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = bk.nobooking
+			WHERE (
+				UPPER(COALESCE(b.payment_status, '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(bk.gateway_status, '')) = 'PAID'
+				OR UPPER(COALESCE(bk.status_verifikasi, '')) IN ('DISETUJUI', 'SINKRON OTOMATIS')
+			)
+			ORDER BY bk.nobooking, COALESCE(bk.gateway_paid_at, bk.verified_at, bk.updated_at, bk.created_at) DESC
+		) t
+		WHERE t.paid_at IS NOT NULL
+		  AND EXTRACT(YEAR FROM t.paid_at) = $1
+		GROUP BY EXTRACT(MONTH FROM t.paid_at)
 		ORDER BY bulan ASC
 	`
 	rows, err := r.pool.Query(ctx, q, tahun)
@@ -94,19 +118,24 @@ func EmptyChartData(tahun int) []PpatChartMonth {
 
 // PpatRenewalRow holds PPAT renewal summary per user.
 type PpatRenewalRow struct {
-	Userid         string  `json:"userid"`
-	UserNama       string  `json:"user_nama"`
-	Divisi         string  `json:"divisi"`
-	PpatKhusus     string  `json:"ppat_khusus"`
-	SpecialField   string  `json:"special_field"`
-	TotalNilaiBphtb float64 `json:"total_nilai_bphtb"`
-	TotalBooking   int     `json:"total_booking"`
+	Nobooking        string     `json:"nobooking"`
+	NoRegistrasi     *string    `json:"no_registrasi"`
+	Userid           string     `json:"userid"`
+	UserNama         string     `json:"user_nama"`
+	Divisi           string     `json:"divisi"`
+	PpatKhusus       string     `json:"ppat_khusus"`
+	SpecialField     string     `json:"special_field"`
+	TotalNilaiBphtb  float64    `json:"total_nilai_bphtb"`
+	PaymentStatus    string     `json:"payment_status"`
+	StatusVerifikasi string     `json:"status_verifikasi"`
+	StatusDibank     string     `json:"status_dibank"`
+	PaidAt           *time.Time `json:"paid_at"`
 }
 
 // PpatRenewalResult holds paginated renewal data and total.
 type PpatRenewalResult struct {
-	Rows    []PpatRenewalRow
-	Total   int
+	Rows     []PpatRenewalRow
+	Total    int
 	SumBphtb float64
 }
 
@@ -128,18 +157,54 @@ func (r *BookingRepo) ListPpatRenewal(ctx context.Context, page, limit int, sear
 	_ = jangkaWaktu
 	_ = tahun
 
-	where := `b.trackstatus = 'Diserahkan' AND b.created_at >= $1 AND b.created_at <= $2`
+	where := `t.paid_at >= $1 AND t.paid_at <= $2`
 	params := []interface{}{startDate, endDate}
 	idx := 3
 	if search != "" {
-		where += ` AND (b.userid ILIKE $` + strconv.Itoa(idx) + ` OR vu.ppat_khusus::text ILIKE $` + strconv.Itoa(idx) + ` OR vu.nama ILIKE $` + strconv.Itoa(idx) + ` OR vu.special_field ILIKE $` + strconv.Itoa(idx) + `)`
+		where += ` AND (
+			t.nobooking ILIKE $` + strconv.Itoa(idx) + `
+			OR COALESCE(t.no_registrasi, '') ILIKE $` + strconv.Itoa(idx) + `
+			OR t.userid ILIKE $` + strconv.Itoa(idx) + `
+			OR t.user_nama ILIKE $` + strconv.Itoa(idx) + `
+			OR t.ppat_khusus ILIKE $` + strconv.Itoa(idx) + `
+		)`
 		params = append(params, "%"+search+"%")
 		idx++
 	}
 
 	countQ := `
-		SELECT COUNT(DISTINCT b.userid)::int FROM pat_1_bookingsspd b
-		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
+		SELECT COUNT(*)::int FROM (
+			SELECT DISTINCT ON (bk.nobooking)
+				bk.nobooking,
+				COALESCE(l.no_registrasi, bk.no_registrasi) AS no_registrasi,
+				b.userid,
+				COALESCE(vu.nama,'') AS user_nama,
+				COALESCE(vu.ppat_khusus::text,'-') AS ppat_khusus,
+				COALESCE(vu.divisi,'') AS divisi,
+				COALESCE(vu.special_field,'-') AS special_field,
+				COALESCE(
+					bk.gateway_nominal_received::float8,
+					b.payment_amount_paid::float8,
+					b.payment_amount_requested::float8,
+					bp.bphtb_yangtelah_dibayar::float8,
+					0
+				) AS nominal,
+				COALESCE(NULLIF(b.payment_status,''), 'WAITING_FOR_PAYMENT') AS payment_status,
+				COALESCE(NULLIF(bk.status_verifikasi,''), 'Pending') AS status_verifikasi,
+				COALESCE(NULLIF(bk.status_dibank,''), 'Dicheck') AS status_dibank,
+				COALESCE(bk.gateway_paid_at, bk.verified_at, b.updated_at, b.created_at) AS paid_at
+			FROM bank_1_cek_hasil_transaksi bk
+			INNER JOIN pat_1_bookingsspd b ON b.nobooking = bk.nobooking
+			LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = bk.nobooking
+			LEFT JOIN a_2_verified_users vu ON vu.userid = b.userid
+			LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = b.nobooking
+			WHERE (
+				UPPER(COALESCE(b.payment_status, '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(bk.gateway_status, '')) = 'PAID'
+				OR UPPER(COALESCE(bk.status_verifikasi, '')) IN ('DISETUJUI', 'SINKRON OTOMATIS')
+			)
+			ORDER BY bk.nobooking, COALESCE(bk.gateway_paid_at, bk.verified_at, bk.updated_at, bk.created_at) DESC
+		) t
 		WHERE ` + where
 	var total int
 	err := r.pool.QueryRow(ctx, countQ, params...).Scan(&total)
@@ -148,22 +213,79 @@ func (r *BookingRepo) ListPpatRenewal(ctx context.Context, page, limit int, sear
 	}
 
 	sumQ := `
-		SELECT COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0)::float FROM pat_1_bookingsspd b
-		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-		LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
+		SELECT COALESCE(SUM(t.nominal), 0)::float FROM (
+			SELECT DISTINCT ON (bk.nobooking)
+				bk.nobooking,
+				COALESCE(l.no_registrasi, bk.no_registrasi) AS no_registrasi,
+				b.userid,
+				COALESCE(vu.nama,'') AS user_nama,
+				COALESCE(vu.ppat_khusus::text,'-') AS ppat_khusus,
+				COALESCE(vu.divisi,'') AS divisi,
+				COALESCE(vu.special_field,'-') AS special_field,
+				COALESCE(
+					bk.gateway_nominal_received::float8,
+					b.payment_amount_paid::float8,
+					b.payment_amount_requested::float8,
+					bp.bphtb_yangtelah_dibayar::float8,
+					0
+				) AS nominal,
+				COALESCE(NULLIF(b.payment_status,''), 'WAITING_FOR_PAYMENT') AS payment_status,
+				COALESCE(NULLIF(bk.status_verifikasi,''), 'Pending') AS status_verifikasi,
+				COALESCE(NULLIF(bk.status_dibank,''), 'Dicheck') AS status_dibank,
+				COALESCE(bk.gateway_paid_at, bk.verified_at, b.updated_at, b.created_at) AS paid_at
+			FROM bank_1_cek_hasil_transaksi bk
+			INNER JOIN pat_1_bookingsspd b ON b.nobooking = bk.nobooking
+			LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = bk.nobooking
+			LEFT JOIN a_2_verified_users vu ON vu.userid = b.userid
+			LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = b.nobooking
+			WHERE (
+				UPPER(COALESCE(b.payment_status, '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(bk.gateway_status, '')) = 'PAID'
+				OR UPPER(COALESCE(bk.status_verifikasi, '')) IN ('DISETUJUI', 'SINKRON OTOMATIS')
+			)
+			ORDER BY bk.nobooking, COALESCE(bk.gateway_paid_at, bk.verified_at, bk.updated_at, bk.created_at) DESC
+		) t
 		WHERE ` + where
 	var sumBphtb float64
 	_ = r.pool.QueryRow(ctx, sumQ, params...).Scan(&sumBphtb)
 
 	selectQ := `
-		SELECT b.userid, vu.nama, vu.divisi, COALESCE(vu.ppat_khusus::text,'-'), COALESCE(vu.special_field,'-'),
-			COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0)::float, COUNT(b.nobooking)::int
-		FROM pat_1_bookingsspd b
-		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
-		LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
+		SELECT t.nobooking, t.no_registrasi, t.userid, t.user_nama, t.divisi, t.ppat_khusus, t.special_field,
+			t.nominal, t.payment_status, t.status_verifikasi, t.status_dibank, t.paid_at
+		FROM (
+			SELECT DISTINCT ON (bk.nobooking)
+				bk.nobooking,
+				COALESCE(l.no_registrasi, bk.no_registrasi) AS no_registrasi,
+				b.userid,
+				COALESCE(vu.nama,'') AS user_nama,
+				COALESCE(vu.ppat_khusus::text,'-') AS ppat_khusus,
+				COALESCE(vu.divisi,'') AS divisi,
+				COALESCE(vu.special_field,'-') AS special_field,
+				COALESCE(
+					bk.gateway_nominal_received::float8,
+					b.payment_amount_paid::float8,
+					b.payment_amount_requested::float8,
+					bp.bphtb_yangtelah_dibayar::float8,
+					0
+				) AS nominal,
+				COALESCE(NULLIF(b.payment_status,''), 'WAITING_FOR_PAYMENT') AS payment_status,
+				COALESCE(NULLIF(bk.status_verifikasi,''), 'Pending') AS status_verifikasi,
+				COALESCE(NULLIF(bk.status_dibank,''), 'Dicheck') AS status_dibank,
+				COALESCE(bk.gateway_paid_at, bk.verified_at, b.updated_at, b.created_at) AS paid_at
+			FROM bank_1_cek_hasil_transaksi bk
+			INNER JOIN pat_1_bookingsspd b ON b.nobooking = bk.nobooking
+			LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = bk.nobooking
+			LEFT JOIN a_2_verified_users vu ON vu.userid = b.userid
+			LEFT JOIN ltb_1_terima_berkas_sspd l ON l.nobooking = b.nobooking
+			WHERE (
+				UPPER(COALESCE(b.payment_status, '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(bk.gateway_status, '')) = 'PAID'
+				OR UPPER(COALESCE(bk.status_verifikasi, '')) IN ('DISETUJUI', 'SINKRON OTOMATIS')
+			)
+			ORDER BY bk.nobooking, COALESCE(bk.gateway_paid_at, bk.verified_at, bk.updated_at, bk.created_at) DESC
+		) t
 		WHERE ` + where + `
-		GROUP BY b.userid, vu.nama, vu.divisi, vu.ppat_khusus, vu.special_field
-		ORDER BY 6 DESC, vu.nama ASC
+		ORDER BY t.paid_at DESC, t.nobooking DESC
 		LIMIT $` + strconv.Itoa(idx) + ` OFFSET $` + strconv.Itoa(idx+1)
 	params = append(params, limit, offset)
 	rows, err := r.pool.Query(ctx, selectQ, params...)
@@ -176,7 +298,20 @@ func (r *BookingRepo) ListPpatRenewal(ctx context.Context, page, limit int, sear
 	for rows.Next() {
 		var row PpatRenewalRow
 		var pk, sf *string
-		if err := rows.Scan(&row.Userid, &row.UserNama, &row.Divisi, &pk, &sf, &row.TotalNilaiBphtb, &row.TotalBooking); err != nil {
+		if err := rows.Scan(
+			&row.Nobooking,
+			&row.NoRegistrasi,
+			&row.Userid,
+			&row.UserNama,
+			&row.Divisi,
+			&pk,
+			&sf,
+			&row.TotalNilaiBphtb,
+			&row.PaymentStatus,
+			&row.StatusVerifikasi,
+			&row.StatusDibank,
+			&row.PaidAt,
+		); err != nil {
 			continue
 		}
 		if pk != nil {
@@ -196,24 +331,24 @@ func (r *BookingRepo) ListPpatRenewal(ctx context.Context, page, limit int, sear
 
 // DiserahkanUser holds user info for diserahkan response.
 type DiserahkanUser struct {
-	ID          int     `json:"id"`
-	Userid      string  `json:"userid"`
-	Nama        string  `json:"nama"`
-	Divisi      string  `json:"divisi"`
-	PpatKhusus  *string `json:"ppat_khusus"`
+	ID           int     `json:"id"`
+	Userid       string  `json:"userid"`
+	Nama         string  `json:"nama"`
+	Divisi       string  `json:"divisi"`
+	PpatKhusus   *string `json:"ppat_khusus"`
 	SpecialField *string `json:"special_field"`
-	PejabatUmum *string `json:"pejabat_umum"`
-	Fotoprofil  *string `json:"fotoprofil"`
+	PejabatUmum  *string `json:"pejabat_umum"`
+	Fotoprofil   *string `json:"fotoprofil"`
 }
 
 // DiserahkanRow holds one booking row.
 type DiserahkanRow struct {
-	Nobooking           string   `json:"nobooking"`
-	Tanggal             *string  `json:"tanggal"`
-	Noppbb              *string  `json:"noppbb"`
-	JenisWajibPajak     *string  `json:"jenis_wajib_pajak"`
+	Nobooking             string   `json:"nobooking"`
+	Tanggal               *string  `json:"tanggal"`
+	Noppbb                *string  `json:"noppbb"`
+	JenisWajibPajak       *string  `json:"jenis_wajib_pajak"`
 	BphtbYangtelahDibayar *float64 `json:"bphtb_yangtelah_dibayar"`
-	Namawajibpajak      *string  `json:"namawajibpajak"`
+	Namawajibpajak        *string  `json:"namawajibpajak"`
 }
 
 // GetDiserahkan returns user + rows + summary for /api/admin/ppat/user/{userid}/diserahkan.
@@ -271,22 +406,22 @@ func (r *BookingRepo) GetDiserahkan(ctx context.Context, userid string) (user *D
 // SSPDPDFData holds all data needed to generate SSPD BPHTB PDF (booking badan).
 type SSPDPDFData struct {
 	Nobooking, Noppbb, Userid, JenisWajibPajak, Namawajibpajak, Alamatwajibpajak string
-	Namapemilikobjekpajak, Alamatpemilikobjekpajak, Tanggal, Tahunajb             string
-	Kabupatenkotawp, Kecamatanwp, Kelurahandesawp, Rtrwwp, Npwpwp, Kodeposwp    string
-	Kabupatenkotaop, Kecamatanop, Kelurahandesaop, Rtrwop, Npwpop, Kodeposop      string
-	Trackstatus                                                                   string
-	JenisPerolehan                                                                string
+	Namapemilikobjekpajak, Alamatpemilikobjekpajak, Tanggal, Tahunajb            string
+	Kabupatenkotawp, Kecamatanwp, Kelurahandesawp, Rtrwwp, Npwpwp, Kodeposwp     string
+	Kabupatenkotaop, Kecamatanop, Kelurahandesaop, Rtrwop, Npwpop, Kodeposop     string
+	Trackstatus                                                                  string
+	JenisPerolehan                                                               string
 	Nilaiperolehanobjekpajaktidakkenapajak, BphtbYangtelahDibayar                float64
 	HargaTransaksi, Letaktanahdanbangunan, RtRwobjekpajak, StatusKepemilikan     string
 	Keterangan, NomorSertifikat, TanggalPerolehan, TanggalPembayaran             string
-	NomorBuktiPembayaran                                                          string
-	NamaPembuat, SpecialField, TandaTanganPath                                    string
-	LuasTanah, NjopTanah, LuasBangunan, NjopBangunan                              float64
-	LuasxnjopTanah, LuasxnjopBangunan, TotalNjoppbb                               float64
-	PathTtdWp                                                                     string
+	NomorBuktiPembayaran                                                         string
+	NamaPembuat, SpecialField, TandaTanganPath                                   string
+	LuasTanah, NjopTanah, LuasBangunan, NjopBangunan                             float64
+	LuasxnjopTanah, LuasxnjopBangunan, TotalNjoppbb                              float64
+	PathTtdWp                                                                    string
 	// Verification (from p_1_verifikasi) - used for dynamic checkbox mapping in PDF.
-	Pemilihan  string
-	StpdCode   string
+	Pemilihan   string
+	StpdCode    string
 	TanggalStpd string // YYYY-MM-DD (best-effort) or empty
 }
 
@@ -378,13 +513,13 @@ func (r *BookingRepo) GetBookingForSSPDPDF(ctx context.Context, userid, nobookin
 // MohonValidasiPDFData holds data for Permohonan Validasi PDF.
 type MohonValidasiPDFData struct {
 	Nobooking, Tanggal, Namawajibpajak, Alamatwajibpajak, Kelurahandesawp, Kecamatanwp, Kabupatenkotawp string
-	Noppbb, Namapemilikobjekpajak                                                                        string
-	NamaPembuat, Telepon, SpecialField                                                                   string
-	Letaktanahdanbangunan, Keterangan                                                                      string
-	LuasTanah, LuasBangunan                                                                               float64
-	AlamatPemohon, Kampungop, Kelurahanop, Kecamatanopj                                                    string
-	NamaPengirim                                                                                          string
-	TandaTanganPath                                                                                       string
+	Noppbb, Namapemilikobjekpajak                                                                       string
+	NamaPembuat, Telepon, SpecialField                                                                  string
+	Letaktanahdanbangunan, Keterangan                                                                   string
+	LuasTanah, LuasBangunan                                                                             float64
+	AlamatPemohon, Kampungop, Kelurahanop, Kecamatanopj                                                 string
+	NamaPengirim                                                                                        string
+	TandaTanganPath                                                                                     string
 }
 
 // GetBookingForMohonValidasiPDF returns data for Permohonan Validasi PDF.
