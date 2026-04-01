@@ -1598,6 +1598,16 @@ export default function BookingSSPDBadanPage() {
                             detail?.payment_amount_requested != null && typeof detail.payment_amount_requested === "number"
                               ? detail.payment_amount_requested
                               : null;
+                          const letakObjek = String((detail as Record<string, unknown> | null)?.letaktanahdanbangunan ?? "").trim();
+                          const missingObjekDataForPostCalc = Boolean(detail && payOk && !letakObjek);
+                          const postCalcDisabled = detailLoading || !payOk || missingObjekDataForPostCalc;
+                          const postCalcDisabledReason = detailLoading
+                            ? "Memuat detail booking..."
+                            : !payOk
+                              ? "Menunggu konfirmasi pembayaran dari bank (PAID / KURANG_BAYAR / LUNAS)."
+                              : missingObjekDataForPostCalc
+                                ? "Data objek belum lengkap (Letak Tanah & Bangunan wajib diisi lewat Edit Data)."
+                                : "";
                           return (
                             <div style={{ padding: 16, display: "grid", gap: 12 }}>
                               {pendingBilling && detail && (
@@ -1613,9 +1623,7 @@ export default function BookingSSPDBadanPage() {
                                   <label style={{ fontSize: 12, color: "#78350f", fontWeight: 600, display: "block", marginBottom: 6 }}>
                                     ID billing yang harus dibayar (hingga batas waktu)
                                   </label>
-                                  <select
-                                    value={String(detail.billing_id ?? "")}
-                                    onChange={() => {}}
+                                  <div
                                     style={{
                                       width: "100%",
                                       maxWidth: 480,
@@ -1629,11 +1637,24 @@ export default function BookingSSPDBadanPage() {
                                       color: "#0f172a",
                                     }}
                                   >
-                                    <option value={String(detail.billing_id ?? "")}>
-                                      {String(detail.billing_id ?? "")} — {formatMoney(detail.payment_amount_requested)} — sisa{" "}
-                                      {formatCountdownRemaining(detail.billing_expires_at, nowTick)}
-                                    </option>
-                                  </select>
+                                    {String(detail.billing_id ?? "—")}
+                                  </div>
+                                  <div
+                                    style={{
+                                      marginTop: 8,
+                                      width: "100%",
+                                      maxWidth: 480,
+                                      padding: "8px 12px",
+                                      borderRadius: 8,
+                                      border: "1px solid #fcd34d",
+                                      background: "#fffbeb",
+                                      color: "#78350f",
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    Nominal: {formatMoney(detail.payment_amount_requested)} | Sisa waktu: {formatCountdownRemaining(detail.billing_expires_at, nowTick)}
+                                  </div>
                                   <p style={{ margin: "10px 0 0", fontSize: 12, color: "#78350f", lineHeight: 1.45 }}>
                                     Batas waktu:{" "}
                                     {detail.billing_expires_at
@@ -1692,23 +1713,17 @@ export default function BookingSSPDBadanPage() {
                                   </button>
                                   <button
                                     type="button"
-                                    title={
-                                      detailLoading
-                                        ? "Memuat detail booking…"
-                                        : !payOk
-                                          ? "Aktif setelah bank mengonfirmasi pembayaran (PAID / KURANG_BAYAR / LUNAS)."
-                                          : undefined
-                                    }
+                                    title={postCalcDisabledReason || undefined}
                                     style={{
                                       ...btnStyle,
-                                      background: payOk && !detailLoading ? "#7c3aed" : "#9ca3af",
+                                      background: !postCalcDisabled ? "#7c3aed" : "#9ca3af",
                                       color: "#fff",
-                                      cursor: payOk && !detailLoading ? "pointer" : "not-allowed",
-                                      opacity: payOk && !detailLoading ? 1 : 0.75,
+                                      cursor: !postCalcDisabled ? "pointer" : "not-allowed",
+                                      opacity: !postCalcDisabled ? 1 : 0.75,
                                     }}
-                                    disabled={detailLoading || !payOk}
+                                    disabled={postCalcDisabled}
                                     onClick={() => {
-                                      if (detailLoading || !payOk || !detail) return;
+                                      if (postCalcDisabled || !detail) return;
                                       if (postCalcOpen === row.nobooking) {
                                         setPostCalcOpen(null);
                                       } else {
@@ -1728,6 +1743,11 @@ export default function BookingSSPDBadanPage() {
                                   >
                                     {postCalcOpen === row.nobooking ? "Tutup Isi Perhitungan" : "Isi Ketika Telah Bayar"}
                                   </button>
+                                  {postCalcDisabledReason && (
+                                    <span style={{ fontSize: 12, color: "#6b7280", alignSelf: "center", maxWidth: 360 }}>
+                                      {postCalcDisabledReason}
+                                    </span>
+                                  )}
                                   <button
                                     type="button"
                                     style={btnSecondary}

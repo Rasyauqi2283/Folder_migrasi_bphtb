@@ -1090,6 +1090,31 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       setError("Jika luas bangunan diisi, NJOP bangunan wajib diisi (lebih dari nol).");
       return;
     }
+    const totalNjopBase = (Number.isFinite(lt) ? lt : 0) * nt + (Number.isFinite(lb) ? lb : 0) * njb;
+    if (totalNjopBase <= 0) {
+      setError("Data NJOP belum valid. Isi luas & NJOP tanah/bangunan sampai total NJOP lebih dari 0.");
+      return;
+    }
+    if (!String(form.letaktanahdanbangunan ?? "").trim()) {
+      setError("Letak Tanah dan/atau Bangunan wajib diisi.");
+      return;
+    }
+    if (!String(form.rt_rwobjekpajak ?? "").trim()) {
+      setError("RT/RW Objek Pajak wajib diisi.");
+      return;
+    }
+    if (!String(form.kelurahandesalp ?? "").trim() || !String(form.kecamatanlp ?? "").trim()) {
+      setError("Kelurahan/Desa dan Kecamatan lokasi objek pajak wajib diisi.");
+      return;
+    }
+    if (!String(form.nomor_sertifikat ?? "").trim()) {
+      setError("Nomor sertifikat tanah wajib diisi.");
+      return;
+    }
+    if (!String(form.jenisPerolehan ?? "").trim()) {
+      setError("Jenis perolehan hak wajib dipilih.");
+      return;
+    }
     const npoptkpRaw = String(form.nilaiPerolehanObjekPajakTidakKenaPajak ?? "").trim();
     const npoptkpNum = parseRupiah(npoptkpRaw);
 
@@ -1124,13 +1149,13 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       jenisPerolehan: form.jenisPerolehan?.toString(),
       keterangan: form.keterangan?.toString(),
       nomor_sertifikat: form.nomor_sertifikat?.toString(),
-      // Kirim NPOPTKP walaupun 0 jika user memilih jenis perolehan yang memetakannya.
-      // Ini memastikan pat_2_bphtb_perhitungan terbentuk untuk kebutuhan audit/trace.
-      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpRaw !== "" ? npoptkpNum : undefined,
-      luas_tanah: Number.isFinite(lt) && lt > 0 ? lt : undefined,
-      njop_tanah: nt > 0 ? nt : undefined,
-      luas_bangunan: Number.isFinite(lb) && lb > 0 ? lb : undefined,
-      njop_bangunan: njb > 0 ? njb : undefined,
+      // Step-1 must avoid null-ish numeric payloads to prevent backend nil/fallback issues.
+      nilaiPerolehanObjekPajakTidakKenaPajak: npoptkpRaw !== "" ? npoptkpNum : 0,
+      luas_tanah: Number.isFinite(lt) && lt > 0 ? lt : 0,
+      njop_tanah: nt > 0 ? nt : 0,
+      luas_bangunan: Number.isFinite(lb) && lb > 0 ? lb : 0,
+      njop_bangunan: njb > 0 ? njb : 0,
+      bphtb_yangtelah_dibayar: 0,
     };
 
     setLoading(true);

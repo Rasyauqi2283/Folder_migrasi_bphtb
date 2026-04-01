@@ -1018,8 +1018,8 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 			status_kepemilikan = $3,
 			keterangan = $4,
 			nomor_sertifikat = $5,
-			tanggal_perolehan = $6,
-			tanggal_pembayaran = $7,
+			tanggal_perolehan = COALESCE(NULLIF($6, '')::date, tanggal_perolehan),
+			tanggal_pembayaran = COALESCE(NULLIF($7, '')::date, tanggal_pembayaran),
 			nomor_bukti_pembayaran = $8,
 			harga_transaksi = $9,
 			kelurahandesalp = $10,
@@ -1034,7 +1034,7 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 	if tag4.RowsAffected() == 0 {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO pat_4_objek_pajak (letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat, tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran, nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+			VALUES ($1,$2,$3,$4,$5,NULLIF($6,'')::date,NULLIF($7,'')::date,$8,$9,$10,$11,$12,$13)`,
 			params.Letaktanahdanbangunan, params.RtRwobjekpajak, stKepemilikan, params.Keterangan, params.NomorSertifikat,
 			params.TanggalPerolehan, params.TanggalPembayaran, params.NomorBuktiPembayaran, nobooking, params.Hargatransaksi, params.Kelurahandesalp, params.Kecamatanlp, params.JenisPerolehan)
 		if err != nil {
