@@ -9,8 +9,9 @@ import { getBackendBaseUrl, getLegacyBaseUrl } from "../../lib/api";
 type Verse = "wp" | "karyawan" | "pu";
 
 const PENDING_REGISTRATION_KEY = "pending_registration_v1";
-/** Batas waktu klien — selaras dengan batas pipeline OCR di server (~15 detik). */
-const KTP_OCR_CLIENT_DEADLINE_MS = 15_000;
+/** Batas waktu klien OCR. Dibuat sedikit lebih longgar dari backend (60s) agar tidak abort terlalu cepat. */
+const KTP_OCR_CLIENT_DEADLINE_MS = 70_000;
+const KTP_OCR_CLIENT_DEADLINE_SEC = Math.round(KTP_OCR_CLIENT_DEADLINE_MS / 1000);
 
 /** Data hasil OCR: inti NIK & Nama; alamat + wilayah untuk verifikasi (tanpa TTL/JK/agama/dll.). */
 interface KTPOcrData {
@@ -211,7 +212,7 @@ function DaftarContent() {
       setKtpStatus("error");
       if (e instanceof DOMException && e.name === "AbortError") {
         setKtpMessage(
-          "Pemindaian memakan waktu lebih dari 15 detik dan dihentikan. Periksa backend (termasuk layanan IndoROBERTa jika aktif), atau gunakan foto lebih kecil."
+          `Pemindaian memakan waktu lebih dari ${KTP_OCR_CLIENT_DEADLINE_SEC} detik dan dihentikan. Periksa backend (termasuk layanan IndoROBERTa jika aktif), atau gunakan foto lebih kecil.`
         );
         return;
       }
