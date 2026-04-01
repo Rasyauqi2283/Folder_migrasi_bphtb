@@ -82,76 +82,16 @@ function DaftarContent() {
         ? "Pendaftaran Karyawan (LTB, LSB, Peneliti, Peneliti Validasi, Bank) — isi NIP."
         : "Pendaftaran PPAT/PPATS — isi data pejabat pembuat akta.";
 
-  /** Pratinjau hitam-putih kontras untuk KTP (setara “biner lembut” dari kecerahan lokal). */
+  /** Pratinjau KTP warna mentah (tanpa konversi grayscale/biner). */
   useEffect(() => {
     if (!ktpFile) {
       setKtpBwPreviewUrl(null);
       return;
     }
     const objectUrl = URL.createObjectURL(ktpFile);
-    const img = new Image();
-    let cancelled = false;
-    img.onload = () => {
-      if (cancelled) {
-        URL.revokeObjectURL(objectUrl);
-        return;
-      }
-      try {
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        if (w < 2 || h < 2) {
-          setKtpBwPreviewUrl(objectUrl);
-          return;
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const c2 = canvas.getContext("2d");
-        if (!c2) {
-          setKtpBwPreviewUrl(objectUrl);
-          return;
-        }
-        c2.drawImage(img, 0, 0);
-        const id = c2.getImageData(0, 0, w, h);
-        const px = id.data;
-        const gray = new Float64Array(w * h);
-        let sum = 0;
-        for (let i = 0, p = 0; i < px.length; i += 4, p++) {
-          const y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-          gray[p] = y;
-          sum += y;
-        }
-        const mean = sum / gray.length;
-        let vsum = 0;
-        for (let p = 0; p < gray.length; p++) {
-          const t = gray[p] - mean;
-          vsum += t * t;
-        }
-        const std = Math.sqrt(vsum / gray.length) || 1;
-        const lo = mean - 0.38 * std;
-        const hi = mean + 0.48 * std;
-        const span = Math.max(1e-6, hi - lo);
-        for (let i = 0, p = 0; i < px.length; i += 4, p++) {
-          const g = gray[p];
-          let v: number;
-          if (g <= lo) v = 0;
-          else if (g >= hi) v = 255;
-          else v = Math.round(((g - lo) / span) * 255);
-          px[i] = px[i + 1] = px[i + 2] = v;
-        }
-        c2.putImageData(id, 0, 0);
-        setKtpBwPreviewUrl(canvas.toDataURL("image/png"));
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      if (!cancelled) setKtpBwPreviewUrl(null);
-    };
-    img.src = objectUrl;
+    setKtpBwPreviewUrl(objectUrl);
     return () => {
-      cancelled = true;
+      URL.revokeObjectURL(objectUrl);
     };
   }, [ktpFile]);
 
@@ -560,9 +500,9 @@ function DaftarContent() {
           )}
           {ktpBwPreviewUrl && (
             <div className="daftar-ktp-preview-bw-wrap">
-              <div className="daftar-ktp-preview-bw-label">Pratinjau hitam-putih (kontras untuk OCR)</div>
+              <div className="daftar-ktp-preview-bw-label">Pratinjau KTP (warna asli)</div>
               <div className="daftar-ktp-preview-bw-inner">
-                <img src={ktpBwPreviewUrl} alt="Pratinjau KTP hitam putih" className="daftar-ktp-preview-bw-img" />
+                <img src={ktpBwPreviewUrl} alt="Pratinjau KTP warna asli" className="daftar-ktp-preview-bw-img" />
               </div>
             </div>
           )}
