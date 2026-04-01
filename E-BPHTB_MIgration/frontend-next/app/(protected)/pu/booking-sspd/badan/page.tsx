@@ -174,6 +174,11 @@ const btnKirimDisabled = { ...btnStyle, background: "#9ca3af", color: "#fff", cu
 
 type ModalType = "signature" | "documents" | "delete" | "kirim" | null;
 
+type OverlayNotice = {
+  type: "success" | "error" | "info";
+  text: string;
+} | null;
+
 export default function BookingSSPDBadanPage() {
   const [data, setData] = useState<BookingRow[]>([]);
   const [page, setPage] = useState(1);
@@ -189,6 +194,7 @@ export default function BookingSSPDBadanPage() {
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [overlayNotice, setOverlayNotice] = useState<OverlayNotice>(null);
   const [wpInviteOpen, setWpInviteOpen] = useState(false);
   const [wpNikNpwp, setWpNikNpwp] = useState("");
   const [wpEmail, setWpEmail] = useState("");
@@ -345,7 +351,18 @@ export default function BookingSSPDBadanPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  const status = (s: string) => (s || "").toLowerCase();
+  useEffect(() => {
+    if (!overlayNotice) return;
+    const t = window.setTimeout(() => setOverlayNotice(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [overlayNotice]);
+
+  const status = (s: string) => {
+    const normalized = (s || "").trim().toLowerCase();
+    // "Diolah" is deprecated for PU flow; normalize display/logic to "diterima".
+    if (normalized === "diolah") return "diterima";
+    return normalized;
+  };
   const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
   const canEditBookingData = (row: BookingRow) => {
@@ -498,6 +515,13 @@ export default function BookingSSPDBadanPage() {
       });
       const j = await res.json().catch(() => ({}));
       if (j?.success) {
+        const d = (j?.data ?? {}) as Record<string, unknown>;
+        const noRegistrasi = String(d.no_registrasi ?? "").trim() || "-";
+        const penelitiNama = String(d.peneliti_name ?? "").trim() || "petugas peneliti";
+        setOverlayNotice({
+          type: "success",
+          text: `Booking dengan nomor ${nb}, telah masuk dalam antrian ${noRegistrasi} dan diterima oleh peneliti ${penelitiNama}. Mohon ditunggu karena dokumen sedang diproses. Terimakasih Bappenda.`,
+        });
         setModal(null);
         loadTable(page, searchQuery);
       } else setActionMessage(j?.message || "Gagal mengirim.");
@@ -640,6 +664,15 @@ export default function BookingSSPDBadanPage() {
           setActionMessage(j?.message || "Gagal simulasi pembayaran.");
           return;
         }
+        // Optimistic update to immediately unlock "Isi Ketika Telah Bayar" button.
+        setCekBookingDetail((prev) => {
+          if (!prev || prev.nobooking !== nobooking) return prev;
+          return {
+            ...prev,
+            payment_status: "PAID",
+            sspd_pembayaran_status: "LUNAS",
+          };
+        });
         setActionMessage("Simulasi pembayaran berhasil: status PAID/LUNAS.");
         setCekBookingNobooking(nobooking);
         loadTable(page, searchQuery);
@@ -852,6 +885,31 @@ export default function BookingSSPDBadanPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      {overlayNotice && (
+        <div
+          style={{
+            position: "fixed",
+            top: 16,
+            right: 16,
+            zIndex: 1200,
+            maxWidth: 520,
+            padding: "12px 14px",
+            borderRadius: 10,
+            color: "#fff",
+            fontWeight: 600,
+            lineHeight: 1.45,
+            boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
+            background:
+              overlayNotice.type === "success"
+                ? "#059669"
+                : overlayNotice.type === "error"
+                  ? "#dc2626"
+                  : "#2563eb",
+          }}
+        >
+          {overlayNotice.text}
+        </div>
+      )}
       <h1 style={{ margin: "0 0 0.5rem", color: "#0f172a" }}>Booking SSPD Badan</h1>
       <p style={{ margin: 0, color: "#475569", fontSize: "0.9rem", marginBottom: 20 }}>
         Kelola booking SSPD untuk wajib pajak badan usaha. Tambah data, upload tanda tangan, lihat dokumen, atau kirim ke Bappenda.
@@ -1483,9 +1541,7 @@ export default function BookingSSPDBadanPage() {
                           openModalKirim(row);
                         }}
                       >
-                        {status(row.trackstatus) === "diolah"
-                          ? "Sedang Diolah"
-                          : status(row.trackstatus) === "diterima"
+                        {status(row.trackstatus) === "diterima"
                             ? "Dalam penanganan Peneliti"
                             : status(row.trackstatus) === "pending"
                               ? "Menunggu Kirim"

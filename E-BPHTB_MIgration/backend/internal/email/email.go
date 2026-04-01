@@ -144,6 +144,41 @@ func SendPenelitiRejectionNotification(to, targetName, nobooking, reason string)
 	return sendViaSMTP(to, subject, text, html)
 }
 
+// SendBookingQueuedNotification sends a confirmation email when booking is accepted into processing queue.
+func SendBookingQueuedNotification(to, targetName, nobooking, noRegistrasi, penelitiName string) error {
+	if strings.TrimSpace(to) == "" {
+		return nil
+	}
+	if strings.TrimSpace(targetName) == "" {
+		targetName = "Pengguna"
+	}
+	if strings.TrimSpace(penelitiName) == "" {
+		penelitiName = "petugas peneliti"
+	}
+	subject := "Booking Masuk Antrian Peneliti - BAPPENDA BPHTB"
+	text := fmt.Sprintf(
+		"Halo %s,\n\nBooking dengan nomor %s telah masuk dalam antrian %s dan diterima oleh peneliti %s.\nMohon ditunggu karena dokumen sedang diproses.\n\nTerima kasih,\nBAPPENDA",
+		targetName, nobooking, noRegistrasi, penelitiName,
+	)
+	html := fmt.Sprintf(`<div style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto;">
+<h2 style="color: #2c3e50;">Booking Berhasil Masuk Antrian</h2>
+<p>Halo <strong>%s</strong>,</p>
+<p>Booking Anda telah berhasil masuk ke antrian proses.</p>
+<div style="background-color: #f8fafc; padding: 14px; border-radius: 8px; margin: 14px 0; border-left: 4px solid #16a34a;">
+  <p style="margin:0;"><strong>No. Booking:</strong> <code>%s</code></p>
+  <p style="margin:8px 0 0;"><strong>No. Registrasi:</strong> <code>%s</code></p>
+  <p style="margin:8px 0 0;"><strong>Peneliti:</strong> %s</p>
+</div>
+<p>Mohon ditunggu karena dokumen sedang diproses.</p>
+<p>Terima kasih,<br><strong>BAPPENDA</strong></p>
+</div>`, escapeHTML(targetName), escapeHTML(nobooking), escapeHTML(noRegistrasi), escapeHTML(penelitiName))
+	if !canSendEmail() {
+		log.Printf("[EMAIL] Booking queued notification skipped (SMTP not configured) to %s booking=%s", to, nobooking)
+		return nil
+	}
+	return sendViaSMTP(to, subject, text, html)
+}
+
 // SendSupportTicketConfirmation mengirim email konfirmasi nomor tiket ke pengunjung landing page.
 func SendSupportTicketConfirmation(to, nama, ticketID, subject, pesan string) error {
 	sub := "[E-BPHTB Support] Tiket Anda #" + ticketID

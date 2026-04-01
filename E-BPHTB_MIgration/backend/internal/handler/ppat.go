@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"ebphtb/backend/internal/config"
+	"ebphtb/backend/internal/email"
 	"ebphtb/backend/internal/payment"
 	"ebphtb/backend/internal/pdf"
 	"ebphtb/backend/internal/repository"
@@ -50,12 +51,12 @@ func getPpatUserid(r *http.Request) string {
 
 // PpatHandler handles /api/ppat/* and /api/ppat_* endpoints (Go-native).
 type PpatHandler struct {
-	repo         *repository.PpatRepo
-	bookingRepo  *repository.BookingRepo
-	userRepo     *repository.UserRepo
-	laporanRepo  *repository.PpatLaporanRepo
-	cfg          *config.Config
-	bjb          payment.BJBClient
+	repo        *repository.PpatRepo
+	bookingRepo *repository.BookingRepo
+	userRepo    *repository.UserRepo
+	laporanRepo *repository.PpatLaporanRepo
+	cfg         *config.Config
+	bjb         payment.BJBClient
 }
 
 // NewPpatHandler creates a PpatHandler.
@@ -213,25 +214,25 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 }
 
 type createPermohonanValidasiInput struct {
-	Nobooking       string `json:"nobooking"`
-	NamaPemohon     string `json:"nama_pemohon"`
-	NoTelepon       string `json:"no_telepon"`
-	AlamatPemohon   string `json:"alamat_pemohon"`
-	NamaWajibPajak  string `json:"nama_wajib_pajak"`
+	Nobooking        string `json:"nobooking"`
+	NamaPemohon      string `json:"nama_pemohon"`
+	NoTelepon        string `json:"no_telepon"`
+	AlamatPemohon    string `json:"alamat_pemohon"`
+	NamaWajibPajak   string `json:"nama_wajib_pajak"`
 	AlamatWajibPajak string `json:"alamat_wajib_pajak"`
-	KabupatenKota   string `json:"kabupaten_kota"`
-	Kelurahan       string `json:"kelurahan"`
-	Kecamatan       string `json:"kecamatan"`
-	Nop             string `json:"nop"`
-	AtasNama        string `json:"atas_nama"`
-	LuasTanah       string `json:"luas_tanah"`
-	LuasBangunan    string `json:"luas_bangunan"`
-	Lainnya         string `json:"lainnya"`
-	AlamatOp        string `json:"Alamatop"`
-	KampungOp       string `json:"kampungop"`
-	KelurahanOp     string `json:"kelurahanop"`
-	KecamatanOp     string `json:"kecamatanop"`
-	NomorValidasi   string `json:"nomor_validasi"`
+	KabupatenKota    string `json:"kabupaten_kota"`
+	Kelurahan        string `json:"kelurahan"`
+	Kecamatan        string `json:"kecamatan"`
+	Nop              string `json:"nop"`
+	AtasNama         string `json:"atas_nama"`
+	LuasTanah        string `json:"luas_tanah"`
+	LuasBangunan     string `json:"luas_bangunan"`
+	Lainnya          string `json:"lainnya"`
+	AlamatOp         string `json:"Alamatop"`
+	KampungOp        string `json:"kampungop"`
+	KelurahanOp      string `json:"kelurahanop"`
+	KecamatanOp      string `json:"kecamatanop"`
+	NomorValidasi    string `json:"nomor_validasi"`
 }
 
 // CreatePermohonanValidasi handles POST /api/ppat/create-permohonan-validasi.
@@ -310,12 +311,12 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 	if strings.TrimSpace(existing) != "" {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"success":      true,
-			"is_duplicate": true,
-			"kode_validasi": existing,
+			"success":        true,
+			"is_duplicate":   true,
+			"kode_validasi":  existing,
 			"nomor_validasi": existing,
-			"status":       "unused",
-			"timestamp":    time.Now().Format(time.RFC3339),
+			"status":         "unused",
+			"timestamp":      time.Now().Format(time.RFC3339),
 		})
 		return
 	}
@@ -338,12 +339,12 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"success":      true,
-				"is_duplicate": true,
-				"kode_validasi": nomorValidasi,
+				"success":        true,
+				"is_duplicate":   true,
+				"kode_validasi":  nomorValidasi,
 				"nomor_validasi": nomorValidasi,
-				"status":       "unused",
-				"timestamp":    time.Now().Format(time.RFC3339),
+				"status":         "unused",
+				"timestamp":      time.Now().Format(time.RFC3339),
 			})
 			return
 		}
@@ -351,12 +352,12 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"success":      true,
-				"is_duplicate": true,
-				"kode_validasi": nomorValidasi,
+				"success":        true,
+				"is_duplicate":   true,
+				"kode_validasi":  nomorValidasi,
 				"nomor_validasi": nomorValidasi,
-				"status":       "unused",
-				"timestamp":    time.Now().Format(time.RFC3339),
+				"status":         "unused",
+				"timestamp":      time.Now().Format(time.RFC3339),
 			})
 			return
 		}
@@ -411,12 +412,12 @@ func (h *PpatHandler) CreatePermohonanValidasi(w http.ResponseWriter, r *http.Re
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":       true,
-		"is_duplicate":  false,
-		"kode_validasi": nomorValidasi,
+		"success":        true,
+		"is_duplicate":   false,
+		"kode_validasi":  nomorValidasi,
 		"nomor_validasi": nomorValidasi,
-		"status":        "unused",
-		"timestamp":     time.Now().Format(time.RFC3339),
+		"status":         "unused",
+		"timestamp":      time.Now().Format(time.RFC3339),
 	})
 }
 
@@ -701,28 +702,28 @@ func (h *PpatHandler) RekapDiserahkan(w http.ResponseWriter, r *http.Request) {
 	rows := make([]map[string]interface{}, 0, len(result.Rows))
 	for _, row := range result.Rows {
 		o := map[string]interface{}{
-			"nobooking":             row.Nobooking,
-			"noppbb":                row.Noppbb,
-			"tanggal":               row.Tanggal,
-			"tahunajb":              row.Tahunajb,
-			"namawajibpajak":        row.Namawajibpajak,
-			"namapemilikobjekpajak": row.Namapemilikobjekpajak,
-			"npwpwajibpajak":        row.Npwpwajibpajak,
-			"trackstatus":           row.Trackstatus,
-			"tanggal_formatted":     row.TanggalFormatted,
+			"nobooking":               row.Nobooking,
+			"noppbb":                  row.Noppbb,
+			"tanggal":                 row.Tanggal,
+			"tahunajb":                row.Tahunajb,
+			"namawajibpajak":          row.Namawajibpajak,
+			"namapemilikobjekpajak":   row.Namapemilikobjekpajak,
+			"npwpwajibpajak":          row.Npwpwajibpajak,
+			"trackstatus":             row.Trackstatus,
+			"tanggal_formatted":       row.TanggalFormatted,
 			"bphtb_yangtelah_dibayar": row.BphtbYangtelahDibayar,
 		}
 		rows = append(rows, o)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":       true,
-		"rows":          rows,
-		"totalNominal":  result.TotalNominal,
+		"success":      true,
+		"rows":         rows,
+		"totalNominal": result.TotalNominal,
 		"pagination": map[string]interface{}{
 			"page":       result.Page,
-			"limit":     result.Limit,
-			"total":     result.Total,
+			"limit":      result.Limit,
+			"total":      result.Total,
 			"totalPages": result.TotalPages,
 		},
 		"search": search,
@@ -773,11 +774,31 @@ func (h *PpatHandler) SendNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "OK",
 		"data":    res,
 	})
+
+	// Best-effort email notification (non-blocking): booking accepted into processing queue.
+	if h.userRepo != nil {
+		go func(uid string, r *repository.SendNowResult) {
+			ctxBg, cancelBg := context.WithTimeout(context.Background(), 6*time.Second)
+			defer cancelBg()
+			u, err := h.userRepo.GetPpatUserByUserid(ctxBg, uid)
+			if err != nil || u == nil || strings.TrimSpace(u.Email) == "" {
+				return
+			}
+			penelitiName := "petugas peneliti"
+			_ = email.SendBookingQueuedNotification(
+				strings.TrimSpace(u.Email),
+				strings.TrimSpace(u.Nama),
+				r.Nobooking,
+				r.NoRegistrasi,
+				penelitiName,
+			)
+		}(userid, res)
+	}
 }
 
 // CreateBookingBadan handles POST /api/ppat_create-booking-and-bphtb.
@@ -813,7 +834,7 @@ func (h *PpatHandler) CreateBookingBadan(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"nobooking": nobooking,
-		"message":  "Booking created",
+		"message":   "Booking created",
 	})
 }
 
@@ -852,7 +873,7 @@ func (h *PpatHandler) CreateBookingPerorangan(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"nobooking": nobooking,
-		"message":  "Booking created",
+		"message":   "Booking created",
 	})
 }
 
@@ -1369,7 +1390,7 @@ func (h *PpatHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		Nobooking   string `json:"nobooking"`
+		Nobooking    string `json:"nobooking"`
 		ScheduledFor string `json:"scheduled_for"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
@@ -1417,8 +1438,8 @@ func (h *PpatHandler) ScheduleSend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-const maxSignatureSize = 5 * 1024 * 1024  // 5MB
-const maxDocumentSize = 50 * 1024 * 1024  // 50MB
+const maxSignatureSize = 5 * 1024 * 1024 // 5MB
+const maxDocumentSize = 50 * 1024 * 1024 // 50MB
 
 // UploadSignatures handles POST /api/ppat/upload-signatures.
 func (h *PpatHandler) UploadSignatures(w http.ResponseWriter, r *http.Request) {
@@ -1843,14 +1864,14 @@ func (h *PpatHandler) RequestBilling(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":       true,
-		"nobooking":     nb,
-		"billing_id":    resp.BillingID,
-		"amount":        resp.Amount,
-		"expires_at":    resp.ExpiresAt.Format(time.RFC3339),
-		"provider":      resp.Provider,
-		"mocked":        resp.Mocked,
-		"instructions":  "Silakan bayar melalui ATM, Mobile Banking, atau Teller Bank BJB menggunakan ID Billing di atas.",
+		"success":      true,
+		"nobooking":    nb,
+		"billing_id":   resp.BillingID,
+		"amount":       resp.Amount,
+		"expires_at":   resp.ExpiresAt.Format(time.RFC3339),
+		"provider":     resp.Provider,
+		"mocked":       resp.Mocked,
+		"instructions": "Silakan bayar melalui ATM, Mobile Banking, atau Teller Bank BJB menggunakan ID Billing di atas.",
 	})
 }
 

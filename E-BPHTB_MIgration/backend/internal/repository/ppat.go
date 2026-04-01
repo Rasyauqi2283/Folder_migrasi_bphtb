@@ -48,12 +48,12 @@ type LoadAllBookingRow struct {
 
 // PendingCorrectionRow represents one correction item for PU (PPAT/PPATS/Notaris).
 type PendingCorrectionRow struct {
-	Nobooking        string  `json:"nobooking"`
-	NoRegistrasi     *string `json:"no_registrasi"`
-	StpdCode         *string `json:"stpd_code"`
-	CatatanPeneliti  *string `json:"catatan_peneliti"`
-	CatatanPu        *string `json:"catatan_pu"`
-	BuktiPelunasanPath *string `json:"bukti_pelunasan_path"`
+	Nobooking           string     `json:"nobooking"`
+	NoRegistrasi        *string    `json:"no_registrasi"`
+	StpdCode            *string    `json:"stpd_code"`
+	CatatanPeneliti     *string    `json:"catatan_peneliti"`
+	CatatanPu           *string    `json:"catatan_pu"`
+	BuktiPelunasanPath  *string    `json:"bukti_pelunasan_path"`
 	CorrectionUpdatedAt *time.Time `json:"correction_updated_at"`
 }
 
@@ -227,11 +227,11 @@ func (r *PpatRepo) ResubmitCorrection(ctx context.Context, userid, nobooking str
 
 // LoadAllBookingResult holds data and pagination for load-all-booking.
 type LoadAllBookingResult struct {
-	Data       []LoadAllBookingRow
-	Total      int
-	Page       int
-	Limit      int
-	Pages      int
+	Data  []LoadAllBookingRow
+	Total int
+	Page  int
+	Limit int
+	Pages int
 }
 
 // LoadAllBooking returns bookings for the given user (excludes Dihapus, Diserahkan).
@@ -308,15 +308,15 @@ func (r *PpatRepo) LoadAllBooking(ctx context.Context, userid string, page, limi
 
 // RekapDiserahkanRow holds one row for rekap/diserahkan.
 type RekapDiserahkanRow struct {
-	Nobooking           string   `json:"nobooking"`
-	Noppbb              *string  `json:"noppbb"`
-	Tanggal             *string  `json:"tanggal"`
-	Tahunajb            *string  `json:"tahunajb"`
-	Namawajibpajak      *string  `json:"namawajibpajak"`
-	Namapemilikobjekpajak *string `json:"namapemilikobjekpajak"`
-	Npwpwajibpajak      *string  `json:"npwpwajibpajak"`
-	Trackstatus         *string  `json:"trackstatus"`
-	TanggalFormatted    *string  `json:"tanggal_formatted"`
+	Nobooking             string   `json:"nobooking"`
+	Noppbb                *string  `json:"noppbb"`
+	Tanggal               *string  `json:"tanggal"`
+	Tahunajb              *string  `json:"tahunajb"`
+	Namawajibpajak        *string  `json:"namawajibpajak"`
+	Namapemilikobjekpajak *string  `json:"namapemilikobjekpajak"`
+	Npwpwajibpajak        *string  `json:"npwpwajibpajak"`
+	Trackstatus           *string  `json:"trackstatus"`
+	TanggalFormatted      *string  `json:"tanggal_formatted"`
 	BphtbYangtelahDibayar *float64 `json:"bphtb_yangtelah_dibayar"`
 }
 
@@ -412,14 +412,15 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 
 // SendNowResult holds atomic write results after send-now.
 type SendNowResult struct {
-	Nobooking   string                 `json:"nobooking"`
-	Trackstatus string                 `json:"trackstatus"`
-	NoRegistrasi string                `json:"no_registrasi"`
-	LTB         map[string]interface{} `json:"ltb"`
-	Bank        map[string]interface{} `json:"bank"`
+	Nobooking    string                 `json:"nobooking"`
+	Trackstatus  string                 `json:"trackstatus"`
+	NoRegistrasi string                 `json:"no_registrasi"`
+	LTB          map[string]interface{} `json:"ltb"`
+	Bank         map[string]interface{} `json:"bank"`
 }
 
-// SendNow moves a booking to "Diolah": updates trackstatus, quota and queue. Optionally inserts into ltb_1 and bank_1 if tables exist.
+// SendNow moves a booking to "Diterima": updates trackstatus, quota and queue.
+// Optionally inserts into ltb_1 and bank_1 if tables exist.
 func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*SendNowResult, error) {
 	if r.pool == nil {
 		return nil, nil
@@ -477,7 +478,7 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 	if err != nil {
 		return nil, err
 	}
-	_, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diolah', updated_at=now() WHERE nobooking = $1 AND userid = $2`, nobooking, userid)
+	_, err = tx.Exec(ctx, `UPDATE pat_1_bookingsspd SET trackstatus='Diterima', updated_at=now() WHERE nobooking = $1 AND userid = $2`, nobooking, userid)
 	if err != nil {
 		return nil, err
 	}
@@ -518,7 +519,7 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 			namawajibpajak = COALESCE($3, namawajibpajak),
 			namapemilikobjekpajak = COALESCE($4, namapemilikobjekpajak),
 			status = 'Diterima',
-			trackstatus = 'Diolah',
+			trackstatus = 'Diterima',
 			jenis_wajib_pajak = COALESCE($5::jenis_wajib_pajak, jenis_wajib_pajak),
 			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $6),
 			updated_at = now()
@@ -532,7 +533,7 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 			INSERT INTO ltb_1_terima_berkas_sspd (
 				nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, jenis_wajib_pajak, no_registrasi, updated_at
 			) VALUES (
-				$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diolah', $5::jenis_wajib_pajak, $6, now()
+				$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diterima', $5::jenis_wajib_pajak, $6, now()
 			)
 		`, nobooking, userid, namaWP, namaOP, jenisWP, noRegistrasi)
 		if err != nil {
@@ -575,8 +576,8 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 	}
 
 	return &SendNowResult{
-		Nobooking:   nobooking,
-		Trackstatus: "Diolah",
+		Nobooking:    nobooking,
+		Trackstatus:  "Diterima",
 		NoRegistrasi: noRegistrasi,
 		LTB: map[string]interface{}{
 			"nobooking":             nobooking,
@@ -584,19 +585,19 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 			"namawajibpajak":        namaWP,
 			"namapemilikobjekpajak": namaOP,
 			"status":                "Diterima",
-			"trackstatus":           "Diolah",
+			"trackstatus":           "Diterima",
 			"no_registrasi":         noRegistrasi,
 		},
 		Bank: map[string]interface{}{
-			"nobooking":              nobooking,
-			"userid":                 userid,
+			"nobooking":               nobooking,
+			"userid":                  userid,
 			"bphtb_yangtelah_dibayar": bphtbDibayar,
-			"nomor_bukti_pembayaran": noBukti,
-			"tanggal_perolehan":      tglPerolehan,
-			"tanggal_pembayaran":     tglPembayaran,
-			"status_verifikasi":      "Pending",
-			"status_dibank":          "Dicheck",
-			"no_registrasi":          noRegistrasi,
+			"nomor_bukti_pembayaran":  noBukti,
+			"tanggal_perolehan":       tglPerolehan,
+			"tanggal_pembayaran":      tglPembayaran,
+			"status_verifikasi":       "Pending",
+			"status_dibank":           "Dicheck",
+			"no_registrasi":           noRegistrasi,
 		},
 	}, nil
 }
@@ -1090,9 +1091,24 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 	if err != nil {
 		return nil, err
 	}
-	val := func(s *string) interface{} { if s != nil { return *s }; return nil }
-	valTime := func(t *time.Time) interface{} { if t != nil { return *t }; return nil }
-	valFloat := func(f *float64) interface{} { if f != nil { return *f }; return nil }
+	val := func(s *string) interface{} {
+		if s != nil {
+			return *s
+		}
+		return nil
+	}
+	valTime := func(t *time.Time) interface{} {
+		if t != nil {
+			return *t
+		}
+		return nil
+	}
+	valFloat := func(f *float64) interface{} {
+		if f != nil {
+			return *f
+		}
+		return nil
+	}
 	out := map[string]interface{}{
 		"nobooking": val(nobookingOut), "nop": val(nop), "nama_wajib_pajak": val(namaWp), "alamat_wajib_pajak": val(alamatWp),
 		"atas_nama": val(atasNama), "alamatpemilikobjekpajak": val(alamatPemilikOp),
@@ -1102,11 +1118,11 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"trackstatus": val(trackstatus), "jenis_wajib_pajak": val(jenisWp), "created_at": valTime(createdAt), "updated_at": valTime(updatedAt),
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
-		"bphtb_yangtelah_dibayar": valFloat(bphtbDibayar),
-		"payment_status":            paymentStatus,
-		"billing_id":                billingID,
-		"is_calculation_completed":  calcDone,
-		"sspd_pembayaran_status":    sspdBayarStatus,
+		"bphtb_yangtelah_dibayar":  valFloat(bphtbDibayar),
+		"payment_status":           paymentStatus,
+		"billing_id":               billingID,
+		"is_calculation_completed": calcDone,
+		"sspd_pembayaran_status":   sspdBayarStatus,
 	}
 	if billingExpires.Valid {
 		out["billing_expires_at"] = billingExpires.Time.UTC().Format(time.RFC3339)
@@ -1155,11 +1171,11 @@ func (r *PpatRepo) ListBookingHistoryBadan(ctx context.Context, userid string, q
 		}
 		label := strings.TrimSpace(noppbb) + " - " + strings.TrimSpace(nama)
 		out = append(out, map[string]interface{}{
-			"id":               nobooking,
-			"nobooking":        nobooking,
-			"noppbb":           noppbb,
-			"namawajibpajak":   nama,
-			"label":            label,
+			"id":             nobooking,
+			"nobooking":      nobooking,
+			"noppbb":         noppbb,
+			"namawajibpajak": nama,
+			"label":          label,
 		})
 	}
 	return out, rows.Err()
@@ -1196,19 +1212,19 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 	`, nobooking, userid)
 
 	var (
-		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb *string
-		kabwp, kecwp, kelwp, rtrwwp, kodeposwp *string
-		kabop, kecop, kelop, rtrwop, kodeposop *string
-		npwpwp, npwpop *string
-		trackstatus, paymentStatus, billingID string
-		billingExpires           sql.NullTime
-		calcDone                 bool
-		paymentAmtReq            sql.NullInt64
-		npoptkp *float64
-		bphtb   *float64
-		harga, letak, rtop, statusKm, ket, nomorSert *string
+		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb           *string
+		kabwp, kecwp, kelwp, rtrwwp, kodeposwp                         *string
+		kabop, kecop, kelop, rtrwop, kodeposop                         *string
+		npwpwp, npwpop                                                 *string
+		trackstatus, paymentStatus, billingID                          string
+		billingExpires                                                 sql.NullTime
+		calcDone                                                       bool
+		paymentAmtReq                                                  sql.NullInt64
+		npoptkp                                                        *float64
+		bphtb                                                          *float64
+		harga, letak, rtop, statusKm, ket, nomorSert                   *string
 		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
-		luasT, njopT, luasB, njopB *float64
+		luasT, njopT, luasB, njopB                                     *float64
 	)
 	err := row.Scan(
 		&noppbb,
@@ -1240,19 +1256,19 @@ func (r *PpatRepo) GetBookingBadanCallbackData(ctx context.Context, userid, nobo
 		return *f
 	}
 	out := map[string]interface{}{
-		"noppbb": val(noppbb),
+		"noppbb":         val(noppbb),
 		"namawajibpajak": val(namawp), "alamatwajibpajak": val(alamatwp),
 		"namapemilikobjekpajak": val(namaop), "alamatpemilikobjekpajak": val(alamatop),
-		"tahunajb": val(tahunajb),
+		"tahunajb":        val(tahunajb),
 		"kabupatenkotawp": val(kabwp), "kecamatanwp": val(kecwp), "kelurahandesawp": val(kelwp),
 		"rtrwwp": val(rtrwwp), "kodeposwp": val(kodeposwp),
 		"kabupatenkotaop": val(kabop), "kecamatanop": val(kecop), "kelurahandesaop": val(kelop),
 		"rtrwop": val(rtrwop), "kodeposop": val(kodeposop),
 		"npwpwp": val(npwpwp), "npwpop": val(npwpop),
-		"trackstatus":               trackstatus,
-		"payment_status":            paymentStatus,
-		"billing_id":                billingID,
-		"is_calculation_completed":  calcDone,
+		"trackstatus":              trackstatus,
+		"payment_status":           paymentStatus,
+		"billing_id":               billingID,
+		"is_calculation_completed": calcDone,
 	}
 	if billingExpires.Valid {
 		out["billing_expires_at"] = billingExpires.Time.UTC().Format(time.RFC3339)
@@ -1324,21 +1340,21 @@ func (r *PpatRepo) ClearExpiredBillingIfStale(ctx context.Context, userid, noboo
 
 // BillingPreviewBadan is server-side BPHTB breakdown for PU confirmation before requesting billing ID.
 type BillingPreviewBadan struct {
-	LuasTanah          float64 `json:"luas_tanah"`
-	NjopTanah          float64 `json:"njop_tanah"`
-	LuasBangunan       float64 `json:"luas_bangunan"`
-	NjopBangunan       float64 `json:"njop_bangunan"`
-	LuasXNJOPTanah     float64 `json:"luas_x_njop_tanah"`
-	LuasXNJOPBangunan  float64 `json:"luas_x_njop_bangunan"`
-	TotalNJOP          float64 `json:"total_njop"`
-	HargaTransaksi     string  `json:"harga_transaksi"`
-	JenisPerolehan     string  `json:"jenis_perolehan"`
-	NPOP               float64 `json:"npop"`
-	NPOPTKP            float64 `json:"npoptkp"`
-	NPOPKP             float64 `json:"npopkp"`
-	BeaTerutang        float64 `json:"bea_terutang"`
-	BeaTerutangRupiah  int64   `json:"bea_terutang_rupiah"`
-	FromStoredAmount   bool    `json:"from_stored_amount"`
+	LuasTanah         float64 `json:"luas_tanah"`
+	NjopTanah         float64 `json:"njop_tanah"`
+	LuasBangunan      float64 `json:"luas_bangunan"`
+	NjopBangunan      float64 `json:"njop_bangunan"`
+	LuasXNJOPTanah    float64 `json:"luas_x_njop_tanah"`
+	LuasXNJOPBangunan float64 `json:"luas_x_njop_bangunan"`
+	TotalNJOP         float64 `json:"total_njop"`
+	HargaTransaksi    string  `json:"harga_transaksi"`
+	JenisPerolehan    string  `json:"jenis_perolehan"`
+	NPOP              float64 `json:"npop"`
+	NPOPTKP           float64 `json:"npoptkp"`
+	NPOPKP            float64 `json:"npopkp"`
+	BeaTerutang       float64 `json:"bea_terutang"`
+	BeaTerutangRupiah int64   `json:"bea_terutang_rupiah"`
+	FromStoredAmount  bool    `json:"from_stored_amount"`
 }
 
 // GetBillingPreviewBadan computes BPHTB tagihan (tanpa memanggil bank) untuk konfirmasi PU.
@@ -1439,16 +1455,16 @@ func (r *PpatRepo) GetOfflineDraftFormData(ctx context.Context, ltbUserid, noboo
 	`, nb, u)
 
 	var (
-		jenisJwp *string
-		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb *string
-		kabwp, kecwp, kelwp, rtrwwp, kodeposwp *string
-		kabop, kecop, kelop, rtrwop, kodeposop *string
-		npwpwp, npwpop *string
-		npoptkp *float64
-		bphtb   *float64
-		harga, letak, rtop, statusKm, ket, nomorSert *string
+		jenisJwp                                                       *string
+		noppbb, namawp, alamatwp, namaop, alamatop, tahunajb           *string
+		kabwp, kecwp, kelwp, rtrwwp, kodeposwp                         *string
+		kabop, kecop, kelop, rtrwop, kodeposop                         *string
+		npwpwp, npwpop                                                 *string
+		npoptkp                                                        *float64
+		bphtb                                                          *float64
+		harga, letak, rtop, statusKm, ket, nomorSert                   *string
 		tglPeroleh, tglBayar, nomorBukti, jenisPerolehan, kelLp, kecLp *string
-		luasT, njopT, luasB, njopB *float64
+		luasT, njopT, luasB, njopB                                     *float64
 	)
 	err := row.Scan(
 		&jenisJwp,
@@ -1480,19 +1496,19 @@ func (r *PpatRepo) GetOfflineDraftFormData(ctx context.Context, ltbUserid, noboo
 		return *f
 	}
 	out := map[string]interface{}{
-		"nobooking":       nb,
+		"nobooking":         nb,
 		"jenis_wajib_pajak": val(jenisJwp),
-		"noppbb":          val(noppbb),
-		"namawajibpajak": val(namawp), "alamatwajibpajak": val(alamatwp),
+		"noppbb":            val(noppbb),
+		"namawajibpajak":    val(namawp), "alamatwajibpajak": val(alamatwp),
 		"namapemilikobjekpajak": val(namaop), "alamatpemilikobjekpajak": val(alamatop),
-		"tahunajb": val(tahunajb),
+		"tahunajb":        val(tahunajb),
 		"kabupatenkotawp": val(kabwp), "kecamatanwp": val(kecwp), "kelurahandesawp": val(kelwp),
 		"rtrwwp": val(rtrwwp), "kodeposwp": val(kodeposwp),
 		"kabupatenkotaop": val(kabop), "kecamatanop": val(kecop), "kelurahandesaop": val(kelop),
 		"rtrwop": val(rtrwop), "kodeposop": val(kodeposop),
 		"npwpwp": val(npwpwp), "npwpop": val(npwpop),
 		"nilaiPerolehanObjekPajakTidakKenaPajak": valF(npoptkp),
-		"hargatransaksi": val(harga), "letaktanahdanbangunan": val(letak),
+		"hargatransaksi":                         val(harga), "letaktanahdanbangunan": val(letak),
 		"rt_rwobjekpajak": val(rtop), "status_kepemilikan": val(statusKm),
 		"keterangan": val(ket), "nomor_sertifikat": val(nomorSert),
 		"tanggal_perolehan": val(tglPeroleh), "tanggal_pembayaran": val(tglBayar),
@@ -1736,60 +1752,60 @@ func (r *PpatRepo) GetQuota(ctx context.Context, date string) (*QuotaRow, error)
 
 // CreateBookingParams holds common fields for create booking (Badan/Perorangan).
 type CreateBookingParams struct {
-	JenisWajibPajak     string   `json:"jenis_wajib_pajak"`
-	Noppbb              string   `json:"noppbb"`
-	Namawajibpajak      string   `json:"namawajibpajak"`
-	Alamatwajibpajak    string   `json:"alamatwajibpajak"`
-	Namapemilikobjekpajak string `json:"namapemilikobjekpajak"`
+	JenisWajibPajak         string `json:"jenis_wajib_pajak"`
+	Noppbb                  string `json:"noppbb"`
+	Namawajibpajak          string `json:"namawajibpajak"`
+	Alamatwajibpajak        string `json:"alamatwajibpajak"`
+	Namapemilikobjekpajak   string `json:"namapemilikobjekpajak"`
 	Alamatpemilikobjekpajak string `json:"alamatpemilikobjekpajak"`
-	Tanggal             string   `json:"tanggal"`
-	Tahunajb            string   `json:"tahunajb"`
-	Kabupatenkotawp     string   `json:"kabupatenkotawp"`
-	Kecamatanwp         string   `json:"kecamatanwp"`
-	Kelurahandesawp     string   `json:"kelurahandesawp"`
-	Rtrwwp              string   `json:"rtrwwp"`
-	Npwpwp              string   `json:"npwpwp"`
-	Kodeposwp           string   `json:"kodeposwp"`
-	Kabupatenkotaop     string   `json:"kabupatenkotaop"`
-	Kecamatanop         string   `json:"kecamatanop"`
-	Kelurahandesaop     string   `json:"kelurahandesaop"`
-	Rtrwop              string   `json:"rtrwop"`
-	Npwpop              string   `json:"npwpop"`
-	Kodeposop           string   `json:"kodeposop"`
-	Trackstatus         string   `json:"trackstatus"`
+	Tanggal                 string `json:"tanggal"`
+	Tahunajb                string `json:"tahunajb"`
+	Kabupatenkotawp         string `json:"kabupatenkotawp"`
+	Kecamatanwp             string `json:"kecamatanwp"`
+	Kelurahandesawp         string `json:"kelurahandesawp"`
+	Rtrwwp                  string `json:"rtrwwp"`
+	Npwpwp                  string `json:"npwpwp"`
+	Kodeposwp               string `json:"kodeposwp"`
+	Kabupatenkotaop         string `json:"kabupatenkotaop"`
+	Kecamatanop             string `json:"kecamatanop"`
+	Kelurahandesaop         string `json:"kelurahandesaop"`
+	Rtrwop                  string `json:"rtrwop"`
+	Npwpop                  string `json:"npwpop"`
+	Kodeposop               string `json:"kodeposop"`
+	Trackstatus             string `json:"trackstatus"`
 	// BPHTB
 	NilaiPerolehanObjekPajakTidakKenaPajak *float64 `json:"nilaiPerolehanObjekPajakTidakKenaPajak"`
 	BphtbYangtelahDibayar                  *float64 `json:"bphtb_yangtelah_dibayar"`
 	// Objek
-	Hargatransaksi       string `json:"hargatransaksi"`
+	Hargatransaksi        string `json:"hargatransaksi"`
 	Letaktanahdanbangunan string `json:"letaktanahdanbangunan"`
-	RtRwobjekpajak       string `json:"rt_rwobjekpajak"`
-	Kecamatanlp          string `json:"kecamatanlp"`
-	Kelurahandesalp      string `json:"kelurahandesalp"`
-	StatusKepemilikan    string `json:"status_kepemilikan"`
-	JenisPerolehan       string `json:"jenisPerolehan"`
-	Keterangan           string `json:"keterangan"`
-	NomorSertifikat      string `json:"nomor_sertifikat"`
-	TanggalPerolehan     string `json:"tanggal_perolehan"`
-	TanggalPembayaran    string `json:"tanggal_pembayaran"`
-	NomorBuktiPembayaran string `json:"nomor_bukti_pembayaran"`
+	RtRwobjekpajak        string `json:"rt_rwobjekpajak"`
+	Kecamatanlp           string `json:"kecamatanlp"`
+	Kelurahandesalp       string `json:"kelurahandesalp"`
+	StatusKepemilikan     string `json:"status_kepemilikan"`
+	JenisPerolehan        string `json:"jenisPerolehan"`
+	Keterangan            string `json:"keterangan"`
+	NomorSertifikat       string `json:"nomor_sertifikat"`
+	TanggalPerolehan      string `json:"tanggal_perolehan"`
+	TanggalPembayaran     string `json:"tanggal_pembayaran"`
+	NomorBuktiPembayaran  string `json:"nomor_bukti_pembayaran"`
 	// NJOP
-	LuasTanah     *float64 `json:"luas_tanah"`
-	NjopTanah      *float64 `json:"njop_tanah"`
-	LuasBangunan   *float64 `json:"luas_bangunan"`
-	NjopBangunan   *float64 `json:"njop_bangunan"`
-	TotalNjoppbb   *float64 `json:"total_njoppbb"`
+	LuasTanah    *float64 `json:"luas_tanah"`
+	NjopTanah    *float64 `json:"njop_tanah"`
+	LuasBangunan *float64 `json:"luas_bangunan"`
+	NjopBangunan *float64 `json:"njop_bangunan"`
+	TotalNjoppbb *float64 `json:"total_njoppbb"`
 }
 
 // CreateBookingForBillingParams is a minimal payload for Stage-1 billing request.
 // This intentionally avoids NJOP/BPHTB/tanggal perolehan/pembayaran which will be filled post-payment.
 type CreateBookingForBillingParams struct {
-	JenisWajibPajak        string `json:"jenis_wajib_pajak"` // "Badan Usaha" | "Perorangan"
-	Noppbb                 string `json:"noppbb"`
-	Namawajibpajak         string `json:"namawajibpajak"`
-	Namapemilikobjekpajak  string `json:"namapemilikobjekpajak"`
-	Npwpwp                 string `json:"npwpwp"` // NPWP (badan) atau NIK (perorangan)
-	Npwpop                 string `json:"npwpop"` // NPWP (badan) atau NIK (perorangan)
+	JenisWajibPajak       string `json:"jenis_wajib_pajak"` // "Badan Usaha" | "Perorangan"
+	Noppbb                string `json:"noppbb"`
+	Namawajibpajak        string `json:"namawajibpajak"`
+	Namapemilikobjekpajak string `json:"namapemilikobjekpajak"`
+	Npwpwp                string `json:"npwpwp"` // NPWP (badan) atau NIK (perorangan)
+	Npwpop                string `json:"npwpop"` // NPWP (badan) atau NIK (perorangan)
 }
 
 // BillingInfo holds stored billing state for one booking.
@@ -1917,8 +1933,8 @@ func (r *PpatRepo) CreateBookingForBilling(ctx context.Context, userid string, p
 // PostPaymentCalculationParams is saved in Stage-2 dropdown after payment is confirmed.
 type PostPaymentCalculationParams struct {
 	// NJOP
-	LuasTanah   *float64 `json:"luas_tanah"`
-	NjopTanah   *float64 `json:"njop_tanah"`
+	LuasTanah    *float64 `json:"luas_tanah"`
+	NjopTanah    *float64 `json:"njop_tanah"`
 	LuasBangunan *float64 `json:"luas_bangunan"`
 	NjopBangunan *float64 `json:"njop_bangunan"`
 	// Pajak
