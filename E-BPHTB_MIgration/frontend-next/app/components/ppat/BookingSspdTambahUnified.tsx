@@ -795,7 +795,9 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
         const sspdPaymentStatus = str(d, "sspd_pembayaran_status").trim().toUpperCase();
         const hasBillingId = str(d, "billing_id").trim() !== "";
         const calcDone = Boolean(d.is_calculation_completed);
-        setLockObjekAfterBilling(hasBillingId || paymentStatus !== "" || sspdPaymentStatus !== "" || calcDone);
+        const paidByStatus = paymentStatus === "PAID" || paymentStatus === "KURANG_BAYAR";
+        const paidBySspd = sspdPaymentStatus === "LUNAS" || sspdPaymentStatus === "KURANG_BAYAR" || sspdPaymentStatus === "SUDAH_BAYAR" || sspdPaymentStatus === "PAID";
+        setLockObjekAfterBilling(hasBillingId || paidByStatus || paidBySspd || calcDone);
 
         setNobookingValue(nb);
         setNopDigits(parseNopToDigits(str(d, "nop")));

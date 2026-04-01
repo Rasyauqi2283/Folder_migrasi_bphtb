@@ -146,6 +146,18 @@ function paymentConfirmedFromDetail(d: BookingDetail | null | undefined): boolea
   return false;
 }
 
+function hasBillingTrail(d: BookingDetail | null | undefined): boolean {
+  if (!d) return false;
+  const billingID = String(d.billing_id ?? "").trim();
+  if (billingID) return true;
+  const paymentStatus = String(d.payment_status ?? "").trim().toUpperCase();
+  if (paymentStatus === "PAID" || paymentStatus === "KURANG_BAYAR") return true;
+  const sspdStatus = String(d.sspd_pembayaran_status ?? "").trim().toUpperCase();
+  if (sspdStatus === "LUNAS" || sspdStatus === "KURANG_BAYAR" || sspdStatus === "SUDAH_BAYAR" || sspdStatus === "PAID") return true;
+  if (Boolean(d.is_calculation_completed)) return true;
+  return false;
+}
+
 function detailFromPostCalcForm(d: BookingDetail | null | undefined): PostCalcForm {
   const bp = d?.bphtb_yangtelah_dibayar;
   return {
@@ -385,12 +397,20 @@ export default function BookingSSPDBadanPage() {
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
   const canEditBookingData = (row: BookingRow) => {
     const s = status(row.trackstatus);
-    return s === "draft" || s === "terbuat";
+    return s === "draft" || s === "terbuat" || s === "pending" || s === "revisi" || s === "ditolak" || s === "awaiting_billing";
+  };
+  const canRecoverBooking = (row: BookingRow) => status(row.trackstatus) === "ditolak";
+  const canDeleteByStatus = (row: BookingRow) => {
+    const s = status(row.trackstatus);
+    return s === "draft" || s === "terbuat" || s === "revisi" || s === "ditolak" || s === "pending" || s === "awaiting_billing";
   };
   const canMintaBillingRow = (row: BookingRow, detail: BookingDetail | null) =>
     canEditBookingData(row) && !paymentConfirmedFromDetail(detail) && !hasActivePendingBilling(detail, nowTick);
   const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
   const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
+  const selectedDetail = selectedRow && cekBookingDetail?.nobooking === selectedRow.nobooking ? cekBookingDetail : null;
+  const selectedHasBilling = hasBillingTrail(selectedDetail);
+  const canDeleteSelected = Boolean(selectedRow) && canDeleteByStatus(selectedRow as BookingRow) && !selectedHasBilling;
 
   const getFileUrl = (path: string) => {
     if (!path) return "";
@@ -851,15 +871,18 @@ export default function BookingSSPDBadanPage() {
     setUploading(true);
     setActionMessage(null);
     try {
-      const res = await fetch(`${getApiBase()}/api/ppat/update-trackstatus/${encodeURIComponent(nb)}`, {
-        method: "PUT",
+      const detailForDelete = cekBookingDetail?.nobooking === nb ? cekBookingDetail : null;
+      if (hasBillingTrail(detailForDelete)) {
+        setActionMessage("Data Locked: Billing already exists. Booking tidak bisa dihapus.");
+        return;
+      }
+      const res = await fetch(`${getApiBase()}/api/ppat/booking/${encodeURIComponent(nb)}`, {
+        method: "DELETE",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackstatus: "Dihapus" }),
       });
       const j = await res.json().catch(() => ({}));
       if (j?.success) {
-        setActionMessage("Data ditandai dihapus.");
+        setActionMessage("Booking berhasil dihapus.");
         setModal(null);
         setExpandedRow(null);
         loadTable(page);
@@ -870,6 +893,26 @@ export default function BookingSSPDBadanPage() {
       setActionMessage("Gagal menghapus.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleRecover = async (nobooking: string) => {
+    setActionMessage(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/ppat/booking/recover/${encodeURIComponent(nobooking)}`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setActionMessage(j?.message || "Gagal memulihkan booking.");
+        return;
+      }
+      setOverlayNotice({ type: "success", text: `Booking ${nobooking} berhasil dipulihkan ke status Revisi.` });
+      loadTable(page);
+      setCekBookingNobooking(nobooking);
+    } catch {
+      setActionMessage("Gagal memulihkan booking.");
     }
   };
 
@@ -1001,7 +1044,7 @@ export default function BookingSSPDBadanPage() {
         <button type="button" style={btnSecondary} onClick={() => (expandedRow || data[0]?.nobooking) ? openPdfBooking() : openModal("documents")}>
           Lihat Dokumen
         </button>
-        <button type="button" style={btnSecondary} onClick={() => openModal("delete")} disabled={selectedLocked}>
+        <button type="button" style={btnSecondary} onClick={() => openModal("delete")} disabled={!canDeleteSelected}>
           Hapus Data
         </button>
       </div>
@@ -1201,12 +1244,12 @@ export default function BookingSSPDBadanPage() {
         <div style={modalOverlayStyle} onClick={() => !uploading && setModal(null)}>
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 16px", color: "#0f172a" }}>Hapus Data</h3>
-            <p style={{ marginBottom: 12, color: "#1e293b" }}>Booking yang dipilih akan ditandai status &quot;Dihapus&quot;. Pilih No. Booking:</p>
+            <p style={{ marginBottom: 12, color: "#1e293b" }}>Booking hanya dapat dihapus sebelum billing diminta. Pilih No. Booking:</p>
             <select
               style={{ width: "100%", padding: 8, marginBottom: 12, color: "#0f172a", background: "#fff" }}
               value={modalNobooking}
               onChange={(e) => setModalNobooking(e.target.value)}
-                disabled={selectedLocked}
+                disabled={!canDeleteSelected}
             >
               {data.map((r) => (
                 <option key={r.nobooking} value={r.nobooking}>{r.nobooking} — {r.namawajibpajak}</option>
@@ -1214,8 +1257,8 @@ export default function BookingSSPDBadanPage() {
             </select>
             {actionMessage && <p style={{ color: actionMessage.includes("Gagal") ? "#b91c1c" : "#166534", marginBottom: 8 }}>{actionMessage}</p>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading || selectedLocked} onClick={handleHapusData}>
-                {uploading ? "Memproses..." : "Ya, Tandai Dihapus"}
+              <button type="button" style={{ ...btnStyle, background: "#dc2626", color: "#fff" }} disabled={uploading || !canDeleteSelected} onClick={handleHapusData}>
+                {uploading ? "Memproses..." : "Ya, Hapus Booking"}
               </button>
               <button type="button" style={btnSecondary} onClick={() => setModal(null)}>Batal</button>
             </div>
@@ -1693,6 +1736,15 @@ export default function BookingSSPDBadanPage() {
                                     >
                                       Edit Data
                                     </Link>
+                                  )}
+                                  {canRecoverBooking(row) && (
+                                    <button
+                                      type="button"
+                                      style={{ ...btnStyle, background: "#0ea5e9", color: "#fff" }}
+                                      onClick={() => void handleRecover(row.nobooking)}
+                                    >
+                                      Pulihkan Dokumen
+                                    </button>
                                   )}
                                   <button
                                     type="button"

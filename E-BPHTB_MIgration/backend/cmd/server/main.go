@@ -442,6 +442,7 @@ func main() {
 	mux.HandleFunc("PATCH /api/ppat/booking/{nobooking}/calculation", ppatHandler.SavePostPaymentCalculation)
 	mux.HandleFunc("PUT /api/ppat/update-trackstatus/{nobooking}", ppatHandler.UpdateTrackstatus)
 	mux.HandleFunc("DELETE /api/ppat/booking/{nobooking}", ppatHandler.DeleteBooking)
+	mux.HandleFunc("POST /api/ppat/booking/recover/{nobooking}", ppatHandler.RecoverBooking)
 	mux.HandleFunc("GET /api/ppat/quota", ppatHandler.GetQuota)
 	mux.HandleFunc("GET /api/ppat/get-documents", ppatHandler.GetDocuments)
 	mux.HandleFunc("GET /api/ppat/file-proxy", ppatHandler.FileProxy)

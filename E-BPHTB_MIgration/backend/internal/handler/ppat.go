@@ -1202,12 +1202,58 @@ func (h *PpatHandler) DeleteBooking(w http.ResponseWriter, r *http.Request) {
 			ppatJSONError(w, http.StatusNotFound, "Booking not found")
 			return
 		}
+		if errors.Is(err, repository.ErrPpatBillingLocked) || errors.Is(err, repository.ErrPpatReadonlySubmitted) {
+			ppatJSONError(w, http.StatusForbidden, err.Error())
+			return
+		}
 		log.Printf("[PPAT] DeleteBooking: %v", err)
 		ppatJSONError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": "Booking deleted successfully"})
+}
+
+// RecoverBooking handles POST /api/ppat/booking/recover/{nobooking}.
+func (h *PpatHandler) RecoverBooking(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		ppatJSONError(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		return
+	}
+	userid := getPpatUserid(r)
+	if userid == "" {
+		ppatJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	nobooking := strings.TrimSpace(r.PathValue("nobooking"))
+	if nobooking == "" {
+		ppatJSONError(w, http.StatusBadRequest, "nobooking required")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	err := h.repo.RecoverBooking(ctx, userid, nobooking)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			ppatJSONError(w, http.StatusNotFound, "Booking not found")
+			return
+		}
+		if errors.Is(err, repository.ErrPpatRecoverNotAllowed) {
+			ppatJSONError(w, http.StatusConflict, err.Error())
+			return
+		}
+		log.Printf("[PPAT] RecoverBooking: %v", err)
+		ppatJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	log.Printf("[PPAT][AUDIT] booking recovered by userid=%s nobooking=%s", userid, nobooking)
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"nobooking":   nobooking,
+		"trackstatus": "Revisi",
+		"message":     "Booking berhasil dipulihkan",
+	})
 }
 
 // GetQuota handles GET /api/ppat/quota.

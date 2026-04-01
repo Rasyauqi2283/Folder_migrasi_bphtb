@@ -831,6 +831,15 @@ var ErrPpatQuotaFull = errors.New("Kuota hari ini penuh")
 // ErrPpatBookingNotSendable is returned when booking status is not Draft or Pending.
 var ErrPpatBookingNotSendable = errors.New("Booking tidak dapat dikirim")
 
+// ErrPpatBillingLocked is returned when booking already has billing/payment trail.
+var ErrPpatBillingLocked = errors.New("Data Locked: Billing already exists")
+
+// ErrPpatReadonlySubmitted is returned when booking already submitted to Bappenda.
+var ErrPpatReadonlySubmitted = errors.New("Data Locked: Booking already submitted")
+
+// ErrPpatRecoverNotAllowed is returned when recover action is not valid from current state.
+var ErrPpatRecoverNotAllowed = errors.New("Booking tidak dapat dipulihkan dari status saat ini")
+
 // CreateBookingBadan inserts pat_1_bookingsspd (Badan Usaha); kolom nobooking diisi oleh trigger generate_nobooking (BEFORE INSERT).
 // Setelah pat_1 tersimpan dengan nobooking, data terkait dimasukkan ke pat_2_bphtb_perhitungan, pat_4_objek_pajak, pat_5_penghitungan_njop.
 func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params *CreateBookingParams) (nobooking string, err error) {
@@ -937,21 +946,27 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 	}
 	defer tx.Rollback(ctx)
 
-	// Ensure ownership + still editable (allow correction updates except deleted/diserahkan).
+	// Ensure ownership + still editable (subject-only edit after billing, but readonly after submitted).
 	var lockObjekAfterBilling bool
+	var currentTrackstatus string
 	if err := tx.QueryRow(ctx, `
 		SELECT
+			COALESCE(LOWER(TRIM(trackstatus)), '') AS ts,
 			(
-				COALESCE(NULLIF(TRIM(payment_status::text), ''), '') <> ''
-				OR COALESCE(NULLIF(TRIM(sspd_pembayaran_status::text), ''), '') <> ''
-				OR COALESCE(NULLIF(TRIM(billing_id::text), ''), '') <> ''
+				COALESCE(NULLIF(TRIM(billing_id::text), ''), '') <> ''
+				OR UPPER(COALESCE(NULLIF(TRIM(payment_status::text), ''), '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(NULLIF(TRIM(sspd_pembayaran_status::text), ''), '')) IN ('LUNAS', 'KURANG_BAYAR', 'SUDAH_BAYAR', 'PAID')
 				OR COALESCE(is_calculation_completed, false) = true
 			) AS lock_objek
 		FROM pat_1_bookingsspd
 		WHERE nobooking = $1 AND userid = $2 AND COALESCE(trackstatus, '') NOT IN ('Dihapus', 'Diserahkan')
 		LIMIT 1
-	`, nobooking, userid).Scan(&lockObjekAfterBilling); err != nil {
+	`, nobooking, userid).Scan(&currentTrackstatus, &lockObjekAfterBilling); err != nil {
 		return fmt.Errorf("booking tidak ditemukan atau sudah terkunci")
+	}
+	switch currentTrackstatus {
+	case "diterima", "diolah", "diserahkan":
+		return ErrPpatReadonlySubmitted
 	}
 
 	// pat_1
@@ -1693,7 +1708,65 @@ func (r *PpatRepo) DeleteBooking(ctx context.Context, userid, nobooking string) 
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
+	var ts string
+	var hasBilling bool
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(LOWER(TRIM(trackstatus)), '') AS ts,
+			(
+				COALESCE(NULLIF(TRIM(billing_id::text), ''), '') <> ''
+				OR UPPER(COALESCE(NULLIF(TRIM(payment_status::text), ''), '')) IN ('PAID', 'KURANG_BAYAR')
+				OR UPPER(COALESCE(NULLIF(TRIM(sspd_pembayaran_status::text), ''), '')) IN ('LUNAS', 'KURANG_BAYAR', 'SUDAH_BAYAR', 'PAID')
+				OR COALESCE(is_calculation_completed, false) = true
+			) AS has_billing
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+		LIMIT 1
+	`, nobooking, userid).Scan(&ts, &hasBilling)
+	if err != nil {
+		return fmt.Errorf("booking not found")
+	}
+	if hasBilling {
+		return ErrPpatBillingLocked
+	}
+	switch ts {
+	case "draft", "terbuat", "revisi", "ditolak", "pending", "awaiting_billing", "":
+		// still deletable before submitted/financial lock
+	default:
+		return ErrPpatReadonlySubmitted
+	}
 	cmd, err := r.pool.Exec(ctx, `DELETE FROM pat_1_bookingsspd WHERE nobooking = $1 AND userid = $2`, nobooking, userid)
+	if err != nil {
+		return err
+	}
+	if cmd.RowsAffected() == 0 {
+		return fmt.Errorf("booking not found")
+	}
+	return nil
+}
+
+// RecoverBooking transitions rejected booking into REVISI for PPAT recovery/edit.
+func (r *PpatRepo) RecoverBooking(ctx context.Context, userid, nobooking string) error {
+	if r.pool == nil {
+		return fmt.Errorf("database not configured")
+	}
+	var ts string
+	if err := r.pool.QueryRow(ctx, `
+		SELECT COALESCE(LOWER(TRIM(trackstatus)), '')
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+		LIMIT 1
+	`, nobooking, userid).Scan(&ts); err != nil {
+		return fmt.Errorf("booking not found")
+	}
+	if ts != "ditolak" {
+		return ErrPpatRecoverNotAllowed
+	}
+	cmd, err := r.pool.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = 'Revisi', updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+	`, nobooking, userid)
 	if err != nil {
 		return err
 	}
