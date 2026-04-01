@@ -195,6 +195,45 @@ export default function MonitoringKeterlambatanContent({ backHref, backLabel, sh
         Kepatuhan laporan bulanan (jatuh tempo tgl 10). {isAdmin ? "Tampilan administrator: semua pejabat umum." : "Anda melihat data akun Anda."}
       </p>
 
+      <div
+        style={{
+          marginBottom: 20,
+          padding: 16,
+          borderRadius: 12,
+          border: "1px solid #c7d2fe",
+          background: "linear-gradient(135deg, #eef2ff, #ffffff)",
+          color: "var(--color_font_main)",
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>Alur pelaporan bulanan PU (resmi, sebelum tanggal 10)</div>
+        <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--color_font_muted)" }}>
+          Sesuai flowchart final, pelaporan kegiatan dilakukan <strong>luring ke kantor</strong> dan wajib diterima admin sebelum tanggal 10 bulan berikutnya.
+        </div>
+        <ol style={{ margin: "10px 0 0 18px", padding: 0, fontSize: 13, lineHeight: 1.7 }}>
+          <li>
+            <strong>Siapkan dokumen periode berjalan</strong>: daftar akta/berkas yang diproses bulan tersebut.
+          </li>
+          <li>
+            Jika <strong>tidak ada transaksi</strong>, tetap wajib lapor dengan membawa <strong>laporan nihil</strong>.
+          </li>
+          <li>
+            <strong>Datang ke kantor Bappenda</strong> dan serahkan laporan ke petugas/admin untuk dicatat sebagai "sudah lapor".
+          </li>
+          <li>
+            Admin melakukan verifikasi, lalu status akun dipantau di menu ini (aktif/peringatan/terblokir).
+          </li>
+          <li>
+            Untuk jejak sistem, lengkapi juga upload pada menu{" "}
+            <Link href="/pu/laporan/unggah-laporan-bulanan" style={{ color: "var(--accent)" }}>
+              Unggah laporan bulanan
+            </Link>.
+          </li>
+        </ol>
+        <div style={{ marginTop: 10, fontSize: 12, color: "#374151" }}>
+          <strong>Catatan:</strong> terlambat lapor setelah tanggal 10 akan masuk monitoring keterlambatan dan dapat berujung suspend akses pembuatan SSPD baru.
+        </div>
+      </div>
+
       {summary && isAdmin && (
         <div
           style={{
