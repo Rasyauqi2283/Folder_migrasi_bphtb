@@ -937,49 +937,84 @@ func (r *PpatRepo) UpdateBookingBadan(ctx context.Context, userid, nobooking str
 	}
 	defer tx.Rollback(ctx)
 
-	// Ensure ownership + still editable
-	var ok int
+	// Ensure ownership + still editable (allow correction updates except deleted/diserahkan).
+	var lockObjekAfterBilling bool
 	if err := tx.QueryRow(ctx, `
-		SELECT 1
+		SELECT
+			(
+				COALESCE(NULLIF(TRIM(payment_status::text), ''), '') <> ''
+				OR COALESCE(NULLIF(TRIM(sspd_pembayaran_status::text), ''), '') <> ''
+				OR COALESCE(NULLIF(TRIM(billing_id::text), ''), '') <> ''
+				OR COALESCE(is_calculation_completed, false) = true
+			) AS lock_objek
 		FROM pat_1_bookingsspd
-		WHERE nobooking = $1 AND userid = $2 AND LOWER(COALESCE(trackstatus,'')) IN ('draft', 'terbuat')
+		WHERE nobooking = $1 AND userid = $2 AND COALESCE(trackstatus, '') NOT IN ('Dihapus', 'Diserahkan')
 		LIMIT 1
-	`, nobooking, userid).Scan(&ok); err != nil {
+	`, nobooking, userid).Scan(&lockObjekAfterBilling); err != nil {
 		return fmt.Errorf("booking tidak ditemukan atau sudah terkunci")
 	}
 
 	// pat_1
-	_, err = tx.Exec(ctx, `
-		UPDATE pat_1_bookingsspd
-		SET
-			noppbb = $3,
-			namawajibpajak = $4,
-			alamatwajibpajak = $5,
-			namapemilikobjekpajak = $6,
-			alamatpemilikobjekpajak = $7,
-			tanggal = $8,
-			tahunajb = $9,
-			kabupatenkotawp = $10,
-			kecamatanwp = $11,
-			kelurahandesawp = $12,
-			rtrwwp = $13,
-			npwpwp = $14,
-			kodeposwp = $15,
-			kabupatenkotaop = $16,
-			kecamatanop = $17,
-			kelurahandesaop = $18,
-			rtrwop = $19,
-			npwpop = $20,
-			kodeposop = $21,
-			updated_at = now()
-		WHERE nobooking = $1 AND userid = $2
-	`, nobooking, userid,
-		params.Noppbb, params.Namawajibpajak, params.Alamatwajibpajak, params.Namapemilikobjekpajak, params.Alamatpemilikobjekpajak,
-		params.Tanggal, params.Tahunajb, params.Kabupatenkotawp, params.Kecamatanwp, params.Kelurahandesawp, params.Rtrwwp, params.Npwpwp, params.Kodeposwp,
-		params.Kabupatenkotaop, params.Kecamatanop, params.Kelurahandesaop, params.Rtrwop, params.Npwpop, params.Kodeposop,
-	)
+	if lockObjekAfterBilling {
+		// After billing/payment exists, only subject fields can be edited.
+		_, err = tx.Exec(ctx, `
+			UPDATE pat_1_bookingsspd
+			SET
+				namawajibpajak = $3,
+				alamatwajibpajak = $4,
+				namapemilikobjekpajak = $5,
+				alamatpemilikobjekpajak = $6,
+				kabupatenkotawp = $7,
+				kecamatanwp = $8,
+				kelurahandesawp = $9,
+				rtrwwp = $10,
+				npwpwp = $11,
+				kodeposwp = $12,
+				updated_at = now()
+			WHERE nobooking = $1 AND userid = $2
+		`, nobooking, userid,
+			params.Namawajibpajak, params.Alamatwajibpajak, params.Namapemilikobjekpajak, params.Alamatpemilikobjekpajak,
+			params.Kabupatenkotawp, params.Kecamatanwp, params.Kelurahandesawp, params.Rtrwwp, params.Npwpwp, params.Kodeposwp,
+		)
+	} else {
+		_, err = tx.Exec(ctx, `
+			UPDATE pat_1_bookingsspd
+			SET
+				noppbb = $3,
+				namawajibpajak = $4,
+				alamatwajibpajak = $5,
+				namapemilikobjekpajak = $6,
+				alamatpemilikobjekpajak = $7,
+				tanggal = $8,
+				tahunajb = $9,
+				kabupatenkotawp = $10,
+				kecamatanwp = $11,
+				kelurahandesawp = $12,
+				rtrwwp = $13,
+				npwpwp = $14,
+				kodeposwp = $15,
+				kabupatenkotaop = $16,
+				kecamatanop = $17,
+				kelurahandesaop = $18,
+				rtrwop = $19,
+				npwpop = $20,
+				kodeposop = $21,
+				updated_at = now()
+			WHERE nobooking = $1 AND userid = $2
+		`, nobooking, userid,
+			params.Noppbb, params.Namawajibpajak, params.Alamatwajibpajak, params.Namapemilikobjekpajak, params.Alamatpemilikobjekpajak,
+			params.Tanggal, params.Tahunajb, params.Kabupatenkotawp, params.Kecamatanwp, params.Kelurahandesawp, params.Rtrwwp, params.Npwpwp, params.Kodeposwp,
+			params.Kabupatenkotaop, params.Kecamatanop, params.Kelurahandesaop, params.Rtrwop, params.Npwpop, params.Kodeposop,
+		)
+	}
 	if err != nil {
 		return err
+	}
+	if lockObjekAfterBilling {
+		if err := tx.Commit(ctx); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	// pat_2 — skema lama tidak selalu punya UNIQUE(nobooking); jangan pakai ON CONFLICT(nobooking).

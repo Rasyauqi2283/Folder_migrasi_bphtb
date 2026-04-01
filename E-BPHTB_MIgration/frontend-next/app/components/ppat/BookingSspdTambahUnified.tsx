@@ -471,6 +471,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
   const [tanggal, setTanggal] = useState(defaultTanggal);
   const [nobookingValue, setNobookingValue] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
+  const [lockObjekAfterBilling, setLockObjekAfterBilling] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [nopDigits, setNopDigits] = useState<string[]>(Array(7).fill(""));
   const [npwpWpDigits, setNpwpWpDigits] = useState<string[]>(Array(6).fill(""));
@@ -790,6 +791,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
         const jwpRaw2 = str(d, "jenis_wajib_pajak");
         const isPer2 = jwpRaw2.toLowerCase().includes("perorangan");
         setEntityKind(isPer2 ? "perorangan" : "badan");
+        const paymentStatus = str(d, "payment_status").trim().toUpperCase();
+        const sspdPaymentStatus = str(d, "sspd_pembayaran_status").trim().toUpperCase();
+        const hasBillingId = str(d, "billing_id").trim() !== "";
+        const calcDone = Boolean(d.is_calculation_completed);
+        setLockObjekAfterBilling(hasBillingId || paymentStatus !== "" || sspdPaymentStatus !== "" || calcDone);
 
         setNobookingValue(nb);
         setNopDigits(parseNopToDigits(str(d, "nop")));
@@ -879,6 +885,8 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       cancelled = true;
     };
   }, [searchParams]);
+
+  const objekFieldsLocked = isEditMode && lockObjekAfterBilling;
 
   useEffect(() => {
     if (!callbackOpen) return;
@@ -1213,6 +1221,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
       {isEditMode && (
         <div style={{ padding: 12, marginBottom: 16, background: "#fff7ed", color: "#9a3412", borderRadius: 8, border: "1px solid #fed7aa" }}>
           Anda sedang dalam mode edit. Nomor booking tetap dan tidak dapat diubah.
+        </div>
+      )}
+      {objekFieldsLocked && (
+        <div style={{ padding: 12, marginBottom: 16, background: "#eff6ff", color: "#1e40af", borderRadius: 8, border: "1px solid #bfdbfe" }}>
+          Billing/pembayaran sudah aktif. Anda masih bisa mengedit data subjek (WP/pemilik), tetapi data objek pajak dan komponen perhitungan dikunci.
         </div>
       )}
 
@@ -1872,6 +1885,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
           </button>
           {openObjek && (
             <div style={{ padding: 16, borderTop: "1px solid var(--border_color)" }}>
+              <fieldset disabled={objekFieldsLocked} style={{ border: "none", padding: 0, margin: 0, minWidth: 0 }}>
               <div
                 style={{
                   padding: 12,
@@ -2121,6 +2135,7 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
                   placeholder="Keterangan tambahan"
                 />
               </div>
+              </fieldset>
             </div>
           )}
         </div>
