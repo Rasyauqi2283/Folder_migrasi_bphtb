@@ -14,8 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"sync"
+	"time"
 
 	"ebphtb/backend/internal/config"
 	"ebphtb/backend/internal/idgen"
@@ -110,9 +110,9 @@ type resetTokenEntry struct {
 }
 
 var (
-	resetOTPMu   sync.Mutex
-	resetOTPMap  = map[string]resetOTPEntry{}   // key = email
-	resetTokenMu sync.Mutex
+	resetOTPMu    sync.Mutex
+	resetOTPMap   = map[string]resetOTPEntry{} // key = email
+	resetTokenMu  sync.Mutex
 	resetTokenMap = map[string]resetTokenEntry{} // key = token
 )
 
@@ -190,20 +190,16 @@ func isSecureRequest(r *http.Request) bool {
 func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
 	payload := ktpExtractJSON{
 		NIK: result.NIK, Nama: result.Nama,
-		Alamat: result.Alamat,
+		Alamat:     result.Alamat,
 		IsReadable: result.IsReadable,
-		CreatedAt: createdAt,
-	}
-	rawForDB := result.RawText
-	if len(rawForDB) > 2000 {
-		rawForDB = rawForDB[:2000]
+		CreatedAt:  createdAt,
 	}
 	ktpOcrBytes, _ := json.Marshal(map[string]interface{}{
-		"nik": result.NIK,
-		"nama": result.Nama,
-		"alamat": result.Alamat,
+		"nik":         result.NIK,
+		"nama":        result.Nama,
+		"alamat":      result.Alamat,
 		"is_readable": result.IsReadable,
-		"rawText": rawForDB,
+		"rawText":     result.RawText,
 	})
 	payload.KtpOcrJson = string(ktpOcrBytes)
 	return payload, payload.KtpOcrJson
@@ -222,12 +218,12 @@ func NewAuthHandler(cfg *config.Config, pool *pgxpool.Pool) *AuthHandler {
 
 // ktpExtractJSON is the structure saved in temp_uploads (hanya data JSON, bukan gambar).
 type ktpExtractJSON struct {
-	NIK              *string  `json:"nik"`
-	Nama             *string  `json:"nama"`
-	Alamat           *string  `json:"alamat"`
-	IsReadable       bool     `json:"is_readable"`
-	KtpOcrJson       string   `json:"ktpOcrJson"` // stringified untuk kolom DB
-	CreatedAt        int64    `json:"createdAt"`
+	NIK        *string `json:"nik"`
+	Nama       *string `json:"nama"`
+	Alamat     *string `json:"alamat"`
+	IsReadable bool    `json:"is_readable"`
+	KtpOcrJson string  `json:"ktpOcrJson"` // stringified untuk kolom DB
+	CreatedAt  int64   `json:"createdAt"`
 }
 
 func ptrTrim(s *string) string {
@@ -314,8 +310,8 @@ func (h *AuthHandler) runKtpOCR(ctx context.Context, tmpPath string) (*ktpocr.Re
 	defer cancel()
 	easyTO := time.Duration(h.cfg.EasyOCRTimeout) * time.Millisecond
 	var (
-		indo         *service.KtpIndorobertaResponse
-		hy           *ktpocr.Result
+		indo           *service.KtpIndorobertaResponse
+		hy             *ktpocr.Result
 		indoErr, hyErr error
 	)
 	var wg sync.WaitGroup
@@ -671,9 +667,9 @@ func (h *AuthHandler) UploadNIBDoc(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":   true,
-		"uploadId":  uploadID,
-		"message":   "Sertifikat NIB berhasil diupload.",
+		"success":  true,
+		"uploadId": uploadID,
+		"message":  "Sertifikat NIB berhasil diupload.",
 	})
 }
 
@@ -1436,9 +1432,9 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 	log.Printf("[VERIFY_OTP_FINALIZE] success email=%s verse=%s is_wp_badan=%t verified_status=%s userid=%s",
 		email, verseOut, isWPBadan, verifiedStatus, useridOut)
 
-	// Simpan ktp_ocr_json ke cek_ktp_ocr (terikat NIK) untuk preview admin
+	// Simpan ktp_ocr_json ke tabel OCR (terikat NIK/email) untuk preview admin
 	if h.repo != nil && ktpOcrJson != "" && nik != "" {
-		if insErr := h.repo.InsertCekKtpOcr(r.Context(), nik, ktpOcrJson); insErr != nil {
+		if insErr := h.repo.InsertCekKtpOcr(r.Context(), email, nik, ktpOcrJson); insErr != nil {
 			log.Printf("[VERIFY_OTP_FINALIZE] InsertCekKtpOcr error: %v", insErr)
 		}
 	}
@@ -1478,6 +1474,7 @@ func (h *AuthHandler) VerifyOTPFinalize(w http.ResponseWriter, r *http.Request) 
 		},
 	})
 }
+
 // verifyOtpReq is the JSON body for verify-otp.
 type verifyOtpReq struct {
 	Email string `json:"email"`
@@ -1669,9 +1666,9 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Simpan ktp_ocr_json ke cek_ktp_ocr (terikat NIK) untuk preview admin
+	// Simpan ktp_ocr_json ke tabel OCR (terikat NIK/email) untuk preview admin
 	if user.KtpOcrJson != nil && *user.KtpOcrJson != "" && user.NIK != "" {
-		if insErr := h.repo.InsertCekKtpOcr(ctx, user.NIK, *user.KtpOcrJson); insErr != nil {
+		if insErr := h.repo.InsertCekKtpOcr(ctx, user.Email, user.NIK, *user.KtpOcrJson); insErr != nil {
 			log.Printf("[VERIFY_OTP] InsertCekKtpOcr error: %v", insErr)
 		}
 	}
@@ -1978,24 +1975,24 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user": map[string]interface{}{
-			"userid":              user.Userid,
-			"nama":                user.Nama,
-			"email":               user.Email,
-			"divisi":              user.Divisi,
-			"fotoprofil":          foto,
-			"username":            username,
-			"nip":                 nip,
-			"special_field":       specialField,
-			"special_parafv":      specialParafv,
-			"pejabat_umum":        pejabatUmum,
-			"telepon":             telepon,
-			"gender":              gender,
-			"alamat_pu":           alamatPu,
-			"ppat_khusus":         ppatKhusus,
-			"tanda_tangan_mime":   tandaTanganMime,
-			"tanda_tangan_path":   tandaTanganPath,
-			"statuspengguna":      user.Statuspengguna,
-			"status_ppat":         statusPpat,
+			"userid":            user.Userid,
+			"nama":              user.Nama,
+			"email":             user.Email,
+			"divisi":            user.Divisi,
+			"fotoprofil":        foto,
+			"username":          username,
+			"nip":               nip,
+			"special_field":     specialField,
+			"special_parafv":    specialParafv,
+			"pejabat_umum":      pejabatUmum,
+			"telepon":           telepon,
+			"gender":            gender,
+			"alamat_pu":         alamatPu,
+			"ppat_khusus":       ppatKhusus,
+			"tanda_tangan_mime": tandaTanganMime,
+			"tanda_tangan_path": tandaTanganPath,
+			"statuspengguna":    user.Statuspengguna,
+			"status_ppat":       statusPpat,
 		},
 	})
 }
@@ -2235,12 +2232,12 @@ func (h *AuthHandler) UpdateProfileParaf(w http.ResponseWriter, r *http.Request)
 }
 
 type completeProfileReq struct {
-	Userid       string `json:"userid"`
-	Nip          string `json:"nip"`
-	Username     string `json:"username"`
-	SpecialField string `json:"special_field"`
+	Userid        string `json:"userid"`
+	Nip           string `json:"nip"`
+	Username      string `json:"username"`
+	SpecialField  string `json:"special_field"`
 	SpecialParafv string `json:"special_parafv"`
-	PejabatUmum  string `json:"pejabat_umum"`
+	PejabatUmum   string `json:"pejabat_umum"`
 }
 
 // CompleteProfile handles POST /api/v1/auth/complete-profile. Body: userid, nip, username, special_field, special_parafv, pejabat_umum.
@@ -2485,13 +2482,3 @@ func isDigits(s string) bool {
 	}
 	return true
 }
-
-
-
-
-
-
-
-
-
-

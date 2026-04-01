@@ -20,7 +20,7 @@ const defaultFotoprofil = "/penting_F_simpan/profile-photo/default-foto-profile.
 
 // UsersHandler handles /api/users/* for admin data user (pending, complete, generate-userid, assign).
 type UsersHandler struct {
-	repo          *repository.UserRepo
+	repo           *repository.UserRepo
 	tempUploadsDir string
 }
 
@@ -284,9 +284,9 @@ func (h *UsersHandler) AssignUserIDAndDivisi(w http.ResponseWriter, r *http.Requ
 		jsonResponse(w, http.StatusInternalServerError, AssignUserIDResponse{Status: "error", Message: "Terjadi kesalahan sistem"})
 		return
 	}
-	// Hapus permanen data KTP dari cek_ktp_ocr untuk mengurangi kepenuhan data (user sudah complete)
-	if delErr := h.repo.DeleteCekKtpOcrByNIK(ctx, pending.NIK); delErr != nil {
-		log.Printf("[USERS] DeleteCekKtpOcrByNIK(%s): %v", pending.NIK, delErr)
+	// Hapus permanen data KTP dari tabel OCR untuk mengurangi kepenuhan data (user sudah complete)
+	if delErr := h.repo.DeleteCekKtpOcrByIdentity(ctx, pending.NIK, pending.Email); delErr != nil {
+		log.Printf("[USERS] DeleteCekKtpOcrByIdentity(%s,%s): %v", pending.NIK, pending.Email, delErr)
 	}
 	// Send email notification (non-blocking)
 	go func() {
@@ -326,7 +326,7 @@ type KTPPreviewResponse struct {
 	Message    string      `json:"message,omitempty"`
 }
 
-// KTPPreview returns KTP OCR JSON untuk user pending by id. Data diambil dari cek_ktp_ocr by NIK.
+// KTPPreview returns KTP OCR JSON untuk user pending by id. Data diambil dari tabel OCR by NIK/email.
 // Pengecekan NIK: NIK di JSON harus sama dengan NIK di database agar data tidak tertukar.
 func (h *UsersHandler) KTPPreview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -369,10 +369,10 @@ func (h *UsersHandler) KTPPreview(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	// Ambil ktp_ocr_json dari cek_ktp_ocr by NIK
-	ktpJson, err := h.repo.GetCekKtpOcrByNIK(ctx, u.NIK)
+	// Ambil ktp_ocr_json dari tabel OCR by NIK/email
+	ktpJson, err := h.repo.GetCekKtpOcrByIdentity(ctx, u.NIK, u.Email)
 	if err != nil {
-		log.Printf("[KTPPreview] GetCekKtpOcrByNIK: %v", err)
+		log.Printf("[KTPPreview] GetCekKtpOcrByIdentity: %v", err)
 		jsonResponse(w, http.StatusInternalServerError, KTPPreviewResponse{
 			Success: false, Message: "Gagal memuat data KTP",
 		})

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { getApiBase } from "../../../../../lib/api";
 
 // Divisi Karyawan (5): LTB, LSB, Admin, Peneliti, Peneliti Validasi
@@ -51,13 +51,10 @@ export default function AdminDataUserPendingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [formOpen, setFormOpen] = useState(false);
+  const [activeAssignId, setActiveAssignId] = useState<number | null>(null);
   const [selectedEmail, setSelectedEmail] = useState("");
   const [selectedNama, setSelectedNama] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [selectedTelepon, setSelectedTelepon] = useState("");
-  const [selectedGender, setSelectedGender] = useState<string | null>(null);
-  const [selectedPejabatUmum, setSelectedPejabatUmum] = useState<string | null>(null);
   const [assignTipe, setAssignTipe] = useState<"karyawan" | "pu">("karyawan");
   const [divisiCode, setDivisiCode] = useState("-");
   const [generatedUserid, setGeneratedUserid] = useState("");
@@ -192,57 +189,176 @@ export default function AdminDataUserPendingPage() {
           </tr>
         </thead>
         <tbody>
-          {rows.map((u) => (
-            <tr
-              key={u.id}
-              style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}
-            >
-              {tipe === "karyawan" ? (
-                <>
-                  <td style={tdStyle}>{u.email}</td>
-                  <td style={tdStyle}>{u.nik}</td>
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => openAssign(u, tipe)}
-                      style={{
-                        padding: "6px 12px",
-                        background: "#3b82f6",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Assign ID
-                    </button>
-                  </td>
-                </>
-              ) : (
-                <>
-                  <td style={tdStyle}>{u.nik}</td>
-                  <td style={tdStyle}>{u.email}</td>
-                  <td style={tdStyle}>{u.special_field ?? "—"}</td>
-                  <td style={tdStyle}>
-                    <button
-                      type="button"
-                      onClick={() => openAssign(u, tipe)}
-                      style={{
-                        padding: "6px 12px",
-                        background: "#3b82f6",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Assign ID
-                    </button>
-                  </td>
-                </>
-              )}
-            </tr>
-          ))}
+          {rows.map((u) => {
+            const expanded = activeAssignId === u.id && assignTipe === tipe;
+            return (
+              <Fragment key={`row-wrap-${u.id}`}>
+                <tr
+                  key={u.id}
+                  style={{ borderBottom: expanded ? "none" : "1px solid rgba(65,90,119,0.2)" }}
+                >
+                  {tipe === "karyawan" ? (
+                    <>
+                      <td style={tdStyle}>{u.email}</td>
+                      <td style={tdStyle}>{u.nik}</td>
+                      <td style={tdStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openAssign(u, tipe)}
+                          style={{
+                            padding: "6px 12px",
+                            background: expanded ? "#1d4ed8" : "#3b82f6",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {expanded ? "Tutup Assign" : "Assign ID"}
+                        </button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={tdStyle}>{u.nik}</td>
+                      <td style={tdStyle}>{u.email}</td>
+                      <td style={tdStyle}>{u.special_field ?? "—"}</td>
+                      <td style={tdStyle}>
+                        <button
+                          type="button"
+                          onClick={() => openAssign(u, tipe)}
+                          style={{
+                            padding: "6px 12px",
+                            background: expanded ? "#1d4ed8" : "#3b82f6",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {expanded ? "Tutup Assign" : "Assign ID"}
+                        </button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+
+                {expanded && (
+                  <tr key={`assign-${u.id}`} style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
+                    <td style={tdStyle} colSpan={tipe === "karyawan" ? 3 : 4}>
+                      <div
+                        style={{
+                          background: "#0d1b2a",
+                          border: "1px solid rgba(65,90,119,0.45)",
+                          borderRadius: 8,
+                          padding: 12,
+                          display: "grid",
+                          gap: 10,
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
+                          <span style={{ color: "#94a3b8" }}>{u.email}</span>
+                          <button
+                            type="button"
+                            onClick={loadKtpPreview}
+                            disabled={ktpLoading}
+                            style={{
+                              marginLeft: "auto",
+                              padding: "6px 10px",
+                              background: ktpLoading ? "#6b7280" : "#3b82f6",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: ktpLoading ? "wait" : "pointer",
+                            }}
+                          >
+                            {ktpLoading ? "Memuat KTP..." : "Preview KTP"}
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                          <select
+                            value={divisiCode}
+                            onChange={(e) => setDivisiCode(e.target.value)}
+                            style={{
+                              padding: "8px 10px",
+                              borderRadius: 6,
+                              border: "1px solid rgba(255,255,255,0.3)",
+                              background: "#1b263b",
+                              color: "#e2e8f0",
+                              minWidth: 180,
+                            }}
+                          >
+                            <option value="-">Pilih Divisi</option>
+                            {Object.entries(divisiOptions).map(([code, name]) => (
+                              <option key={code} value={code}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving || !generatedUserid}
+                            style={{
+                              padding: "8px 14px",
+                              background: saving || !generatedUserid ? "#6b7280" : "#10b981",
+                              color: "#fff",
+                              border: "none",
+                              borderRadius: 6,
+                              cursor: saving || !generatedUserid ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {saving ? "Menyimpan..." : "Simpan Assign"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveAssignId(null)}
+                            style={{
+                              padding: "8px 14px",
+                              background: "rgba(255,255,255,0.1)",
+                              color: "#e2e8f0",
+                              border: "1px solid rgba(255,255,255,0.3)",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Batal
+                          </button>
+                        </div>
+
+                        {generatedUserid && (
+                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                            UserID: <strong>{generatedUserid}</strong> | Divisi: <strong>{generatedDivisi}</strong>
+                            {(divisiCode === "PAT" || divisiCode === "PATS") && ppatKhusus ? ` | PPAT Khusus: ${ppatKhusus}` : ""}
+                          </p>
+                        )}
+                        {saveError && <p style={{ margin: 0, color: "#fca5a5" }}>{saveError}</p>}
+                        {ktpError && <p style={{ margin: 0, color: "#fca5a5" }}>{ktpError}</p>}
+                        {ktpPreviewData && (
+                          <pre
+                            style={{
+                              margin: 0,
+                              padding: 10,
+                              borderRadius: 6,
+                              background: "#111827",
+                              color: "#93c5fd",
+                              maxHeight: 240,
+                              overflow: "auto",
+                              fontSize: 12,
+                            }}
+                          >
+                            {JSON.stringify(ktpPreviewData, null, 2)}
+                          </pre>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -250,14 +366,16 @@ export default function AdminDataUserPendingPage() {
   };
 
   const openAssign = (u: PendingUser, tipe: "karyawan" | "pu") => {
+    const isSameRow = activeAssignId === u.id && assignTipe === tipe;
+    if (isSameRow) {
+      setActiveAssignId(null);
+      return;
+    }
     setSelectedEmail(u.email);
     setSelectedNama(u.nama);
     setSelectedId(u.id);
-    setSelectedTelepon(u.telepon ?? "");
-    setSelectedGender(u.gender ?? null);
-    setSelectedPejabatUmum(u.pejabat_umum ?? null);
     setAssignTipe(tipe);
-    setFormOpen(true);
+    setActiveAssignId(u.id);
     setDivisiCode("-");
     setGeneratedUserid("");
     setGeneratedDivisi("");
@@ -320,7 +438,7 @@ export default function AdminDataUserPendingPage() {
       if (!res.ok) throw new Error(data.message || "Gagal menyimpan");
       if (data.status !== "success")
         throw new Error(data.message || "Respon server tidak valid");
-      setFormOpen(false);
+      setActiveAssignId(null);
       loadPending();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Gagal menyimpan");
@@ -364,190 +482,6 @@ export default function AdminDataUserPendingPage() {
 
       {error && (
         <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</p>
-      )}
-
-      {formOpen && (
-        <div
-          style={{
-            marginBottom: 24,
-            padding: 20,
-            background: "var(--card_bg)",
-            borderRadius: 16,
-            border: "1px solid var(--card_border)",
-            boxShadow: "var(--card_shadow)",
-          }}
-        >
-          <div
-            style={{
-              padding: 20,
-              background: "#1b263b",
-              borderRadius: 12,
-              border: "1px solid rgba(65,90,119,0.3)",
-            }}
-          >
-            <h3 style={{ color: "#fff", margin: "0 0 1rem" }}>
-            Assign UserID & Divisi {assignTipe === "karyawan" ? "(Karyawan)" : "(PU)"}
-          </h3>
-          {assignTipe === "karyawan" ? (
-            <>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Nama: <strong>{selectedNama}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Telepon: <strong>{selectedTelepon}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Gender: <strong>{selectedGender ?? "—"}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 1rem" }}>
-                Email: <strong>{selectedEmail}</strong>
-              </p>
-            </>
-          ) : (
-            <>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Nama: <strong>{selectedNama}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Email: <strong>{selectedEmail}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 0.5rem" }}>
-                Telepon: <strong>{selectedTelepon}</strong>
-              </p>
-              <p style={{ color: "rgba(255,255,255,0.8)", margin: "0 0 1rem" }}>
-                Pejabat Umum: <strong>{selectedPejabatUmum ?? "—"}</strong>
-              </p>
-            </>
-          )}
-
-          <div style={{ marginBottom: 12 }}>
-            <button
-              type="button"
-              onClick={loadKtpPreview}
-              disabled={ktpLoading}
-              style={{
-                padding: "8px 16px",
-                background: ktpLoading ? "#6b7280" : "#3b82f6",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: ktpLoading ? "wait" : "pointer",
-              }}
-            >
-              {ktpLoading ? "Memuat..." : "Preview KTP"}
-            </button>
-          </div>
-          {ktpError && (
-            <p style={{ color: "#fca5a5", marginBottom: 8 }}>{ktpError}</p>
-          )}
-          {ktpPreviewData && (
-            <div
-              style={{
-                marginBottom: 16,
-                padding: 16,
-                background: "#0d1b2a",
-                borderRadius: 8,
-                border: "1px solid rgba(65,90,119,0.5)",
-                overflow: "auto",
-                maxHeight: 320,
-              }}
-            >
-              <p style={{ color: "rgba(255,255,255,0.9)", margin: "0 0 8px", fontSize: 14 }}>
-                Data KTP (hasil ekstraksi OCR)
-              </p>
-              <pre
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  color: "#94a3b8",
-                  fontFamily: "ui-monospace, monospace",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}
-              >
-                {JSON.stringify(ktpPreviewData, null, 2)}
-              </pre>
-            </div>
-          )}
-
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ color: "rgba(255,255,255,0.9)", display: "block", marginBottom: 4 }}>
-              Divisi ({assignTipe === "karyawan" ? "Karyawan" : "PU"})
-            </label>
-            <select
-              value={divisiCode}
-              onChange={(e) => setDivisiCode(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 6,
-                border: "1px solid rgba(255,255,255,0.3)",
-                background: "#0d1b2a",
-                color: "#e2e8f0",
-                minWidth: 200,
-              }}
-            >
-              <option value="-">Pilih Divisi</option>
-              {Object.entries(divisiOptions).map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {generatedUserid && (
-            <>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ color: "rgba(255,255,255,0.9)" }}>UserID: </label>
-                <span style={{ fontWeight: 600 }}>{generatedUserid}</span>
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <label style={{ color: "rgba(255,255,255,0.9)" }}>Divisi: </label>
-                <span>{generatedDivisi}</span>
-              </div>
-              {(divisiCode === "PAT" || divisiCode === "PATS") && ppatKhusus && (
-                <div style={{ marginBottom: 8 }}>
-                  <label style={{ color: "rgba(255,255,255,0.9)" }}>PPAT Khusus: </label>
-                  <span>{ppatKhusus}</span>
-                </div>
-              )}
-            </>
-          )}
-          {saveError && (
-            <p style={{ color: "#fca5a5", marginBottom: 8 }}>{saveError}</p>
-          )}
-          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !generatedUserid}
-              style={{
-                padding: "8px 20px",
-                background: saving || !generatedUserid ? "#6b7280" : "#10b981",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: saving || !generatedUserid ? "not-allowed" : "pointer",
-              }}
-            >
-              {saving ? "Menyimpan..." : "Simpan"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormOpen(false)}
-              style={{
-                padding: "8px 20px",
-                background: "rgba(255,255,255,0.1)",
-                color: "#e2e8f0",
-                border: "1px solid rgba(255,255,255,0.3)",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
-            >
-              Batal
-            </button>
-          </div>
-          </div>
-        </div>
       )}
 
       {loading ? (

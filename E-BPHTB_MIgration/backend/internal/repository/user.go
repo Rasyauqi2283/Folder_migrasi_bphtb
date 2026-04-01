@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -119,28 +120,28 @@ type InsertUnverifiedArgs struct {
 // LoginUser holds user data for login (a_2_verified_users).
 // Kolom berikut boleh kosong (beragam role): NIP, SpecialField, PejabatUmum, PpatKhusus; StatusPpat juga boleh kosong di tabel.
 type LoginUser struct {
-	Userid           string
-	Password         string
-	Nama             string
-	Email            string
-	Divisi           string
-	Fotoprofil       string
-	Statuspengguna   string
-	Username         *string
-	NIP              *string
-	SpecialField     *string
-	SpecialParafv    *string
-	PejabatUmum      *string
-	TandaTanganMime  *string
-	TandaTanganPath  *string
-	Telepon          *string
-	Gender           *string
-	PpatKhusus       *string
-	AlamatPu         *string
-	NpwpBadan        *string
-	Nib              *string
-	NibDocPath       *string
-	StatusPpat       *string
+	Userid          string
+	Password        string
+	Nama            string
+	Email           string
+	Divisi          string
+	Fotoprofil      string
+	Statuspengguna  string
+	Username        *string
+	NIP             *string
+	SpecialField    *string
+	SpecialParafv   *string
+	PejabatUmum     *string
+	TandaTanganMime *string
+	TandaTanganPath *string
+	Telepon         *string
+	Gender          *string
+	PpatKhusus      *string
+	AlamatPu        *string
+	NpwpBadan       *string
+	Nib             *string
+	NibDocPath      *string
+	StatusPpat      *string
 }
 
 // GetByIdentifierForLogin fetches user from a_2_verified_users by email, userid, or username.
@@ -180,21 +181,21 @@ func (r *UserRepo) UpdateLoginStatus(ctx context.Context, userid string) error {
 
 // UnverifiedUser holds row from a_1_unverified_users.
 type UnverifiedUser struct {
-	Nama          string
-	NIK           string
-	Telepon       string
-	Email         string
-	Password      string
-	Foto          string
-	OTP           string
+	Nama           string
+	NIK            string
+	Telepon        string
+	Email          string
+	Password       string
+	Foto           string
+	OTP            string
 	Verifiedstatus string
-	Gender        *string
-	Verse         *string
-	NIP           *string
-	SpecialField  *string
-	PejabatUmum   *string
-	Divisi        *string
-	KtpOcrJson    *string
+	Gender         *string
+	Verse          *string
+	NIP            *string
+	SpecialField   *string
+	PejabatUmum    *string
+	Divisi         *string
+	KtpOcrJson     *string
 }
 
 // GetUnverifiedByEmail fetches unverified user by email.
@@ -396,7 +397,7 @@ func (r *UserRepo) GetPendingByEmail(ctx context.Context, email string) (*Pendin
 	return &u, nil
 }
 
-// GetPendingByID returns one pending user by id (verified_pending/pending). ktp_ocr_json diambil dari cek_ktp_ocr terpisah.
+// GetPendingByID returns one pending user by id (verified_pending/pending). ktp_ocr_json diambil terpisah dari tabel OCR.
 func (r *UserRepo) GetPendingByID(ctx context.Context, id int) (*PendingUser, error) {
 	if r.pool == nil {
 		return nil, nil
@@ -421,39 +422,97 @@ func (r *UserRepo) GetPendingByID(ctx context.Context, id int) (*PendingUser, er
 	return &u, nil
 }
 
-// InsertCekKtpOcr menyimpan ktp_ocr_json di cek_ktp_ocr (terikat NIK). Dipanggil saat verifikasi OTP.
-// Jika NIK sudah ada (re-register), replace.
-func (r *UserRepo) InsertCekKtpOcr(ctx context.Context, nik, ktpOcrJson string) error {
-	if r.pool == nil || nik == "" || ktpOcrJson == "" {
+func (r *UserRepo) resolveKtpOCRTable(ctx context.Context) (tableName string, hasEmail bool, err error) {
+	if r.pool == nil {
+		return "", false, nil
+	}
+	// Prioritas schema baru.
+	err = r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='a_3_cek_ktp_ocr')`).Scan(&hasEmail)
+	if err != nil {
+		return "", false, err
+	}
+	if hasEmail {
+		tableName = "a_3_cek_ktp_ocr"
+	} else {
+		tableName = "cek_ktp_ocr"
+	}
+	// Cek apakah kolom email tersedia.
+	hasEmail = false
+	err = r.pool.QueryRow(ctx,
+		`SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_schema='public' AND table_name=$1 AND column_name='email'
+		)`,
+		tableName,
+	).Scan(&hasEmail)
+	return tableName, hasEmail, err
+}
+
+// InsertCekKtpOcr menyimpan ktp_ocr_json ke tabel OCR KTP (a_3_cek_ktp_ocr / fallback cek_ktp_ocr).
+// Jika NIK/email sudah ada, replace agar tidak menumpuk.
+func (r *UserRepo) InsertCekKtpOcr(ctx context.Context, email, nik, ktpOcrJson string) error {
+	if r.pool == nil || ktpOcrJson == "" || (nik == "" && email == "") {
 		return nil
 	}
-	_, err := r.pool.Exec(ctx, `DELETE FROM cek_ktp_ocr WHERE nik = $1`, nik)
+	tableName, hasEmail, err := r.resolveKtpOCRTable(ctx)
+	if err != nil || tableName == "" {
+		return err
+	}
+	if hasEmail {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE nik = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($2))`, tableName), nik, email)
+	} else {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE nik = $1`, tableName), nik)
+	}
 	if err != nil {
 		return err
 	}
-	_, err = r.pool.Exec(ctx, `INSERT INTO cek_ktp_ocr (ktp_ocr_json, nik) VALUES ($1, $2)`, ktpOcrJson, nik)
+	if hasEmail {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`INSERT INTO %s (ktp_ocr_json, nik, email) VALUES ($1, $2, NULLIF($3,''))`, tableName), ktpOcrJson, nik, strings.TrimSpace(email))
+	} else {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`INSERT INTO %s (ktp_ocr_json, nik) VALUES ($1, $2)`, tableName), ktpOcrJson, nik)
+	}
 	return err
 }
 
-// GetCekKtpOcrByNIK returns ktp_ocr_json dari cek_ktp_ocr untuk NIK tertentu.
-func (r *UserRepo) GetCekKtpOcrByNIK(ctx context.Context, nik string) (string, error) {
-	if r.pool == nil || nik == "" {
+// GetCekKtpOcrByIdentity returns ktp_ocr_json dari tabel OCR berdasarkan NIK/email.
+func (r *UserRepo) GetCekKtpOcrByIdentity(ctx context.Context, nik, email string) (string, error) {
+	if r.pool == nil || (nik == "" && email == "") {
 		return "", nil
 	}
+	tableName, hasEmail, err := r.resolveKtpOCRTable(ctx)
+	if err != nil || tableName == "" {
+		return "", err
+	}
 	var json string
-	err := r.pool.QueryRow(ctx, `SELECT ktp_ocr_json FROM cek_ktp_ocr WHERE nik = $1 LIMIT 1`, nik).Scan(&json)
+	q := fmt.Sprintf(`SELECT ktp_ocr_json FROM %s WHERE nik = $1`, tableName)
+	args := []interface{}{nik}
+	if hasEmail {
+		q += ` OR LOWER(TRIM(email)) = LOWER(TRIM($2))`
+		args = append(args, email)
+	}
+	q += ` ORDER BY id DESC LIMIT 1`
+	err = r.pool.QueryRow(ctx, q, args...).Scan(&json)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}
 	return json, err
 }
 
-// DeleteCekKtpOcrByNIK menghapus baris di cek_ktp_ocr untuk NIK (saat user complete/assign). Mengurangi kepenuhan data.
-func (r *UserRepo) DeleteCekKtpOcrByNIK(ctx context.Context, nik string) error {
-	if r.pool == nil || nik == "" {
+// DeleteCekKtpOcrByIdentity menghapus baris OCR untuk NIK/email (saat user complete/assign).
+func (r *UserRepo) DeleteCekKtpOcrByIdentity(ctx context.Context, nik, email string) error {
+	if r.pool == nil || (nik == "" && email == "") {
 		return nil
 	}
-	_, err := r.pool.Exec(ctx, `DELETE FROM cek_ktp_ocr WHERE nik = $1`, nik)
+	tableName, hasEmail, err := r.resolveKtpOCRTable(ctx)
+	if err != nil || tableName == "" {
+		return err
+	}
+	if hasEmail {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE nik = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($2))`, tableName), nik, email)
+	} else {
+		_, err = r.pool.Exec(ctx, fmt.Sprintf(`DELETE FROM %s WHERE nik = $1`, tableName), nik)
+	}
 	return err
 }
 
@@ -486,16 +545,16 @@ func (r *UserRepo) UpdateCompleteUser(ctx context.Context, userid, nama, telepon
 
 // PpatUserRow holds PPAT/PPATS user row for admin notification-warehouse.
 type PpatUserRow struct {
-	ID          int
-	Nama        string
+	ID           int
+	Nama         string
 	SpecialField *string
-	Userid      string
-	Divisi      string
-	StatusPpat  *string
-	PpatKhusus  *string
-	Email       string
-	CreatedAt   interface{}
-	UpdatedAt   interface{}
+	Userid       string
+	Divisi       string
+	StatusPpat   *string
+	PpatKhusus   *string
+	Email        string
+	CreatedAt    interface{}
+	UpdatedAt    interface{}
 }
 
 // ListPpatUsers returns PPAT/PPATS users with pagination (matching Node notification_warehouse ppat-users).

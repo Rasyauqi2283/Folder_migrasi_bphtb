@@ -75,7 +75,7 @@ func (h *UserLookupHandler) Lookup(w http.ResponseWriter, r *http.Request) {
 
 	// Perkaya alamat dari KTP OCR (jika ada) untuk NIK terdaftar
 	if row.Nik != "" {
-		if ocrJSON, _ := h.repo.GetCekKtpOcrByNIK(ctx, row.Nik); strings.TrimSpace(ocrJSON) != "" {
+		if ocrJSON, _ := h.repo.GetCekKtpOcrByIdentity(ctx, row.Nik, ""); strings.TrimSpace(ocrJSON) != "" {
 			applyKtpOcrHints(ocrJSON, row)
 		}
 	}
