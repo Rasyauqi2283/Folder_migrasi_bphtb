@@ -574,7 +574,7 @@ func (r *UserRepo) ListPpatUsers(ctx context.Context, page, limit int, search, s
 	}
 
 	// Base where clause
-	where := `divisi IN ('PPAT', 'PPATS')`
+	where := `divisi IN ('PPAT', 'PPATS', 'Notaris', 'NOTARIS')`
 	params := []interface{}{}
 	idx := 1
 
@@ -597,13 +597,43 @@ func (r *UserRepo) ListPpatUsers(ctx context.Context, page, limit int, search, s
 		return nil, 0, err
 	}
 
+	// Backward-compatible columns: some schema snapshots do not have created_at/updated_at on a_2_verified_users.
+	hasColumn := func(name string) bool {
+		var ok bool
+		err := r.pool.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema='public' AND table_name='a_2_verified_users' AND column_name=$1
+			)
+		`, name).Scan(&ok)
+		return err == nil && ok
+	}
+	hasCreatedAt := hasColumn("created_at")
+	hasUpdatedAt := hasColumn("updated_at")
+	createdExpr := "NULL::timestamptz"
+	updatedExpr := "NULL::timestamptz"
+	orderByExpr := "id DESC"
+	switch {
+	case hasUpdatedAt && hasCreatedAt:
+		createdExpr = "created_at"
+		updatedExpr = "updated_at"
+		orderByExpr = "COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC"
+	case hasUpdatedAt:
+		updatedExpr = "updated_at"
+		orderByExpr = "updated_at DESC NULLS LAST, id DESC"
+	case hasCreatedAt:
+		createdExpr = "created_at"
+		orderByExpr = "created_at DESC NULLS LAST, id DESC"
+	}
+
 	// Fetch page (params + limit + offset)
 	limitParam := idx
 	offsetParam := idx + 1
-	order := ` ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, id DESC LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
+	order := ` ORDER BY ` + orderByExpr + ` LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam)
 	params = append(params, limit, offset)
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, created_at, updated_at
+		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, `+createdExpr+` AS created_at, `+updatedExpr+` AS updated_at
 		 FROM a_2_verified_users WHERE `+where+order,
 		params...,
 	)
@@ -632,12 +662,34 @@ func (r *UserRepo) GetPpatUserByUserid(ctx context.Context, userid string) (*Ppa
 	if r.pool == nil || userid == "" {
 		return nil, nil
 	}
+	hasColumn := func(name string) bool {
+		var ok bool
+		err := r.pool.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM information_schema.columns
+				WHERE table_schema='public' AND table_name='a_2_verified_users' AND column_name=$1
+			)
+		`, name).Scan(&ok)
+		return err == nil && ok
+	}
+	hasCreatedAt := hasColumn("created_at")
+	hasUpdatedAt := hasColumn("updated_at")
+	createdExpr := "NULL::timestamptz"
+	updatedExpr := "NULL::timestamptz"
+	if hasCreatedAt {
+		createdExpr = "created_at"
+	}
+	if hasUpdatedAt {
+		updatedExpr = "updated_at"
+	}
+
 	var u PpatUserRow
 	var createdAt, updatedAt interface{}
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, created_at, updated_at
+		`SELECT id, nama, special_field, userid, divisi, status_ppat, ppat_khusus, email, `+createdExpr+` AS created_at, `+updatedExpr+` AS updated_at
 		 FROM a_2_verified_users
-		 WHERE (userid = $1 OR id::text = $1) AND divisi IN ('PPAT', 'PPATS')`,
+		 WHERE (userid = $1 OR id::text = $1) AND divisi IN ('PPAT', 'PPATS', 'Notaris', 'NOTARIS')`,
 		userid,
 	).Scan(&u.ID, &u.Nama, &u.SpecialField, &u.Userid, &u.Divisi, &u.StatusPpat, &u.PpatKhusus, &u.Email, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

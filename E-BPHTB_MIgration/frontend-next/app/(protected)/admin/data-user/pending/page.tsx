@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { Search } from "lucide-react";
 import { getApiBase } from "../../../../../lib/api";
 
 // Divisi Karyawan (5): LTB, LSB, Admin, Peneliti, Peneliti Validasi
@@ -50,12 +51,18 @@ const PU_CODE_BY_LABEL: Record<string, string> = {
   PPATS: "PATS",
   NOTARIS: "NOTARIS",
 };
+type CategoryFilter = "all" | "wp" | "karyawan" | "pu";
 
 export default function AdminDataUserPendingPage() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
+  const [wpPage, setWpPage] = useState(1);
+  const [karyawanPage, setKaryawanPage] = useState(1);
+  const [puPage, setPuPage] = useState(1);
   const [activeAssignId, setActiveAssignId] = useState<number | null>(null);
   const [selectedEmail, setSelectedEmail] = useState("");
   const [selectedNama, setSelectedNama] = useState("");
@@ -92,25 +99,68 @@ export default function AdminDataUserPendingPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadPending();
-  }, [loadPending]);
-
   const divisiOptions = DIVISI_KARYAWAN;
 
-  // Filter dulu per kategori agar data WP Badan tidak "hilang" karena slicing campuran.
-  const karyawanAll = pendingUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
-  const puAll = pendingUsers.filter((u) => (u.verse ?? "").toUpperCase() === "PU");
-  const wpBadanAll = pendingUsers.filter((u) => {
+  const searchLower = searchInput.trim().toLowerCase();
+  const searchedUsers = hasSearched
+    ? pendingUsers.filter((u) => {
+      if (!searchLower) return true;
+      const pool = [
+        u.nama,
+        u.email,
+        u.nik,
+        u.telepon,
+        u.userid ?? "",
+        u.divisi ?? "",
+        u.special_field ?? "",
+        u.pejabat_umum ?? "",
+        u.npwp_badan ?? "",
+        u.nib ?? "",
+      ].join(" ").toLowerCase();
+      return pool.includes(searchLower);
+    })
+    : [];
+
+  const karyawanAll = searchedUsers.filter((u) => (u.verse ?? "").toLowerCase() === "karyawan");
+  const puAll = searchedUsers.filter((u) => (u.verse ?? "").toUpperCase() === "PU");
+  const wpBadanAll = searchedUsers.filter((u) => {
     const verse = (u.verse ?? "").toUpperCase();
     const div = (u.divisi ?? "").toLowerCase();
     return verse === "WP" && div.includes("wajib pajak b");
   });
-  const totalPages = Math.max(1, Math.ceil(pendingUsers.length / PAGE_SIZE));
-  const startIdx = (page - 1) * PAGE_SIZE;
-  const karyawanRows = karyawanAll.slice(startIdx, startIdx + PAGE_SIZE);
-  const puRows = puAll.slice(startIdx, startIdx + PAGE_SIZE);
-  const wpBadanRows = wpBadanAll.slice(startIdx, startIdx + PAGE_SIZE);
+  const wpTotalPages = Math.max(1, Math.ceil(wpBadanAll.length / PAGE_SIZE));
+  const karyawanTotalPages = Math.max(1, Math.ceil(karyawanAll.length / PAGE_SIZE));
+  const puTotalPages = Math.max(1, Math.ceil(puAll.length / PAGE_SIZE));
+  const wpStartIdx = (wpPage - 1) * PAGE_SIZE;
+  const karyawanStartIdx = (karyawanPage - 1) * PAGE_SIZE;
+  const puStartIdx = (puPage - 1) * PAGE_SIZE;
+  const wpBadanRows = wpBadanAll.slice(wpStartIdx, wpStartIdx + PAGE_SIZE);
+  const karyawanRows = karyawanAll.slice(karyawanStartIdx, karyawanStartIdx + PAGE_SIZE);
+  const puRows = puAll.slice(puStartIdx, puStartIdx + PAGE_SIZE);
+  const showWp = activeCategory === "all" || activeCategory === "wp";
+  const showKaryawan = activeCategory === "all" || activeCategory === "karyawan";
+  const showPu = activeCategory === "all" || activeCategory === "pu";
+
+  useEffect(() => {
+    setWpPage((p) => Math.min(p, wpTotalPages));
+  }, [wpTotalPages]);
+
+  useEffect(() => {
+    setKaryawanPage((p) => Math.min(p, karyawanTotalPages));
+  }, [karyawanTotalPages]);
+
+  useEffect(() => {
+    setPuPage((p) => Math.min(p, puTotalPages));
+  }, [puTotalPages]);
+
+  const handleSearch = async () => {
+    setHasSearched(true);
+    setActiveAssignId(null);
+    setWpPage(1);
+    setKaryawanPage(1);
+    setPuPage(1);
+    await loadPending();
+  };
 
   const nibDocUrl = (u: PendingUser): string | null => {
     const raw = (u.nib_doc_path ?? "").trim();
@@ -257,10 +307,18 @@ export default function AdminDataUserPendingPage() {
                           gap: 10,
                         }}
                       >
+                        <div style={{ background: "#111827", border: "1px solid rgba(148,163,184,0.25)", borderRadius: 8, padding: 10 }}>
+                          <h4 style={{ margin: "0 0 8px", color: "#e2e8f0", fontSize: 14 }}>Detail Info</h4>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(180px, 1fr))", gap: 6 }}>
+                            <p style={{ margin: 0, color: "#cbd5e1" }}>Nama: <strong>{u.nama}</strong></p>
+                            <p style={{ margin: 0, color: "#cbd5e1" }}>Email: <strong>{u.email}</strong></p>
+                            <p style={{ margin: 0, color: "#cbd5e1" }}>NIK: <strong>{u.nik}</strong></p>
+                            <p style={{ margin: 0, color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></p>
+                          </div>
+                        </div>
+
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                          <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
-                          <span style={{ color: "#94a3b8" }}>{u.email}</span>
-                          <span style={{ color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></span>
+                          <strong style={{ color: "#e2e8f0" }}>Preview KTP</strong>
                           <button
                             type="button"
                             onClick={loadKtpPreview}
@@ -279,32 +337,47 @@ export default function AdminDataUserPendingPage() {
                           </button>
                         </div>
 
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <div style={{ background: "#111827", border: "1px solid rgba(148,163,184,0.25)", borderRadius: 8, padding: 10, display: "grid", gap: 10 }}>
+                          <h4 style={{ margin: 0, color: "#e2e8f0", fontSize: 14 }}>Assign Divisi & UserID</h4>
                           {tipe === "karyawan" ? (
-                            <select
-                              value={divisiCode}
-                              onChange={(e) => setDivisiCode(e.target.value)}
-                              style={{
-                                padding: "8px 10px",
-                                borderRadius: 6,
-                                border: "1px solid rgba(255,255,255,0.3)",
-                                background: "#1b263b",
-                                color: "#e2e8f0",
-                                minWidth: 180,
-                              }}
-                            >
-                              <option value="-">Pilih Divisi</option>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                               {Object.entries(divisiOptions).map(([code, name]) => (
-                                <option key={code} value={code}>
+                                <label
+                                  key={code}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    color: "#e2e8f0",
+                                    background: divisiCode === code ? "rgba(59,130,246,0.25)" : "transparent",
+                                    border: "1px solid rgba(148,163,184,0.35)",
+                                    borderRadius: 999,
+                                    padding: "6px 10px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="divisi-karyawan"
+                                    checked={divisiCode === code}
+                                    onChange={() => setDivisiCode(code)}
+                                  />
                                   {name}
-                                </option>
+                                </label>
                               ))}
-                            </select>
+                            </div>
                           ) : (
                             <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
                               Status: {u.pejabat_umum ?? "PU"}
                             </span>
                           )}
+                          <p style={{ margin: 0, color: "#cbd5e1" }}>
+                            UserID: <strong>{generatedUserid || "Belum tergenerate"}</strong> | Divisi: <strong>{generatedDivisi || "Belum dipilih"}</strong>
+                            {(divisiCode === "PAT" || divisiCode === "PATS") && ppatKhusus ? ` | PPAT Khusus: ${ppatKhusus}` : ""}
+                          </p>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                           <button
                             type="button"
                             onClick={handleSave}
@@ -350,12 +423,6 @@ export default function AdminDataUserPendingPage() {
                           </button>
                         </div>
 
-                        {generatedUserid && (
-                          <p style={{ margin: 0, color: "#cbd5e1" }}>
-                            UserID: <strong>{generatedUserid}</strong> | Divisi: <strong>{generatedDivisi}</strong>
-                            {(divisiCode === "PAT" || divisiCode === "PATS") && ppatKhusus ? ` | PPAT Khusus: ${ppatKhusus}` : ""}
-                          </p>
-                        )}
                         {saveError && <p style={{ margin: 0, color: "#fca5a5" }}>{saveError}</p>}
                         {ktpError && <p style={{ margin: 0, color: "#fca5a5" }}>{ktpError}</p>}
                         {ktpPreviewData && (
@@ -540,16 +607,96 @@ export default function AdminDataUserPendingPage() {
       {error && (
         <p style={{ color: "#dc2626", marginBottom: "1rem" }}>{error}</p>
       )}
+      <div
+        style={{
+          border: "1px solid rgba(65,90,119,0.35)",
+          borderRadius: 10,
+          background: "#0f172a",
+          padding: 12,
+          marginBottom: 16,
+          boxShadow: "0 6px 16px rgba(2,6,23,0.25)",
+        }}
+      >
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ position: "relative", flex: "1 1 280px", minWidth: 220 }}>
+            <Search
+              size={16}
+              style={{
+                position: "absolute",
+                left: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#94a3b8",
+              }}
+            />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleSearch();
+              }}
+              placeholder="Cari nama, email, NIK, NPWP, NIB, divisi..."
+              style={{
+                width: "100%",
+                height: 38,
+                borderRadius: 8,
+                border: "1px solid rgba(148,163,184,0.35)",
+                background: "#111827",
+                color: "#e2e8f0",
+                padding: "0 10px 0 34px",
+              }}
+            />
+          </div>
+          <select
+            value={activeCategory}
+            onChange={(e) => setActiveCategory(e.target.value as CategoryFilter)}
+            style={{
+              height: 38,
+              borderRadius: 8,
+              border: "1px solid rgba(148,163,184,0.35)",
+              background: "#111827",
+              color: "#e2e8f0",
+              padding: "0 10px",
+            }}
+          >
+            <option value="all">Semua Verse</option>
+            <option value="wp">WP</option>
+            <option value="karyawan">Karyawan</option>
+            <option value="pu">PU</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => void handleSearch()}
+            disabled={loading}
+            style={{
+              height: 38,
+              borderRadius: 8,
+              border: "none",
+              background: loading ? "#64748b" : "#2563eb",
+              color: "#fff",
+              padding: "0 14px",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: loading ? "wait" : "pointer",
+            }}
+          >
+            <Search size={15} />
+            {loading ? "Mencari..." : "Search"}
+          </button>
+        </div>
+      </div>
 
       {loading ? (
-        <p style={{ color: "var(--color_font_main_muted)" }}>Memuat...</p>
+        <p style={{ color: "var(--color_font_main_muted)" }}>Memuat data dari server...</p>
+      ) : !hasSearched ? (
+        <p style={{ color: "var(--color_font_main_muted)" }}>
+          Silakan lakukan pencarian untuk menampilkan data.
+        </p>
       ) : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-            <div>
-              <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
-                WP — Badan Usaha
-              </h3>
+        <div style={{ display: "grid", gap: 16 }}>
+          {showWp && (
+            <UserTableContainer title="Pending - Wajib Pajak (Badan Usaha)" count={wpBadanAll.length}>
               {wpActionError && (
                 <p style={{ color: "#dc2626", margin: "0 0 8px" }}>{wpActionError}</p>
               )}
@@ -567,10 +714,6 @@ export default function AdminDataUserPendingPage() {
                     <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.5)" }}>
                       <th style={thStyle}>Nama</th>
                       <th style={thStyle}>Email</th>
-                      <th style={thStyle}>NIK (PJ)</th>
-                      <th style={thStyle}>NPWP Badan</th>
-                      <th style={thStyle}>NIB</th>
-                      <th style={thStyle}>Dokumen</th>
                       <th style={thStyle}>Gender</th>
                       <th style={thStyle}>Aksi</th>
                     </tr>
@@ -578,8 +721,8 @@ export default function AdminDataUserPendingPage() {
                   <tbody>
                     {wpBadanRows.length === 0 ? (
                       <tr>
-                        <td style={tdStyle} colSpan={8}>
-                          Tidak ada pending WP Badan Usaha pada halaman ini.
+                        <td style={tdStyle} colSpan={4}>
+                          Tidak ada data WP Badan Usaha untuk pencarian ini.
                         </td>
                       </tr>
                     ) : (
@@ -597,31 +740,13 @@ export default function AdminDataUserPendingPage() {
                             >
                               <td style={tdStyle}>{u.nama}</td>
                               <td style={tdStyle}>{u.email}</td>
-                              <td style={tdStyle}>{u.nik}</td>
-                              <td style={tdStyle}>{u.npwp_badan ?? "—"}</td>
-                              <td style={tdStyle}>{u.nib ?? "—"}</td>
-                              <td style={tdStyle}>
-                                {url ? (
-                                  <a
-                                    href={url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    Lihat PDF
-                                  </a>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
                               <td style={tdStyle}>{genderLabel(u)}</td>
                               <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
                             </tr>
 
                             {expanded && (
                               <tr style={{ borderBottom: "1px solid rgba(65,90,119,0.2)" }}>
-                                <td style={tdStyle} colSpan={8}>
+                                <td style={tdStyle} colSpan={4}>
                                   <div
                                     style={{
                                       background: "#0d1b2a",
@@ -655,6 +780,43 @@ export default function AdminDataUserPendingPage() {
                                       >
                                         {ktpLoading ? "Memuat KTP..." : "Preview KTP"}
                                       </button>
+                                    </div>
+                                    <div
+                                      style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
+                                        gap: 8,
+                                        background: "#111827",
+                                        border: "1px solid rgba(148,163,184,0.25)",
+                                        borderRadius: 8,
+                                        padding: 10,
+                                      }}
+                                    >
+                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                        NIK (PJ): <strong>{u.nik || "—"}</strong>
+                                      </p>
+                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                        NPWP Badan: <strong>{u.npwp_badan ?? "—"}</strong>
+                                      </p>
+                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                        NIB: <strong>{u.nib ?? "—"}</strong>
+                                      </p>
+                                      <p style={{ margin: 0, color: "#cbd5e1" }}>
+                                        Dokumen:{" "}
+                                        {url ? (
+                                          <a
+                                            href={url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ color: "#93c5fd", textDecoration: "underline", fontWeight: 600 }}
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Lihat PDF
+                                          </a>
+                                        ) : (
+                                          "—"
+                                        )}
+                                      </p>
                                     </div>
                                     <p style={{ margin: 0, color: "#cbd5e1" }}>
                                       Divisi: <strong>Wajib Pajak B</strong> | UserID: <strong>{generatedUserid || "(otomatis saat assign)"}</strong>
@@ -733,81 +895,43 @@ export default function AdminDataUserPendingPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
-              }}
-            >
-              <div>
-                <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
-                  Karyawan
-                </h3>
-                {renderTable("karyawan")}
-              </div>
-              <div>
-                <h3 style={{ color: "var(--color_font_main)", margin: "0 0 8px", fontSize: 15 }}>
-                  PU
-                </h3>
-                {renderTable("pu")}
-              </div>
-            </div>
-          </div>
-
-          {totalPages > 1 && (
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                justifyContent: "center",
-                marginTop: 12,
-              }}
-            >
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => setPage(1)}
-                style={pageBtnStyle}
-              >
-                «
-              </button>
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                style={pageBtnStyle}
-              >
-                ‹
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => Math.abs(p - page) <= 2)
-                .map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPage(p)}
-                    style={{
-                      ...pageBtnStyle,
-                      ...(p === page ? { background: "var(--accent)", color: "#fff" } : {}),
-                    }}
-                  >
-                    {p}
-                  </button>
-                ))}
-              <button
-                type="button"
-                disabled={page === totalPages}
-                onClick={() => setPage(totalPages)}
-                style={pageBtnStyle}
-              >
-                »
-              </button>
-            </div>
+              <PaginationFooter
+                page={wpPage}
+                totalPages={wpTotalPages}
+                onChange={setWpPage}
+              />
+            </UserTableContainer>
           )}
-        </>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {showKaryawan && (
+              <UserTableContainer title="Pending - Karyawan" count={karyawanAll.length}>
+                {renderTable("karyawan")}
+                <PaginationFooter
+                  page={karyawanPage}
+                  totalPages={karyawanTotalPages}
+                  onChange={setKaryawanPage}
+                />
+              </UserTableContainer>
+            )}
+            {showPu && (
+              <UserTableContainer title="Pending - PU" count={puAll.length}>
+                {renderTable("pu")}
+                <PaginationFooter
+                  page={puPage}
+                  totalPages={puTotalPages}
+                  onChange={setPuPage}
+                />
+              </UserTableContainer>
+            )}
+          </div>
+        </div>
       )}
       {rejectTarget && (
         <div
@@ -869,6 +993,115 @@ export default function AdminDataUserPendingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function UserTableContainer({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      style={{
+        border: "1px solid rgba(65,90,119,0.35)",
+        borderRadius: 10,
+        background: "#0f172a",
+        boxShadow: "0 8px 22px rgba(2,6,23,0.25)",
+        overflow: "hidden",
+      }}
+    >
+      <header
+        style={{
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "1px solid rgba(65,90,119,0.35)",
+        }}
+      >
+        <h3 style={{ color: "var(--color_font_main)", margin: 0, fontSize: 15 }}>{title}</h3>
+        <span
+          style={{
+            fontSize: 12,
+            color: "#dbeafe",
+            background: "rgba(37,99,235,0.25)",
+            border: "1px solid rgba(147,197,253,0.4)",
+            borderRadius: 999,
+            padding: "2px 10px",
+          }}
+        >
+          Total: {count}
+        </span>
+      </header>
+      <div style={{ padding: 12 }}>{children}</div>
+    </section>
+  );
+}
+
+function PaginationFooter({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <footer
+      style={{
+        display: "flex",
+        gap: 6,
+        justifyContent: "center",
+        marginTop: 12,
+      }}
+    >
+      <button
+        type="button"
+        disabled={page === 1}
+        onClick={() => onChange(1)}
+        style={pageBtnStyle}
+      >
+        «
+      </button>
+      <button
+        type="button"
+        disabled={page === 1}
+        onClick={() => onChange((p) => p - 1)}
+        style={pageBtnStyle}
+      >
+        ‹
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1)
+        .filter((p) => Math.abs(p - page) <= 2)
+        .map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onChange(p)}
+            style={{
+              ...pageBtnStyle,
+              ...(p === page ? { background: "var(--accent)", color: "#fff" } : {}),
+            }}
+          >
+            {p}
+          </button>
+        ))}
+      <button
+        type="button"
+        disabled={page === totalPages}
+        onClick={() => onChange(totalPages)}
+        style={pageBtnStyle}
+      >
+        »
+      </button>
+    </footer>
   );
 }
 

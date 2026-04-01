@@ -113,7 +113,7 @@ func ppatUserToMap(u *repository.PpatUserRow) map[string]interface{} {
 }
 
 // GetPpatLtb handles GET /api/admin/notification-warehouse/ppat-ltb.
-// Legacy behavior: list LTB rows where trackstatus='Diolah' and status='Diterima', joined with booking + user.
+// Supports online/offline by using pat_1_bookingsspd as source of truth and enriching with latest LTB + Peneliti queue rows.
 func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -145,14 +145,14 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 	defer cancel()
 
 	where := `
-		WHERE t.trackstatus = 'Diolah' AND t.status = 'Diterima'
+		WHERE COALESCE(l.trackstatus, b.trackstatus, '') IN ('Diterima', 'Diolah')
 	`
 	args := []interface{}{}
 	idx := 1
 	if search != "" {
 		where += ` AND (
-			t.no_registrasi ILIKE $` + strconv.Itoa(idx) + ` OR
-			t.nobooking ILIKE $` + strconv.Itoa(idx) + ` OR
+			COALESCE(l.no_registrasi, pv.no_registrasi, '') ILIKE $` + strconv.Itoa(idx) + ` OR
+			b.nobooking ILIKE $` + strconv.Itoa(idx) + ` OR
 			vu.userid ILIKE $` + strconv.Itoa(idx) + ` OR
 			vu.nama ILIKE $` + strconv.Itoa(idx) + ` OR
 			b.noppbb ILIKE $` + strconv.Itoa(idx) + ` OR
@@ -167,10 +167,10 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 	offsetParam := idx + 1
 
 	q := `
-		SELECT DISTINCT ON (t.no_registrasi)
-			t.no_registrasi,
-			t.nobooking,
-			t.updated_at,
+		SELECT DISTINCT ON (b.nobooking)
+			COALESCE(l.no_registrasi, pv.no_registrasi, '-') AS no_registrasi,
+			b.nobooking,
+			COALESCE(l.updated_at, b.updated_at, b.created_at) AS updated_at,
 			vu.special_field,
 			vu.ppat_khusus,
 			b.noppbb,
@@ -178,13 +178,26 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 			vu.userid,
 			vu.nama as ppat_nama,
 			vu.divisi as ppat_divisi,
-			t.status as ltb_status,
-			t.trackstatus as ltb_trackstatus
-		FROM ltb_1_terima_berkas_sspd t
-		LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+			COALESCE(l.status, 'Diterima') as ltb_status,
+			COALESCE(l.trackstatus, b.trackstatus) as ltb_trackstatus
+		FROM pat_1_bookingsspd b
+		LEFT JOIN LATERAL (
+			SELECT no_registrasi, status, trackstatus, updated_at
+			FROM ltb_1_terima_berkas_sspd t1
+			WHERE t1.nobooking = b.nobooking
+			ORDER BY t1.updated_at DESC NULLS LAST, t1.id DESC
+			LIMIT 1
+		) l ON true
+		LEFT JOIN LATERAL (
+			SELECT no_registrasi
+			FROM p_1_verifikasi p1
+			WHERE p1.nobooking = b.nobooking
+			ORDER BY p1.id DESC
+			LIMIT 1
+		) pv ON true
 		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
 	` + where + `
-		ORDER BY t.no_registrasi ASC, t.updated_at DESC
+		ORDER BY b.nobooking DESC, COALESCE(l.updated_at, b.updated_at, b.created_at) DESC
 		LIMIT $` + strconv.Itoa(limitParam) + ` OFFSET $` + strconv.Itoa(offsetParam) + `
 	`
 
@@ -238,11 +251,11 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 	// total
 	countArgs := []interface{}{}
 	countIdx := 1
-	countWhere := `WHERE t.trackstatus = 'Diolah' AND t.status = 'Diterima'`
+	countWhere := `WHERE COALESCE(l.trackstatus, b.trackstatus, '') IN ('Diterima', 'Diolah')`
 	if search != "" {
 		countWhere += ` AND (
-			t.no_registrasi ILIKE $` + strconv.Itoa(countIdx) + ` OR
-			t.nobooking ILIKE $` + strconv.Itoa(countIdx) + ` OR
+			COALESCE(l.no_registrasi, pv.no_registrasi, '') ILIKE $` + strconv.Itoa(countIdx) + ` OR
+			b.nobooking ILIKE $` + strconv.Itoa(countIdx) + ` OR
 			vu.userid ILIKE $` + strconv.Itoa(countIdx) + ` OR
 			vu.nama ILIKE $` + strconv.Itoa(countIdx) + ` OR
 			b.noppbb ILIKE $` + strconv.Itoa(countIdx) + ` OR
@@ -252,9 +265,22 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtb(w http.ResponseWriter, r 
 	}
 	var total int
 	err = h.repo.Pool().QueryRow(ctx, `
-		SELECT COUNT(DISTINCT t.no_registrasi)::int AS total
-		FROM ltb_1_terima_berkas_sspd t
-		LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
+		SELECT COUNT(DISTINCT b.nobooking)::int AS total
+		FROM pat_1_bookingsspd b
+		LEFT JOIN LATERAL (
+			SELECT no_registrasi, trackstatus
+			FROM ltb_1_terima_berkas_sspd t1
+			WHERE t1.nobooking = b.nobooking
+			ORDER BY t1.updated_at DESC NULLS LAST, t1.id DESC
+			LIMIT 1
+		) l ON true
+		LEFT JOIN LATERAL (
+			SELECT no_registrasi
+			FROM p_1_verifikasi p1
+			WHERE p1.nobooking = b.nobooking
+			ORDER BY p1.id DESC
+			LIMIT 1
+		) pv ON true
 		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
 		`+countWhere, countArgs...).Scan(&total)
 	if err != nil {
@@ -327,8 +353,8 @@ func (h *AdminNotificationWarehouseHandler) GetPpatLtbDetail(w http.ResponseWrit
 			vu.divisi as ppat_divisi,
 			t.status as ltb_status,
 			t.trackstatus as ltb_trackstatus,
-			t.pengirim as ltb_pengirim,
-			t.catatan as ltb_catatan
+			t.pengirim_ltb as ltb_pengirim,
+			NULL::text as ltb_catatan
 		FROM ltb_1_terima_berkas_sspd t
 		LEFT JOIN pat_1_bookingsspd b ON t.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
