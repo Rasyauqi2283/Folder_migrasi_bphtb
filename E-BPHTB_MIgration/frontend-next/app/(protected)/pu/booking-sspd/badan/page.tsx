@@ -119,13 +119,31 @@ function toDateInputValue(v: unknown): string {
 }
 
 function paymentConfirmedFromDetail(d: BookingDetail | null | undefined): boolean {
+  if (!d) return false;
   const ps = String(d?.payment_status ?? "").trim().toUpperCase();
   if (ps === "PAID" || ps === "KURANG_BAYAR") return true;
   const sspd = String(d?.sspd_pembayaran_status ?? "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, "_");
-  return sspd === "LUNAS";
+  if (sspd === "LUNAS" || sspd === "PAID" || sspd === "SUDAH_BAYAR") return true;
+
+  // Backward-compatible fallback for legacy bookings (before canonical payment columns were filled).
+  const bankVerif = String((d as Record<string, unknown>)?.status_verifikasi ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  const bankStatus = String((d as Record<string, unknown>)?.status_dibank ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+  if ((bankVerif === "DISETUJUI" || bankVerif === "SINKRON_OTOMATIS") && bankStatus === "TERCHECK") return true;
+
+  const nomorBukti = String((d as Record<string, unknown>)?.nomor_bukti_pembayaran ?? "").trim();
+  const nominalBayar = Number((d as Record<string, unknown>)?.bphtb_yangtelah_dibayar ?? 0);
+  if (nomorBukti !== "" && Number.isFinite(nominalBayar) && nominalBayar > 0) return true;
+
+  return false;
 }
 
 function detailFromPostCalcForm(d: BookingDetail | null | undefined): PostCalcForm {
