@@ -83,8 +83,6 @@ export default function AdminDataUserPendingPage() {
   const [generatedUserid, setGeneratedUserid] = useState("");
   const [generatedDivisi, setGeneratedDivisi] = useState("");
   const [ppatKhusus, setPpatKhusus] = useState("");
-  const [genderDraft, setGenderDraft] = useState("");
-  const [puSpecialFieldDraft, setPuSpecialFieldDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [ktpPreviewData, setKtpPreviewData] = useState<Record<string, unknown> | null>(null);
@@ -193,9 +191,6 @@ export default function AdminDataUserPendingPage() {
     return isWpBadan ? "Tidak berlaku (WP Badan)" : "Belum diisi";
   };
 
-  const genderSelectValue = (u: PendingUser): string =>
-    activeAssignId === u.id ? genderDraft : normalizeGenderValue((u.gender ?? "").trim());
-
   const rejectPending = async (id: number) => {
     setWpActionError(null);
     setWpActionId(id);
@@ -266,16 +261,7 @@ export default function AdminDataUserPendingPage() {
                     <>
                       <td style={tdStyle}>{u.email}</td>
                       <td style={tdStyle}>{u.nik}</td>
-                      <td style={tdStyle}>
-                        <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
-                          <option value="">Pilih gender</option>
-                          {GENDER_OPTIONS.map((g) => (
-                            <option key={g} value={g}>
-                              {g}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      <td style={tdStyle}>{genderLabel(u)}</td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -297,26 +283,8 @@ export default function AdminDataUserPendingPage() {
                     <>
                       <td style={tdStyle}>{u.nik}</td>
                       <td style={tdStyle}>{u.email}</td>
-                      <td style={tdStyle}>
-                        <select value={activeAssignId === u.id ? puSpecialFieldDraft : (u.special_field ?? "")} disabled style={compactSelectStyle}>
-                          <option value="">Pilih special field</option>
-                          {PU_SPECIAL_FIELD_OPTIONS.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={tdStyle}>
-                        <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
-                          <option value="">Pilih gender</option>
-                          {GENDER_OPTIONS.map((g) => (
-                            <option key={g} value={g}>
-                              {g}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+                      <td style={tdStyle}>{u.special_field ?? u.pejabat_umum ?? "-"}</td>
+                      <td style={tdStyle}>{genderLabel(u)}</td>
                       <td style={tdStyle}>
                         <button
                           type="button"
@@ -356,21 +324,7 @@ export default function AdminDataUserPendingPage() {
                             <p style={{ margin: 0, color: "#cbd5e1" }}>Nama: <strong>{u.nama}</strong></p>
                             <p style={{ margin: 0, color: "#cbd5e1" }}>Email: <strong>{u.email}</strong></p>
                             <p style={{ margin: 0, color: "#cbd5e1" }}>NIK: <strong>{u.nik}</strong></p>
-                            <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4 }}>
-                              Gender
-                              <select
-                                value={genderDraft}
-                                onChange={(e) => setGenderDraft(e.target.value)}
-                                style={detailSelectStyle}
-                              >
-                                <option value="">Pilih gender</option>
-                                {GENDER_OPTIONS.map((g) => (
-                                  <option key={g} value={g}>
-                                    {g}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                            <p style={{ margin: 0, color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></p>
                           </div>
                         </div>
 
@@ -428,21 +382,7 @@ export default function AdminDataUserPendingPage() {
                               <span style={{ color: "#cbd5e1", fontWeight: 600 }}>
                                 Status: {u.pejabat_umum ?? "PU"}
                               </span>
-                              <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4, maxWidth: 280 }}>
-                                Special Field
-                                <select
-                                  value={puSpecialFieldDraft}
-                                  onChange={(e) => setPuSpecialFieldDraft(e.target.value)}
-                                  style={detailSelectStyle}
-                                >
-                                  <option value="">Pilih special field</option>
-                                  {PU_SPECIAL_FIELD_OPTIONS.map((opt) => (
-                                    <option key={opt} value={opt}>
-                                      {opt}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
+                              <span style={{ color: "#cbd5e1" }}>Special Field: <strong>{u.special_field ?? "—"}</strong></span>
                             </div>
                           )}
                           <p style={{ margin: 0, color: "#cbd5e1" }}>
@@ -540,8 +480,6 @@ export default function AdminDataUserPendingPage() {
     setSelectedPending(u);
     setAssignTipe(tipe);
     setActiveAssignId(u.id);
-    setGenderDraft(normalizeGenderValue((u.gender ?? "").trim()));
-    setPuSpecialFieldDraft((u.special_field ?? "").trim());
     if (tipe === "pu") {
       const puLabel = (u.pejabat_umum ?? "").toUpperCase();
       setDivisiCode(PU_CODE_BY_LABEL[puLabel] ?? "NOTARIS");
@@ -604,8 +542,6 @@ export default function AdminDataUserPendingPage() {
     setSelectedPending(u);
     setAssignTipe("wp");
     setActiveAssignId(u.id);
-    setGenderDraft(normalizeGenderValue((u.gender ?? "").trim()));
-    setPuSpecialFieldDraft("");
     setDivisiCode("WP");
     setGeneratedUserid((u.userid ?? "").trim());
     setGeneratedDivisi("Wajib Pajak B");
@@ -632,8 +568,6 @@ export default function AdminDataUserPendingPage() {
           nama: selectedNama,
           user_email: selectedEmail,
           divisi: payloadDivisi,
-          gender: genderDraft || null,
-          special_field: assignTipe === "pu" ? (puSpecialFieldDraft || null) : null,
         }),
         credentials: "include",
       });
@@ -833,16 +767,7 @@ export default function AdminDataUserPendingPage() {
                                 >
                                   <td style={tdStyle}>{u.nama}</td>
                                   <td style={tdStyle}>{u.email}</td>
-                                  <td style={tdStyle}>
-                                    <select value={genderSelectValue(u)} disabled style={compactSelectStyle}>
-                                      <option value="">Pilih gender</option>
-                                      {GENDER_OPTIONS.map((g) => (
-                                        <option key={g} value={g}>
-                                          {g}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
+                                  <td style={tdStyle}>{genderLabel(u)}</td>
                                   <td style={tdStyle}>{expanded ? "Detail terbuka" : "Klik baris"}</td>
                                 </tr>
 
@@ -862,21 +787,7 @@ export default function AdminDataUserPendingPage() {
                                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                           <strong style={{ color: "#e2e8f0" }}>{u.nama}</strong>
                                           <span style={{ color: "#94a3b8" }}>{u.email}</span>
-                                          <label style={{ margin: 0, color: "#cbd5e1", display: "grid", gap: 4 }}>
-                                            Gender
-                                            <select
-                                              value={genderDraft}
-                                              onChange={(e) => setGenderDraft(e.target.value)}
-                                              style={detailSelectStyle}
-                                            >
-                                              <option value="">Pilih gender</option>
-                                              {GENDER_OPTIONS.map((g) => (
-                                                <option key={g} value={g}>
-                                                  {g}
-                                                </option>
-                                              ))}
-                                            </select>
-                                          </label>
+                                          <span style={{ color: "#cbd5e1" }}>Gender: <strong>{genderLabel(u)}</strong></span>
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -1218,26 +1129,6 @@ const thStyle: React.CSSProperties = {
 const tdStyle: React.CSSProperties = {
   padding: "10px 12px",
   color: "rgba(255,255,255,0.85)",
-};
-const compactSelectStyle: React.CSSProperties = {
-  width: "100%",
-  minWidth: 120,
-  height: 32,
-  borderRadius: 6,
-  border: "1px solid rgba(148,163,184,0.35)",
-  background: "#111827",
-  color: "#cbd5e1",
-  padding: "0 8px",
-};
-const detailSelectStyle: React.CSSProperties = {
-  width: "100%",
-  minWidth: 180,
-  height: 34,
-  borderRadius: 6,
-  border: "1px solid rgba(148,163,184,0.35)",
-  background: "#0b1220",
-  color: "#e2e8f0",
-  padding: "0 10px",
 };
 const pageBtnStyle: React.CSSProperties = {
   minWidth: 34,

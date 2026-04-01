@@ -2360,16 +2360,22 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 	if err != nil {
 		return err
 	}
-	trackUp := normalizeBookingFlowStatus(trackStatus)
-	if trackUp != "paid" && trackUp != "draft" {
-		return fmt.Errorf("status booking harus 'paid' sebelum simpan perhitungan lanjutan (status saat ini: %s)", trackUp)
-	}
 	payStatusUp := strings.ToUpper(strings.TrimSpace(payStatus))
 	sspdPayUp := strings.ToUpper(strings.TrimSpace(sspdPayStatus))
 	paidFromBooking := payStatusUp == "PAID" || payStatusUp == "KURANG_BAYAR" || payStatusUp == "LUNAS" || payStatusUp == "SUDAH_BAYAR"
 	paidFromSspd := sspdPayUp == "PAID" || sspdPayUp == "KURANG_BAYAR" || sspdPayUp == "LUNAS" || sspdPayUp == "SUDAH_BAYAR"
 	if !paidFromBooking && !paidFromSspd && !bankPaid {
 		return fmt.Errorf("belum ada konfirmasi pembayaran dari bank (payment_status=%s, sspd_status=%s)", payStatusUp, sspdPayUp)
+	}
+	trackUp := normalizeBookingFlowStatus(trackStatus)
+	if trackUp == "in_paid" {
+		if err := r.updateBookingStatusTx(ctx, tx, u, nb, "paid"); err != nil {
+			return err
+		}
+		trackUp = "paid"
+	}
+	if trackUp != "paid" && trackUp != "draft" {
+		return fmt.Errorf("status booking harus 'paid' sebelum simpan perhitungan lanjutan (status saat ini: %s)", trackUp)
 	}
 
 	// pat_5 (NJOP)
@@ -2414,7 +2420,7 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 	var jenisPerolehan string
 	var hargaTransaksi string
 	_ = tx.QueryRow(ctx, `
-		SELECT COALESCE(jenisperolehan,''), COALESCE(o.harga_transaksi::text,'')
+		SELECT COALESCE(o.jenis_perolehan,''), COALESCE(o.harga_transaksi::text,'')
 		FROM pat_1_bookingsspd b
 		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = b.nobooking
 		WHERE b.nobooking = $1 AND b.userid = $2

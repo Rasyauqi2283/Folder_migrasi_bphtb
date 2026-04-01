@@ -265,6 +265,7 @@ export default function BookingSSPDBadanPage() {
   const [calcSaveBusy, setCalcSaveBusy] = useState(false);
   const [docConfirmOpen, setDocConfirmOpen] = useState(false);
   const docConfirmActionRef = useRef<(() => void) | null>(null);
+  const [showBookingRules, setShowBookingRules] = useState(false);
 
   const requestDocConfirm = useCallback((action: () => void) => {
     docConfirmActionRef.current = action;
@@ -1062,6 +1063,13 @@ export default function BookingSSPDBadanPage() {
         <button type="button" style={btnTambah} onClick={() => setFormVisible((v) => !v)}>
           + Tambah Data
         </button>
+        <button
+          type="button"
+          style={{ ...btnStyle, background: "#334155", color: "#fff" }}
+          onClick={() => setShowBookingRules((v) => !v)}
+        >
+          {showBookingRules ? "Tutup Aturan Booking" : "Aturan Booking"}
+        </button>
         <button type="button" style={btnSecondary} onClick={() => openModal("signature")} disabled={selectedLocked}>
           Tambah Tanda Tangan
         </button>
@@ -1072,6 +1080,29 @@ export default function BookingSSPDBadanPage() {
           Hapus Data
         </button>
       </div>
+      {showBookingRules && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 14,
+            borderRadius: 12,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+            color: "#0f172a",
+            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 8, color: "#1e293b" }}>Aturan Booking SSPD (Badan Usaha)</div>
+          <div style={{ fontSize: 13, lineHeight: 1.55, display: "grid", gap: 6 }}>
+            <div><strong>[1]</strong> Step awal wajib selesai: isi data utama sampai status <strong>Terbuat</strong>.</div>
+            <div><strong>[2]</strong> Klik <strong>Minta Billing</strong>: status jadi <strong>awaited_billing</strong>. Jika gagal, gunakan rujukan: <strong>aturan gagal sesuai panduan [no.2]</strong>.</div>
+            <div><strong>[3]</strong> Klik <strong>Simulasikan Pembayaran</strong>: saat billing aktif status proses menjadi <strong>in_paid</strong> lalu <strong>paid</strong>.</div>
+            <div><strong>[4]</strong> Tombol <strong>Isi ketika telah bayar</strong> hanya aktif jika status sudah <strong>paid</strong>.</div>
+            <div><strong>[5]</strong> Setelah isi tanggal/perhitungan dan klik <strong>Simpan Perhitungan</strong>: status menjadi <strong>Draft</strong> (siap kirim).</div>
+            <div><strong>[6]</strong> Jika aturan tidak terpenuhi, ikuti nomor panduan di atas tanpa perlu troubleshooting teknis pengguna.</div>
+          </div>
+        </div>
+      )}
 
       {modal === "signature" && (
         <div style={modalOverlayStyle} onClick={() => !uploading && setModal(null)}>
