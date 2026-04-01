@@ -23,14 +23,14 @@ func NewLtbRepo(pool *pgxpool.Pool, peneliti *PenelitiRepo) *LtbRepo {
 
 // LtbTerimaBerkasRow is one row for GET /api/ltb/terima-berkas-sspd.
 type LtbTerimaBerkasRow struct {
-	NoRegistrasi           *string `json:"no_registrasi"`
-	Nobooking              string  `json:"nobooking"`
-	Noppbb                 string  `json:"noppbb"`
-	Namawajibpajak         string  `json:"namawajibpajak"`
-	Namapemilikobjekpajak  string  `json:"namapemilikobjekpajak"`
-	TanggalTerima          string  `json:"tanggal_terima"`
-	Trackstatus            string  `json:"trackstatus"`
-	Status                 string  `json:"status"`
+	NoRegistrasi          *string `json:"no_registrasi"`
+	Nobooking             string  `json:"nobooking"`
+	Noppbb                string  `json:"noppbb"`
+	Namawajibpajak        string  `json:"namawajibpajak"`
+	Namapemilikobjekpajak string  `json:"namapemilikobjekpajak"`
+	TanggalTerima         string  `json:"tanggal_terima"`
+	Trackstatus           string  `json:"trackstatus"`
+	Status                string  `json:"status"`
 }
 
 type LtbDocument struct {
@@ -60,6 +60,42 @@ func toDocRelativePath(p string) string {
 	rel = strings.TrimPrefix(rel, "storage/ppat/")
 	rel = strings.TrimPrefix(rel, "ppat/")
 	return rel
+}
+
+func ensureLtbFIFOtx(ctx context.Context, tx pgx.Tx, nobooking string) error {
+	var currentReg *string
+	err := tx.QueryRow(ctx, `
+		SELECT NULLIF(TRIM(no_registrasi), '')
+		FROM ltb_1_terima_berkas_sspd
+		WHERE nobooking = $1
+		FOR UPDATE
+	`, nobooking).Scan(&currentReg)
+	if err != nil {
+		return err
+	}
+	if currentReg == nil || strings.TrimSpace(*currentReg) == "" {
+		return nil
+	}
+	current := strings.TrimSpace(*currentReg)
+
+	var earlierReg, earlierBooking *string
+	err = tx.QueryRow(ctx, `
+		SELECT NULLIF(TRIM(no_registrasi), ''), nobooking
+		FROM ltb_1_terima_berkas_sspd
+		WHERE NULLIF(TRIM(no_registrasi), '') IS NOT NULL
+		  AND no_registrasi < $1
+		  AND COALESCE(status, '') NOT IN ('Dilanjutkan', 'Ditolak')
+		  AND nobooking <> $2
+		ORDER BY no_registrasi ASC, id ASC
+		LIMIT 1
+	`, current, nobooking).Scan(&earlierReg, &earlierBooking)
+	if err == nil && earlierReg != nil && earlierBooking != nil {
+		return fmt.Errorf("FIFO aktif: selesaikan no registrasi %s (booking %s) terlebih dahulu", strings.TrimSpace(*earlierReg), strings.TrimSpace(*earlierBooking))
+	}
+	if err == pgx.ErrNoRows {
+		return nil
+	}
+	return err
 }
 
 // TerimaBerkasList returns paginated rows from ltb_1 joined with pat_1 for NOP / names.
@@ -126,7 +162,7 @@ func (r *LtbRepo) TerimaBerkasList(ctx context.Context, search string, page, lim
 		FROM ltb_1_terima_berkas_sspd l
 		LEFT JOIN pat_1_bookingsspd p ON p.nobooking = l.nobooking
 		%s
-		ORDER BY l.id DESC
+		ORDER BY l.no_registrasi ASC NULLS LAST, l.id ASC
 		LIMIT %d OFFSET %d`, whereClause, limit, offset)
 
 	rowsResult, err := r.pool.Query(ctx, listSQL, args...)
@@ -233,7 +269,15 @@ func (r *LtbRepo) RejectBerkas(ctx context.Context, nobooking, ltbUserid, _ stri
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
-	tag, err := r.pool.Exec(ctx, `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := ensureLtbFIFOtx(ctx, tx, nobooking); err != nil {
+		return err
+	}
+	tag, err := tx.Exec(ctx, `
 		UPDATE ltb_1_terima_berkas_sspd
 		SET status = 'Ditolak', trackstatus = 'Ditolak', pengirim_ltb = $2, updated_at = NOW()
 		WHERE nobooking = $1
@@ -244,7 +288,7 @@ func (r *LtbRepo) RejectBerkas(ctx context.Context, nobooking, ltbUserid, _ stri
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("booking not found")
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
 // SendToVerifikasi pushes one LTB record into p_1_verifikasi and updates LTB + pat trackstatus (sinkron dengan PU/Peneliti).
@@ -275,6 +319,9 @@ func (r *LtbRepo) SendToVerifikasi(ctx context.Context, nobooking, ltbUserid, pb
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("booking not found")
 		}
+		return nil, err
+	}
+	if err := ensureLtbFIFOtx(ctx, tx, nobooking); err != nil {
 		return nil, err
 	}
 

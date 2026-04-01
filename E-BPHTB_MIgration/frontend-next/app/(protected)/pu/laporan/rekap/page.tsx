@@ -15,6 +15,7 @@ const MONTHS: { value: string; label: string }[] = [
 
 type RekapRow = {
   nobooking: string;
+  no_registrasi?: string | null;
   noppbb: string;
   tanggal?: string;
   tahunajb: string;
@@ -22,6 +23,8 @@ type RekapRow = {
   namapemilikobjekpajak: string;
   npwpwajibpajak: string;
   trackstatus: string;
+  status_tertampil?: string | null;
+  wp_sign_status?: string | null;
   tanggal_formatted?: string;
   bphtb_yangtelah_dibayar?: number;
   totalNominal?: number;
@@ -82,6 +85,8 @@ export default function LaporanRekapPPATPage() {
   const [totalNominal, setTotalNominal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [invitingNobooking, setInvitingNobooking] = useState<string>("");
   const [search, setSearch] = useState("");
   const [filterTahun, setFilterTahun] = useState("");
   const [filterBulan, setFilterBulan] = useState("");
@@ -154,6 +159,39 @@ export default function LaporanRekapPPATPage() {
   const effectiveTotalPages = hasFilter
     ? Math.max(1, Math.ceil(filteredRows.length / LIMIT))
     : totalPages;
+
+  const inviteWpSign = async (nobooking: string) => {
+    const nikNpwp = window.prompt("Masukkan NIK/NPWP WP untuk undangan tanda tangan:");
+    if (!nikNpwp) return;
+    const email = window.prompt("Masukkan email WP:");
+    if (!email) return;
+
+    setInvitingNobooking(nobooking);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`${getApiBase()}/api/wp/invite-sign`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nobooking,
+          nik_npwp: nikNpwp.trim(),
+          email: email.trim().toLowerCase(),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.success) {
+        setActionMessage(j?.error || j?.message || "Gagal membuat undangan tanda tangan WP.");
+        return;
+      }
+      setActionMessage("Undangan tanda tangan WP berhasil dibuat dari modul rekap.");
+      await load(page);
+    } catch {
+      setActionMessage("Gagal mengirim undangan tanda tangan WP.");
+    } finally {
+      setInvitingNobooking("");
+    }
+  };
 
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -250,6 +288,11 @@ export default function LaporanRekapPPATPage() {
           {error}
         </div>
       )}
+      {actionMessage && (
+        <div style={{ padding: 12, marginBottom: 16, background: "#ecfeff", color: "#0f766e", borderRadius: 8 }}>
+          {actionMessage}
+        </div>
+      )}
 
       <div style={tableScrollStyle}>
         <div
@@ -266,29 +309,33 @@ export default function LaporanRekapPPATPage() {
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Daftar Rekap Diserahkan</h2>
         </div>
         <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 800 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
           <thead>
             <tr style={{ background: "var(--accent)" }}>
+              <th style={thStyle}>No. Registrasi</th>
               <th style={thStyle}>No. Booking</th>
               <th style={thStyle}>No. PPBB</th>
               <th style={thStyle}>Tahun AJB</th>
               <th style={thStyle}>Nama Wajib Pajak</th>
               <th style={thStyle}>Nama Pemilik Objek</th>
               <th style={thStyle}>NPWP</th>
+              <th style={thStyle}>Output</th>
+              <th style={thStyle}>WP Sign</th>
               <th style={thStyle}>Tanggal</th>
               <th style={thStyle}>BPHTB Dibayar</th>
+              <th style={thStyle}>Aksi</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", padding: 32 }}>
+                <td colSpan={12} style={{ ...tdStyle, textAlign: "center", padding: 32 }}>
                   Memuat...
                 </td>
               </tr>
             ) : paginatedDisplay.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_muted)", padding: 40 }}>
+                <td colSpan={12} style={{ ...tdStyle, textAlign: "center", color: "var(--color_font_muted)", padding: 40 }}>
                   Tidak ada data rekap diserahkan
                 </td>
               </tr>
@@ -300,17 +347,39 @@ export default function LaporanRekapPPATPage() {
                     background: i % 2 === 0 ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.8)",
                   }}
                 >
+                  <td style={tdStyle}>{r.no_registrasi || "—"}</td>
                   <td style={tdStyle}>{r.nobooking}</td>
                   <td style={tdStyle}>{r.noppbb || "—"}</td>
                   <td style={tdStyle}>{r.tahunajb || "—"}</td>
                   <td style={tdStyle}>{r.namawajibpajak || "—"}</td>
                   <td style={tdStyle}>{r.namapemilikobjekpajak || "—"}</td>
                   <td style={tdStyle}>{r.npwpwajibpajak || "—"}</td>
+                  <td style={tdStyle}>{r.status_tertampil || r.trackstatus || "—"}</td>
+                  <td style={tdStyle}>{r.wp_sign_status || "belum_ada"}</td>
                   <td style={tdStyle}>{r.tanggal_formatted || r.tanggal || "—"}</td>
                   <td style={tdStyle}>
                     {r.bphtb_yangtelah_dibayar != null
                       ? new Intl.NumberFormat("id-ID").format(r.bphtb_yangtelah_dibayar)
                       : "—"}
+                  </td>
+                  <td style={tdStyle}>
+                    <button
+                      type="button"
+                      onClick={() => inviteWpSign(r.nobooking)}
+                      disabled={invitingNobooking === r.nobooking}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #0369a1",
+                        background: "#0ea5e9",
+                        color: "#fff",
+                        cursor: invitingNobooking === r.nobooking ? "not-allowed" : "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {invitingNobooking === r.nobooking ? "Mengirim..." : "Proses TTD WP"}
+                    </button>
                   </td>
                 </tr>
               ))

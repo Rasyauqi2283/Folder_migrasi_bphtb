@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"ebphtb/backend/internal/pdf"
 	"ebphtb/backend/internal/repository"
+	"github.com/jackc/pgx/v5"
 )
 
 // ValidasiHandler handles PV approval + PDF viewing for Peneliti Validasi.
@@ -90,13 +92,14 @@ func (h *ValidasiHandler) Approve(w http.ResponseWriter, r *http.Request) {
 
 	// Lock PV row, ensure still "Menunggu".
 	var nobooking string
+	var noRegistrasi string
 	var statusTertampil string
 	err = tx.QueryRow(ctx, `
-		SELECT COALESCE(nobooking,''), COALESCE(status_tertampil,'')
+		SELECT COALESCE(nobooking,''), COALESCE(no_registrasi,''), COALESCE(status_tertampil,'')
 		FROM pv_1_paraf_validate
 		WHERE no_validasi = $1
 		FOR UPDATE
-	`, noValidasi).Scan(&nobooking, &statusTertampil)
+	`, noValidasi).Scan(&nobooking, &noRegistrasi, &statusTertampil)
 	if err != nil {
 		validasiJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Dokumen validasi tidak ditemukan"})
 		return
@@ -104,6 +107,30 @@ func (h *ValidasiHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(statusTertampil) != "" && !strings.EqualFold(strings.TrimSpace(statusTertampil), "Menunggu") {
 		validasiJSON(w, http.StatusConflict, map[string]interface{}{"success": false, "message": "Dokumen sudah diproses"})
 		return
+	}
+	noRegistrasi = strings.TrimSpace(noRegistrasi)
+	if noRegistrasi != "" {
+		var earlierNoReg, earlierNoValidasi string
+		eErr := tx.QueryRow(ctx, `
+			SELECT COALESCE(NULLIF(TRIM(no_registrasi), ''), ''), COALESCE(no_validasi, '')
+			FROM pv_1_paraf_validate
+			WHERE COALESCE(NULLIF(TRIM(no_registrasi), ''), '') <> ''
+			  AND no_registrasi < $1
+			  AND COALESCE(status_tertampil, 'Menunggu') = 'Menunggu'
+			ORDER BY no_registrasi ASC
+			LIMIT 1
+		`, noRegistrasi).Scan(&earlierNoReg, &earlierNoValidasi)
+		if eErr == nil {
+			validasiJSON(w, http.StatusConflict, map[string]interface{}{
+				"success": false,
+				"message": fmt.Sprintf("FIFO aktif: selesaikan no registrasi %s (no validasi %s) terlebih dahulu", strings.TrimSpace(earlierNoReg), strings.TrimSpace(earlierNoValidasi)),
+			})
+			return
+		}
+		if !errors.Is(eErr, pgx.ErrNoRows) {
+			validasiJSON(w, http.StatusInternalServerError, map[string]interface{}{"success": false, "message": "Gagal memeriksa antrean FIFO"})
+			return
+		}
 	}
 
 	// Update status first inside transaction (will rollback if PDF fails).
@@ -175,11 +202,11 @@ func (h *ValidasiHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	validasiJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"message": "Dokumen divalidasi dan ditandatangani secara digital.",
+		"success":     true,
+		"message":     "Dokumen divalidasi dan ditandatangani secara digital.",
 		"no_validasi": noValidasi,
-		"nobooking":  nobooking,
-		"pdf_url":    "/api/validasi/pdf/" + noValidasi,
+		"nobooking":   nobooking,
+		"pdf_url":     "/api/validasi/pdf/" + noValidasi,
 	})
 }
 
@@ -245,4 +272,3 @@ func (h *ValidasiHandler) ViewPDF(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `inline; filename="Bukti_Validasi_`+noValidasi+`.pdf"`)
 	http.ServeFile(w, r, absFull)
 }
-

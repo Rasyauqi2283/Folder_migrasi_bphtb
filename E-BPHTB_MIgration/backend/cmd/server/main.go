@@ -17,13 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 	"ebphtb/backend/internal/config"
 	"ebphtb/backend/internal/handler"
 	"ebphtb/backend/internal/payment"
 	"ebphtb/backend/internal/repository"
 	"ebphtb/backend/internal/worker"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 // corsMiddleware menambahkan header CORS dan menangani preflight OPTIONS.
@@ -651,6 +651,7 @@ func main() {
 	}
 
 	worker.StartPpatLaporanSuspendJob(pool, laporanRepo)
+	worker.StartPpatSendQueueJob(ppatRepo)
 
 	go func() {
 		log.Printf("Backend Go listening on %s (migrasi penuh, tidak ada proxy Node)", addr)

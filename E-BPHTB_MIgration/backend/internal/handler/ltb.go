@@ -136,6 +136,10 @@ func (h *LtbHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	}
 	err := h.repo.RejectBerkas(r.Context(), nobooking, userid, body.Reason)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "fifo") {
+			ltbJSON(w, http.StatusConflict, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Data tidak ditemukan"})
 			return
@@ -173,6 +177,10 @@ func (h *LtbHandler) SendToVerifikasi(w http.ResponseWriter, r *http.Request) {
 	}
 	res, err := h.repo.SendToVerifikasi(r.Context(), nobooking, userid, body.PBBCheckNo)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "fifo") {
+			ltbJSON(w, http.StatusConflict, map[string]interface{}{"success": false, "message": err.Error()})
+			return
+		}
 		if strings.Contains(strings.ToLower(err.Error()), "not found") {
 			ltbJSON(w, http.StatusNotFound, map[string]interface{}{"success": false, "message": "Data tidak ditemukan"})
 			return

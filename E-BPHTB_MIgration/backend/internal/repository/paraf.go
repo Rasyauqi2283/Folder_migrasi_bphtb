@@ -18,7 +18,7 @@ func NewParafRepo(pool *pgxpool.Pool) *ParafRepo {
 
 // ParafBerkasRow one row for get-berkas-pending / get-monitoring-documents.
 type ParafBerkasRow struct {
-	Nobooking              string  `json:"nobooking"`
+	Nobooking               string  `json:"nobooking"`
 	NoValidasi              *string `json:"no_validasi"`
 	Noppbb                  *string `json:"noppbb"`
 	Tahunajb                *string `json:"tahunajb"`
@@ -72,7 +72,7 @@ func (r *ParafRepo) GetBerkasPending(ctx context.Context, parafVUserid string) (
 	q := parafBaseSelect + `
 		WHERE pc.trackstatus = 'Terverifikasi'
 		  AND (pv.status_tertampil IS NULL OR pv.status_tertampil = 'Menunggu')
-		ORDER BY pv.no_validasi DESC
+		ORDER BY pc.no_registrasi ASC NULLS LAST, pv.no_validasi ASC
 		LIMIT 100
 	`
 	return r.queryParafRows(ctx, q, parafVUserid)

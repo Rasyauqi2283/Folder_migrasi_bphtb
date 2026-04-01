@@ -309,6 +309,7 @@ func (r *PpatRepo) LoadAllBooking(ctx context.Context, userid string, page, limi
 // RekapDiserahkanRow holds one row for rekap/diserahkan.
 type RekapDiserahkanRow struct {
 	Nobooking             string   `json:"nobooking"`
+	NoRegistrasi          *string  `json:"no_registrasi"`
 	Noppbb                *string  `json:"noppbb"`
 	Tanggal               *string  `json:"tanggal"`
 	Tahunajb              *string  `json:"tahunajb"`
@@ -316,6 +317,8 @@ type RekapDiserahkanRow struct {
 	Namapemilikobjekpajak *string  `json:"namapemilikobjekpajak"`
 	Npwpwajibpajak        *string  `json:"npwpwajibpajak"`
 	Trackstatus           *string  `json:"trackstatus"`
+	StatusTertampil       *string  `json:"status_tertampil"`
+	WPSignStatus          *string  `json:"wp_sign_status"`
 	TanggalFormatted      *string  `json:"tanggal_formatted"`
 	BphtbYangtelahDibayar *float64 `json:"bphtb_yangtelah_dibayar"`
 }
@@ -330,7 +333,9 @@ type RekapDiserahkanResult struct {
 	TotalPages   int
 }
 
-// RekapDiserahkan returns bookings with trackstatus = 'Diserahkan' (optionally filtered by userid for PPAT).
+// RekapDiserahkan returns PU/PPAT recap rows.
+// Online flow is sourced from PV finalization (status_tertampil='Sudah Divalidasi')
+// and no longer depends on LSB as the primary transit.
 func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bool, page, limit int, search string) (*RekapDiserahkanResult, error) {
 	if r.pool == nil {
 		return &RekapDiserahkanResult{Rows: []RekapDiserahkanRow{}, Total: 0, TotalNominal: 0, Page: page, Limit: limit, TotalPages: 0}, nil
@@ -343,7 +348,7 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 	}
 	offset := (page - 1) * limit
 
-	where := `WHERE b.trackstatus = 'Diserahkan'`
+	where := `WHERE (COALESCE(pv.status_tertampil,'') = 'Sudah Divalidasi' OR b.trackstatus = 'Diserahkan')`
 	args := []interface{}{}
 	idx := 1
 	if isPPAT && userid != "" {
@@ -362,6 +367,7 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 	countQ := `
 		SELECT COUNT(b.nobooking)::int, COALESCE(SUM(bp.bphtb_yangtelah_dibayar), 0)::float
 		FROM pat_1_bookingsspd b
+		LEFT JOIN pv_1_paraf_validate pv ON pv.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
 		LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
 		` + where
@@ -372,15 +378,29 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 
 	args = append(args, limit, offset)
 	rows, err := r.pool.Query(ctx, `
-		SELECT b.nobooking, b.noppbb, b.tanggal::text, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak, b.npwpwp as npwpwajibpajak, b.trackstatus,
-			CASE WHEN lsb.updated_at IS NOT NULL THEN to_char(lsb.updated_at, 'DD/MM/YYYY') WHEN b.updated_at IS NOT NULL THEN to_char(b.updated_at, 'DD/MM/YYYY') WHEN b.created_at IS NOT NULL THEN to_char(b.created_at, 'DD/MM/YYYY') ELSE '-' END,
+		SELECT b.nobooking, pv.no_registrasi, b.noppbb, b.tanggal::text, b.tahunajb, b.namawajibpajak, b.namapemilikobjekpajak, b.npwpwp as npwpwajibpajak, b.trackstatus, pv.status_tertampil, wps.status,
+			CASE
+				WHEN pv.updated_at IS NOT NULL THEN to_char(pv.updated_at, 'DD/MM/YYYY')
+				WHEN lsb.updated_at IS NOT NULL THEN to_char(lsb.updated_at, 'DD/MM/YYYY')
+				WHEN b.updated_at IS NOT NULL THEN to_char(b.updated_at, 'DD/MM/YYYY')
+				WHEN b.created_at IS NOT NULL THEN to_char(b.created_at, 'DD/MM/YYYY')
+				ELSE '-'
+			END,
 			bp.bphtb_yangtelah_dibayar
 		FROM pat_1_bookingsspd b
+		LEFT JOIN pv_1_paraf_validate pv ON pv.nobooking = b.nobooking
 		LEFT JOIN a_2_verified_users vu ON b.userid = vu.userid
 		LEFT JOIN pat_2_bphtb_perhitungan bp ON b.nobooking = bp.nobooking
 		LEFT JOIN lsb_1_serah_berkas lsb ON b.nobooking = lsb.nobooking
+		LEFT JOIN LATERAL (
+			SELECT status
+			FROM wp_sign_requests ws
+			WHERE ws.nobooking = b.nobooking
+			ORDER BY ws.updated_at DESC, ws.id DESC
+			LIMIT 1
+		) wps ON true
 		`+where+`
-		ORDER BY lsb.updated_at DESC NULLS LAST, b.created_at DESC
+		ORDER BY pv.no_registrasi ASC NULLS LAST, b.created_at DESC
 		LIMIT $`+strconv.Itoa(idx)+` OFFSET $`+strconv.Itoa(idx+1),
 		args...)
 	if err != nil {
@@ -392,7 +412,7 @@ func (r *PpatRepo) RekapDiserahkan(ctx context.Context, userid string, isPPAT bo
 	for rows.Next() {
 		var row RekapDiserahkanRow
 		var tg, tf *string
-		err := rows.Scan(&row.Nobooking, &row.Noppbb, &row.Tanggal, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.Npwpwajibpajak, &row.Trackstatus, &tf, &row.BphtbYangtelahDibayar)
+		err := rows.Scan(&row.Nobooking, &row.NoRegistrasi, &row.Noppbb, &row.Tanggal, &row.Tahunajb, &row.Namawajibpajak, &row.Namapemilikobjekpajak, &row.Npwpwajibpajak, &row.Trackstatus, &row.StatusTertampil, &row.WPSignStatus, &tf, &row.BphtbYangtelahDibayar)
 		if err != nil {
 			continue
 		}
@@ -417,6 +437,111 @@ type SendNowResult struct {
 	NoRegistrasi string                 `json:"no_registrasi"`
 	LTB          map[string]interface{} `json:"ltb"`
 	Bank         map[string]interface{} `json:"bank"`
+}
+
+type bookingDispatchSnapshot struct {
+	NamaWP          *string
+	NamaOP          *string
+	BphtbDibayar    *float64
+	NoBukti         *string
+	TglPerolehan    *string
+	TglPembayaran   *string
+	NoRegistrasi    string
+	JenisWajibPajak *string
+}
+
+func (r *PpatRepo) dispatchAcceptedBookingTx(ctx context.Context, tx pgx.Tx, userid, nobooking string) (*bookingDispatchSnapshot, error) {
+	var snap bookingDispatchSnapshot
+	err := tx.QueryRow(ctx, `
+		SELECT
+			p.namawajibpajak,
+			p.namapemilikobjekpajak,
+			p.jenis_wajib_pajak::text,
+			bp.bphtb_yangtelah_dibayar::float8,
+			o.nomor_bukti_pembayaran,
+			o.tanggal_perolehan::text,
+			o.tanggal_pembayaran::text
+		FROM pat_1_bookingsspd p
+		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
+		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
+		WHERE p.nobooking = $1 AND p.userid = $2
+	`, nobooking, userid).Scan(
+		&snap.NamaWP,
+		&snap.NamaOP,
+		&snap.JenisWajibPajak,
+		&snap.BphtbDibayar,
+		&snap.NoBukti,
+		&snap.TglPerolehan,
+		&snap.TglPembayaran,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	noRegistrasi, err := NextNoRegistrasiLtbTx(ctx, tx, 'O')
+	if err != nil {
+		return nil, err
+	}
+	snap.NoRegistrasi = noRegistrasi
+
+	cmd, err := tx.Exec(ctx, `
+		UPDATE ltb_1_terima_berkas_sspd
+		SET
+			userid = $2,
+			namawajibpajak = COALESCE($3, namawajibpajak),
+			namapemilikobjekpajak = COALESCE($4, namapemilikobjekpajak),
+			status = 'Diterima',
+			trackstatus = 'Diterima',
+			jenis_wajib_pajak = COALESCE($5::jenis_wajib_pajak, jenis_wajib_pajak),
+			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $6),
+			updated_at = now()
+		WHERE nobooking = $1
+	`, nobooking, userid, snap.NamaWP, snap.NamaOP, snap.JenisWajibPajak, noRegistrasi)
+	if err != nil {
+		return nil, err
+	}
+	if cmd.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO ltb_1_terima_berkas_sspd (
+				nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, jenis_wajib_pajak, no_registrasi, updated_at
+			) VALUES (
+				$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diterima', $5::jenis_wajib_pajak, $6, now()
+			)
+		`, nobooking, userid, snap.NamaWP, snap.NamaOP, snap.JenisWajibPajak, noRegistrasi)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cmd, err = tx.Exec(ctx, `
+		UPDATE bank_1_cek_hasil_transaksi
+		SET
+			userid = $2,
+			bphtb_yangtelah_dibayar = COALESCE($3::int, bphtb_yangtelah_dibayar),
+			nomor_bukti_pembayaran = COALESCE($4, nomor_bukti_pembayaran),
+			tanggal_perolehan = COALESCE($5, tanggal_perolehan),
+			tanggal_pembayaran = COALESCE($6, tanggal_pembayaran),
+			status_verifikasi = COALESCE(NULLIF(status_verifikasi, ''), 'Pending'),
+			status_dibank = COALESCE(NULLIF(status_dibank, ''), 'Dicheck'),
+			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $7)
+		WHERE nobooking = $1
+	`, nobooking, userid, snap.BphtbDibayar, snap.NoBukti, snap.TglPerolehan, snap.TglPembayaran, noRegistrasi)
+	if err != nil {
+		return nil, err
+	}
+	if cmd.RowsAffected() == 0 {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO bank_1_cek_hasil_transaksi (
+				nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, status_dibank, no_registrasi
+			) VALUES (
+				$1, $2, $3::int, $4, $5, $6, 'Pending', 'Dicheck', $7
+			)
+		`, nobooking, userid, snap.BphtbDibayar, snap.NoBukti, snap.TglPerolehan, snap.TglPembayaran, noRegistrasi)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &snap, nil
 }
 
 // SendNow moves a booking to "Diterima": updates trackstatus, quota and queue.
@@ -483,92 +608,9 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 		return nil, err
 	}
 
-	// Fetch booking snapshot used for relation tables.
-	var namaWP, namaOP *string
-	var jenisWP *string
-	var bphtbDibayar *float64
-	var noBukti, tglPerolehan, tglPembayaran *string
-	err = tx.QueryRow(ctx, `
-		SELECT
-			p.namawajibpajak,
-			p.namapemilikobjekpajak,
-			p.jenis_wajib_pajak::text,
-			bp.bphtb_yangtelah_dibayar::float8,
-			o.nomor_bukti_pembayaran,
-			o.tanggal_perolehan::text,
-			o.tanggal_pembayaran::text
-		FROM pat_1_bookingsspd p
-		LEFT JOIN pat_2_bphtb_perhitungan bp ON bp.nobooking = p.nobooking
-		LEFT JOIN pat_4_objek_pajak o ON o.nobooking = p.nobooking
-		WHERE p.nobooking = $1 AND p.userid = $2
-	`, nobooking, userid).Scan(&namaWP, &namaOP, &jenisWP, &bphtbDibayar, &noBukti, &tglPerolehan, &tglPembayaran)
+	snap, err := r.dispatchAcceptedBookingTx(ctx, tx, userid, nobooking)
 	if err != nil {
 		return nil, err
-	}
-
-	noRegistrasi, err := NextNoRegistrasiLtbTx(ctx, tx, 'O')
-	if err != nil {
-		return nil, err
-	}
-
-	// Upsert LTB relation row.
-	cmd, err := tx.Exec(ctx, `
-		UPDATE ltb_1_terima_berkas_sspd
-		SET
-			userid = $2,
-			namawajibpajak = COALESCE($3, namawajibpajak),
-			namapemilikobjekpajak = COALESCE($4, namapemilikobjekpajak),
-			status = 'Diterima',
-			trackstatus = 'Diterima',
-			jenis_wajib_pajak = COALESCE($5::jenis_wajib_pajak, jenis_wajib_pajak),
-			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $6),
-			updated_at = now()
-		WHERE nobooking = $1
-	`, nobooking, userid, namaWP, namaOP, jenisWP, noRegistrasi)
-	if err != nil {
-		return nil, err
-	}
-	if cmd.RowsAffected() == 0 {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO ltb_1_terima_berkas_sspd (
-				nobooking, userid, namawajibpajak, namapemilikobjekpajak, status, trackstatus, jenis_wajib_pajak, no_registrasi, updated_at
-			) VALUES (
-				$1, $2, COALESCE($3, ''), COALESCE($4, ''), 'Diterima', 'Diterima', $5::jenis_wajib_pajak, $6, now()
-			)
-		`, nobooking, userid, namaWP, namaOP, jenisWP, noRegistrasi)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Upsert Bank relation row.
-	cmd, err = tx.Exec(ctx, `
-		UPDATE bank_1_cek_hasil_transaksi
-		SET
-			userid = $2,
-			bphtb_yangtelah_dibayar = COALESCE($3::int, bphtb_yangtelah_dibayar),
-			nomor_bukti_pembayaran = COALESCE($4, nomor_bukti_pembayaran),
-			tanggal_perolehan = COALESCE($5, tanggal_perolehan),
-			tanggal_pembayaran = COALESCE($6, tanggal_pembayaran),
-			status_verifikasi = COALESCE(NULLIF(status_verifikasi, ''), 'Pending'),
-			status_dibank = COALESCE(NULLIF(status_dibank, ''), 'Dicheck'),
-			no_registrasi = COALESCE(NULLIF(no_registrasi, ''), $7)
-		WHERE nobooking = $1
-	`, nobooking, userid, bphtbDibayar, noBukti, tglPerolehan, tglPembayaran, noRegistrasi)
-	if err != nil {
-		return nil, err
-	}
-	if cmd.RowsAffected() == 0 {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO bank_1_cek_hasil_transaksi (
-				nobooking, userid, bphtb_yangtelah_dibayar, nomor_bukti_pembayaran, tanggal_perolehan, tanggal_pembayaran, status_verifikasi, status_dibank, no_registrasi
-			) VALUES (
-				$1, $2, $3::int, $4, $5, $6, 'Pending', 'Dicheck', $7
-			)
-		`, nobooking, userid, bphtbDibayar, noBukti, tglPerolehan, tglPembayaran, noRegistrasi)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -578,28 +620,102 @@ func (r *PpatRepo) SendNow(ctx context.Context, userid, nobooking string) (*Send
 	return &SendNowResult{
 		Nobooking:    nobooking,
 		Trackstatus:  "Diterima",
-		NoRegistrasi: noRegistrasi,
+		NoRegistrasi: snap.NoRegistrasi,
 		LTB: map[string]interface{}{
 			"nobooking":             nobooking,
 			"userid":                userid,
-			"namawajibpajak":        namaWP,
-			"namapemilikobjekpajak": namaOP,
+			"namawajibpajak":        snap.NamaWP,
+			"namapemilikobjekpajak": snap.NamaOP,
 			"status":                "Diterima",
 			"trackstatus":           "Diterima",
-			"no_registrasi":         noRegistrasi,
+			"no_registrasi":         snap.NoRegistrasi,
 		},
 		Bank: map[string]interface{}{
 			"nobooking":               nobooking,
 			"userid":                  userid,
-			"bphtb_yangtelah_dibayar": bphtbDibayar,
-			"nomor_bukti_pembayaran":  noBukti,
-			"tanggal_perolehan":       tglPerolehan,
-			"tanggal_pembayaran":      tglPembayaran,
+			"bphtb_yangtelah_dibayar": snap.BphtbDibayar,
+			"nomor_bukti_pembayaran":  snap.NoBukti,
+			"tanggal_perolehan":       snap.TglPerolehan,
+			"tanggal_pembayaran":      snap.TglPembayaran,
 			"status_verifikasi":       "Pending",
 			"status_dibank":           "Dicheck",
-			"no_registrasi":           noRegistrasi,
+			"no_registrasi":           snap.NoRegistrasi,
 		},
 	}, nil
+}
+
+// ProcessDueScheduledSends dispatches due queued bookings into "Diterima".
+// It is designed for background worker polling and processes up to batchSize rows.
+func (r *PpatRepo) ProcessDueScheduledSends(ctx context.Context, batchSize int) (int, error) {
+	if r.pool == nil {
+		return 0, nil
+	}
+	if batchSize <= 0 {
+		batchSize = 50
+	}
+	if batchSize > 200 {
+		batchSize = 200
+	}
+
+	processed := 0
+	for processed < batchSize {
+		tx, err := r.pool.Begin(ctx)
+		if err != nil {
+			return processed, err
+		}
+
+		var nobooking, userid string
+		err = tx.QueryRow(ctx, `
+			SELECT q.nobooking, q.userid
+			FROM ppat_send_queue q
+			JOIN pat_1_bookingsspd b ON b.nobooking = q.nobooking AND b.userid = q.userid
+			WHERE q.status = 'queued'
+			  AND q.scheduled_for::date <= (now() AT TIME ZONE 'Asia/Jakarta')::date
+			  AND b.trackstatus = 'Pending'
+			  AND COALESCE(b.payment_status, '') IN ('PAID', 'KURANG_BAYAR')
+			  AND COALESCE(b.is_calculation_completed, false) = true
+			ORDER BY q.scheduled_for ASC, q.nobooking ASC
+			FOR UPDATE OF q SKIP LOCKED
+			LIMIT 1
+		`).Scan(&nobooking, &userid)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return processed, nil
+			}
+			return processed, err
+		}
+
+		_, err = tx.Exec(ctx, `
+			UPDATE ppat_send_queue
+			SET status = 'sent', sent_at = now()
+			WHERE nobooking = $1 AND userid = $2
+		`, nobooking, userid)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return processed, err
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE pat_1_bookingsspd
+			SET trackstatus = 'Diterima', updated_at = now()
+			WHERE nobooking = $1 AND userid = $2
+		`, nobooking, userid)
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return processed, err
+		}
+
+		if _, err = r.dispatchAcceptedBookingTx(ctx, tx, userid, nobooking); err != nil {
+			_ = tx.Rollback(ctx)
+			return processed, err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
+			return processed, err
+		}
+		processed++
+	}
+	return processed, nil
 }
 
 // GenerateOfflineRegistration assigns YYYYV######, upserts ltb_1_terima_berkas_sspd and bank_1_cek_hasil_transaksi,

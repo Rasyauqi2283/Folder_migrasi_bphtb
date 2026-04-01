@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"crypto/rand"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -25,47 +25,47 @@ func NewPenelitiRepo(pool *pgxpool.Pool) *PenelitiRepo {
 
 // PenelitiBerkasFromLtbRow one row for GET /api/peneliti_get-berkas-fromltb.
 type PenelitiBerkasFromLtbRow struct {
-	NoRegistrasi     string  `json:"no_registrasi"`
-	Nobooking        string  `json:"nobooking"`
-	Trackstatus      string  `json:"trackstatus"`
-	Status           string  `json:"status"`
-	Noppbb           *string `json:"noppbb"`
-	Namawajibpajak   *string `json:"namawajibpajak"`
-	Namapemilikobjekpajak *string `json:"namapemilikobjekpajak"`
-	AktaTanahPath    *string `json:"akta_tanah_path"`
-	SertifikatTanahPath *string `json:"sertifikat_tanah_path"`
-	PelengkapPath    *string `json:"pelengkap_path"`
-	Userid           *string `json:"userid"`
-	PenelitiTandaTanganPath *string `json:"peneliti_tanda_tangan_path"`
-	CreatorUserid    *string `json:"creator_userid"`
-	TandaParafPath   *string `json:"tanda_paraf_path"`
-	SignerUserid     *string `json:"signer_userid"`
-	Pemverifikasi    *string `json:"pemverifikasi"`
-	PemverifikasiNama *string `json:"pemverifikasi_nama"`
-	Pemparaf         *string `json:"pemparaf"`
-	PemparafNama     *string `json:"pemparaf_nama"`
-	Pemilihan        *string `json:"pemilihan"`
-	NomorStpd        *string `json:"nomorstpd"`
-	TanggalStpd      *string `json:"tanggalstpd"`
-	AngkaPersen      *string `json:"angkapersen"`
-	KeteranganSendiri *string `json:"keterangandihitungsendiri"`
-	KeteranganLainnya *string `json:"isiketeranganlainnya"`
-	Persetujuan      *string `json:"persetujuan"`
-	LockedByUserID   *string `json:"locked_by_user_id"`
-	LockedByNama     *string `json:"locked_by_nama"`
-	LockedAt         *string `json:"locked_at"`
-	VerifiedAt       *string `json:"verified_at"`
-	VerifiedBy       *string `json:"verified_by"`
-	VerifiedByNama   *string `json:"verified_by_nama"`
-	Alamatwajibpajak *string `json:"alamatwajibpajak"`
-	Alamatpemilikobjekpajak *string `json:"alamatpemilikobjekpajak"`
-	AssignedTo       *string `json:"assigned_to"`
-	AssignmentStatus *string `json:"assignment_status"`
-	LastEditedBy     *string `json:"last_edited_by"`
-	PenelitiEditedFields json.RawMessage `json:"peneliti_edited_fields,omitempty"`
-	PaymentStatus        *string        `json:"payment_status,omitempty"`
-	PaymentAmountRequested *int64       `json:"payment_amount_requested,omitempty"`
-	PaymentAmountPaid    *int64         `json:"payment_amount_paid,omitempty"`
+	NoRegistrasi            string          `json:"no_registrasi"`
+	Nobooking               string          `json:"nobooking"`
+	Trackstatus             string          `json:"trackstatus"`
+	Status                  string          `json:"status"`
+	Noppbb                  *string         `json:"noppbb"`
+	Namawajibpajak          *string         `json:"namawajibpajak"`
+	Namapemilikobjekpajak   *string         `json:"namapemilikobjekpajak"`
+	AktaTanahPath           *string         `json:"akta_tanah_path"`
+	SertifikatTanahPath     *string         `json:"sertifikat_tanah_path"`
+	PelengkapPath           *string         `json:"pelengkap_path"`
+	Userid                  *string         `json:"userid"`
+	PenelitiTandaTanganPath *string         `json:"peneliti_tanda_tangan_path"`
+	CreatorUserid           *string         `json:"creator_userid"`
+	TandaParafPath          *string         `json:"tanda_paraf_path"`
+	SignerUserid            *string         `json:"signer_userid"`
+	Pemverifikasi           *string         `json:"pemverifikasi"`
+	PemverifikasiNama       *string         `json:"pemverifikasi_nama"`
+	Pemparaf                *string         `json:"pemparaf"`
+	PemparafNama            *string         `json:"pemparaf_nama"`
+	Pemilihan               *string         `json:"pemilihan"`
+	NomorStpd               *string         `json:"nomorstpd"`
+	TanggalStpd             *string         `json:"tanggalstpd"`
+	AngkaPersen             *string         `json:"angkapersen"`
+	KeteranganSendiri       *string         `json:"keterangandihitungsendiri"`
+	KeteranganLainnya       *string         `json:"isiketeranganlainnya"`
+	Persetujuan             *string         `json:"persetujuan"`
+	LockedByUserID          *string         `json:"locked_by_user_id"`
+	LockedByNama            *string         `json:"locked_by_nama"`
+	LockedAt                *string         `json:"locked_at"`
+	VerifiedAt              *string         `json:"verified_at"`
+	VerifiedBy              *string         `json:"verified_by"`
+	VerifiedByNama          *string         `json:"verified_by_nama"`
+	Alamatwajibpajak        *string         `json:"alamatwajibpajak"`
+	Alamatpemilikobjekpajak *string         `json:"alamatpemilikobjekpajak"`
+	AssignedTo              *string         `json:"assigned_to"`
+	AssignmentStatus        *string         `json:"assignment_status"`
+	LastEditedBy            *string         `json:"last_edited_by"`
+	PenelitiEditedFields    json.RawMessage `json:"peneliti_edited_fields,omitempty"`
+	PaymentStatus           *string         `json:"payment_status,omitempty"`
+	PaymentAmountRequested  *int64          `json:"payment_amount_requested,omitempty"`
+	PaymentAmountPaid       *int64          `json:"payment_amount_paid,omitempty"`
 }
 
 type RejectionEmailInfo struct {
@@ -113,6 +113,46 @@ func suffixFromUser(userid string) string {
 		out.WriteByte('X')
 	}
 	return out.String()
+}
+
+func (r *PenelitiRepo) ensurePenelitiFIFO(ctx context.Context, penelitiUserid, nobooking string) error {
+	if strings.TrimSpace(penelitiUserid) == "" || strings.TrimSpace(nobooking) == "" {
+		return nil
+	}
+	var currentReg *string
+	err := r.pool.QueryRow(ctx, `
+		SELECT NULLIF(TRIM(no_registrasi), '')
+		FROM p_1_verifikasi
+		WHERE nobooking = $1
+	`, nobooking).Scan(&currentReg)
+	if err != nil {
+		return err
+	}
+	if currentReg == nil || strings.TrimSpace(*currentReg) == "" {
+		return nil
+	}
+	current := strings.TrimSpace(*currentReg)
+
+	var earlierReg, earlierBooking *string
+	err = r.pool.QueryRow(ctx, `
+		SELECT NULLIF(TRIM(no_registrasi), ''), nobooking
+		FROM p_1_verifikasi
+		WHERE assigned_to = $1
+		  AND status = 'Diajukan'
+		  AND trackstatus = 'Dilanjutkan'
+		  AND NULLIF(TRIM(no_registrasi), '') IS NOT NULL
+		  AND no_registrasi < $2
+		  AND nobooking <> $3
+		ORDER BY no_registrasi ASC
+		LIMIT 1
+	`, strings.TrimSpace(penelitiUserid), current, strings.TrimSpace(nobooking)).Scan(&earlierReg, &earlierBooking)
+	if err == pgx.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("FIFO aktif: selesaikan no registrasi %s (booking %s) terlebih dahulu", strings.TrimSpace(*earlierReg), strings.TrimSpace(*earlierBooking))
 }
 
 // MaxPenelitiActiveTasks is the per-Peneliti cap for active Diajukan/Dilanjutkan assignments.
@@ -480,6 +520,9 @@ func (r *PenelitiRepo) SaveVerificationByPemilihan(ctx context.Context, peneliti
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
+	if err := r.ensurePenelitiFIFO(ctx, penelitiUserid, in.Nobooking); err != nil {
+		return err
+	}
 	// Accept both legacy values and canonical values from frontend.
 	normalizePemilihan := func(s string) string {
 		v := strings.TrimSpace(strings.ToUpper(s))
@@ -600,6 +643,9 @@ func (r *PenelitiRepo) SendToParaf(ctx context.Context, penelitiUserid, nobookin
 	if r.pool == nil {
 		return fmt.Errorf("database not configured")
 	}
+	if err := r.ensurePenelitiFIFO(ctx, penelitiUserid, nobooking); err != nil {
+		return err
+	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -671,6 +717,9 @@ func (r *PenelitiRepo) RejectWithReason(ctx context.Context, nobooking, reason, 
 	if r.pool == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
+	if err := r.ensurePenelitiFIFO(ctx, penelitiUserid, nobooking); err != nil {
+		return nil, err
+	}
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -726,14 +775,14 @@ func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, noboo
 	}
 	missing := make([]string, 0, 10)
 	req := map[string]*string{
-		"no_registrasi": noReg,
-		"noppbb": noppbb,
-		"namawajibpajak": namaWP,
+		"no_registrasi":         noReg,
+		"noppbb":                noppbb,
+		"namawajibpajak":        namaWP,
 		"namapemilikobjekpajak": namaOP,
-		"akta_tanah_path": akta,
+		"akta_tanah_path":       akta,
 		"sertifikat_tanah_path": sertif,
-		"pelengkap_path": pelengkap,
-		"pemilihan": pemilihan,
+		"pelengkap_path":        pelengkap,
+		"pemilihan":             pemilihan,
 	}
 	for k, v := range req {
 		if v == nil || strings.TrimSpace(*v) == "" {
@@ -823,27 +872,27 @@ func (r *PenelitiRepo) BerikanParafKasie(ctx context.Context, kasieUserid, noboo
 
 // PenelitiBerkasTillVerifRow one row for GET /api/peneliti/get-berkas-till-verif (paraf kasie).
 type PenelitiBerkasTillVerifRow struct {
-	NoRegistrasi     string  `json:"no_registrasi"`
-	Nobooking        string  `json:"nobooking"`
-	Userid           string  `json:"userid"`
-	Trackstatus      string  `json:"trackstatus"`
-	Noppbb           *string `json:"noppbb"`
-	Tahunajb         *string `json:"tahunajb"`
-	Namawajibpajak   *string `json:"namawajibpajak"`
+	NoRegistrasi          string  `json:"no_registrasi"`
+	Nobooking             string  `json:"nobooking"`
+	Userid                string  `json:"userid"`
+	Trackstatus           string  `json:"trackstatus"`
+	Noppbb                *string `json:"noppbb"`
+	Tahunajb              *string `json:"tahunajb"`
+	Namawajibpajak        *string `json:"namawajibpajak"`
 	Namapemilikobjekpajak *string `json:"namapemilikobjekpajak"`
-	AktaTanahPath    *string `json:"akta_tanah_path"`
-	SertifikatTanahPath *string `json:"sertifikat_tanah_path"`
-	PelengkapPath    *string `json:"pelengkap_path"`
-	Status           string  `json:"status"`
-	Persetujuan      *string `json:"persetujuan"`
-	TandaParafPath   *string `json:"tanda_paraf_path"`
-	TanggalMasuk     *string `json:"tanggal_masuk"`
-	TandaTanganPath  *string `json:"tanda_tangan_path"`
-	StempelBookingPath *string `json:"stempel_booking_path"`
-	SignerUserid     *string `json:"signer_userid"`
-	PemverifikasiNama *string `json:"pemverifikasi_nama"`
-	LockedByUserID   *string `json:"locked_by_user_id"`
-	LockedByNama     *string `json:"locked_by_nama"`
+	AktaTanahPath         *string `json:"akta_tanah_path"`
+	SertifikatTanahPath   *string `json:"sertifikat_tanah_path"`
+	PelengkapPath         *string `json:"pelengkap_path"`
+	Status                string  `json:"status"`
+	Persetujuan           *string `json:"persetujuan"`
+	TandaParafPath        *string `json:"tanda_paraf_path"`
+	TanggalMasuk          *string `json:"tanggal_masuk"`
+	TandaTanganPath       *string `json:"tanda_tangan_path"`
+	StempelBookingPath    *string `json:"stempel_booking_path"`
+	SignerUserid          *string `json:"signer_userid"`
+	PemverifikasiNama     *string `json:"pemverifikasi_nama"`
+	LockedByUserID        *string `json:"locked_by_user_id"`
+	LockedByNama          *string `json:"locked_by_nama"`
 }
 
 // GetBerkasTillVerif returns data for Peneliti paraf kasie (p_3_clear_to_paraf).
