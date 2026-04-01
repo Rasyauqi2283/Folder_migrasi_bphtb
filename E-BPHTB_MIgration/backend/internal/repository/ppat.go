@@ -2368,14 +2368,23 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		return fmt.Errorf("belum ada konfirmasi pembayaran dari bank (payment_status=%s, sspd_status=%s)", payStatusUp, sspdPayUp)
 	}
 	trackUp := normalizeBookingFlowStatus(trackStatus)
-	if trackUp == "in_paid" {
-		if err := r.updateBookingStatusTx(ctx, tx, u, nb, "paid"); err != nil {
-			return err
-		}
-		trackUp = "paid"
-	}
+	// Hardening:
+	// if payment is already confirmed but lifecycle status is still behind,
+	// advance it to paid first so "Simpan Perhitungan" won't fail unnecessarily.
 	if trackUp != "paid" && trackUp != "draft" {
-		return fmt.Errorf("status booking harus 'paid' sebelum simpan perhitungan lanjutan (status saat ini: %s)", trackUp)
+		switch trackUp {
+		case "diterima", "diolah", "diserahkan", "dihapus":
+			return fmt.Errorf("status booking tidak dapat difinalisasi perhitungan dari status saat ini: %s", trackUp)
+		default:
+			if canMoveBookingFlowStatus(trackUp, "paid") {
+				if err := r.updateBookingStatusTx(ctx, tx, u, nb, "paid"); err != nil {
+					return err
+				}
+				trackUp = "paid"
+			} else {
+				return fmt.Errorf("status booking harus 'paid' sebelum simpan perhitungan lanjutan (status saat ini: %s)", trackUp)
+			}
+		}
 	}
 
 	// pat_5 (NJOP)
