@@ -906,7 +906,50 @@ func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params
 	if err != nil {
 		return "", err
 	}
-	// 2. Step-1: Always insert pat_5 (NJOP). Other tables are filled in later steps.
+	// 2) Step-1 strict: pat_2 must exist (NPOPTKP wajib terisi dari jenis perolehan).
+	npoptkp := NPOPTKPFromJenisPerolehan(params.JenisPerolehan)
+	if params.NilaiPerolehanObjekPajakTidakKenaPajak != nil {
+		// Keep server as source of truth, but accept explicit override if client intentionally sends one.
+		npoptkp = *params.NilaiPerolehanObjekPajakTidakKenaPajak
+	}
+	var bphtbDibayar int32
+	if params.BphtbYangtelahDibayar != nil {
+		bphtbDibayar = int32(math.Round(*params.BphtbYangtelahDibayar))
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO pat_2_bphtb_perhitungan (nilaiperolehanobjekpajaktidakkenapajak, bphtb_yangtelah_dibayar, nobooking)
+		VALUES ($1,$2,$3)
+	`, npoptkp, bphtbDibayar, nobooking); err != nil {
+		return "", err
+	}
+
+	// 3) Step-1 strict: pat_4 must exist and be complete.
+	// Nullable at step-1 only: tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran.
+	stKepemilikan := normStatusKepemilikan(params.StatusKepemilikan)
+	letak := strings.TrimSpace(params.Letaktanahdanbangunan)
+	rtRwObjek := strings.TrimSpace(params.RtRwobjekpajak)
+	noSert := strings.TrimSpace(params.NomorSertifikat)
+	hargaTrans := strings.TrimSpace(params.Hargatransaksi)
+	kelLP := strings.TrimSpace(params.Kelurahandesalp)
+	kecLP := strings.TrimSpace(params.Kecamatanlp)
+	jenisPerolehan := strings.TrimSpace(params.JenisPerolehan)
+	if letak == "" || rtRwObjek == "" || noSert == "" || hargaTrans == "" || kelLP == "" || kecLP == "" || jenisPerolehan == "" {
+		return "", fmt.Errorf("data objek pajak wajib lengkap pada step 1")
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO pat_4_objek_pajak (
+			letaktanahdanbangunan, rt_rwobjekpajak, status_kepemilikan, keterangan, nomor_sertifikat,
+			tanggal_perolehan, tanggal_pembayaran, nomor_bukti_pembayaran,
+			nobooking, harga_transaksi, kelurahandesalp, kecamatanlp, jenis_perolehan
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+	`, letak, rtRwObjek, stKepemilikan, strings.TrimSpace(params.Keterangan), noSert,
+		nil, nil, nil,
+		nobooking, hargaTrans, kelLP, kecLP, jenisPerolehan); err != nil {
+		return "", err
+	}
+
+	// 4) Step-1 strict: pat_5 (NJOP) must always exist.
 	tot := 0.0
 	if params.TotalNjoppbb != nil && *params.TotalNjoppbb > 0 {
 		tot = *params.TotalNjoppbb

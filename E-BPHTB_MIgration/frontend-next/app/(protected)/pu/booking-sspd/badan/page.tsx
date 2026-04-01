@@ -1795,11 +1795,6 @@ export default function BookingSSPDBadanPage() {
                                   >
                                     {postCalcOpen === row.nobooking ? "Tutup Isi Perhitungan" : "Isi Ketika Telah Bayar"}
                                   </button>
-                                  {postCalcDisabledReason && (
-                                    <span style={{ fontSize: 12, color: "#6b7280", alignSelf: "center", maxWidth: 360 }}>
-                                      {postCalcDisabledReason}
-                                    </span>
-                                  )}
                                   <button
                                     type="button"
                                     style={btnSecondary}
@@ -1826,6 +1821,19 @@ export default function BookingSSPDBadanPage() {
                                   <button type="button" style={btnSecondary} onClick={() => window.open(`${getApiBase()}/api/ppat/generate-pdf-mohon-validasi/${encodeURIComponent(row.nobooking)}`, "_blank", "noopener,noreferrer")}>Lihat Dokumen Validasi</button>
                                 </div>
                               </div>
+                              {postCalcDisabledReason && (
+                                <div
+                                  style={{
+                                    ...sectionCardStyle,
+                                    border: "1px solid #cbd5e1",
+                                    background: "#f8fafc",
+                                    color: "#334155",
+                                  }}
+                                >
+                                  <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 4, color: "#475569" }}>Informasi proses</div>
+                                  <div style={{ fontSize: 13 }}>{postCalcDisabledReason}</div>
+                                </div>
+                              )}
 
                               {postCalcOpen === row.nobooking && payOk && (
                                 <div style={{ ...sectionCardStyle, border: "1px solid #c4b5fd", background: "#faf5ff" }}>
