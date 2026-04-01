@@ -840,6 +840,80 @@ var ErrPpatReadonlySubmitted = errors.New("Data Locked: Booking already submitte
 // ErrPpatRecoverNotAllowed is returned when recover action is not valid from current state.
 var ErrPpatRecoverNotAllowed = errors.New("Booking tidak dapat dipulihkan dari status saat ini")
 
+// ErrPpatInvalidStatusTransition is returned when a booking status transition is invalid.
+var ErrPpatInvalidStatusTransition = errors.New("Transisi status booking tidak valid")
+
+func normalizeBookingFlowStatus(s string) string {
+	v := strings.ToLower(strings.TrimSpace(s))
+	switch v {
+	case "awaiting_billing":
+		return "awaited_billing"
+	}
+	return v
+}
+
+func bookingFlowRank(s string) int {
+	switch normalizeBookingFlowStatus(s) {
+	case "terbuat":
+		return 0
+	case "awaited_billing":
+		return 1
+	case "in_paid":
+		return 2
+	case "paid":
+		return 3
+	case "draft":
+		return 4
+	}
+	return -1
+}
+
+func canMoveBookingFlowStatus(current, next string) bool {
+	c := normalizeBookingFlowStatus(current)
+	n := normalizeBookingFlowStatus(next)
+	if n == "" {
+		return false
+	}
+	if c == n {
+		return true
+	}
+	// Compatibility for legacy rows that were already marked Draft before billing.
+	if c == "draft" && n == "awaited_billing" {
+		return true
+	}
+	cr := bookingFlowRank(c)
+	nr := bookingFlowRank(n)
+	if cr == -1 || nr == -1 {
+		return false
+	}
+	return nr > cr
+}
+
+func (r *PpatRepo) updateBookingStatusTx(ctx context.Context, tx pgx.Tx, userid, nobooking, newStatus string) error {
+	target := normalizeBookingFlowStatus(newStatus)
+	if target == "" {
+		return fmt.Errorf("%w: status tujuan kosong", ErrPpatInvalidStatusTransition)
+	}
+	var current string
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE(trackstatus, '')
+		FROM pat_1_bookingsspd
+		WHERE nobooking = $1 AND userid = $2
+		FOR UPDATE
+	`, nobooking, userid).Scan(&current); err != nil {
+		return err
+	}
+	if !canMoveBookingFlowStatus(current, target) {
+		return fmt.Errorf("%w: %s -> %s", ErrPpatInvalidStatusTransition, normalizeBookingFlowStatus(current), target)
+	}
+	_, err := tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = $3, updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+	`, nobooking, userid, target)
+	return err
+}
+
 // CreateBookingBadan inserts pat_1_bookingsspd (Badan Usaha); kolom nobooking diisi oleh trigger generate_nobooking (BEFORE INSERT).
 // Setelah pat_1 tersimpan dengan nobooking, data terkait dimasukkan ke pat_2_bphtb_perhitungan, pat_4_objek_pajak, pat_5_penghitungan_njop.
 func (r *PpatRepo) CreateBookingBadan(ctx context.Context, userid string, params *CreateBookingParams) (nobooking string, err error) {
@@ -2157,6 +2231,9 @@ func (r *PpatRepo) SetBookingBilling(ctx context.Context, userid, nobooking, bil
 	// Mirror billing ID to pat_4 and bank row if they exist.
 	_, _ = tx.Exec(ctx, `UPDATE pat_4_objek_pajak SET nomor_bukti_pembayaran = $1 WHERE nobooking = $2`, bid, nb)
 	_, _ = tx.Exec(ctx, `UPDATE bank_1_cek_hasil_transaksi SET nomor_bukti_pembayaran = COALESCE(nomor_bukti_pembayaran, $1) WHERE nobooking = $2`, bid, nb)
+	if err := r.updateBookingStatusTx(ctx, tx, u, nb, "awaited_billing"); err != nil {
+		return err
+	}
 
 	return tx.Commit(ctx)
 }
@@ -2211,7 +2288,7 @@ func (r *PpatRepo) CreateBookingForBilling(ctx context.Context, userid string, p
 			$1,$2,$3,$4,'',$5,'',
 			$6,$7,'','','','',$8,'',
 			'Kabupaten Bogor','','','',$9,'',
-			'AWAITING_BILLING', false
+			'awaited_billing', false
 		)
 		RETURNING nobooking
 	`, jwp, userid, nop, namaWp, namaOp, tanggal, tahun, npwpwp, npwpop).Scan(&nobooking)
@@ -2256,18 +2333,43 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 	}
 	defer tx.Rollback(ctx)
 
+	var trackStatus string
 	var payStatus string
+	var sspdPayStatus string
 	var paid sql.NullInt64
+	var bankPaid bool
 	err = tx.QueryRow(ctx, `
-		SELECT COALESCE(payment_status,''), payment_amount_paid
-		FROM pat_1_bookingsspd
-		WHERE nobooking = $1 AND userid = $2
-	`, nb, u).Scan(&payStatus, &paid)
+		SELECT
+			COALESCE(b.trackstatus,''),
+			COALESCE(b.payment_status,''),
+			b.payment_amount_paid,
+			COALESCE(b.sspd_pembayaran_status::text, ''),
+			EXISTS(
+				SELECT 1
+				FROM bank_1_cek_hasil_transaksi bk
+				WHERE bk.nobooking = b.nobooking
+				  AND (
+					UPPER(COALESCE(bk.payment_status, '')) IN ('PAID', 'LUNAS')
+					OR UPPER(COALESCE(bk.gateway_status, '')) IN ('PAID', 'LUNAS')
+					OR UPPER(COALESCE(bk.status_verifikasi, '')) IN ('DISETUJUI', 'SINKRON_OTOMATIS')
+				  )
+			) AS bank_paid
+		FROM pat_1_bookingsspd b
+		WHERE b.nobooking = $1 AND b.userid = $2
+	`, nb, u).Scan(&trackStatus, &payStatus, &paid, &sspdPayStatus, &bankPaid)
 	if err != nil {
 		return err
 	}
-	if payStatus != "PAID" && payStatus != "KURANG_BAYAR" {
-		return fmt.Errorf("belum ada konfirmasi pembayaran dari bank")
+	trackUp := normalizeBookingFlowStatus(trackStatus)
+	if trackUp != "paid" && trackUp != "draft" {
+		return fmt.Errorf("status booking harus 'paid' sebelum simpan perhitungan lanjutan (status saat ini: %s)", trackUp)
+	}
+	payStatusUp := strings.ToUpper(strings.TrimSpace(payStatus))
+	sspdPayUp := strings.ToUpper(strings.TrimSpace(sspdPayStatus))
+	paidFromBooking := payStatusUp == "PAID" || payStatusUp == "KURANG_BAYAR" || payStatusUp == "LUNAS" || payStatusUp == "SUDAH_BAYAR"
+	paidFromSspd := sspdPayUp == "PAID" || sspdPayUp == "KURANG_BAYAR" || sspdPayUp == "LUNAS" || sspdPayUp == "SUDAH_BAYAR"
+	if !paidFromBooking && !paidFromSspd && !bankPaid {
+		return fmt.Errorf("belum ada konfirmasi pembayaran dari bank (payment_status=%s, sspd_status=%s)", payStatusUp, sspdPayUp)
 	}
 
 	// pat_5 (NJOP)
@@ -2380,6 +2482,9 @@ func (r *PpatRepo) SavePostPaymentCalculation(ctx context.Context, userid, noboo
 		WHERE nobooking = $1 AND userid = $2
 	`, nb, u, req, paymentStatus2, sspdStatus2, calc.NeedsSTPD)
 	if err != nil {
+		return err
+	}
+	if err := r.updateBookingStatusTx(ctx, tx, u, nb, "Draft"); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

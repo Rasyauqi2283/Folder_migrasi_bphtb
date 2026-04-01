@@ -109,14 +109,15 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	var billingID string
+	var trackStatus string
 	var payStatus string
 	var amountReq int64
 	err = tx.QueryRow(ctx, `
-		SELECT COALESCE(billing_id,''), COALESCE(payment_status,''), COALESCE(payment_amount_requested, 0)::bigint
+		SELECT COALESCE(trackstatus,''), COALESCE(billing_id,''), COALESCE(payment_status,''), COALESCE(payment_amount_requested, 0)::bigint
 		FROM pat_1_bookingsspd
 		WHERE nobooking = $1 AND userid = $2
 		LIMIT 1
-	`, nb, userid).Scan(&billingID, &payStatus, &amountReq)
+	`, nb, userid).Scan(&trackStatus, &billingID, &payStatus, &amountReq)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) || strings.Contains(err.Error(), "no rows") {
 			ppatJSONError(w, http.StatusNotFound, "Booking tidak ditemukan")
@@ -126,13 +127,30 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ps := strings.ToUpper(strings.TrimSpace(payStatus))
+	ts := strings.ToLower(strings.TrimSpace(trackStatus))
+	if ts == "awaiting_billing" {
+		ts = "awaited_billing"
+	}
 	if ps == "PAID" || ps == "KURANG_BAYAR" {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "already_paid": true, "nobooking": nb})
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "already_paid": true, "nobooking": nb, "trackstatus": "paid"})
+		return
+	}
+	if ts != "awaited_billing" && ts != "in_paid" && ts != "paid" {
+		ppatJSONError(w, http.StatusBadRequest, "Status booking harus 'awaited_billing' sebelum simulasi bayar.")
 		return
 	}
 	if strings.TrimSpace(billingID) == "" {
 		ppatJSONError(w, http.StatusBadRequest, "Belum ada billing_id. Silakan klik 'Minta Billing' terlebih dahulu.")
+		return
+	}
+	if _, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = 'in_paid', updated_at = now()
+		WHERE nobooking = $1 AND userid = $2
+		  AND LOWER(COALESCE(trackstatus,'')) IN ('awaited_billing','awaiting_billing','in_paid')
+	`, nb, userid); err != nil {
+		ppatJSONError(w, http.StatusInternalServerError, "Gagal menandai status sinkronisasi pembayaran")
 		return
 	}
 
@@ -186,10 +204,7 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 			payment_status = 'PAID',
 			sspd_pembayaran_status = 'LUNAS',
 			needs_stpd = false,
-			trackstatus = CASE
-				WHEN LOWER(COALESCE(trackstatus,'')) = 'awaiting_billing' THEN 'Draft'
-				ELSE trackstatus
-			END,
+			trackstatus = 'paid',
 			updated_at = now()
 		WHERE nobooking = $1 AND userid = $2
 	`, nb, userid, amt)
@@ -208,6 +223,7 @@ func (h *PpatHandler) MockPayment(w http.ResponseWriter, r *http.Request) {
 		"success":     true,
 		"nobooking":   nb,
 		"payment":     "PAID",
+		"trackstatus": "paid",
 		"amount_paid": amt,
 		"reference":   ref,
 	})

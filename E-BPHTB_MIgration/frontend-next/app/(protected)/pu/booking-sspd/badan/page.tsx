@@ -391,21 +391,32 @@ export default function BookingSSPDBadanPage() {
     const normalized = (s || "").trim().toLowerCase();
     // "Diolah" is deprecated for PU flow; normalize display/logic to "diterima".
     if (normalized === "diolah") return "diterima";
+    if (normalized === "awaiting_billing") return "awaited_billing";
     return normalized;
+  };
+  const statusRank = (s: string) => {
+    const st = status(s);
+    if (st === "terbuat") return 0;
+    if (st === "awaited_billing") return 1;
+    if (st === "in_paid") return 2;
+    if (st === "paid") return 3;
+    if (st === "draft") return 4;
+    return -1;
   };
   const isLocked = (row: BookingRow) => status(row.trackstatus) !== "draft";
   const canSend = (row: BookingRow) => status(row.trackstatus) === "draft";
+  const hasReachedPaidStage = (row: BookingRow) => statusRank(row.trackstatus) >= 3;
   const canEditBookingData = (row: BookingRow) => {
     const s = status(row.trackstatus);
-    return s === "draft" || s === "terbuat" || s === "pending" || s === "revisi" || s === "ditolak" || s === "awaiting_billing";
+    return s === "draft" || s === "terbuat" || s === "pending" || s === "revisi" || s === "ditolak" || s === "awaited_billing" || s === "in_paid" || s === "paid";
   };
   const canRecoverBooking = (row: BookingRow) => status(row.trackstatus) === "ditolak";
   const canDeleteByStatus = (row: BookingRow) => {
     const s = status(row.trackstatus);
-    return s === "draft" || s === "terbuat" || s === "revisi" || s === "ditolak" || s === "pending" || s === "awaiting_billing";
+    return s === "draft" || s === "terbuat" || s === "revisi" || s === "ditolak" || s === "pending" || s === "awaited_billing";
   };
   const canMintaBillingRow = (row: BookingRow, detail: BookingDetail | null) =>
-    canEditBookingData(row) && !paymentConfirmedFromDetail(detail) && !hasActivePendingBilling(detail, nowTick);
+    status(row.trackstatus) === "terbuat" && !paymentConfirmedFromDetail(detail) && !hasActivePendingBilling(detail, nowTick);
   const selectedRow = data.find((r) => r.nobooking === (expandedRow || modalNobooking));
   const selectedLocked = selectedRow ? isLocked(selectedRow) : true;
   const selectedDetail = selectedRow && cekBookingDetail?.nobooking === selectedRow.nobooking ? cekBookingDetail : null;
@@ -448,6 +459,9 @@ export default function BookingSSPDBadanPage() {
   const statusBadgeStyle = (trackStatus?: string): React.CSSProperties => {
     const st = status(trackStatus || "");
     if (st === "draft") return { background: "#eef2ff", color: "#3730a3" };
+    if (st === "paid") return { background: "#dcfce7", color: "#166534" };
+    if (st === "in_paid") return { background: "#ffedd5", color: "#9a3412" };
+    if (st === "awaited_billing") return { background: "#fef3c7", color: "#92400e" };
     if (st === "diterima") return { background: "#e0e7ff", color: "#4338ca" };
     if (st === "wp_approved") return { background: "#dbeafe", color: "#1d4ed8" };
     if (st.includes("pending")) return { background: "#fff7ed", color: "#9a3412" };
@@ -673,6 +687,14 @@ export default function BookingSSPDBadanPage() {
           amount: Number(j.amount) || 0,
           expiresAtISO: j.expires_at ? String(j.expires_at) : undefined,
         });
+        setData((prev) => prev.map((it) => (it.nobooking === nobooking ? { ...it, trackstatus: "awaited_billing" } : it)));
+        setCekBookingDetail((prev) => {
+          if (!prev || prev.nobooking !== nobooking) return prev;
+          return {
+            ...prev,
+            trackstatus: "awaited_billing",
+          };
+        });
         closeMintaBillingPreview();
         setCekBookingNobooking(nobooking);
         loadTable(page, searchQuery);
@@ -702,16 +724,18 @@ export default function BookingSSPDBadanPage() {
           setActionMessage(j?.message || "Gagal simulasi pembayaran.");
           return;
         }
-        // Optimistic update to immediately unlock "Isi Ketika Telah Bayar" button.
+        // Optimistic update to keep UI aligned with lifecycle.
         setCekBookingDetail((prev) => {
           if (!prev || prev.nobooking !== nobooking) return prev;
           return {
             ...prev,
+            trackstatus: "paid",
             payment_status: "PAID",
             sspd_pembayaran_status: "LUNAS",
           };
         });
-        setActionMessage("Simulasi pembayaran berhasil: status PAID/LUNAS.");
+        setData((prev) => prev.map((it) => (it.nobooking === nobooking ? { ...it, trackstatus: "paid" } : it)));
+        setActionMessage("Simulasi pembayaran berhasil: status in_paid -> paid.");
         setCekBookingNobooking(nobooking);
         loadTable(page, searchQuery);
       } catch {
@@ -1631,6 +1655,8 @@ export default function BookingSSPDBadanPage() {
                           const totalNjopBangunan = luasBangunan * njopBangunan;
                           const detailLoading = expandedRow === row.nobooking && !detail;
                           const payOk = paymentConfirmedFromDetail(detail);
+                          const flowStatus = status(String(detail?.trackstatus ?? row.trackstatus ?? ""));
+                          const trackPaid = flowStatus === "paid";
                           const showBillingBtn = canMintaBillingRow(row, detail);
                           const pendingBilling = hasActivePendingBilling(detail, nowTick);
                           const rowBillingBusy =
@@ -1643,9 +1669,11 @@ export default function BookingSSPDBadanPage() {
                               : null;
                           const letakObjek = String((detail as Record<string, unknown> | null)?.letaktanahdanbangunan ?? "").trim();
                           const missingObjekDataForPostCalc = Boolean(detail && payOk && !letakObjek);
-                          const postCalcDisabled = detailLoading || !payOk || missingObjekDataForPostCalc;
+                          const postCalcDisabled = detailLoading || !trackPaid || !payOk || missingObjekDataForPostCalc;
                           const postCalcDisabledReason = detailLoading
                             ? "Memuat detail booking..."
+                            : !trackPaid
+                              ? "Status booking harus paid terlebih dahulu."
                             : !payOk
                               ? "Menunggu konfirmasi pembayaran dari bank (PAID / KURANG_BAYAR / LUNAS)."
                               : missingObjekDataForPostCalc
@@ -1709,7 +1737,7 @@ export default function BookingSSPDBadanPage() {
                                     <button
                                       type="button"
                                       style={{ ...btnStyle, background: "#0ea5e9", color: "#fff" }}
-                                      disabled={rowMockPayBusy || payOk}
+                                      disabled={rowMockPayBusy || payOk || flowStatus !== "awaited_billing"}
                                       onClick={() => simulatePayment(row.nobooking)}
                                       title="Untuk simulasi demo (gateway asli belum tersedia)."
                                     >
@@ -1812,8 +1840,12 @@ export default function BookingSSPDBadanPage() {
                                   <Link
                                     href={`/pu/permohonan-validasi/${encodeURIComponent(row.nobooking)}`}
                                     prefetch={false}
-                                    style={{ color: isLocked(row) ? "#94a3b8" : "var(--accent)", fontWeight: 600, pointerEvents: isLocked(row) ? "none" : "auto" }}
-                                    aria-disabled={isLocked(row)}
+                                    style={{
+                                      color: hasReachedPaidStage(row) ? "var(--accent)" : "#94a3b8",
+                                      fontWeight: 600,
+                                      pointerEvents: hasReachedPaidStage(row) ? "auto" : "none",
+                                    }}
+                                    aria-disabled={!hasReachedPaidStage(row)}
                                   >
                                     Isi Form Permohonan Validasi →
                                   </Link>
@@ -2014,7 +2046,7 @@ export default function BookingSSPDBadanPage() {
                                             e.target.value = "";
                                           }}
                                           style={{ fontSize: 12, color: "#0f172a" }}
-                                          disabled={isLocked(row)}
+                                          disabled={!hasReachedPaidStage(row)}
                                         />
                                         {docUploading === `${row.nobooking}-${field}` && <span style={{ fontSize: 12, color: "#475569" }}> Mengunggah...</span>}
                                       </div>

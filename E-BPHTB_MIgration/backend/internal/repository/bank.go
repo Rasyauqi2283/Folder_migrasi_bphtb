@@ -353,6 +353,15 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 			return err
 		}
 	}
+	_, err = tx.Exec(ctx, `
+		UPDATE pat_1_bookingsspd
+		SET trackstatus = 'in_paid', updated_at = now()
+		WHERE nobooking = $1
+		  AND LOWER(COALESCE(trackstatus,'')) IN ('awaited_billing','awaiting_billing','in_paid')
+	`, nb)
+	if err != nil {
+		return err
+	}
 
 	// Persist canonical payment state on booking.
 	underpaid := false
@@ -376,7 +385,7 @@ func (r *BankRepo) ApplyGatewayPaid(ctx context.Context, nobooking string, amoun
 				ELSE COALESCE(needs_stpd, false)
 			END,
 			trackstatus = CASE
-				WHEN LOWER(COALESCE(trackstatus,'')) = 'awaiting_billing' THEN 'Draft'
+				WHEN LOWER(COALESCE(trackstatus,'')) IN ('awaited_billing','awaiting_billing','in_paid') THEN 'paid'
 				ELSE trackstatus
 			END,
 			updated_at = now()
