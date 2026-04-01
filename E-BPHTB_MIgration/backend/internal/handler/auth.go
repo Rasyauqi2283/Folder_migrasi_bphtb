@@ -188,6 +188,7 @@ func isSecureRequest(r *http.Request) bool {
 }
 
 func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJSON, string) {
+	cleanedRaw := stage2FilterKtpRawText(result.RawText)
 	payload := ktpExtractJSON{
 		NIK: result.NIK, Nama: result.Nama,
 		Alamat:     result.Alamat,
@@ -199,7 +200,7 @@ func buildKtpExtractPayload(result *ktpocr.Result, createdAt int64) (ktpExtractJ
 		"nama":        result.Nama,
 		"alamat":      result.Alamat,
 		"is_readable": result.IsReadable,
-		"rawText":     result.RawText,
+		"rawText":     cleanedRaw,
 	})
 	payload.KtpOcrJson = string(ktpOcrBytes)
 	return payload, payload.KtpOcrJson
@@ -240,6 +241,45 @@ func clipKtpRawTextForAPI(s string) string {
 		return s
 	}
 	return s[:ktpRawTextAPIMaxRunes] + "\n…"
+}
+
+// stage2FilterKtpRawText membersihkan baris OCR yang tidak dibutuhkan untuk JSON registrasi.
+// Tahap-1 validasi tetap fokus pada NIK + Nama; tahap-2 membersihkan noise.
+func stage2FilterKtpRawText(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return ""
+	}
+	lines := strings.Split(raw, "\n")
+	blacklist := []string{
+		"GOL. DARAH", "GOL DARAH",
+		"STATUS PERKAWINAN",
+		"PEKERJAAN",
+		"KEWARGANEGARAAN",
+		"BERLAKU HINGGA", "BERLAKU",
+		"AGAMA",
+		"TEMPAT/TGL LAHIR", "TEMPAT LAHIR", "TTL",
+		"JENIS KELAMIN",
+	}
+	cleaned := make([]string, 0, len(lines))
+	for _, line := range lines {
+		l := strings.TrimSpace(line)
+		if l == "" {
+			continue
+		}
+		upper := strings.ToUpper(l)
+		skip := false
+		for _, b := range blacklist {
+			if strings.Contains(upper, b) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		cleaned = append(cleaned, l)
+	}
+	return strings.Join(cleaned, "\n")
 }
 
 // sniffKTPImageKind returns "jpeg", "png", or "" from file magic bytes (lebih andal daripada Content-Type browser).
@@ -390,17 +430,17 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusBadRequest, "Tidak dapat membaca teks dari gambar KTP")
 		return
 	}
-	// MODE CEPAT (sementara untuk uji): validasi keras NIK/Nama dimatikan.
-	// if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
-	// 	jsonErrorExtra(w, http.StatusBadRequest, "NIK tidak terbaca. Pastikan gambar KTP jelas, tidak blur, dan posisi tidak terlalu miring. Coba foto ulang atau perbaiki pencahayaan.", map[string]interface{}{
-	// 		"manual_verification_required": true,
-	// 	})
-	// 	return
-	// }
-	// if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
-	// 	jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Pastikan foto KTP tidak blur dan bagian nama terlihat jelas.")
-	// 	return
-	// }
+	// Tahap-1 (wajib lolos): hanya NIK dan Nama.
+	if result.NIK == nil || !ktpocr.ValidNIK(*result.NIK) {
+		jsonErrorExtra(w, http.StatusBadRequest, "NIK tidak terbaca/valid. Silakan upload ulang KTP.", map[string]interface{}{
+			"manual_verification_required": true,
+		})
+		return
+	}
+	if result.Nama == nil || strings.TrimSpace(*result.Nama) == "" {
+		jsonError(w, http.StatusBadRequest, "Nama tidak terbaca. Silakan upload ulang KTP.")
+		return
+	}
 
 	createdAt := time.Now().UnixMilli()
 	payload, ktpOcrJsonStr := buildKtpExtractPayload(result, createdAt)
@@ -421,7 +461,7 @@ func (h *AuthHandler) UploadKTP(w http.ResponseWriter, r *http.Request) {
 		"rtRw":                         result.RtRw,
 		"kelurahan":                    result.Kelurahan,
 		"kecamatan":                    result.Kecamatan,
-		"rawText":                      clipKtpRawTextForAPI(result.RawText),
+		"rawText":                      clipKtpRawTextForAPI(stage2FilterKtpRawText(result.RawText)),
 	}
 
 	decision := "success"
