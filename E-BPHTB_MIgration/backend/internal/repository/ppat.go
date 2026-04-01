@@ -1236,6 +1236,15 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 			o.keterangan,
 			pp.luas_tanah,
 			pp.luas_bangunan,
+			pp.njop_tanah,
+			pp.njop_bangunan,
+			o.harga_transaksi,
+			o.rt_rwobjekpajak,
+			o.status_kepemilikan,
+			o.nomor_sertifikat,
+			o.kelurahandesalp,
+			o.kecamatanlp,
+			o.jenis_perolehan,
 			u.nama AS nama_pemohon,
 			u.telepon::text AS no_telepon,
 			u.alamat_pu AS alamat_pemohon,
@@ -1257,7 +1266,8 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 	var billingExpires sql.NullTime
 	var calcDone bool
 	var paymentAmtReq sql.NullInt64
-	var luasTanah, luasBangunan, bphtbDibayar *float64
+	var luasTanah, luasBangunan, njopTanah, njopBangunan, bphtbDibayar *float64
+	var hargaTransaksi, rtrwObjek, statusKepemilikan, nomorSertifikat, kelurahanDesaLP, kecamatanLP, jenisPerolehan *string
 	err := row.Scan(
 		&nobookingOut,
 		&nop,
@@ -1292,6 +1302,15 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		&keterangan,
 		&luasTanah,
 		&luasBangunan,
+		&njopTanah,
+		&njopBangunan,
+		&hargaTransaksi,
+		&rtrwObjek,
+		&statusKepemilikan,
+		&nomorSertifikat,
+		&kelurahanDesaLP,
+		&kecamatanLP,
+		&jenisPerolehan,
 		&namaPemohon,
 		&noTelepon,
 		&alamatPemohon,
@@ -1326,6 +1345,11 @@ func (r *PpatRepo) GetBookingByNobooking(ctx context.Context, userid, nobooking 
 		"kabupatenkotaop": val(kabOp), "kecamatanop": val(kecOp), "kelurahandesaop": val(kelOp), "rtrwop": val(rtrwOp), "kodeposop": val(kodeposop),
 		"trackstatus": val(trackstatus), "jenis_wajib_pajak": val(jenisWp), "created_at": valTime(createdAt), "updated_at": valTime(updatedAt),
 		"Alamatop": val(alamatop), "keterangan": val(keterangan), "luas_tanah": valFloat(luasTanah), "luas_bangunan": valFloat(luasBangunan),
+		"njop_tanah": valFloat(njopTanah), "njop_bangunan": valFloat(njopBangunan),
+		"hargatransaksi": val(hargaTransaksi), "harga_transaksi": val(hargaTransaksi),
+		"rt_rwobjekpajak": val(rtrwObjek), "status_kepemilikan": val(statusKepemilikan),
+		"nomor_sertifikat": val(nomorSertifikat), "kelurahandesalp": val(kelurahanDesaLP), "kecamatanlp": val(kecamatanLP),
+		"jenisPerolehan": val(jenisPerolehan), "jenis_perolehan": val(jenisPerolehan),
 		"nama_pemohon": val(namaPemohon), "no_telepon": val(noTelepon), "alamat_pemohon": val(alamatPemohon),
 		"bphtb_yangtelah_dibayar":  valFloat(bphtbDibayar),
 		"payment_status":           paymentStatus,

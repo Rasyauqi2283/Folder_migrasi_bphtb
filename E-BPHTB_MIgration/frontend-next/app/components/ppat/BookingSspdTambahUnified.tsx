@@ -26,15 +26,34 @@ const defaultTanggal = `${pad(today.getDate())}-${pad(today.getMonth() + 1)}-${t
 // - Kode historis tertentu di aplikasi lama: 28=40jt, 29=49jt, 34=bebas (0)
 const NPOPTKP_DEFAULT = 80_000_000;
 const NPOPTKP_MAP: Record<string, number> = {
-  // Keluarga (minimal nasional)
-  "04": 300_000_000, // Hibah Wasiat
-  "05": 300_000_000, // Waris
-  "24": 300_000_000, // Waris (historis < 2011)
+// --- EXISTING (01-15) ---
+"01": 80_000_000, "02": 80_000_000, "03": 80_000_000, "04": 300_000_000, 
+"05": 300_000_000, "06": 80_000_000, "07": 80_000_000, "08": 80_000_000, 
+"09": 80_000_000, "10": 80_000_000, "11": 80_000_000, "12": 80_000_000, 
+"13": 80_000_000, "14": 80_000_000, "15": 80_000_000,
 
-  // Kode historis aplikasi
-  "28": 40_000_000,
-  "29": 49_000_000,
-  "34": 0, // Bebas
+// --- GAP 16-20 (Pemberian Hak Baru & Spesifik) ---
+"16": 80_000_000, // 16 - Pemberian Hak Milik (Peningkatan dari HGB)
+"17": 80_000_000, // 17 - Pemberian HGB di atas Tanah Negara
+"18": 80_000_000, // 18 - Pemberian HGU (Hak Guna Usaha)
+"19": 80_000_000, // 19 - Pemberian Hak Pakai
+"20": 80_000_000, // 20 - Pemberian Hak Pengelolaan (HPL)
+
+// --- EXISTING (21-35) ---
+"21": 80_000_000, "22": 80_000_000, "23": 80_000_000, "24": 300_000_000, 
+"25": 80_000_000, "26": 80_000_000, "27": 80_000_000, 
+"28": 40_000_000, // Historis Sesuai Mentor
+"29": 49_000_000, // Historis Sesuai Mentor
+"30": 80_000_000, "31": 80_000_000, "32": 80_000_000, "33": 80_000_000, 
+"34": 0,          // Bebas Sesuai Mentor
+"35": 80_000_000,
+
+// --- GAP 36-40 (Kasus Khusus & Transisi) ---
+"36": 80_000_000, // 36 - Konversi Hak Lama (Girik/Tanah Adat)
+"37": 80_000_000, // 37 - Eksekusi Hak Tanggungan (Lelang Bank)
+"38": 80_000_000, // 38 - Pelepasan Hak untuk Kepentingan Umum (Ganti Rugi)
+"39": 80_000_000, // 39 - Tukar Menukar Aset Daerah (Ruislag)
+"40": 80_000_000, // 40 - Perolehan Hak karena Penataan Ruang/Konsolidasi
 };
 
 function normalizeJenisPerolehanCode(raw: string | null | undefined): string {
@@ -780,8 +799,11 @@ export default function BookingSspdTambahUnified({ defaultEntity, listPath }: Bo
 
         const jwpRaw = str(d, "jenis_wajib_pajak");
         const isPerorangan = jwpRaw.toLowerCase().includes("perorangan");
-        if (!isPerorangan && base) {
-          const resCb = await fetch(`${base}/api/ppat/booking/${encodeURIComponent(nb)}/callback`, { credentials: "include" });
+        if (!isPerorangan) {
+          const urlCb = base
+            ? `${base}/api/ppat/booking/${encodeURIComponent(nb)}/callback`
+            : `/api/ppat/booking/${encodeURIComponent(nb)}/callback`;
+          const resCb = await fetch(urlCb, { credentials: "include" });
           const jCb = await resCb.json().catch(() => ({}));
           if (resCb.ok && jCb?.success && jCb?.data && typeof jCb.data === "object") {
             d = { ...d, ...(jCb.data as Record<string, unknown>) };
