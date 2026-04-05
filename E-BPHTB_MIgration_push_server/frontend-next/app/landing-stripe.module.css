@@ -1,0 +1,522 @@
+/* ==========================================================================
+   Landing — Stripe Sessions inspired, tema BPHTB, palette navy
+   ========================================================================== */
+
+/* Hero: large type, Stripe-style, legible & tenang */
+.hero {
+  padding: calc(80px + 2.5rem) 5% 4rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  animation: heroFadeIn 0.9s ease forwards;
+}
+
+@keyframes heroFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.heroHeadline {
+  font-size: clamp(2.5rem, 6.5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: #fff;
+  margin: 0 0 0.75rem;
+  max-width: 22ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  .heroHeadline { max-width: 32ch; }
+}
+
+@media (min-width: 1024px) {
+  .heroHeadline { max-width: 42ch; }
+}
+
+@media (min-width: 1280px) {
+  .heroHeadline { max-width: 48ch; }
+}
+
+.heroHeadlineAccent {
+  display: block;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.heroSubline {
+  font-size: clamp(1.0625rem, 2.4vw, 1.3125rem);
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 1.75rem;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.45;
+}
+
+.heroCopy {
+  font-size: clamp(1rem, 1.6vw, 1.125rem);
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.7;
+  max-width: 52ch;
+  margin: 0 auto 2.25rem;
+}
+
+@media (min-width: 768px) {
+  .heroCopy { max-width: 65ch; }
+}
+
+@media (min-width: 1024px) {
+  .heroCopy { max-width: 72ch; }
+}
+
+@media (min-width: 1280px) {
+  .heroCopy { max-width: 78ch; }
+}
+
+.heroCtaWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 1.875rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(135deg, #415a77 0%, #1b263b 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 4px 18px rgba(27, 38, 59, 0.35);
+}
+
+.ctaPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(27, 38, 59, 0.45);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ctaSecondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-2px);
+}
+
+/* Section: Why / Mengapa E-BPHTB */
+.section {
+  padding: 3.5rem 5% 4.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sectionTitle {
+  font-size: clamp(1.625rem, 3.2vw, 2.25rem);
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  margin: 0 0 0.625rem;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.sectionSubtitle {
+  font-size: 1.0625rem;
+  color: rgba(255, 255, 255, 0.68);
+  text-align: center;
+  margin: 0 0 2.75rem;
+  max-width: 45ch;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.55;
+}
+
+@media (min-width: 768px) {
+  .sectionSubtitle { max-width: 58ch; }
+}
+
+@media (min-width: 1024px) {
+  .sectionSubtitle { max-width: 65ch; }
+}
+
+@media (min-width: 1280px) {
+  .sectionSubtitle { max-width: 72ch; }
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+  transition: background 0.28s ease, border-color 0.28s ease, transform 0.28s ease;
+}
+
+.card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.cardTitle {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.cardText {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Hero visual — ilustrasi pajak, ikut lebar di layar besar */
+.heroVisual {
+  margin-top: 2.5rem;
+  border-radius: 16px;
+  overflow: hidden;
+  max-width: 540px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 768px) {
+  .heroVisual { max-width: 600px; }
+}
+
+@media (min-width: 1024px) {
+  .heroVisual { max-width: 680px; }
+}
+
+@media (min-width: 1280px) {
+  .heroVisual { max-width: 720px; }
+}
+
+.heroVisual img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* ==========================================================================
+   Ambient / Interactive layers — z-index untuk stacking
+   ========================================================================== */
+.landingMain {
+  position: relative;
+  z-index: 1;
+}
+
+/* Wave divider — scroll dengan konten (bukan fix viewport), subtle */
+.waveDivider {
+  width: 100%;
+  height: 72px;
+  margin: -1px 0 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.waveDivider svg {
+  width: calc(100% + 2px);
+  height: 72px;
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waveDivider svg {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Portrait / HP — landing page (max-width: 640px)
+   ========================================================================== */
+@media (max-width: 640px) {
+  .hero {
+    padding: calc(60px + 1.5rem) 4% 2.5rem;
+  }
+
+  .heroCtaWrap {
+    flex-direction: column;
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+  }
+
+  .ctaPrimary,
+  .ctaSecondary {
+    width: 100%;
+  }
+
+  .heroVisual {
+    margin-top: 1.5rem;
+    max-width: 100%;
+  }
+
+  .section {
+    padding: 2rem 4% 3rem;
+  }
+
+  .waveDivider {
+    height: 48px;
+  }
+
+  .waveDivider svg {
+    height: 48px;
+  }
+}
+
+/* Card subtle glow on hover (enhanced) */
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at 50% 50%,
+    rgba(255, 255, 255, 0.05) 0%,
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   Public support — floating button + modal
+   -------------------------------------------------------------------------- */
+.supportFab {
+  position: fixed;
+  /* keep FAB above landing footer / brand */
+  bottom: calc(1.25rem + 56px);
+  right: 1.25rem;
+  z-index: 90;
+  padding: 0.75rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(15, 118, 110, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.supportFab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(15, 118, 110, 0.55);
+}
+
+.supportBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 23, 42, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.supportModal {
+  width: 100%;
+  max-width: 480px;
+  max-height: min(90vh, 640px);
+  overflow-y: auto;
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 1.35rem 1.5rem 1.5rem;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+  color: #0f172a;
+}
+
+.supportModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.supportModalTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.supportClose {
+  border: none;
+  background: transparent;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0 0.25rem;
+}
+
+.supportLead {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.supportForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.supportLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.supportInput,
+.supportTextarea {
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+}
+
+.supportTextarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.supportFieldError {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #b91c1c;
+}
+
+.supportErrorBanner {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.875rem;
+}
+
+.supportActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.supportPrimaryBtn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: #0d9488;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supportPrimaryBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.supportSecondaryBtn {
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.supportSuccess {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.supportSuccess p {
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.supportTicketCode {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: #ecfdf5;
+  color: #047857;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.supportMuted {
+  font-size: 0.85rem;
+  color: #64748b !important;
+}
+
+@media (max-width: 480px) {
+  .supportFab {
+    display: none;
+  }
+}

@@ -1,1 +1,0 @@
-# KTP NER service package

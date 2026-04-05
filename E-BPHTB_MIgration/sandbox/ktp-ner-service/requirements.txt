@@ -1,7 +1,0 @@
-# Minimal: API + placeholder NER (regex). Cukup untuk kontrak & integrasi nanti.
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
-pydantic>=2.0.0
-
-# Opsional — pasang terpisah untuk IndoROBERTa: pip install -r requirements-ml.txt
-# torch, transformers, datasets membutuhkan disk & sering GPU untuk latih/infer cepat

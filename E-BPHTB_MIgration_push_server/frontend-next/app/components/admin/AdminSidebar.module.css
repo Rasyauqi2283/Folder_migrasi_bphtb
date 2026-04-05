@@ -1,0 +1,140 @@
+/* ==========================================================================
+   AdminSidebar — hover response, better dropdown, portrait HP
+   ========================================================================== */
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: var(--color_font_muted);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  background: transparent;
+  border-top-right-radius: 20px;
+  border-bottom-right-radius: 20px;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  width: 100%;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  color: var(--accent_hover);
+  background: var(--surface_light);
+  border-left-color: var(--accent);
+}
+
+.menuItemActive {
+  color: var(--accent_hover);
+  background: var(--surface_light);
+  border-left-color: var(--accent);
+}
+
+.menuItemCollapsed {
+  padding: 12px;
+  justify-content: center;
+}
+
+.iconWrap {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+/* Dropdown content — lebih baik */
+.dropdownContent {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 20px;
+  margin-top: 4px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border_sidebar);
+}
+
+.dropdownContentOpen {
+  max-height: 320px;
+  opacity: 1;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.dropdownContentClosed {
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+}
+
+.dropdownLink {
+  padding: 10px 14px;
+  color: var(--color_font_dim);
+  text-decoration: none;
+  font-size: 14px;
+  border-radius: 8px;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  border-left: 2px solid transparent;
+}
+
+.dropdownLink:hover {
+  color: var(--accent_hover);
+  background: var(--surface_light);
+  border-left-color: var(--accent);
+}
+
+.dropdownLinkActive {
+  color: var(--accent_hover);
+  background: var(--surface_light);
+  border-left-color: var(--accent);
+}
+
+.dropdownDeco {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Aside base — portrait override (header 64px) */
+.asideBase {
+  /* Default values from baseAsideStyle; portrait overrides below */
+}
+
+/* Portrait / HP — sidebar collapsed: keluar viewport; expanded: solid bg + dropdown ok */
+@media (max-width: 640px) {
+  .asideBase {
+    height: calc(100vh - 64px - 40px) !important;
+    margin-top: 64px !important;
+    transition: transform 0.3s ease, visibility 0.3s ease;
+    /* Solid background agar menu & submenu terbaca (tidak transparan) */
+    background: var(--base_dark) !important;
+  }
+
+  .asideBase.asideCollapsed {
+    transform: translateX(-100%);
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .menuItem {
+    padding: 10px 14px;
+  }
+
+  .dropdownContent {
+    margin-left: 12px;
+    padding-left: 6px;
+  }
+
+  .dropdownLink {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* Portrait: pastikan dropdown terbuka terlihat dan bisa di-tap */
+  .dropdownContentOpen {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+}

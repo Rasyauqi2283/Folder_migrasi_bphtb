@@ -1,0 +1,91 @@
+/* ==========================================================================
+   Header — responsive portrait / HP
+   ========================================================================== */
+
+/* Base: layout wrapper */
+.headerMain {
+  padding: 0 20px;
+  height: 80px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Bappenda block — sembunyikan di portrait/HP (hemat ruang) */
+.headerBappendaBlock {
+  display: flex;
+  align-items: center;
+}
+
+/* Title — truncate di HP */
+.headerTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Member button — label "member" disembunyikan di HP */
+.memberLabel {
+  font-size: 12px;
+}
+
+.memberName {
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+/* Profile dropdown — posisi top ikut tinggi header */
+.headerProfileDropdown {
+  top: 80px;
+}
+
+/* ========== Portrait / HP (max-width: 640px) ========== */
+@media (max-width: 640px) {
+  .headerMain {
+    padding: 0 12px;
+    height: 64px !important;
+  }
+
+  .headerLeft {
+    gap: 6px;
+  }
+
+  .headerBappendaBlock {
+    display: none !important;
+  }
+
+  .headerTitle {
+    font-size: 16px !important;
+    max-width: 120px;
+    margin-left: 8px !important;
+    padding-left: 10px !important;
+    border-left-width: 1px !important;
+  }
+
+  .headerRight {
+    gap: 10px;
+  }
+
+  .memberLabel {
+    display: none !important;
+  }
+
+  .memberName {
+    font-size: 12px;
+    margin-top: 0;
+  }
+
+  .headerProfileDropdown {
+    top: 64px !important;
+  }
+}

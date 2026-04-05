@@ -1,0 +1,18 @@
+/* ==========================================================================
+   Protected Main — portrait HP responsive (semua halaman)
+   ========================================================================== */
+
+.main {
+  overflow: auto;
+  background: var(--main_bg);
+  color: var(--color_font_main);
+}
+
+/* Portrait / HP (max-width: 640px) */
+@media (max-width: 640px) {
+  .main {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    min-height: calc(100vh - 64px - 40px) !important;
+  }
+}

@@ -1,0 +1,303 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "../../context/AuthContext";
+import GreetingCard from "../../components/GreetingCard";
+import { getApiBase } from "../../../lib/api";
+import { getCountdownToMonthTenth, isInPreDeadlineCountdownWindow } from "../../../lib/ppatReportingDeadline";
+import QuotaCalendar from "../../components/QuotaCalendar";
+
+const CARD_STYLES = {
+  wrapper: {
+    background: "var(--card_bg)",
+    border: "1px solid var(--card_border)",
+    borderRadius: 12,
+    padding: 24,
+    boxShadow: "var(--card_shadow)",
+    transition: "all 0.3s ease",
+    cursor: "pointer",
+    position: "relative" as const,
+    overflow: "hidden",
+  },
+  iconBlue: {
+    background:
+      "linear-gradient(135deg, var(--accent_hover) 0%, var(--accent) 100%)",
+  },
+  iconGreen: {
+    background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+  },
+  iconOrange: {
+    background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
+  },
+  iconPurple: {
+    background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+  },
+};
+
+export default function PPATDashboardPage() {
+  const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [counts, setCounts] = useState({
+    bookingBadan: 0,
+    bookingPerorangan: 0,
+    rekapDiserahkan: 0,
+    rincianBulanan: 0,
+    laporanRekap: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const qsBadan = new URLSearchParams({
+          page: "1",
+          limit: "1",
+          jenis_wajib_pajak: "Badan Usaha",
+        });
+        const qsPerorangan = new URLSearchParams({
+          page: "1",
+          limit: "1",
+          jenis_wajib_pajak: "Perorangan",
+        });
+        const qsRekap = new URLSearchParams({ page: "1", limit: "1" });
+        const base = getApiBase();
+        const [badanRes, perorRes, rekapRes] = await Promise.all([
+          fetch(`${base}/api/ppat/load-all-booking?${qsBadan}`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/ppat/load-all-booking?${qsPerorangan}`, { credentials: "include" }).catch(() => null),
+          fetch(`${base}/api/ppat/rekap/diserahkan?${qsRekap}`, { credentials: "include" }).catch(() => null),
+        ]);
+        const readTotal = async (res: Response | null): Promise<number> => {
+          if (!res?.ok) return 0;
+          const js = await res.json().catch(() => ({})) as { pagination?: { total?: number; totalCount?: number }; data?: unknown[]; rows?: unknown[] };
+          if (js?.pagination && Number.isFinite(Number(js.pagination.total))) return Number(js.pagination.total);
+          if (js?.pagination && Number.isFinite(Number(js.pagination.totalCount))) return Number(js.pagination.totalCount);
+          if (Array.isArray(js?.data)) return js.data.length;
+          if (Array.isArray(js?.rows)) return js.rows.length;
+          return 0;
+        };
+        const bookingBadan = await readTotal(badanRes);
+        const bookingPerorangan = await readTotal(perorRes);
+        const rekapTotal = await readTotal(rekapRes);
+        let laporanRekap = 0;
+        try {
+          const raw = typeof localStorage !== "undefined" ? localStorage.getItem("laporanRekapData") : null;
+          const arr = raw ? JSON.parse(raw) : [];
+          laporanRekap = Array.isArray(arr) ? arr.length : 0;
+        } catch {
+          // ignore
+        }
+        if (!cancelled) {
+          setCounts({
+            bookingBadan,
+            bookingPerorangan,
+            rekapDiserahkan: rekapTotal,
+            rincianBulanan: rekapTotal,
+            laporanRekap,
+          });
+        }
+      } catch (_) {
+        if (!cancelled) setCounts((c) => c);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const cards = [
+    {
+      label: "Booking SSPD Badan",
+      value: counts.bookingBadan,
+      sub: "Total booking badan usaha",
+      href: "/pu/booking-sspd/badan",
+      icon: "🏢",
+      iconClass: "blue" as const,
+    },
+    {
+      label: "Booking SSPD Perorangan",
+      value: counts.bookingPerorangan,
+      sub: "Total booking perorangan",
+      href: "/pu/booking-sspd/perorangan",
+      icon: "👤",
+      iconClass: "green" as const,
+    },
+    {
+      label: "Rekap Diserahkan",
+      value: counts.rekapDiserahkan,
+      sub: "Total berkas berstatus Diserahkan",
+      href: "/pu/laporan/rekap",
+      icon: "📦",
+      iconClass: "orange" as const,
+    },
+    {
+      label: "Rincian Laporan Bulanan pu",
+      value: counts.rincianBulanan,
+      sub: "Rincian berkas per bulan",
+      href: "/pu/laporan/rincian",
+      icon: "📊",
+      iconClass: "purple" as const,
+    },
+    {
+      label: "Laporan Rekap pu",
+      value: counts.laporanRekap,
+      sub: "Total laporan rekap bulanan",
+      href: "/pu/laporan/rekap",
+      icon: "📋",
+      iconClass: "orange" as const,
+    },
+  ];
+
+  const iconStyle = (c: (typeof cards)[0]) =>
+    c.iconClass === "orange"
+      ? CARD_STYLES.iconOrange
+      : c.iconClass === "green"
+        ? CARD_STYLES.iconGreen
+        : c.iconClass === "purple"
+          ? CARD_STYLES.iconPurple
+          : CARD_STYLES.iconBlue;
+
+  return (
+    <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+      <GreetingCard
+        nama={user?.nama || user?.userid || "Pengguna"}
+        pageLabel={user?.divisi || "pu"}
+        subtitle="Ingin melakukan apa hari ini, Apakah Kamu Ingin Melihat Validasi?"
+        gender={user?.gender ?? undefined}
+        rightContent={<QuotaCalendar value={selectedDate} onChange={setSelectedDate} />}
+      />
+
+      {isInPreDeadlineCountdownWindow() && (() => {
+        const cd = getCountdownToMonthTenth();
+        if (!cd) return null;
+        const urgent = cd.urgent;
+        return (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: 18,
+              borderRadius: 14,
+              border: `2px solid ${urgent ? "#dc2626" : "#eab308"}`,
+              background: urgent ? "rgba(239,68,68,0.1)" : "rgba(234,179,8,0.12)",
+            }}
+          >
+            <strong>Segera laporkan akta Anda!</strong> Sisa waktu: {cd.days} hari {cd.hours} jam sebelum akses
+            pembuatan SSPD baru diblokir (batas tgl 10).{" "}
+            <Link href="/pu/laporan/unggah-laporan-bulanan" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Unggah laporan
+            </Link>
+            {" · "}
+            <Link href="/pu/laporan/monitoring-keterlambatan" style={{ color: "var(--accent)" }}>
+              Monitoring
+            </Link>
+          </div>
+        );
+      })()}
+
+      {loading ? (
+        <p
+          style={{
+            color: "var(--color_font_main_muted)",
+            marginBottom: 24,
+          }}
+        >
+          Memuat...
+        </p>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 20,
+            marginBottom: 24,
+          }}
+        >
+          {cards.map((c) => (
+            <Link
+              key={c.href + c.label}
+              href={c.href}
+              style={{
+                ...CARD_STYLES.wrapper,
+                borderLeft: "4px solid transparent",
+                borderLeftColor:
+                  c.iconClass === "orange"
+                    ? "#d97706"
+                    : c.iconClass === "green"
+                      ? "#059669"
+                      : c.iconClass === "purple"
+                        ? "#7c3aed"
+                        : "var(--accent)",
+                textDecoration: "none",
+                color: "var(--color_font_main)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 20,
+                    ...iconStyle(c),
+                  }}
+                >
+                  {c.icon}
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 600 }}>{c.label}</span>
+              </div>
+              <div
+                style={{
+                  fontSize: 36,
+                  fontWeight: 700,
+                  margin: "8px 0",
+                  color: "var(--color_font_main)",
+                }}
+              >
+                {c.value}
+              </div>
+              <div
+                style={{
+                  fontSize: 14,
+                  color: "var(--color_font_main_muted)",
+                  marginBottom: 12,
+                }}
+              >
+                {c.sub}
+              </div>
+              <div
+                style={{
+                  borderTop: "1px solid var(--border_color)",
+                  paddingTop: 16,
+                  marginTop: 16,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                  }}
+                >
+                  Lihat →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

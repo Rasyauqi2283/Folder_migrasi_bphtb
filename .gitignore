@@ -31,3 +31,7 @@ E-BPHTB_MIgration/database/
 E-BPHTB_MIgration/scripts/
 E-BPHTB_MIgration/MIGRATION_STATUS.md
 E-BPHTB_MIgration/full_total_sql_created.sql
+
+# Arsip lokal / salinan asli (jangan ikut push)
+E-BPHTB_versiAsli/
+git_status_out.txt

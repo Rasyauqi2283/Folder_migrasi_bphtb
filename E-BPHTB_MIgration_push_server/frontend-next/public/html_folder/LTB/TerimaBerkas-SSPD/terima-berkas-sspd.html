@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LTB| Terima Berkas SSPD</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/sidebar-smooth-shift.css">
+    <!--data yang difokuskan-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/tolak_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <!---->
+
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/universal-alert.css">
+
+    <!-- Notification Styles -->
+    <style>
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .notification-message {
+            font-size: 12px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+
+        table thead th {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+        }
+
+        /* Badge for new data indicator */
+        .new-data-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Sound notification */
+        .notification-sound {
+            display: none;
+        }
+
+        /* ========== REAL-TIME CONTROLS ========== */
+        .real-time-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+        
+        .real-time-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .indicator-dot.paused {
+            background: #6c757d;
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        /* Button Styling - View Dokumen and Tolak */
+        .btn.viewpdf {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .btn.viewpdf:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn.viewpdf:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn.tolak {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            font-size: 14px;
+        }
+        
+        .btn.tolak:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+        }
+        
+        .btn.tolak:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Button Styling - Kirim (Send) Button - matching hasil_transaksi.html approve-btn style */
+        .btn-kirim-document {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            white-space: nowrap;
+        }
+        
+        .btn-kirim-document:hover:not(:disabled) {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+        
+        .btn-kirim-document:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        
+        .btn-kirim-document:disabled {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: rgba(255, 255, 255, 0.7);
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+        }
+        
+        /* Pagination Styles - Dark Theme to match table */
+        .pagination-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%);
+            border-radius: 12px;
+            border: 1px solid #1f2937;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,.35);
+            width: 95%;
+            box-sizing: border-box;
+        }
+        
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .page-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+        }
+        
+        .page-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .page-btn:disabled {
+            background: rgba(31, 41, 55, 0.5);
+            color: #6b7280;
+            cursor: not-allowed;
+            opacity: 0.5;
+            border: 1px solid #374151;
+        }
+        
+        .page-numbers {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .page-number {
+            background: rgba(17, 24, 39, 0.8);
+            color: #f3f4f6;
+            border: 1px solid #374151;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .page-number:hover:not(.active) {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+        
+        .page-number.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .page-ellipsis {
+            color: #9ca3af;
+            padding: 8px 4px;
+            font-weight: 600;
+        }
+        
+        .page-info {
+            color: #f3f4f6;
+            font-size: 13px;
+            font-weight: 500;
+            margin-left: 12px;
+            padding: 8px 12px;
+            background: rgba(59, 130, 246, 0.15);
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .pagination-controls {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .page-info {
+                margin-left: 0;
+                text-align: center;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="ltb-page">
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Terima Berkas SSPD</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+<div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <div class="profile-header">
+                <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic">
+                <div class="profile-info">
+                    <h4><span class="nama">Load</span></h4>
+                    <p><span class="userid">Load</span></p>
+                </div>
+            </div>
+            <div class="overlay-buttons">
+                <a href="../../../profile.html">
+                <button class="profile-btn" id="profileButton"> 
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="currentColor"/>
+                        <path d="M12 14C7.58172 14 4 17.5817 4 22H20C20 17.5817 16.4183 14 12 14Z" fill="currentColor"/>
+                    </svg>
+                    Profil
+                </button>
+                </a>
+                <button class="AUT logout-button">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 16L21 12M21 12L17 8M21 12H7M13 16V17C13 18.6569 11.6569 20 10 20H6C4.34315 20 3 18.6569 3 17V7C3 5.34315 4.34315 4 6 4H10C11.6569 4 13 5.34315 13 7V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Keluar
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../ltb-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-folder sidebar-icon"></i>
+                <span class="sidebar-text">Terima Berkas SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../TerimaBerkas-SSPD/terima-berkas-sspd.html">Permohonan Validasi SSPD</a>
+        </div>
+    </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div href="../../../login.html" class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text" style="cursor: pointer;">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main class="main-content">
+    <button class="btn viewpdf" onclick="viewDocument()">View Dokumen</button> <!-- Tombol untuk melihat dokumen -->
+    <button class="btn tolak" id="tolakdokument" onclick="showRejectOverlay()">Tolak</button>
+    <!-- Tombol untuk melihat dokumen -->
+    <!-- Dropdown untuk memilih file -->
+    <div class="table-toolbar">
+        <input type="text" id="ltbSearch" class="search-input" placeholder="Cari..." oninput="filterTableLTB()"/>
+        
+        <div class="real-time-controls">
+            <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+                <i class="fa fa-pause"></i> Pause Real-time
+            </button>
+            <div class="real-time-indicator" id="realTimeIndicator">
+                <div class="indicator-dot"></div>
+                <span>Real-time</span>
+            </div>
+        </div>
+    </div>
+    <div class="table-scroll">
+    <table id="ltbBerkasTable" class="excel-table">
+        <thead>
+            <tr>
+                <th>No. Registrasi</th>
+                <th>No. Booking</th>
+                <th>NOP PBB</th>
+                <th>Nama Wajib Pajak</th>
+                <th>Nama Pemilik Objek Pajak</th>
+                <th>Tanggal Terima</th>
+                <th>Track Status</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+    </table>
+    </div>
+    <!-- Pagination Container -->
+    <div id="ltbPagination" class="pagination-container"></div>
+</main>
+
+
+<!-- Tempat untuk menampilkan PDF -->
+<div id="pdfContainer">
+    <!-- PDF akan dimuat di sini setelah tombol "View Dokumen" diklik -->
+</div>
+
+<!-- Overlay untuk konfirmasi penolakan -->
+<div id="overlay" class="overlay_notifikasi">
+    <div class="overlay-content-tolak">
+        <p>Apakah Anda yakin ingin menolak dokumen ini?</p>
+        <textarea id="rejectionReason" placeholder="Masukkan alasan penolakan"></textarea>
+        <div>
+            <button id="confirmReject" onclick="confirmReject()">Iya</button>
+            <button id="cancelReject" onclick="cancelReject()">Batal</button>
+        </div>
+    </div>
+</div>
+
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+
+
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+<script src="../../../design-n-script/script_frontback_java/script_pentingFront/main_layout.js"></script>
+<script src="../../../design-n-script/script_frontback_java/ltb_script_tampilan.js"></script>
+  <!--backend-->
+  <!-- Universal Alert System (must load before scripts that use it) -->
+  <script src="../../../design-n-script/script_backend/universal-alert.js"></script>
+  <script src="../../../design-n-script/script-backend/tb_ppatksspd.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
+  <script type="module">
+    import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+
+  <!-- Real-time monitoring script -->
+  <script>
+    (function(){
+      // Real-time notification system for LTB
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+      
+      // Track user activity
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        
+        // Reset interaction flag after 5 seconds of inactivity
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) {
+            userIsInteracting = false;
+          }
+        }, 5000);
+      }
+      
+      // Function to start real-time monitoring
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+        }
+        
+        // Check for new data every 5 seconds (reduced frequency)
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          
+          // Skip if user is actively interacting
+          if (userIsInteracting) {
+            console.log('⏸️ Skipping LTB real-time check - user is interacting');
+            return;
+          }
+          
+          try {
+            await checkForNewData();
+          } catch (error) {
+            console.error('❌ Error in LTB real-time monitoring:', error);
+          }
+        }, 5000); // Increased from 3 to 5 seconds
+        
+        console.log('🔄 LTB Real-time monitoring started');
+      }
+      
+      // Function to stop real-time monitoring
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+        console.log('⏹️ LTB Real-time monitoring stopped');
+      }
+      
+      // Function to check for new data
+      async function checkForNewData() {
+        try {
+          // Get current data count from the table
+          const tbody = document.querySelector('#ltbBerkasTable tbody');
+          const currentCount = tbody ? tbody.children.length : 0;
+          
+          // If count increased, show notification and reload with debouncing
+          if (currentCount > lastDataCount && lastDataCount > 0) {
+            console.log(`🆕 New LTB data detected! Count: ${lastDataCount} → ${currentCount}`);
+            lastDataCount = currentCount;
+            
+            // Clear existing debounce timer
+            if (refreshDebounceTimer) {
+              clearTimeout(refreshDebounceTimer);
+            }
+            
+            // Debounce the refresh - only refresh if no user activity for 2 seconds
+            refreshDebounceTimer = setTimeout(async () => {
+              if (!userIsInteracting) {
+                // Show subtle notification instead of intrusive one
+                showSubtleLTBNotification();
+                
+                // Reload the table data
+                if (window.loadLTBData) {
+                  window.loadLTBData();
+                }
+              } else {
+                console.log('⏸️ Skipping LTB refresh - user is still interacting');
+              }
+            }, 2000); // Wait 2 seconds before refreshing
+            
+          } else if (currentCount !== lastDataCount) {
+            // Update count even if it decreased
+            lastDataCount = currentCount;
+          }
+        } catch (error) {
+          console.error('❌ Error checking for new LTB data:', error);
+        }
+      }
+      
+      // Function to show subtle LTB notification (less intrusive)
+      function showSubtleLTBNotification() {
+        // Remove existing indicators
+        const existingIndicator = document.querySelector('.subtle-ltb-notification');
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
+        
+        // Create subtle indicator
+        const indicator = document.createElement('div');
+        indicator.className = 'subtle-ltb-notification';
+        indicator.innerHTML = `
+          <div class="subtle-content">
+            <i class="fa fa-circle" style="color: #28a745; font-size: 8px; margin-right: 6px;"></i>
+            <span>Data LTB baru tersedia</span>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('subtle-ltb-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'subtle-ltb-notification-styles';
+          style.textContent = `
+            .subtle-ltb-notification {
+              position: fixed;
+              top: 80px;
+              right: 20px;
+              background: rgba(40, 167, 69, 0.9);
+              color: white;
+              border-radius: 20px;
+              padding: 8px 16px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              z-index: 9998;
+              animation: slideInRight 0.3s ease-out;
+              font-size: 12px;
+              font-weight: 500;
+              backdrop-filter: blur(10px);
+            }
+            
+            .subtle-content {
+              display: flex;
+              align-items: center;
+            }
+            
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(indicator);
+        
+        // Auto remove after 3 seconds (shorter duration)
+        setTimeout(() => {
+          if (indicator.parentElement) {
+            indicator.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+              if (indicator.parentElement) {
+                indicator.remove();
+              }
+            }, 300);
+          }
+        }, 3000);
+      }
+      
+      // Function to show new data notification (kept for manual refresh)
+      function showNewDataNotification() {
+        // Remove existing notification
+        const existingNotification = document.querySelector('.new-data-notification');
+        if (existingNotification) {
+          existingNotification.remove();
+        }
+        
+        // Create new notification
+        const notification = document.createElement('div');
+        notification.className = 'new-data-notification';
+        notification.innerHTML = `
+          <div class="notification-content">
+            <i class="fa fa-bell" style="color: #28a745; margin-right: 8px;"></i>
+            <span>Data baru tersedia di LTB!</span>
+            <button class="notification-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+          </div>
+        `;
+        
+        // Add styles
+        if (!document.getElementById('new-data-notification-styles')) {
+          const style = document.createElement('style');
+          style.id = 'new-data-notification-styles';
+          style.textContent = `
+            .new-data-notification {
+              position: fixed;
+              top: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: #d4edda;
+              border: 1px solid #c3e6cb;
+              border-radius: 8px;
+              padding: 12px 16px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              z-index: 10000;
+              animation: slideInDown 0.3s ease-out;
+            }
+            
+            .notification-content {
+              display: flex;
+              align-items: center;
+              font-size: 14px;
+              color: #155724;
+            }
+            
+            .notification-close {
+              background: none;
+              border: none;
+              font-size: 16px;
+              cursor: pointer;
+              color: #155724;
+              margin-left: 12px;
+              padding: 0;
+              width: 20px;
+              height: 20px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            
+            .notification-close:hover {
+              color: #0c5460;
+            }
+            
+            @keyframes slideInDown {
+              from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }, 5000);
+      }
+      
+      // Function to toggle real-time monitoring
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+      
+      // Function to update real-time button state
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+        
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+          }
+        }
+        
+        if (dot) {
+          if (isEnabled) {
+            dot.classList.remove('paused');
+          } else {
+            dot.classList.add('paused');
+          }
+        }
+      }
+      
+      // Initialize real-time monitoring
+      function initializeRealTime() {
+        // Get initial count
+        const tbody = document.querySelector('#ltbBerkasTable tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        
+        startRealTimeMonitoring();
+      }
+      
+      // Expose functions to global scope
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
+      
+      // Initialize when page loads
+      document.addEventListener('DOMContentLoaded', () => {
+        // Wait a bit for the table to load
+        setTimeout(() => {
+          initializeRealTime();
+        }, 1000);
+        
+        // Track user interactions to prevent unwanted refreshes
+        const table = document.querySelector('#ltbBerkasTable');
+        if (table) {
+          // Track clicks on buttons and interactive elements
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+              trackUserActivity();
+              console.log('👆 User clicked LTB button - tracking activity');
+            }
+          });
+          
+          // Track mouse movements over the table
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        
+        // Track clicks on real-time toggle button
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) {
+          realTimeToggle.addEventListener('click', trackUserActivity);
+        }
+        
+        // Track search input
+        const searchInput = document.getElementById('ltbSearch');
+        if (searchInput) {
+          searchInput.addEventListener('focus', trackUserActivity);
+          searchInput.addEventListener('input', trackUserActivity);
+        }
+      });
+    })();
+  </script>
+
+  <script>
+    // Ping notification system for LTB (using poller only)
+    let lastPingCheck = new Date().toISOString();
+    let pingPollingInterval = null;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      // Start ping polling
+      startPingPolling();
+    });
+    
+    // Start ping polling
+    function startPingPolling() {
+      if (pingPollingInterval) {
+        clearInterval(pingPollingInterval);
+      }
+      
+      console.log('🔄 Starting LTB ping polling...');
+      
+      pingPollingInterval = setInterval(async () => {
+        try {
+          console.log('🔍 LTB polling for new pings...');
+          const response = await fetch(`/api/admin/notification-warehouse/poll-ping?division=ltb&last_check=${encodeURIComponent(lastPingCheck)}`);
+          
+          if (!response.ok) {
+            console.warn('⚠️ LTB polling response not OK:', response.status);
+            return;
+          }
+          
+          const data = await response.json();
+          console.log('📊 LTB polling response:', data);
+          
+          if (data.success && data.notifications && data.notifications.length > 0) {
+            console.log(`🔔 LTB received ${data.notifications.length} new ping notifications`);
+            
+            data.notifications.forEach(notification => {
+              console.log('📨 LTB processing notification:', notification);
+              showLTBPingNotification(notification);
+            });
+            
+            // Refresh table data
+            if (window.loadLTBData) {
+              window.loadLTBData();
+            }
+          } else {
+            console.log('📭 LTB no new notifications');
+          }
+          
+          lastPingCheck = data.last_check;
+        } catch (error) {
+          console.error('❌ Error polling ping notifications:', error);
+        }
+      }, 3000); // Poll every 3 seconds
+      
+      console.log('✅ LTB ping polling started');
+    }
+    
+    // Stop ping polling
+    function stopPingPolling() {
+      if (pingPollingInterval) {
+        clearInterval(pingPollingInterval);
+        pingPollingInterval = null;
+        console.log('⏹️ LTB ping polling stopped');
+      }
+    }
+    
+    // Custom LTB ping notification
+    function showLTBPingNotification(data) {
+      const { nobooking, no_registrasi, message } = data;
+      
+      const notification = document.createElement('div');
+      notification.className = 'ltb-ping-notification';
+      notification.innerHTML = `
+        <div class="ltb-ping-content">
+          <div class="ltb-ping-header">
+            <i class="fa fa-bell" style="color: #28a745; margin-right: 8px;"></i>
+            <span class="ltb-ping-title">Ping dari Admin</span>
+            <button class="ltb-ping-close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
+          </div>
+          <div class="ltb-ping-body">
+            <p><strong>No. Booking:</strong> ${nobooking}</p>
+            <p><strong>No. Registrasi:</strong> ${no_registrasi}</p>
+            <p><strong>Pesan:</strong> ${message}</p>
+          </div>
+          <div class="ltb-ping-footer">
+            <small>LTB Division • ${new Date().toLocaleTimeString()}</small>
+            <div class="ltb-ping-countdown">
+              <small>Notifikasi akan hilang dalam <span class="countdown-timer">60</span> detik</small>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Add LTB-specific styles
+      if (!document.getElementById('ltb-ping-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ltb-ping-styles';
+        style.textContent = `
+          .ltb-ping-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #fff;
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(40,167,69,0.3);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+            max-width: 400px;
+            min-width: 300px;
+          }
+          
+          .ltb-ping-content {
+            padding: 16px;
+          }
+          
+          .ltb-ping-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+          }
+          
+          .ltb-ping-title {
+            font-weight: 600;
+            color: #28a745;
+          }
+          
+          .ltb-ping-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          
+          .ltb-ping-close:hover {
+            color: #dc3545;
+          }
+          
+          .ltb-ping-body p {
+            margin: 4px 0;
+            font-size: 14px;
+          }
+          
+          .ltb-ping-footer {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #e9ecef;
+            color: #6c757d;
+            font-size: 12px;
+          }
+          
+          .ltb-ping-countdown {
+            margin-top: 8px;
+            text-align: center;
+            color: #28a745;
+            font-weight: 600;
+          }
+          
+          .countdown-timer {
+            font-weight: bold;
+            color: #28a745;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(notification);
+      
+      // Countdown timer
+      let timeLeft = 60;
+      const countdownElement = notification.querySelector('.countdown-timer');
+      
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (countdownElement) {
+          countdownElement.textContent = timeLeft;
+        }
+        
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (notification.parentElement) {
+            notification.remove();
+          }
+        }
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Peneliti| Paraf Kasie SSPD Online</title>
+  <link rel="icon" href="../../../asset/TitleE-bphtb.png" type="image/png">
+    <!---->
+  <link rel="stylesheet" href="../../../design-n-script/design_css/asset_pelengkap.css">
+    <!--design variant-->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_dashboard.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/header_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/sidebar-dashboard/design_sidebar.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/sidebar-smooth-shift.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/table-utama.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_variant/Main-design_isi/dropdown-table.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/table_design.css">
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_table/peneliti_kasie_design.css">
+    <!---->
+    <link rel="stylesheet" href="../../../design-n-script/design_css/design_text/design_text.css">
+    <!-- Peneliti Counter CSS -->
+    <link rel="stylesheet" href="../../../design-n-script/style-frontend/peneliti_counter.css">
+
+    <style>
+        /* Force show table for Peneliti Paraf Kasie */
+        #peneliti_paraf_kasie_Table {
+            display: table !important;
+            width: 100% !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        .table-scroll {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+        }
+        
+        #peneliti_paraf_kasie_Table tbody {
+            display: table-row-group !important;
+        }
+        
+        #peneliti_paraf_kasie_Table thead th {
+            display: table-cell !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+        
+        #peneliti_paraf_kasie_Table thead {
+            display: table-header-group !important;
+        }
+        
+        /* Default: dropdown should be hidden */
+        #peneliti_paraf_kasie_Table .dropdown-content {
+            display: none !important;
+        }
+        
+        /* When explicitly shown via inline style or data attribute - support multiple formats */
+        #peneliti_paraf_kasie_Table .dropdown-content[data-visible="true"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="table-cell"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="display: table-cell"],
+        #peneliti_paraf_kasie_Table .dropdown-content[style*="display:table-cell"] {
+            display: table-cell !important;
+            padding: 20px !important;
+            background: linear-gradient(180deg, #111827 0%, #0b0f1a 100%) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3) !important;
+            border: 1px solid #1f2937 !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        #peneliti_paraf_kasie_Table .dropdown-content-wrapper {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        #peneliti_paraf_kasie_Table .dropdown-content .document-info-section,
+        #peneliti_paraf_kasie_Table .dropdown-content .action-buttons,
+        #peneliti_paraf_kasie_Table .dropdown-content .document-links-section {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* ===== PARAF KASIE MAIN CONTENT INTEGRATION (match verifikasi-data) ===== */
+        main.shifted #paraf_kasie_design {
+            width: calc(100vw - 250px - 15px);
+            max-width: calc(100vw - 250px - 15px);
+        }
+
+        /* Real-time controls styling for Peneliti (same as verifikasi-data) */
+        .real-time-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .real-time-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .indicator-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .indicator-dot.paused {
+            background: #6c757d;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ===== Paraf Kasie Dropdown (match reference verifikasi-data) ===== */
+        #peneliti_paraf_kasie_Table tr.dropdown-row td {
+            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-content-wrapper {
+            color: #e5e7eb;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            margin-bottom: 14px;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-title {
+            font-weight: 700;
+            font-size: 16px;
+            color: #f3f4f6;
+        }
+
+        #peneliti_paraf_kasie_Table .dropdown-subtitle {
+            font-size: 13px;
+            color: #cbd5e1;
+            white-space: nowrap;
+        }
+
+        /* Reuse info-grid naming from table-utama.css feel */
+        #peneliti_paraf_kasie_Table .document-info-section .info-grid{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 16px;
+            padding: 14px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+        }
+        #peneliti_paraf_kasie_Table .info-label{
+            font-size: 12px;
+            font-weight: 700;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            margin-bottom: 4px;
+        }
+        #peneliti_paraf_kasie_Table .info-value{
+            font-size: 14px;
+            color: #e5e7eb;
+            word-break: break-word;
+        }
+        #peneliti_paraf_kasie_Table .info-value.paraf-sudah{ color: #86efac; font-weight: 700; }
+        #peneliti_paraf_kasie_Table .info-value.paraf-belum{ color: #fbbf24; font-weight: 700; }
+
+        /* Actions */
+        #peneliti_paraf_kasie_Table .action-buttons{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button{
+            border: none;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button:hover:not(:disabled){
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        }
+        #peneliti_paraf_kasie_Table .action-buttons button:disabled{
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Button palette */
+        #peneliti_paraf_kasie_Table .btn-view-document{ background: linear-gradient(135deg,#3b82f6,#2563eb); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-paraf-prominent{ background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-reject{ background: linear-gradient(135deg,#ef4444,#dc2626); color: #fff; }
+        #peneliti_paraf_kasie_Table .btn-kirim-kabid{ background: linear-gradient(135deg,#8b5cf6,#7c3aed); color: #fff; }
+
+        /* Aksi column container */
+        #peneliti_paraf_kasie_Table .aksi-actions{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            min-height: 40px;
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid{
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid:hover:not(:disabled){
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+        #peneliti_paraf_kasie_Table .aksi-actions .btn-kirim-kabid:disabled{
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #6b7280;
+        }
+
+        /* Docs list */
+        #peneliti_paraf_kasie_Table .document-links-section{
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        #peneliti_paraf_kasie_Table .document-links-title{
+            margin: 0 0 10px 0;
+            font-weight: 800;
+            font-size: 13px;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        #peneliti_paraf_kasie_Table .document-link{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            margin: 6px 8px 0 0;
+            border-radius: 999px;
+            background: rgba(59,130,246,0.14);
+            border: 1px solid rgba(59,130,246,0.25);
+            color: #bfdbfe;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        #peneliti_paraf_kasie_Table .document-link:hover{
+            background: rgba(59,130,246,0.22);
+            border-color: rgba(59,130,246,0.4);
+        }
+    </style>
+
+</head>
+<body>
+  <!-- Header Section -->
+<header>
+  <div class="header-left">
+      <div class="logo-container">
+          <img src="../../../asset/Logo_image.svg" alt="Logo" class="logo">
+      </div>
+      <div id="kabupaten-bogor">
+          <div class="teks-container">
+              <span class="large-text">Bappenda</span>
+              <span class="small-text">Kabupaten Bogor</span>
+          </div>
+          <!-- Gambar dekorasi di sebelah kanan -->
+          <img src="../../../asset/dekorasi_icon.png" alt="Dekorasi" class="dekorasi-image">
+      </div>            
+      <!-- Header Title -->
+      <div class="header-title">Paraf Kasie SSPD</div>
+  </div>
+          
+  <div class="header-right">
+  <!--profile section-->
+  <div class="profile-pic-container">
+    <img src="" alt="Profile" class="fotoprofil profile-pic">
+    <div id="profile-overlay" class="profile-overlay">
+        <div class="overlay-content">
+            <img src="" alt="Profile Picture" class="fotoprofil overlay-profile-pic" width="30">
+            <div class="profile-info">
+                <h4><span class="nama">Load</span></h4>
+                <p><span class="userid">Load</span></p>
+            </div>
+            <div class="overlay-buttons">
+                <a href="../../../profile.html"><button class="profile-btn" id="profileButton" class="profile-button">Profil</button></a>
+                <button class="AUT logout-button">Keluar</button>
+            </div>
+        </div>
+    </div>
+  </div>  
+
+    <!--member section-->        
+    <div class="members-count" id="divisiMemberCount">
+        <span id="thin-text">member</span> <br>
+        <div class="member-overlay" id="member-overlay">
+            <ul class="member-list" id="member-list">
+            <!-- Member list will be populated here -->
+            </ul>
+        </div>
+    </div>
+</div>
+</header>
+<!--end header-->
+<!---->
+<!---->
+<!--start aside-->
+<aside class="sidebar">
+  <div class="menu-container">
+    <div class="box">
+        <div class="menu-item" id="dashboard_page">
+            <a href="../peneliti-dashboard.html" class="icon-text-wrapper">
+                <i class="fa fa-home sidebar-icon"></i>
+                <span class="sidebar-text">Dashboard</span>
+            </a>
+        </div>
+    </div>
+    <div class="box">
+        <div class="menu-item dropdown" data-dropdown="true" id="validasi_bphbt">
+            <div class="icon-text-wrapper dropdown-toggle">
+                <i class="fa fa-gavel sidebar-icon"></i>
+                <span class="sidebar-text">Verifikasi SSPD</span>
+            </div>
+        </div>
+        <div class="dropdown-content">
+            <a href="../Verifikasi_sspd/verifikasi-data.html">Verifikasi SSPD</a>
+            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Verifikasi_SSPD/admin_verifikasisspd_off.html">Verifikasi SSPD Offline</a>
+            <a href="paraf-kasie.html">Kasie Verifikasi SSPD</a>
+            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Kasie_Verifikasi_SSPD/admin_kasie_verifikasisspd_off.html">Kasie Verifikasi SSPD Offline</a>
+            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar.html">SKPD Kurang Bayar</a>
+            <a href="../admins_Peneliti/adminv_verifikasisspd/adminv_Proses_SKPD_KurangBayar/admin_proses_SKPD_kurangbayar_off.html">SKPD Kurang Bayar Offline</a>
+        </div>
+    </div>
+<!--other section must be on all html-->
+  <div class="box">
+      <div class="menu-item" id="faq_page">
+          <a href="../../FAQ/faq_page.html" class="icon-text-wrapper">
+              <i class="fa fa-question-circle sidebar-icon"></i>
+              <span class="sidebar-text">FAQ</span>
+          </a>
+      </div>
+  </div>
+  <div class="AUT logout-box">
+      <div class="menu-item" id="logout_page">
+          <div class="icon-text-wrapper">
+              <i class="fa fa-sign-out sidebar-icon"></i>
+              <span class="sidebar-text">Log Out</span>
+          </div>
+      </div>
+  </div>
+  </div>
+</aside>
+<!-- End content aside-->
+  <!---->
+  <!---->
+  <!-- MAIN -->
+  <main id="paraf_kasie_design" class="main-content">
+    
+    <!-- Controls Row: Search and Real-time (match verifikasi-data.html) -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 20px; gap: 20px; flex-wrap: wrap;">
+      <!-- Search and Pagination Controls (created by JS) -->
+      <div class="search-pagination-controls" style="flex: 1; min-width: 300px;"></div>
+      
+      <!-- Real-time controls -->
+      <div class="real-time-controls">
+        <button id="realTimeToggle" class="btn btn-success btn-sm" onclick="toggleRealTimeMonitoring()">
+          <i class="fa fa-pause"></i> Pause Real-time
+        </button>
+        <div class="real-time-indicator" id="realTimeIndicator">
+          <div class="indicator-dot"></div>
+          <span>Real-time</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table id="peneliti_paraf_kasie_Table" class="excel-table luxury-table">
+        <thead>
+          <tr>
+            <th>No. Registrasi</th>
+            <th>NOP PBB</th>
+            <th>Nama Wajib Pajak</th>
+            <th>Nama Pemilik Objek</th>
+            <th>Pembuat Booking</th>
+            <th>Paraf</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="data-masuk" style="cursor: pointer;">
+            <!-- Data akan dimasukkan ke sini oleh JavaScript -->
+        </tbody>
+      </table>
+    </div>
+</main>
+    <!-- Footer berada di dalam page-wrapper -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 Pemerintah Kabupaten Bogor – BAPPENDA</p>
+        </div>
+    </footer>
+</div>         
+<!-- Overlay untuk konfirmasi log-out -->
+<div id="logout-overlay" class="logout-overlay">
+    <div class="logout-confirm">
+        <div class="icon-container">
+            <i class="fas fa-exclamation"></i>
+        </div>
+        <p>Apakah anda yakin?<br><span>Keluar dari sistem?</span></p>
+        <button id="cancel-logout">Batal</button>
+        <button id="confirm-logout">Iya</button>
+    </div>
+</div>
+<!--script front-->
+<script src="../../../design-n-script/script_frontback_java/header_script.js"></script>
+<script src="../../../design-n-script/script_frontback_java/fungsi.js"></script>
+  <!---->
+  <script src="../../../design-n-script/script-backend/header-backend.js"></script>
+  <script src="../../../design-n-script/script-backend/peneliti_paraf.js"></script>
+
+  <!-- Real-time monitoring script for Peneliti (match verifikasi-data.html; adapted to paraf-kasie table) -->
+  <script>
+    (function(){
+      let realTimeInterval = null;
+      let lastDataCount = 0;
+      let isRealTimeEnabled = true;
+      let userIsInteracting = false;
+      let lastUserActivity = Date.now();
+      let refreshDebounceTimer = null;
+
+      function trackUserActivity() {
+        lastUserActivity = Date.now();
+        userIsInteracting = true;
+        setTimeout(() => {
+          if (Date.now() - lastUserActivity >= 5000) userIsInteracting = false;
+        }, 5000);
+      }
+
+      function startRealTimeMonitoring() {
+        if (realTimeInterval) clearInterval(realTimeInterval);
+        realTimeInterval = setInterval(async () => {
+          if (!isRealTimeEnabled) return;
+          if (userIsInteracting) return;
+          try { await checkForNewData(); } catch (error) { console.error('❌ Error in Paraf Kasie real-time monitoring:', error); }
+        }, 5000);
+      }
+
+      function stopRealTimeMonitoring() {
+        if (realTimeInterval) {
+          clearInterval(realTimeInterval);
+          realTimeInterval = null;
+        }
+      }
+
+      async function checkForNewData() {
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody');
+        const currentCount = tbody ? tbody.children.length : 0;
+
+        if (currentCount > lastDataCount && lastDataCount > 0) {
+          lastDataCount = currentCount;
+          if (refreshDebounceTimer) clearTimeout(refreshDebounceTimer);
+
+          refreshDebounceTimer = setTimeout(() => {
+            if (!userIsInteracting) {
+              // reload table data
+              try {
+                if (typeof loadTableDataPenelitiP === 'function') loadTableDataPenelitiP();
+              } catch (e) {
+                console.warn('Reload Paraf Kasie data failed:', e);
+              }
+            }
+          }, 2000);
+        } else if (currentCount !== lastDataCount) {
+          lastDataCount = currentCount;
+        }
+      }
+
+      function toggleRealTimeMonitoring() {
+        isRealTimeEnabled = !isRealTimeEnabled;
+        if (isRealTimeEnabled) {
+          startRealTimeMonitoring();
+          updateRealTimeButton(true);
+        } else {
+          stopRealTimeMonitoring();
+          updateRealTimeButton(false);
+        }
+      }
+
+      function updateRealTimeButton(isEnabled) {
+        const button = document.getElementById('realTimeToggle');
+        const indicator = document.getElementById('realTimeIndicator');
+        const dot = indicator?.querySelector('.indicator-dot');
+
+        if (button) {
+          if (isEnabled) {
+            button.innerHTML = '<i class="fa fa-pause"></i> Pause Real-time';
+            button.className = 'btn btn-warning btn-sm';
+            button.title = 'Klik untuk menghentikan auto-refresh';
+          } else {
+            button.innerHTML = '<i class="fa fa-play"></i> Start Real-time';
+            button.className = 'btn btn-success btn-sm';
+            button.title = 'Klik untuk memulai auto-refresh';
+          }
+        }
+
+        if (dot) {
+          if (isEnabled) dot.classList.remove('paused');
+          else dot.classList.add('paused');
+        }
+      }
+
+      function initializeRealTime() {
+        const tbody = document.querySelector('#peneliti_paraf_kasie_Table tbody');
+        lastDataCount = tbody ? tbody.children.length : 0;
+        startRealTimeMonitoring();
+      }
+
+      window.toggleRealTimeMonitoring = toggleRealTimeMonitoring;
+      window.startRealTimeMonitoring = startRealTimeMonitoring;
+      window.stopRealTimeMonitoring = stopRealTimeMonitoring;
+      window.trackUserActivity = trackUserActivity;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => initializeRealTime(), 1000);
+
+        const table = document.querySelector('#peneliti_paraf_kasie_Table');
+        if (table) {
+          table.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) trackUserActivity();
+          });
+          table.addEventListener('mouseenter', trackUserActivity);
+          table.addEventListener('mousemove', trackUserActivity);
+        }
+        const realTimeToggle = document.getElementById('realTimeToggle');
+        if (realTimeToggle) realTimeToggle.addEventListener('click', trackUserActivity);
+      });
+    })();
+  </script>
+  <script type="module">
+    import { initNotifications } from '../../../design-n-script/script-backend/notification-setup.js';
+    initNotifications();
+  </script>
+<!-- Peneliti Counter JavaScript -->
+<script src="../../../design-n-script/script-frontend/peneliti_counter.js"></script>
+<!--script pengedit pdf-->
+</body>
+</html>
