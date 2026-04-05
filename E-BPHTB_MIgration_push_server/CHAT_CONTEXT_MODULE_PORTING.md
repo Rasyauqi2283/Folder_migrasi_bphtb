@@ -4,33 +4,38 @@ Dokumen ini adalah **module ringkas** untuk dibawa ke chat baru kapan pun, terut
 
 > Tujuan: memastikan semua perubahan penting yang sudah dibuat di workspace ini **bisa dimigrasikan** dengan aman ke folder server asli, tanpa asal update.
 
+### Kebijakan push (fatal)
+
+Hanya isi paket **`E-BPHTB_MIgration_push_server`** yang boleh ke Git remote / mirror server PHP. Di **akar** folder ini, **`database/`**, **`docs/`**, dan **`public/`** tidak di-commit dan tidak dibawa ke server (lihat `.gitignore` di akar paket). **Bukan** yang dimaksud: `frontend-next/public/` (aset Next.js tetap ikut repo).
+
 ### Lokasi kerja di server (IIS)
 
 Repo/stack baru biasanya diletakkan **di dalam** root aplikasi PHP yang sama dengan workspace server, misalnya:
 
-`...\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration\`
+`...\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration_push_server\`
 
-(contoh setara: `C:\inetpub\wwwroot\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration\`). **Semua path file di dokumen ini** (`E-BPHTB_MIgration/backend/...`, dll.) mengacu pada **akar folder `E-BPHTB_MIgration`** — bukan ke seluruh `wwwroot` kecuali disebut eksplisit.
+(contoh setara: `C:\inetpub\wwwroot\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration_push_server\`). **Semua path file di dokumen ini** (`E-BPHTB_MIgration_push_server/backend/...`, dll.) mengacu pada **akar folder itu** — bukan ke seluruh `wwwroot` kecuali disebut eksplisit.
 
-Tata letak folder, env, dan integrasi PHP↔Go↔Next: **`E-BPHTB_MIgration/SERVER_WORKSPACE_LAYOUT.md`**.
+Tata letak folder, env, dan integrasi PHP↔Go↔Next: **`SERVER_WORKSPACE_LAYOUT.md`**.
 
 ---
 
-## 0. Apa itu folder `E-BPHTB_MIgration` (agar chat baru langsung terarah)
+## 0. Apa itu folder `E-BPHTB_MIgration_push_server` (agar chat baru langsung terarah)
 
-Folder ini adalah **satu paket migrasi E-BPHTB**: backend API (Go), frontend (Next.js), skrip/SQL database, dan dokumen operasional. Di server, folder ini sering **disalin utuh** ke dalam `wwwroot` supaya pekerjaan terpusat dan bisa dibuka sebagai workspace Cursor/VS Code di sana.
+Folder ini adalah **satu paket migrasi E-BPHTB** yang boleh di-push: backend API (Go), frontend (Next.js), dan dokumen operasional. Di server, folder ini sering **di-clone / pull** ke dalam `wwwroot` supaya pekerjaan terpusat.
 
 | Bagian | Isi singkat | Catatan untuk asisten |
 |--------|-------------|------------------------|
 | `backend/` | Service Go (`cmd/`, `internal/`), konfigurasi env, build | Endpoint REST di bawah `/api/...`; build: `go build ./...` dari folder `backend/`. |
 | `frontend-next/` | Aplikasi Next.js (App Router), UI operator/PU/admin | Build/deploy sesuai setup server (Node); memanggil API backend. |
-| `database/` atau skrip SQL di repo | Migrasi/schema referensi | **Schema di server bisa beda** (mis. MySQL legacy vs asumsi Postgres di kode dev): jangan anggap kolom/tabel 1:1 tanpa cek DB nyata. |
+| `database/` (akar) | Skrip SQL lokal | **Tidak di Git** — jangan andalkan di server PHP; schema produksi dari tim DBA. |
+| `docs/` (akar) | Catatan internal | **Tidak di Git**. |
 | `MEETING_RUNBOOK_CUTOVER_BJB.md` | Runbook cutover/domain/gateway | Dipakai saat rapat/go-live. |
 | **File ini** `CHAT_CONTEXT_MODULE_PORTING.md` | Aturan bisnis + file kritis + prompt chat | **Baca ini dulu** di chat baru sebelum mengubah kode di server. |
 
-**Hubungan dengan legacy:** Di `wwwroot` mungkin masih ada **PHP + MySQL** atau aplikasi lama. `E-BPHTB_MIgration` adalah **stack baru/referensi implementasi**; porting artinya menyelaraskan perilaku (lifecycle booking, gate payment, UI) dengan **DB dan deploy yang benar-benar jalan di server**, bukan menyalin buta seluruh asumsi schema dari dev jika tidak cocok.
+**Hubungan dengan legacy:** Di `wwwroot` mungkin masih ada **PHP** atau aplikasi lama. Paket ini adalah **stack baru**; porting artinya menyelaraskan perilaku dengan **DB dan deploy yang benar-benar jalan di server**.
 
-**Kesimpulan untuk asisten:** Anggap `E-BPHTB_MIgration` sebagai **root proyek migrasi**; jangan mencampur path dengan folder legacy kecuali tugasnya memang integrasi silang. Ikuti section A–G untuk risiko dan prioritas perubahan.
+**Kesimpulan untuk asisten:** Anggap **`E-BPHTB_MIgration_push_server`** sebagai **root proyek migrasi**; jangan mencampur path dengan folder legacy kecuali tugasnya memang integrasi silang. Ikuti section A–G untuk risiko dan prioritas perubahan.
 
 ---
 
@@ -77,9 +82,9 @@ Tujuan: **mencegah loncatan** status dari `Terbuat` langsung ke `Draft`.
 ### 1) Backend — Booking lifecycle & gatekeeping
 
 **File:**
-- `E-BPHTB_MIgration/backend/internal/repository/ppat.go`
-- `E-BPHTB_MIgration/backend/internal/handler/ppat.go`
-- `E-BPHTB_MIgration/backend/internal/repository/bank.go`
+- `E-BPHTB_MIgration_push_server/backend/internal/repository/ppat.go`
+- `E-BPHTB_MIgration_push_server/backend/internal/handler/ppat.go`
+- `E-BPHTB_MIgration_push_server/backend/internal/repository/bank.go`
 
 **Inti perubahan:**
 - Helper transisi status forward-only: normalisasi status, ranking, dan `updateBookingStatusTx`.
@@ -94,7 +99,7 @@ Tujuan: **mencegah loncatan** status dari `Terbuat` langsung ke `Draft`.
 ### 2) Frontend — Booking Badan (PU)
 
 **File:**
-- `E-BPHTB_MIgration/frontend-next/app/(protected)/pu/booking-sspd/badan/page.tsx`
+- `E-BPHTB_MIgration_push_server/frontend-next/app/(protected)/pu/booking-sspd/badan/page.tsx`
 
 **Inti perubahan:**
 - Normalisasi status `awaiting_billing` -> `awaited_billing`.
@@ -117,7 +122,7 @@ Tujuan: **mencegah loncatan** status dari `Terbuat` langsung ke `Draft`.
   - kirim email aktivasi (backend)
 
 **File:**
-- `E-BPHTB_MIgration/frontend-next/app/(protected)/admin/data-user/pending/page.tsx`
+- `E-BPHTB_MIgration_push_server/frontend-next/app/(protected)/admin/data-user/pending/page.tsx`
 
 Catatan UI:
 - Gender/special field **tidak ditampilkan sebagai dropdown** di tabel; cukup info di clickrow.
@@ -153,7 +158,7 @@ Wajib:
 - CORS whitelist domain final.
 
 Dokumen runbook meeting:
-- `E-BPHTB_MIgration/MEETING_RUNBOOK_CUTOVER_BJB.md`
+- `E-BPHTB_MIgration_push_server/MEETING_RUNBOOK_CUTOVER_BJB.md`
 
 ---
 
@@ -180,8 +185,8 @@ Dokumen runbook meeting:
 Gunakan block ini saat mulai chat baru:
 
 ```text
-Baca dulu file E-BPHTB_MIgration/CHAT_CONTEXT_MODULE_PORTING.md di workspace ini (section 0–G).
-Konteks: Saya sedang migrasi E-BPHTB; folder E-BPHTB_MIgration sudah ada di server (path IIS di bawah wwwroot).
+Baca dulu file E-BPHTB_MIgration_push_server/CHAT_CONTEXT_MODULE_PORTING.md di workspace ini (section 0–G).
+Konteks: Saya sedang migrasi E-BPHTB; folder E-BPHTB_MIgration_push_server sudah ada di server (path IIS di bawah wwwroot).
 Sangat sensitif: tidak boleh asal update; patuhi term & condition, backup, dan patch per fitur.
 Target ~2 minggu: hardening core flow + perbaiki UI/endpoint yang rusak.
 Aturan booking lifecycle wajib: Terbuat -> awaited_billing -> in_paid -> paid -> Draft.

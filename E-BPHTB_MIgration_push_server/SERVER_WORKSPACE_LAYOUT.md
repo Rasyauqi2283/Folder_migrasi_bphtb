@@ -1,6 +1,10 @@
-# Tata letak folder di server (VS Code / IIS) — `BPHTB_BOGOR_DEV_FARRAS` + `E-BPHTB_MIgration`
+# Tata letak folder di server (VS Code / IIS) — `BPHTB_BOGOR_DEV_FARRAS` + `E-BPHTB_MIgration_push_server`
 
 Dokumen ini untuk saat Anda **sudah membuka workspace di server** (seperti screenshot: root `BPHTB_BOGOR_DEV_FARRAS`, `conf.cfg/master_config.php`, `aplikasi/`, `index.php`, `web.config`).
+
+## Kebijakan push (fatal)
+
+Di akar **`E-BPHTB_MIgration_push_server`** folder berikut **tidak** masuk Git dan **tidak** dibawa ke server PHP: **`database/`**, **`docs/`**, **`public/`** (bukan `frontend-next/public/`). Lihat `.gitignore` di akar paket ini.
 
 ## Rekomendasi struktur (satu akar deploy PHP)
 
@@ -14,7 +18,7 @@ BPHTB_BOGOR_DEV_FARRAS/              ← root IIS / folder yang Anda buka di VS 
 ├── sistem/
 ├── index.php
 ├── web.config
-└── E-BPHTB_MIgration/               ← salin / git clone di sini
+└── E-BPHTB_MIgration_push_server/   ← salin / git clone di sini (boleh rename setelah pull)
     ├── backend/
     │   └── master_config.env.example → salin ke backend\.env lalu isi secret
     ├── frontend-next/
@@ -23,7 +27,7 @@ BPHTB_BOGOR_DEV_FARRAS/              ← root IIS / folder yang Anda buka di VS 
 
 Contoh path absolut umum:
 
-`C:\inetpub\wwwroot\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration\`
+`C:\inetpub\wwwroot\BPHTB_BOGOR_DEV_FARRAS\E-BPHTB_MIgration_push_server\`
 
 **Alternatif:** `E-BPHTB_MIgration` sebagai **saudara** (sibling) folder PHP — boleh, asalkan Anda konsisten mengisi URL publik di env (tidak ada asumsi relatif file antar tree).
 
@@ -34,14 +38,14 @@ Contoh path absolut umum:
 | PHP memanggil Go (OCR, proxy upload) | `conf.cfg/master_config.php` | `define('VVF_GO_API_BASE', 'http://127.0.0.1:8000');` — Go listen di mesin yang sama |
 | Next memanggil Go | `frontend-next` | Default: proxy `next.config.mjs` → `API_PROXY_TARGET` / `127.0.0.1:8000` |
 | Next membuka registrasi PHP | env Next + env Go | `NEXT_PUBLIC_PHP_LEGACY_BASE_URL` = URL publik ke root PHP (mis. `http://192.168.x.x/BPHTB_BOGOR_DEV_FARRAS`) — **sama** dengan konsep `MY_BASE_URL` tanpa file `index.php` di ujung path kecuali memang dipakai |
-| Go “master config” | `E-BPHTB_MIgration/backend/.env` | Isi dari `backend/master_config.env.example`; **`PHP_LEGACY_BASE_URL`** = URL yang sama untuk konsistensi metadata `GET /api/config` |
+| Go “master config” | `E-BPHTB_MIgration_push_server/backend/.env` | Isi dari `backend/master_config.env.example`; **`PHP_LEGACY_BASE_URL`** = URL yang sama untuk konsistensi metadata `GET /api/config` |
 
 ## Perintah singkat (setelah path di atas)
 
 Dari folder server:
 
 ```powershell
-cd E-BPHTB_MIgration\backend
+cd E-BPHTB_MIgration_push_server\backend
 copy master_config.env.example .env
 # edit .env: DATABASE_URL, PHP_LEGACY_BASE_URL, MSSQL_*, SMTP_*, dll.
 
@@ -51,7 +55,7 @@ go run ./cmd/server
 Terminal lain:
 
 ```powershell
-cd E-BPHTB_MIgration\frontend-next
+cd E-BPHTB_MIgration_push_server\frontend-next
 copy .env.local.example .env.local
 # set NEXT_PUBLIC_PHP_LEGACY_BASE_URL jika registrasi lewat PHP
 
@@ -69,7 +73,7 @@ npm run dev
 
 Jika Anda ingin **dua root** sekaligus (PHP tree + migrasi saja):
 
-- File → Add Folder to Workspace → tambahkan `E-BPHTB_MIgration` jika ia di sibling, atau cukup satu folder `BPHTB_BOGOR_DEV_FARRAS` jika migrasi sudah di subfolder seperti di atas.
+- File → Add Folder to Workspace → tambahkan `E-BPHTB_MIgration_push_server` jika ia di sibling, atau cukup satu folder `BPHTB_BOGOR_DEV_FARRAS` jika migrasi sudah di subfolder seperti di atas.
 
 ---
 

@@ -35,3 +35,9 @@ E-BPHTB_MIgration/full_total_sql_created.sql
 # Arsip lokal / salinan asli (jangan ikut push)
 E-BPHTB_versiAsli/
 git_status_out.txt
+
+# Fatal — E-BPHTB_MIgration_push_server: tiga folder akar ini tidak untuk dibawa ke git/server PHP
+# (lihat juga E-BPHTB_MIgration_push_server/.gitignore). Bukan frontend-next/public/.
+E-BPHTB_MIgration_push_server/database/
+E-BPHTB_MIgration_push_server/docs/
+E-BPHTB_MIgration_push_server/public/

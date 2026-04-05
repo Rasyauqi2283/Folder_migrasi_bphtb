@@ -1,0 +1,17 @@
+# =============================================================================
+# FATAL — kebijakan push (khusus workspace ini)
+# =============================================================================
+# Hanya isi paket migrasi yang boleh ke git remote / server PHP. Tiga folder di
+# AKAR paket ini TIDAK boleh di-commit atau dibawa ke server produksi:
+#
+#   database/   — skrip/migrasi lokal & eksperimen (bukan untuk mirror PHP)
+#   docs/       — catatan internal tim (bukan untuk server)
+#   public/     — aset publik khusus lokal di akar ini (bila ada)
+#
+# BUKAN yang dimaksud: frontend-next/public/  → itu aset Next.js dan WAJIB
+# tetap masuk git bila ada di repo.
+# =============================================================================
+
+/database/
+/docs/
+/public/
