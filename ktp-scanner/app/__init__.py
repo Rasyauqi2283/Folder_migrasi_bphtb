@@ -1,1 +1,0 @@
-# KTP Scanner application package

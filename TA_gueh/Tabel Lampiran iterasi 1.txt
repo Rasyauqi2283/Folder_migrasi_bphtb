@@ -1,27 +1,0 @@
-NoNama Activity DiagramDeskripsi LengkapLampiran1Login dan RegisterAktor: User, Sistem.
-Alur: Proses login dan registrasi dengan OTP verification, validasi password, serta session management.Lampiran 1 – Activity Diagram Login & Register 
-Lampiran 2, 3– Halaman Login dan Registrasi2Create BookingAktor: PPAT/PPATS, Sistem.
-Alur: Pembuatan booking SSPD melalui pengisian data wajib pajak, pemilik objek pajak, perhitungan NJOP, data objek pajak, validasi input, dan penyimpanan data.Lampiran 4 – Activity Diagram Create Booking
-Lampiran 5, 6 – Form Create Booking & Detail Objek Pajak3Generate No. BookingAktor: Database Trigger, Sistem.
-Alur: Generate nomor booking otomatis menggunakan trigger (BEFORE INSERT) dengan format ppat_khusus-YYYY-000001.Lampiran 7 – Activity Diagram Nomor Booking Terbentuk4Add Manual SignatureAktor: PPAT/PPATS, Sistem.
-Alur: Upload tanda tangan manual, validasi file (JPG/PNG maksimal 2MB), preview, dan penyimpanan.Lampiran 8 – Upload Tanda Tangan5Upload DocumentAktor: PPAT/PPATS, Sistem.
-Alur: Upload dokumen pendukung, validasi tipe dokumen dan ukuran file, penyimpanan dengan metadata.Lampiran 9 – Upload Dokumen Pendukung6Add Validasi TambahanAktor: PPAT/PPATS, Sistem.
-Alur: Penambahan validasi tambahan berupa keterangan dan dokumen opsional.Lampiran 10 – Validasi Tambahan7LTB Receive from PPATAktor: PPAT/PPATS, LTB, Sistem.
-Alur: Pengiriman booking ke LTB, validasi kelengkapan berkas, update status proses.Lampiran 11 – Kirim ke LTB
-Lampiran 12 – Tampilan Laman LTB Receive Doc8LTB Generate No. RegistrasiAktor: LTB, Sistem.
-Alur: Generate nomor registrasi otomatis dengan format YYYYO00001.Lampiran 13 – Nomor Registrasi9LTB Validate DocumentAktor: LTB, Sistem.
-Alur: Review dokumen (Akta, Sertifikat, Tanda Tangan), cek kelengkapan dan konsistensi data.Lampiran 14 – Validasi Dokumen LTB10LTB Accept / RejectAktor: LTB, Sistem.
-Alur: Penentuan status diterima atau ditolak, penyimpanan alasan penolakan, dan notifikasi ke PPAT.Lampiran 15 – Status Accept
-Lampiran 16 – Status Reject11LSB Receive from Peneliti ValidasiAktor: Peneliti Validasi (Pejabat), LSB, Sistem.
-Alur: Peneliti Validasi mengirim dokumen ke LSB, dilakukan validasi akhir sebelum pengiriman, update status proses.Lampiran 17 – Pengiriman ke LSB
-Lampiran 18 – Tampilan Laman LSB Receive Doc12LSB Manual HandoverAktor: LSB, PPAT/PPATS, Sistem.
-Alur: Serah terima dokumen dari LSB ke PPAT, verifikasi identitas PPAT dan dokumen, update status.Lampiran 19 – Serah Terima Dokumen13LSB Update StatusAktor: LSB, Sistem.
-Alur: Update status pasca handover menjadi Diserahkan, notifikasi ke PPAT.Lampiran 20 – Status Diserahkan14Peneliti Receive from LTBAktor: Peneliti, Sistem.
-Alur: Peneliti menerima notifikasi dari LTB, membuka booking, memverifikasi dokumen, menambahkan tanda tangan manual, dan mengirim ke Clear to Paraf.Lampiran 21 – Verifikasi Peneliti
-Lampiran 22 – Tampilan Laman Peneliti tahap Verifikasi15Peneliti Paraf Receive and Give ParafAktor: Peneliti (Paraf), Sistem.
-Alur: Peneliti Paraf menerima notifikasi, meninjau dokumen, memberikan paraf dan stempel, lalu mengirim ke Peneliti Validasi.Lampiran 23 – Clear to Paraf
-Lampiran 24 – Proses Paraf16Peneliti ValidasiAktor: Peneliti Validasi, Sistem.
-Alur: Validasi akhir dokumen, pemberian persetujuan final sebelum diserahkan ke LSB.Lampiran 25 – Validasi Pejabat
-Lampiran 26 – Tampilan Laman tahap Pejabat17Admin Monitor Process and Send Ping NotificationsAktor: Admin, Sistem.
-Alur: Admin memantau seluruh proses melalui dashboard, melihat status booking dan statistik, serta mengirim notifikasi pengingat melalui sistem dan email.Lampiran 27 – Dashboard Admin
-Lampiran 28 – Kirim Notifikasi     

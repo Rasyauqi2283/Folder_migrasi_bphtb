@@ -1,43 +1,6 @@
-node_modules/
-.env
-.env.*
-.env.local
-.env.local.*
-.next/
-**/.next/
-out/
-**/out/
-.turbo/
-**/.turbo/
-.DS_Store
-*.log
-
-# Security: Never commit API keys or secrets
-*api*key*
-*secret*
-*sendgrid*
-*encryption*
-
-# Private / non-web assets (keep out of public repo)
-docs/
-database/
-scripts/
-MIGRATION_STATUS.md
-full_total_sql_created.sql
-
-# Same paths under E-BPHTB_MIgration workspace
-E-BPHTB_MIgration/docs/
-E-BPHTB_MIgration/database/
-E-BPHTB_MIgration/scripts/
-E-BPHTB_MIgration/MIGRATION_STATUS.md
-E-BPHTB_MIgration/full_total_sql_created.sql
-
-# Arsip lokal / salinan asli (jangan ikut push)
-E-BPHTB_versiAsli/
-git_status_out.txt
-
-# Fatal — E-BPHTB_MIgration_push_server: tiga folder akar ini tidak untuk dibawa ke git/server PHP
-# (lihat juga E-BPHTB_MIgration_push_server/.gitignore). Bukan frontend-next/public/.
-E-BPHTB_MIgration_push_server/database/
-E-BPHTB_MIgration_push_server/docs/
-E-BPHTB_MIgration_push_server/public/
+# Remote repo hanya berisi paket migrasi. File/folder lain di root workspace
+# tetap ada secara lokal tetapi tidak akan ter-commit.
+/*
+!.gitignore
+!E-BPHTB_MIgration_push_server/
+!E-BPHTB_MIgration_push_server/**
